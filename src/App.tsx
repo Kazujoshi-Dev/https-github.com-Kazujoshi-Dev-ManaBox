@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { CollectionItem, WishlistItem, ScryfallCard, CardCondition, CardLanguage, AppSettings, Catalog } from './types';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { CollectionItem, WishlistItem, ScryfallCard, CardCondition, CardLanguage, AppSettings, Catalog, AuthUser } from './types';
 import { Header } from './components/Header';
 import { CollectionList } from './components/CollectionList';
 import { CardSearch } from './components/CardSearch';
@@ -8,10 +8,20 @@ import { Wishlist } from './components/Wishlist';
 import { CardModal } from './components/CardModal';
 import { SettingsModal } from './components/SettingsModal';
 import { SetTopCards } from './components/SetTopCards';
+import { AuthView } from './components/AuthView';
 import { getCardPrice, DEFAULT_SETTINGS } from './utils/formatters';
 import { Sparkles, Check, AlertCircle } from 'lucide-react';
 
 export default function App() {
+  const [currentUser, setCurrentUser] = useState<AuthUser | null>(() => {
+    try {
+      const saved = localStorage.getItem('mtg_auth_user');
+      return saved ? JSON.parse(saved) : null;
+    } catch {
+      return null;
+    }
+  });
+
   const [activeTab, setActiveTab] = useState<'collection' | 'search' | 'set-top' | 'analytics' | 'wishlist'>('collection');
   const [collection, setCollection] = useState<CollectionItem[]>([]);
   const [wishlist, setWishlist] = useState<WishlistItem[]>([]);
@@ -45,6 +55,42 @@ export default function App() {
     setTimeout(() => {
       setToastMessage(null);
     }, 3000);
+  };
+
+  // Helper for authenticated requests
+  const fetchWithAuth = useCallback(async (url: string, options: RequestInit = {}): Promise<Response> => {
+    const token = localStorage.getItem('mtg_auth_token');
+    const headers: Record<string, string> = {
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...((options.headers as Record<string, string>) || {})
+    };
+    const res = await fetch(url, { ...options, headers });
+    if (res.status === 401) {
+      localStorage.removeItem('mtg_auth_token');
+      localStorage.removeItem('mtg_auth_user');
+      setCurrentUser(null);
+    }
+    return res;
+  }, []);
+
+  const handleAuthSuccess = (user: AuthUser, token: string) => {
+    localStorage.setItem('mtg_auth_token', token);
+    localStorage.setItem('mtg_auth_user', JSON.stringify(user));
+    setCurrentUser(user);
+    showToast(`Witaj w kolekcji, ${user.username}!`);
+  };
+
+  const handleLogout = async () => {
+    try {
+      await fetchWithAuth('/api/auth/logout', { method: 'POST' });
+    } catch {}
+    localStorage.removeItem('mtg_auth_token');
+    localStorage.removeItem('mtg_auth_user');
+    setCurrentUser(null);
+    setCollection([]);
+    setWishlist([]);
+    setCatalogs([]);
+    showToast('Pomyślnie wylogowano z konta.');
   };
 
   // Optional: Auto fetch NBP exchange rates on app start if enabled
@@ -81,15 +127,28 @@ export default function App() {
     }
   }, []);
 
-  // Fetch initial data from server
+  // Fetch initial data for logged in user
   useEffect(() => {
     async function loadData() {
+      if (!currentUser) {
+        setIsLoading(false);
+        return;
+      }
+
       try {
         setIsLoading(true);
-        const [colRes, wishRes, catRes] = await Promise.all([
-          fetch('/api/collection'),
-          fetch('/api/wishlist'),
-          fetch('/api/catalogs')
+        // Verify token validity first
+        const meRes = await fetchWithAuth('/api/auth/me');
+        if (!meRes.ok) {
+          setIsLoading(false);
+          return;
+        }
+
+        const [colRes, wishRes, catRes, setRes] = await Promise.all([
+          fetchWithAuth('/api/collection'),
+          fetchWithAuth('/api/wishlist'),
+          fetchWithAuth('/api/catalogs'),
+          fetchWithAuth('/api/settings')
         ]);
 
         if (colRes.ok) {
@@ -106,6 +165,13 @@ export default function App() {
           const catData = await catRes.json();
           setCatalogs(catData);
         }
+
+        if (setRes.ok) {
+          const remoteSettings = await setRes.json();
+          if (remoteSettings && remoteSettings.currency) {
+            setSettings(prev => ({ ...prev, ...remoteSettings }));
+          }
+        }
       } catch (err) {
         console.error('Error fetching initial data:', err);
       } finally {
@@ -114,7 +180,7 @@ export default function App() {
     }
 
     loadData();
-  }, []);
+  }, [currentUser, fetchWithAuth]);
 
   // Compute Total Stats
   const totals = useMemo(() => {
@@ -156,7 +222,7 @@ export default function App() {
     }
 
     try {
-      const res = await fetch(`/api/collection/${id}`, {
+      const res = await fetchWithAuth(`/api/collection/${id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ quantity: newQtyNormal, quantityFoil: newQtyFoil })
@@ -174,7 +240,7 @@ export default function App() {
   // Delete Item Handler
   const handleDeleteItem = async (id: string) => {
     try {
-      const res = await fetch(`/api/collection/${id}`, { method: 'DELETE' });
+      const res = await fetchWithAuth(`/api/collection/${id}`, { method: 'DELETE' });
       if (res.ok) {
         setCollection(prev => prev.filter(c => c.id !== id));
         showToast('Usunięto kartę z kolekcji');
@@ -198,7 +264,7 @@ export default function App() {
     try {
       if (selectedCollectionItemForModal) {
         // Edit existing
-        const res = await fetch(`/api/collection/${selectedCollectionItemForModal.id}`, {
+        const res = await fetchWithAuth(`/api/collection/${selectedCollectionItemForModal.id}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -215,7 +281,7 @@ export default function App() {
         }
       } else {
         // Create new entry
-        const res = await fetch('/api/collection', {
+        const res = await fetchWithAuth('/api/collection', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -237,7 +303,7 @@ export default function App() {
   // Add to Wishlist
   const handleAddToWishlist = async (card: ScryfallCard) => {
     try {
-      const res = await fetch('/api/wishlist', {
+      const res = await fetchWithAuth('/api/wishlist', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -275,7 +341,7 @@ export default function App() {
   // Catalog Management Handlers
   const handleCreateCatalog = async (name: string, description?: string, color?: string, isDefault?: boolean): Promise<Catalog | null> => {
     try {
-      const res = await fetch('/api/catalogs', {
+      const res = await fetchWithAuth('/api/catalogs', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name, description, color, isDefault })
@@ -301,7 +367,7 @@ export default function App() {
 
   const handleUpdateCatalog = async (id: string, updates: Partial<Catalog>) => {
     try {
-      const res = await fetch(`/api/catalogs/${id}`, {
+      const res = await fetchWithAuth(`/api/catalogs/${id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(updates)
@@ -314,7 +380,7 @@ export default function App() {
           setCatalogs(prev => prev.map(c => c.id === id ? updated : c));
         }
         // Reload collection to sync any cards renamed
-        const colRes = await fetch('/api/collection');
+        const colRes = await fetchWithAuth('/api/collection');
         if (colRes.ok) setCollection(await colRes.json());
         showToast(`Zaktualizowano katalog "${updated.name}"`);
       }
@@ -325,7 +391,7 @@ export default function App() {
 
   const handleSetDefaultCatalog = async (id: string) => {
     try {
-      const res = await fetch(`/api/catalogs/${id}/set-default`, { method: 'POST' });
+      const res = await fetchWithAuth(`/api/catalogs/${id}/set-default`, { method: 'POST' });
       if (res.ok) {
         const data = await res.json();
         if (data.catalogs) {
@@ -346,7 +412,7 @@ export default function App() {
 
   const handleDeleteCatalog = async (id: string) => {
     try {
-      const res = await fetch(`/api/catalogs/${id}`, { method: 'DELETE' });
+      const res = await fetchWithAuth(`/api/catalogs/${id}`, { method: 'DELETE' });
       if (res.ok) {
         const data = await res.json();
         if (data.catalogs) {
@@ -355,7 +421,7 @@ export default function App() {
           setCatalogs(prev => prev.filter(c => c.id !== id));
         }
         // Reload collection since cards were reassigned
-        const colRes = await fetch('/api/collection');
+        const colRes = await fetchWithAuth('/api/collection');
         if (colRes.ok) setCollection(await colRes.json());
         showToast(`Usunięto katalog. Karty przypisano do: ${data.reassignedTo}`);
       }
@@ -367,7 +433,7 @@ export default function App() {
   // Remove from Wishlist
   const handleRemoveFromWishlist = async (id: string) => {
     try {
-      const res = await fetch(`/api/wishlist/${id}`, { method: 'DELETE' });
+      const res = await fetchWithAuth(`/api/wishlist/${id}`, { method: 'DELETE' });
       if (res.ok) {
         setWishlist(prev => prev.filter(w => w.id !== id));
         showToast('Usunięto z Listy Życzeń');
@@ -388,7 +454,7 @@ export default function App() {
   const handleRefreshPrices = async () => {
     try {
       setIsRefreshingPrices(true);
-      const res = await fetch('/api/collection/refresh-prices', { method: 'POST' });
+      const res = await fetchWithAuth('/api/collection/refresh-prices', { method: 'POST' });
       if (res.ok) {
         const data = await res.json();
         if (data.collection) {
@@ -425,19 +491,17 @@ export default function App() {
       try {
         const importedData = JSON.parse(event.target?.result as string);
         if (Array.isArray(importedData)) {
-          // Replace server collection with imported array
-          for (const item of importedData) {
-            await fetch('/api/collection', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify(item)
-            });
-          }
-          // Reload
-          const colRes = await fetch('/api/collection');
-          if (colRes.ok) {
-            setCollection(await colRes.json());
-            showToast('Pomyślnie zaimportowano kolekcję!');
+          const res = await fetchWithAuth('/api/collection/bulk-import', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(importedData)
+          });
+          if (res.ok) {
+            const colRes = await fetchWithAuth('/api/collection');
+            if (colRes.ok) {
+              setCollection(await colRes.json());
+              showToast('Pomyślnie zaimportowano kolekcję!');
+            }
           }
         }
       } catch (err) {
@@ -446,6 +510,21 @@ export default function App() {
     };
     reader.readAsText(file);
   };
+
+  // If not authenticated, display clean login / registration screen
+  if (!currentUser) {
+    return (
+      <>
+        <AuthView onAuthSuccess={handleAuthSuccess} />
+        {toastMessage && (
+          <div className="fixed bottom-6 right-6 z-50 bg-stone-900 border border-amber-500/50 text-stone-100 px-4 py-3 rounded-xl shadow-2xl flex items-center gap-2.5 text-xs font-semibold animate-bounce">
+            <Sparkles className="w-4 h-4 text-amber-400" />
+            <span>{toastMessage}</span>
+          </div>
+        )}
+      </>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-stone-950 text-stone-100 font-sans selection:bg-amber-500 selection:text-stone-950 pb-16">
@@ -464,6 +543,8 @@ export default function App() {
         onOpenAddModal={() => setActiveTab('search')}
         onExportCollection={handleExportCollection}
         onImportCollection={handleImportCollection}
+        user={currentUser}
+        onLogout={handleLogout}
       />
 
       {/* Main Container */}
@@ -471,7 +552,7 @@ export default function App() {
         {isLoading ? (
           <div className="flex flex-col items-center justify-center py-20 space-y-4">
             <div className="w-12 h-12 rounded-full border-4 border-amber-500/20 border-t-amber-500 animate-spin" />
-            <p className="text-sm font-bold text-stone-400">Ładowanie kolekcji i cen ze Scryfall API...</p>
+            <p className="text-sm font-bold text-stone-400">Ładowanie Twojej kolekcji i wycen rynkowych...</p>
           </div>
         ) : (
           <>
@@ -553,9 +634,18 @@ export default function App() {
         <SettingsModal
           settings={settings}
           onClose={() => setIsSettingsOpen(false)}
-          onSaveSettings={(newSettings) => {
+          onSaveSettings={async (newSettings) => {
             setSettings(newSettings);
             localStorage.setItem('mtg_app_settings', JSON.stringify(newSettings));
+            try {
+              await fetchWithAuth('/api/settings', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(newSettings)
+              });
+            } catch (err) {
+              console.warn('Failed to save settings remotely:', err);
+            }
             showToast('Zapisano nowe ustawienia wyceny i waluty!');
           }}
         />

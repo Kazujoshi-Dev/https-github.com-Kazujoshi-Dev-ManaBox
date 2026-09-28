@@ -174,6 +174,59 @@ export const CardModal: React.FC<CardModalProps> = ({
     }
   };
 
+  const isFoil = quantityFoil > 0;
+
+  const handleToggleFoil = (toFoil: boolean, updatePriceWithMarket: boolean = false) => {
+    let newQtyNorm = quantity;
+    let newQtyFoil = quantityFoil;
+    let newPrice = purchasePrice;
+
+    if (toFoil) {
+      newQtyFoil = quantityFoil > 0 ? quantityFoil : (quantity > 0 ? quantity : 1);
+      newQtyNorm = 0;
+      if (updatePriceWithMarket && plnPriceFoil > 0) {
+        newPrice = plnPriceFoil.toFixed(2);
+      }
+    } else {
+      newQtyNorm = quantity > 0 ? quantity : (quantityFoil > 0 ? quantityFoil : 1);
+      newQtyFoil = 0;
+      if (updatePriceWithMarket && plnPriceNorm > 0) {
+        newPrice = plnPriceNorm.toFixed(2);
+      }
+    }
+
+    setQuantity(newQtyNorm);
+    setQuantityFoil(newQtyFoil);
+    if (newPrice !== purchasePrice) {
+      setPurchasePrice(newPrice);
+    }
+
+    if (existingItem) {
+      onSaveToCollection({
+        card: activeCard,
+        quantity: newQtyNorm,
+        quantityFoil: newQtyFoil,
+        condition,
+        language,
+        purchasePrice: newPrice ? parseFloat(newPrice) : null,
+        notes,
+        binder: selectedBinder
+      });
+      setPrintChangeNotice(
+        toFoil
+          ? `Zapisano wersję Foil (Błyszcząca) ✨${updatePriceWithMarket && newPrice ? ` (cena: ${newPrice} zł)` : ''}`
+          : `Zapisano wersję Standard (Zwykła)${updatePriceWithMarket && newPrice ? ` (cena: ${newPrice} zł)` : ''}`
+      );
+    } else {
+      setPrintChangeNotice(
+        toFoil
+          ? `Wybrano wersję Foil (Błyszcząca) ✨${updatePriceWithMarket && newPrice ? ` (cena: ${newPrice} zł)` : ''}`
+          : `Wybrano wersję Standard (Zwykła)${updatePriceWithMarket && newPrice ? ` (cena: ${newPrice} zł)` : ''}`
+      );
+    }
+    setTimeout(() => setPrintChangeNotice(null), 3500);
+  };
+
   const handleSelectPrint = (print: ScryfallCard) => {
     setActiveCard(print);
     setFaceIndex(0);
@@ -475,46 +528,151 @@ export const CardModal: React.FC<CardModalProps> = ({
                 <div className="absolute top-2 left-2 bg-stone-950/85 backdrop-blur-md px-2 py-1 rounded-lg border border-stone-800 text-[10px] font-mono text-amber-300">
                   [{activeCard.set.toUpperCase()}] #{activeCard.collector_number}
                 </div>
+
+                {/* Foil Badge over image */}
+                {isFoil && (
+                  <div className="absolute top-2 right-2 bg-gradient-to-r from-amber-400 via-amber-500 to-amber-600 text-stone-950 font-black text-[10px] px-2 py-0.5 rounded-lg shadow-xl flex items-center gap-1 border border-amber-200 animate-pulse">
+                    <Sparkles className="w-3 h-3 fill-stone-950" />
+                    <span>FOIL</span>
+                  </div>
+                )}
               </div>
 
-              {/* Price Table from Scryfall */}
+              {/* Price Table from Scryfall (Interactive Foil / Standard selector) */}
               <div className="w-full bg-stone-950/80 p-3.5 rounded-xl border border-stone-800/80 space-y-2">
-                <p className="text-xs font-semibold text-stone-400 flex items-center gap-1.5 uppercase font-mono">
-                  <Coins className="w-3.5 h-3.5 text-amber-400" />
-                  <span>Aktualne Ceny Rynkowe (Scryfall)</span>
-                </p>
+                <div className="flex items-center justify-between">
+                  <p className="text-xs font-semibold text-stone-400 flex items-center gap-1.5 uppercase font-mono">
+                    <Coins className="w-3.5 h-3.5 text-amber-400" />
+                    <span>Aktualne Ceny Rynkowe (Scryfall)</span>
+                  </p>
+                  <span className="text-[10px] text-amber-400/80 font-mono">
+                    Kliknij, aby wybrać
+                  </span>
+                </div>
                 
                 <div className="grid grid-cols-2 gap-2 text-xs">
-                  <div className="bg-stone-900 p-2 rounded-lg border border-amber-500/30 bg-amber-500/5">
-                    <p className="text-[10px] text-amber-400 font-bold">PLN Polska</p>
-                    <p className="font-mono font-bold text-emerald-400 text-sm">
+                  {/* PLN Polska (Standard) Cell */}
+                  <button
+                    type="button"
+                    onClick={() => handleToggleFoil(false, true)}
+                    title="Kliknij, aby wybrać wersję Standard (Non-Foil) i przestawić cenę"
+                    className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer relative group flex flex-col justify-between ${
+                      !isFoil
+                        ? 'bg-amber-500/15 border-amber-500 ring-2 ring-amber-500/40 shadow-lg'
+                        : 'bg-stone-900 hover:bg-stone-850 border-stone-800 hover:border-amber-500/30'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between gap-1 w-full">
+                      <p className={`text-[10px] font-bold ${!isFoil ? 'text-amber-400' : 'text-stone-400'}`}>
+                        PLN Polska (Standard)
+                      </p>
+                      {!isFoil && (
+                        <span className="text-[9px] font-black uppercase text-amber-300 bg-amber-500/20 px-1 py-0.2 rounded flex items-center gap-0.5">
+                          <Check className="w-2.5 h-2.5 stroke-[3]" />
+                          Wybrana
+                        </span>
+                      )}
+                    </div>
+                    <p className="font-mono font-black text-emerald-400 text-sm mt-1">
                       {formatCurrency(plnPriceNorm, 'PLN')}
                     </p>
-                  </div>
+                    <span className="text-[9px] text-stone-500 group-hover:text-amber-300/90 mt-1 transition-colors">
+                      {!isFoil ? '✓ Aktywna wersja zwykła' : 'Kliknij: wybierz Standard'}
+                    </span>
+                  </button>
 
-                  <div className="bg-stone-900 p-2 rounded-lg border border-stone-800">
-                    <p className="text-[10px] text-stone-400 flex items-center gap-1">
-                      <Sparkles className="w-2.5 h-2.5 text-amber-400" />
-                      <span>PLN Foil</span>
-                    </p>
-                    <p className="font-mono font-bold text-amber-300 text-sm">
+                  {/* PLN Foil Cell */}
+                  <button
+                    type="button"
+                    onClick={() => handleToggleFoil(true, true)}
+                    title="Kliknij, aby wybrać wersję Foil (Błyszcząca) i przestawić cenę"
+                    className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer relative group flex flex-col justify-between ${
+                      isFoil
+                        ? 'bg-amber-500/20 border-amber-400 ring-2 ring-amber-500/50 shadow-lg'
+                        : 'bg-stone-900 hover:bg-stone-850 border-stone-800 hover:border-amber-500/50'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between gap-1 w-full">
+                      <p className="text-[10px] text-amber-400 font-bold flex items-center gap-1">
+                        <Sparkles className="w-3 h-3 text-amber-400" />
+                        <span>PLN Foil</span>
+                      </p>
+                      {isFoil && (
+                        <span className="text-[9px] font-black uppercase text-amber-300 bg-amber-500/30 px-1 py-0.2 rounded flex items-center gap-0.5">
+                          <Check className="w-2.5 h-2.5 stroke-[3]" />
+                          Wybrana
+                        </span>
+                      )}
+                    </div>
+                    <p className="font-mono font-black text-amber-300 text-sm mt-1">
                       {formatCurrency(plnPriceFoil, 'PLN')}
                     </p>
-                  </div>
+                    <span className="text-[9px] text-stone-500 group-hover:text-amber-300/90 mt-1 transition-colors">
+                      {isFoil ? '✓ Aktywna wersja błyszcząca ✨' : 'Kliknij: wybierz Foil ✨'}
+                    </span>
+                  </button>
 
-                  <div className="bg-stone-900 p-2 rounded-lg border border-stone-800">
+                  {/* EUR Standard */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (activeCard.prices?.eur) {
+                        setPurchasePrice(parseFloat(activeCard.prices.eur).toFixed(2));
+                        if (existingItem) {
+                          onSaveToCollection({
+                            card: activeCard,
+                            quantity,
+                            quantityFoil,
+                            condition,
+                            language,
+                            purchasePrice: parseFloat(activeCard.prices.eur),
+                            notes,
+                            binder: selectedBinder
+                          });
+                          setPrintChangeNotice(`Ustawiono i zapisano cenę: ${activeCard.prices.eur} EUR`);
+                          setTimeout(() => setPrintChangeNotice(null), 3500);
+                        }
+                      }
+                    }}
+                    title="Kliknij, aby przypisać tę cenę EUR jako cenę karty"
+                    className="bg-stone-900 hover:bg-stone-850 p-2 rounded-lg border border-stone-800 hover:border-stone-700 text-left transition-colors cursor-pointer"
+                  >
                     <p className="text-[10px] text-stone-400">EUR Standard</p>
-                    <p className="font-mono font-bold text-blue-300 text-sm">
+                    <p className="font-mono font-bold text-blue-300 text-sm mt-0.5">
                       {formatCurrency(activeCard.prices?.eur, 'EUR')}
                     </p>
-                  </div>
+                  </button>
 
-                  <div className="bg-stone-900 p-2 rounded-lg border border-stone-800">
+                  {/* USD Standard */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (activeCard.prices?.usd) {
+                        setPurchasePrice(parseFloat(activeCard.prices.usd).toFixed(2));
+                        if (existingItem) {
+                          onSaveToCollection({
+                            card: activeCard,
+                            quantity,
+                            quantityFoil,
+                            condition,
+                            language,
+                            purchasePrice: parseFloat(activeCard.prices.usd),
+                            notes,
+                            binder: selectedBinder
+                          });
+                          setPrintChangeNotice(`Ustawiono i zapisano cenę: ${activeCard.prices.usd} USD`);
+                          setTimeout(() => setPrintChangeNotice(null), 3500);
+                        }
+                      }
+                    }}
+                    title="Kliknij, aby przypisać tę cenę USD jako cenę karty"
+                    className="bg-stone-900 hover:bg-stone-850 p-2 rounded-lg border border-stone-800 hover:border-stone-700 text-left transition-colors cursor-pointer"
+                  >
                     <p className="text-[10px] text-stone-400">USD Standard</p>
-                    <p className="font-mono font-bold text-stone-300 text-sm">
+                    <p className="font-mono font-bold text-stone-300 text-sm mt-0.5">
                       {formatCurrency(activeCard.prices?.usd, 'USD')}
                     </p>
-                  </div>
+                  </button>
                 </div>
 
                 {activeCard.scryfall_uri && (

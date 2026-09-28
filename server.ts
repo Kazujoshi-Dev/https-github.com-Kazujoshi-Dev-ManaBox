@@ -2,17 +2,138 @@ import express from 'express';
 import path from 'path';
 import fs from 'fs';
 import { createServer as createViteServer } from 'vite';
+import * as db from './src/server/db';
+import { hashPassword, verifyPassword, generateToken, verifyToken } from './src/server/auth';
 
 const app = express();
 const PORT = 3000;
 
 app.use(express.json({ limit: '10mb' }));
 
+// Auth verification middleware
+function authMiddleware(req: express.Request, res: express.Response, next: express.NextFunction) {
+  const authHeader = req.headers.authorization;
+  const token = authHeader?.startsWith('Bearer ') ? authHeader.substring(7) : null;
+  const payload = verifyToken(token);
+  if (!payload) {
+    return res.status(401).json({ error: 'Brak autoryzacji lub sesja wygasła. Zaloguj się ponownie.' });
+  }
+  (req as any).user = payload;
+  (req as any).userId = payload.userId;
+  next();
+}
+
 // Ensure data directory exists
 const DATA_DIR = path.join(process.cwd(), 'data');
 if (!fs.existsSync(DATA_DIR)) {
   fs.mkdirSync(DATA_DIR, { recursive: true });
 }
+
+// --- AUTHENTICATION ENDPOINTS ---
+
+app.post('/api/auth/register', async (req, res) => {
+  try {
+    const { email, username, password } = req.body;
+    if (!email || !password || !username) {
+      return res.status(400).json({ error: 'Email, nazwa gracza oraz hasło są wymagane.' });
+    }
+
+    if (password.length < 6) {
+      return res.status(400).json({ error: 'Hasło musi mieć co najmniej 6 znaków.' });
+    }
+
+    const existingUser = await db.getUserByEmail(email);
+    if (existingUser) {
+      return res.status(400).json({ error: 'Użytkownik o takim adresie e-mail już istnieje.' });
+    }
+
+    const { hash, salt } = hashPassword(password);
+    const userId = `usr_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+    const user = await db.createUser(userId, email, username, hash, salt);
+
+    const token = generateToken({
+      userId: user.id,
+      email: user.email,
+      username: user.username
+    });
+
+    res.status(201).json({
+      token,
+      user: {
+        id: user.id,
+        email: user.email,
+        username: user.username,
+        createdAt: user.created_at
+      }
+    });
+  } catch (err: any) {
+    console.error('Error during register:', err);
+    res.status(500).json({ error: 'Błąd rejestracji konta: ' + err.message });
+  }
+});
+
+app.post('/api/auth/login', async (req, res) => {
+  try {
+    const { email, password } = req.body;
+    if (!email || !password) {
+      return res.status(400).json({ error: 'Email oraz hasło są wymagane.' });
+    }
+
+    const user = await db.getUserByEmail(email);
+    if (!user) {
+      return res.status(401).json({ error: 'Nieprawidłowy adres e-mail lub hasło.' });
+    }
+
+    const isValid = verifyPassword(password, user.password_hash, user.salt);
+    if (!isValid) {
+      return res.status(401).json({ error: 'Nieprawidłowy adres e-mail lub hasło.' });
+    }
+
+    const token = generateToken({
+      userId: user.id,
+      email: user.email,
+      username: user.username
+    });
+
+    res.json({
+      token,
+      user: {
+        id: user.id,
+        email: user.email,
+        username: user.username,
+        createdAt: user.created_at
+      }
+    });
+  } catch (err: any) {
+    console.error('Error during login:', err);
+    res.status(500).json({ error: 'Błąd logowania: ' + err.message });
+  }
+});
+
+app.get('/api/auth/me', authMiddleware, async (req, res) => {
+  try {
+    const userId = (req as any).userId;
+    const user = await db.getUserById(userId);
+    if (!user) {
+      return res.status(404).json({ error: 'Nie znaleziono użytkownika.' });
+    }
+
+    res.json({
+      user: {
+        id: user.id,
+        email: user.email,
+        username: user.username,
+        createdAt: user.created_at
+      }
+    });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/auth/logout', (req, res) => {
+  res.json({ success: true });
+});
 
 const COLLECTION_FILE = path.join(DATA_DIR, 'collection.json');
 const WISHLIST_FILE = path.join(DATA_DIR, 'wishlist.json');
@@ -561,61 +682,79 @@ app.get('/api/scryfall/prints', async (req, res) => {
   }
 });
 
-// --- COLLECTION ENDPOINTS ---
+// --- COLLECTION ENDPOINTS (USER-ISOLATED) ---
 
-app.get('/api/collection', (req, res) => {
-  const collection = readJsonFile(COLLECTION_FILE, INITIAL_COLLECTION);
-  res.json(collection);
-});
-
-app.post('/api/collection', (req, res) => {
-  const collection = readJsonFile<any[]>(COLLECTION_FILE, []);
-  const newItem = {
-    id: `col-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
-    addedAt: new Date().toISOString(),
-    ...req.body
-  };
-  collection.push(newItem);
-  writeJsonFile(COLLECTION_FILE, collection);
-  res.status(201).json(newItem);
-});
-
-app.put('/api/collection/:id', (req, res) => {
-  const { id } = req.params;
-  const collection = readJsonFile<any[]>(COLLECTION_FILE, []);
-  const index = collection.findIndex(item => item.id === id);
-  if (index === -1) {
-    return res.status(404).json({ error: 'Nie znaleziono pozycji w kolekcji' });
+app.get('/api/collection', authMiddleware, async (req, res) => {
+  try {
+    const userId = (req as any).userId;
+    const collection = await db.getCollection(userId);
+    res.json(collection);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
   }
-  const cardId = req.body.card?.id || req.body.cardId || collection[index].cardId;
-  collection[index] = { 
-    ...collection[index], 
-    ...req.body,
-    cardId
-  };
-  writeJsonFile(COLLECTION_FILE, collection);
-  res.json(collection[index]);
 });
 
-app.delete('/api/collection/:id', (req, res) => {
-  const { id } = req.params;
-  let collection = readJsonFile<any[]>(COLLECTION_FILE, []);
-  collection = collection.filter(item => item.id !== id);
-  writeJsonFile(COLLECTION_FILE, collection);
-  res.json({ success: true, id });
+app.post('/api/collection', authMiddleware, async (req, res) => {
+  try {
+    const userId = (req as any).userId;
+    const newItem = {
+      id: `col-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
+      addedAt: new Date().toISOString(),
+      ...req.body
+    };
+    const saved = await db.addCollectionItem(userId, newItem);
+    res.status(201).json(saved);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.put('/api/collection/:id', authMiddleware, async (req, res) => {
+  try {
+    const userId = (req as any).userId;
+    const { id } = req.params;
+    const updated = await db.updateCollectionItem(userId, id, req.body);
+    if (!updated) {
+      return res.status(404).json({ error: 'Nie znaleziono pozycji w Twojej kolekcji' });
+    }
+    res.json(updated);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.delete('/api/collection/:id', authMiddleware, async (req, res) => {
+  try {
+    const userId = (req as any).userId;
+    const { id } = req.params;
+    const success = await db.deleteCollectionItem(userId, id);
+    res.json({ success, id });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/collection/bulk-import', authMiddleware, async (req, res) => {
+  try {
+    const userId = (req as any).userId;
+    const items = Array.isArray(req.body) ? req.body : [];
+    await db.saveFullCollection(userId, items);
+    res.json({ success: true, count: items.length });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // Batch price refresh from Scryfall using official POST /cards/collection Bulk API
-app.post('/api/collection/refresh-prices', async (req, res) => {
+app.post('/api/collection/refresh-prices', authMiddleware, async (req, res) => {
   try {
-    const collection = readJsonFile<any[]>(COLLECTION_FILE, []);
+    const userId = (req as any).userId;
+    const collection = await db.getCollection(userId);
     let updatedCount = 0;
 
-    // Filter items with valid card IDs
     const itemsWithCardId = collection.filter(item => item.card && item.card.id);
-
-    // Process in batches of 75 (Scryfall limit per batch request)
     const BATCH_SIZE = 75;
+
     for (let i = 0; i < itemsWithCardId.length; i += BATCH_SIZE) {
       const chunk = itemsWithCardId.slice(i, i + BATCH_SIZE);
       const identifiers = chunk.map(item => ({ id: item.card.id }));
@@ -648,229 +787,144 @@ app.post('/api/collection/refresh-prices', async (req, res) => {
       }
     }
 
-    writeJsonFile(COLLECTION_FILE, collection);
+    await db.saveFullCollection(userId, collection);
     res.json({ success: true, updatedCount, collection });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }
 });
 
-// --- CATALOGS ENDPOINTS ---
+// --- CATALOGS ENDPOINTS (USER-ISOLATED) ---
 
-app.get('/api/catalogs', (req, res) => {
-  let catalogs = readJsonFile<any[]>(CATALOGS_FILE, INITIAL_CATALOGS);
-  
-  // Discover any binders present in existing collection that aren't yet in catalogs list
-  const collection = readJsonFile<any[]>(COLLECTION_FILE, INITIAL_COLLECTION);
-  let changed = false;
-  collection.forEach(item => {
-    if (item.binder && !catalogs.some(c => c.name.toLowerCase() === item.binder.toLowerCase())) {
-      catalogs.push({
-        id: `cat-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
-        name: item.binder,
-        description: `Katalog dla kart: ${item.binder}`,
-        color: 'blue',
-        createdAt: new Date().toISOString(),
-        isDefault: false
-      });
-      changed = true;
+app.get('/api/catalogs', authMiddleware, async (req, res) => {
+  try {
+    const userId = (req as any).userId;
+    const catalogs = await db.getCatalogs(userId);
+    res.json(catalogs);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/catalogs', authMiddleware, async (req, res) => {
+  try {
+    const userId = (req as any).userId;
+    const { name, description, color, isDefault } = req.body;
+    if (!name || !name.trim()) {
+      return res.status(400).json({ error: 'Nazwa katalogu jest wymagana' });
     }
-  });
 
-  if (changed || !fs.existsSync(CATALOGS_FILE)) {
-    writeJsonFile(CATALOGS_FILE, catalogs);
-  }
-
-  res.json(catalogs);
-});
-
-app.post('/api/catalogs', (req, res) => {
-  const { name, description, color, isDefault } = req.body;
-  if (!name || !name.trim()) {
-    return res.status(400).json({ error: 'Nazwa katalogu jest wymagana' });
-  }
-
-  let catalogs = readJsonFile<any[]>(CATALOGS_FILE, INITIAL_CATALOGS);
-  if (catalogs.some(c => c.name.toLowerCase() === name.trim().toLowerCase())) {
-    return res.status(400).json({ error: 'Katalog o takiej nazwie już istnieje' });
-  }
-
-  const shouldBeDefault = Boolean(isDefault);
-  if (shouldBeDefault) {
-    catalogs = catalogs.map(c => ({ ...c, isDefault: false }));
-  }
-
-  const newCatalog = {
-    id: `cat-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
-    name: name.trim(),
-    description: description ? description.trim() : '',
-    color: color || 'amber',
-    createdAt: new Date().toISOString(),
-    isDefault: shouldBeDefault || catalogs.length === 0
-  };
-
-  catalogs.push(newCatalog);
-  writeJsonFile(CATALOGS_FILE, catalogs);
-  res.status(201).json(newCatalog);
-});
-
-app.put('/api/catalogs/:id', (req, res) => {
-  const { id } = req.params;
-  const { name, description, color, isDefault } = req.body;
-
-  let catalogs = readJsonFile<any[]>(CATALOGS_FILE, INITIAL_CATALOGS);
-  const index = catalogs.findIndex(c => c.id === id);
-  if (index === -1) {
-    return res.status(404).json({ error: 'Nie znaleziono katalogu' });
-  }
-
-  const oldName = catalogs[index].name;
-  const newName = name ? name.trim() : oldName;
-  
-  if (name && newName.toLowerCase() !== oldName.toLowerCase()) {
-    if (catalogs.some(c => c.id !== id && c.name.toLowerCase() === newName.toLowerCase())) {
-      return res.status(400).json({ error: 'Istnieje już inny katalog o takiej nazwie' });
+    const catalogs = await db.getCatalogs(userId);
+    if (catalogs.some(c => c.name.toLowerCase() === name.trim().toLowerCase())) {
+      return res.status(400).json({ error: 'Katalog o takiej nazwie już istnieje' });
     }
-  }
 
-  if (isDefault) {
-    catalogs = catalogs.map(c => ({ ...c, isDefault: false }));
-  }
+    const newCatalog = {
+      id: `cat-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
+      name: name.trim(),
+      description: description ? description.trim() : '',
+      color: color || 'amber',
+      createdAt: new Date().toISOString(),
+      isDefault: Boolean(isDefault) || catalogs.length === 0
+    };
 
-  const updatedCatalog = {
-    ...catalogs[index],
-    name: newName,
-    description: description !== undefined ? description.trim() : catalogs[index].description,
-    color: color || catalogs[index].color,
-    isDefault: isDefault !== undefined ? Boolean(isDefault) : catalogs[index].isDefault
-  };
-
-  // If catalog name changed, update all collection items that were in this catalog
-  if (newName !== oldName) {
-    const collection = readJsonFile<any[]>(COLLECTION_FILE, []);
-    let colChanged = false;
-    collection.forEach(item => {
-      if (item.binder === oldName) {
-        item.binder = newName;
-        colChanged = true;
-      }
-    });
-    if (colChanged) {
-      writeJsonFile(COLLECTION_FILE, collection);
+    const saved = await db.addCatalog(userId, newCatalog);
+    if (newCatalog.isDefault) {
+      await db.setDefaultCatalog(userId, saved.id);
     }
+    res.status(201).json(saved);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
   }
-
-  catalogs[index] = updatedCatalog;
-  writeJsonFile(CATALOGS_FILE, catalogs);
-  res.json(updatedCatalog);
 });
 
-// Set a catalog as default
-app.post('/api/catalogs/:id/set-default', (req, res) => {
-  const { id } = req.params;
-  let catalogs = readJsonFile<any[]>(CATALOGS_FILE, INITIAL_CATALOGS);
-  const target = catalogs.find(c => c.id === id);
-  if (!target) {
-    return res.status(404).json({ error: 'Nie znaleziono katalogu' });
+app.post('/api/catalogs/:id/set-default', authMiddleware, async (req, res) => {
+  try {
+    const userId = (req as any).userId;
+    const { id } = req.params;
+    const catalogs = await db.setDefaultCatalog(userId, id);
+    const target = catalogs.find(c => c.id === id);
+    res.json({ success: true, defaultCatalog: target, catalogs });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
   }
-
-  catalogs = catalogs.map(c => ({
-    ...c,
-    isDefault: c.id === id
-  }));
-
-  writeJsonFile(CATALOGS_FILE, catalogs);
-  res.json({ success: true, defaultCatalog: target, catalogs });
 });
 
-app.delete('/api/catalogs/:id', (req, res) => {
-  const { id } = req.params;
-  let catalogs = readJsonFile<any[]>(CATALOGS_FILE, INITIAL_CATALOGS);
-  const targetIndex = catalogs.findIndex(c => c.id === id);
-  if (targetIndex === -1) {
-    return res.status(404).json({ error: 'Nie znaleziono katalogu' });
+app.delete('/api/catalogs/:id', authMiddleware, async (req, res) => {
+  try {
+    const userId = (req as any).userId;
+    const { id } = req.params;
+    const result = await db.deleteCatalog(userId, id);
+    res.json({ success: true, id, reassignedTo: result.reassignedTo, catalogs: result.catalogs });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
   }
-
-  const target = catalogs[targetIndex];
-  const targetName = target.name;
-
-  // Remove the catalog
-  catalogs.splice(targetIndex, 1);
-
-  // If the deleted catalog was the default, or if there's no default left, designate a new default
-  let defaultCatalog = catalogs.find(c => c.isDefault);
-  if (!defaultCatalog) {
-    if (catalogs.length > 0) {
-      catalogs[0].isDefault = true;
-      defaultCatalog = catalogs[0];
-    } else {
-      // Re-create fallback main catalog if user deleted all catalogs
-      defaultCatalog = {
-        id: "cat-main",
-        name: "Klaser Główny",
-        description: "Główny klaser całej kolekcji",
-        color: "amber",
-        createdAt: new Date().toISOString(),
-        isDefault: true
-      };
-      catalogs.push(defaultCatalog);
-    }
-  }
-
-  writeJsonFile(CATALOGS_FILE, catalogs);
-
-  // Reassign cards in deleted catalog to the default catalog
-  const collection = readJsonFile<any[]>(COLLECTION_FILE, []);
-  let colChanged = false;
-  collection.forEach(item => {
-    if (item.binder === targetName) {
-      item.binder = defaultCatalog.name;
-      colChanged = true;
-    }
-  });
-  if (colChanged) {
-    writeJsonFile(COLLECTION_FILE, collection);
-  }
-
-  res.json({
-    success: true,
-    id,
-    reassignedTo: defaultCatalog.name,
-    defaultCatalogId: defaultCatalog.id,
-    catalogs
-  });
 });
 
-// --- WISHLIST ENDPOINTS ---
+// --- WISHLIST ENDPOINTS (USER-ISOLATED) ---
 
-app.get('/api/wishlist', (req, res) => {
-  const wishlist = readJsonFile(WISHLIST_FILE, []);
-  res.json(wishlist);
+app.get('/api/wishlist', authMiddleware, async (req, res) => {
+  try {
+    const userId = (req as any).userId;
+    const wishlist = await db.getWishlist(userId);
+    res.json(wishlist);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
-app.post('/api/wishlist', (req, res) => {
-  const wishlist = readJsonFile<any[]>(WISHLIST_FILE, []);
-  const newItem = {
-    id: `wish-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
-    addedAt: new Date().toISOString(),
-    ...req.body
-  };
-  wishlist.push(newItem);
-  writeJsonFile(WISHLIST_FILE, wishlist);
-  res.status(201).json(newItem);
+app.post('/api/wishlist', authMiddleware, async (req, res) => {
+  try {
+    const userId = (req as any).userId;
+    const newItem = {
+      id: `wish-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
+      addedAt: new Date().toISOString(),
+      ...req.body
+    };
+    const saved = await db.addWishlistItem(userId, newItem);
+    res.status(201).json(saved);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
-app.delete('/api/wishlist/:id', (req, res) => {
-  const { id } = req.params;
-  let wishlist = readJsonFile<any[]>(WISHLIST_FILE, []);
-  wishlist = wishlist.filter(item => item.id !== id);
-  writeJsonFile(WISHLIST_FILE, wishlist);
-  res.json({ success: true, id });
+app.delete('/api/wishlist/:id', authMiddleware, async (req, res) => {
+  try {
+    const userId = (req as any).userId;
+    const { id } = req.params;
+    const success = await db.deleteWishlistItem(userId, id);
+    res.json({ success, id });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// --- SETTINGS ENDPOINTS (USER-ISOLATED) ---
+
+app.get('/api/settings', authMiddleware, async (req, res) => {
+  try {
+    const userId = (req as any).userId;
+    const settings = await db.getSettings(userId);
+    res.json(settings || {});
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/settings', authMiddleware, async (req, res) => {
+  try {
+    const userId = (req as any).userId;
+    const settings = await db.saveSettings(userId, req.body);
+    res.json(settings);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // --- START SERVER ---
 
 async function startServer() {
+  await db.initDb();
   if (process.env.NODE_ENV !== 'production') {
     const vite = await createViteServer({
       server: { middlewareMode: true },

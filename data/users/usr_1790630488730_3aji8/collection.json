@@ -1,0 +1,20 @@
+[
+  {
+    "id": "col-1790630514525-o7k1",
+    "addedAt": "2026-09-28T21:21:54.525Z",
+    "card": {
+      "id": "test-card-1",
+      "name": "Black Lotus",
+      "set": "lea",
+      "collector_number": "232",
+      "prices": {
+        "usd": "50000.00"
+      }
+    },
+    "quantity": 1,
+    "quantityFoil": 0,
+    "condition": "NM",
+    "language": "EN",
+    "binder": "Klaser Główny"
+  }
+]

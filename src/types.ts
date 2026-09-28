@@ -147,3 +147,11 @@ export interface FilterOptions {
   sortBy: 'name' | 'price_desc' | 'price_asc' | 'cmc_desc' | 'cmc_asc' | 'added_desc' | 'rarity';
   onlyFoil: boolean;
 }
+
+export interface AuthUser {
+  id: string;
+  email: string;
+  username: string;
+  createdAt?: string;
+}
+
