@@ -152,7 +152,7 @@ export const DeckBuilder: React.FC<DeckBuilderProps> = ({
     if (query.trim().length >= 3) {
       setIsSearchingScryfall(true);
       try {
-        const res = await fetch(`/api/scryfall/cards/search?q=${encodeURIComponent(query.trim())}`);
+        const res = await fetch(`/api/scryfall/search?q=${encodeURIComponent(query.trim())}`);
         if (res.ok) {
           const data = await res.json();
           if (data.data && Array.isArray(data.data)) {

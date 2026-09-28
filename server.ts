@@ -466,8 +466,10 @@ app.get('/api/scryfall/autocomplete', async (req, res) => {
   }
 });
 
+app.get('/favicon.ico', (_req, res) => res.status(204).end());
+
 // 3. Scryfall Search (with fallback to fuzzy named search)
-app.get('/api/scryfall/search', async (req, res) => {
+app.get(['/api/scryfall/search', '/api/scryfall/cards/search'], async (req, res) => {
   try {
     const query = (req.query.q as string || '').trim();
     const page = req.query.page || '1';

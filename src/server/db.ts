@@ -63,12 +63,18 @@ if (dbUrl || pgHost) {
           password: process.env.PGPASSWORD,
         };
 
+    // Fast fail timeouts to avoid blocking the Node.js server
+    config.connectionTimeoutMillis = 2000;
+    config.query_timeout = 3000;
+    config.idleTimeoutMillis = 10000;
+    config.max = 5;
+
     if (process.env.PGSSLMODE === 'require') {
       config.ssl = { rejectUnauthorized: false };
     }
 
     pool = new pg.Pool(config);
-    isPostgresActive = true;
+    isPostgresActive = false; // verified in initDb()
   } catch (err) {
     console.error('Failed to initialize PostgreSQL pool:', err);
     isPostgresActive = false;
@@ -77,7 +83,8 @@ if (dbUrl || pgHost) {
 
 // Automatically create tables on startup if PostgreSQL is active
 export async function initDb(): Promise<void> {
-  if (!isPostgresActive || !pool) {
+  if (!pool) {
+    isPostgresActive = false;
     console.log('[Storage] Using local user-isolated JSON store (PostgreSQL not connected)');
     return;
   }
@@ -154,12 +161,13 @@ export async function initDb(): Promise<void> {
           updated_at TIMESTAMPTZ DEFAULT NOW()
         );
       `);
+      isPostgresActive = true;
       console.log('[Storage] PostgreSQL connected & tables verified successfully');
     } finally {
       client.release();
     }
-  } catch (err) {
-    console.error('[Storage] Error connecting to PostgreSQL, falling back to JSON:', err);
+  } catch (err: any) {
+    console.warn('[Storage] PostgreSQL unreachable, gracefully falling back to local JSON store:', err?.message || err);
     isPostgresActive = false;
   }
 }
@@ -198,8 +206,12 @@ const USERS_FILE = path.join(DATA_DIR, 'users.json');
 export async function getUserByEmail(email: string): Promise<DbUser | null> {
   const cleanEmail = email.toLowerCase().trim();
   if (isPostgresActive && pool) {
-    const res = await pool.query('SELECT * FROM users WHERE email = $1 LIMIT 1', [cleanEmail]);
-    return res.rows[0] || null;
+    try {
+      const res = await pool.query('SELECT * FROM users WHERE email = $1 LIMIT 1', [cleanEmail]);
+      if (res.rows[0]) return res.rows[0];
+    } catch (err) {
+      console.warn('[DB] PostgreSQL error on getUserByEmail, falling back to local JSON:', err);
+    }
   }
 
   const users = readJsonFile<DbUser[]>(USERS_FILE, []);
@@ -208,8 +220,12 @@ export async function getUserByEmail(email: string): Promise<DbUser | null> {
 
 export async function getUserById(id: string): Promise<DbUser | null> {
   if (isPostgresActive && pool) {
-    const res = await pool.query('SELECT * FROM users WHERE id = $1 LIMIT 1', [id]);
-    return res.rows[0] || null;
+    try {
+      const res = await pool.query('SELECT * FROM users WHERE id = $1 LIMIT 1', [id]);
+      if (res.rows[0]) return res.rows[0];
+    } catch (err) {
+      console.warn('[DB] PostgreSQL error on getUserById, falling back to local JSON:', err);
+    }
   }
 
   const users = readJsonFile<DbUser[]>(USERS_FILE, []);
@@ -234,23 +250,27 @@ export async function createUser(
   };
 
   if (isPostgresActive && pool) {
-    await pool.query(
-      `INSERT INTO users (id, email, username, password_hash, salt, created_at)
-       VALUES ($1, $2, $3, $4, $5, $6)`,
-      [newUser.id, newUser.email, newUser.username, newUser.password_hash, newUser.salt, newUser.created_at]
-    );
-
-    // Initialize default catalogs for the new user
-    const initialCatalogs = DEFAULT_CATALOGS(id);
-    for (const cat of initialCatalogs) {
+    try {
       await pool.query(
-        `INSERT INTO user_catalogs (id, user_id, name, description, color, is_default, created_at)
-         VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-        [cat.id, id, cat.name, cat.description, cat.color, cat.isDefault, cat.createdAt]
+        `INSERT INTO users (id, email, username, password_hash, salt, created_at)
+         VALUES ($1, $2, $3, $4, $5, $6)`,
+        [newUser.id, newUser.email, newUser.username, newUser.password_hash, newUser.salt, newUser.created_at]
       );
-    }
 
-    return newUser;
+      // Initialize default catalogs for the new user
+      const initialCatalogs = DEFAULT_CATALOGS(id);
+      for (const cat of initialCatalogs) {
+        await pool.query(
+          `INSERT INTO user_catalogs (id, user_id, name, description, color, is_default, created_at)
+           VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+          [cat.id, id, cat.name, cat.description, cat.color, cat.isDefault, cat.createdAt]
+        );
+      }
+
+      return newUser;
+    } catch (err) {
+      console.warn('[DB] PostgreSQL insert failed on createUser, falling back to local file store:', err);
+    }
   }
 
   const users = readJsonFile<DbUser[]>(USERS_FILE, []);
@@ -269,17 +289,21 @@ export async function createUser(
 // User Collection Methods
 export async function getCollection(userId: string): Promise<CollectionItem[]> {
   if (isPostgresActive && pool) {
-    const res = await pool.query(
-      `SELECT id, card_id as "cardId", card, quantity, quantity_foil as "quantityFoil",
-              condition, language, purchase_price as "purchasePrice", notes, binder,
-              added_at as "addedAt", last_updated_price_at as "lastUpdatedPriceAt"
-       FROM user_collections WHERE user_id = $1 ORDER BY added_at DESC`,
-      [userId]
-    );
-    return res.rows.map(r => ({
-      ...r,
-      purchasePrice: r.purchasePrice ? parseFloat(r.purchasePrice) : null
-    }));
+    try {
+      const res = await pool.query(
+        `SELECT id, card_id as "cardId", card, quantity, quantity_foil as "quantityFoil",
+                condition, language, purchase_price as "purchasePrice", notes, binder,
+                added_at as "addedAt", last_updated_price_at as "lastUpdatedPriceAt"
+         FROM user_collections WHERE user_id = $1 ORDER BY added_at DESC`,
+        [userId]
+      );
+      return res.rows.map(r => ({
+        ...r,
+        purchasePrice: r.purchasePrice ? parseFloat(r.purchasePrice) : null
+      }));
+    } catch (err) {
+      console.warn('[DB] PostgreSQL error in getCollection, using local store:', err);
+    }
   }
 
   const userDir = getUserDir(userId);

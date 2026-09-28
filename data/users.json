@@ -14,5 +14,13 @@
     "password_hash": "c99b15f799a22dc3b16ad6a41666e1c78f97b9e38477ef8a447de8863ab6c384c8b67059a1e006f755e59c70484facf1c2c4ed3a478e191597ff233c334d3e9c",
     "salt": "29d2ba4c3a5eab0dd12b753bad310ff8",
     "created_at": "2026-09-28T21:22:01.444Z"
+  },
+  {
+    "id": "usr_1790635530328_k4893",
+    "email": "dejvidlp@gmail.com",
+    "username": "DejvidLP",
+    "password_hash": "1a82e9b190b04ba6948a4ee67ab9d72cbf828a2d62288323257d64fda1cc95025eaddcc3cefd071e22618af9b75009a54465253214fb25d404f53131296f7e8e",
+    "salt": "f122f8924e8637645fe805731b555990",
+    "created_at": "2026-09-28T22:45:30.328Z"
   }
 ]
