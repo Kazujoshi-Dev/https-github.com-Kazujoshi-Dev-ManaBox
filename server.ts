@@ -1,0 +1,893 @@
+import express from 'express';
+import path from 'path';
+import fs from 'fs';
+import { createServer as createViteServer } from 'vite';
+
+const app = express();
+const PORT = 3000;
+
+app.use(express.json({ limit: '10mb' }));
+
+// Ensure data directory exists
+const DATA_DIR = path.join(process.cwd(), 'data');
+if (!fs.existsSync(DATA_DIR)) {
+  fs.mkdirSync(DATA_DIR, { recursive: true });
+}
+
+const COLLECTION_FILE = path.join(DATA_DIR, 'collection.json');
+const WISHLIST_FILE = path.join(DATA_DIR, 'wishlist.json');
+const DECKS_FILE = path.join(DATA_DIR, 'decks.json');
+const CATALOGS_FILE = path.join(DATA_DIR, 'catalogs.json');
+
+const INITIAL_CATALOGS = [
+  {
+    id: "cat-main",
+    name: "Klaser Główny",
+    description: "Główny klaser całej kolekcji",
+    color: "amber",
+    createdAt: new Date().toISOString(),
+    isDefault: true
+  },
+  {
+    id: "cat-commander",
+    name: "Talia Commander",
+    description: "Karty i dodatki do talii Commander",
+    color: "purple",
+    createdAt: new Date().toISOString(),
+    isDefault: false
+  },
+  {
+    id: "cat-trade",
+    name: "Na wymianę",
+    description: "Karty przeznaczone na handel i wymianę z graczami",
+    color: "emerald",
+    createdAt: new Date().toISOString(),
+    isDefault: false
+  }
+];
+
+// Helper functions for reading/writing JSON files
+function readJsonFile<T>(filePath: string, defaultValue: T): T {
+  try {
+    if (fs.existsSync(filePath)) {
+      const content = fs.readFileSync(filePath, 'utf-8');
+      return JSON.parse(content);
+    }
+  } catch (err) {
+    console.error(`Error reading ${filePath}:`, err);
+  }
+  return defaultValue;
+}
+
+function writeJsonFile<T>(filePath: string, data: T): void {
+  try {
+    fs.writeFileSync(filePath, JSON.stringify(data, null, 2), 'utf-8');
+  } catch (err) {
+    console.error(`Error writing ${filePath}:`, err);
+  }
+}
+
+// Initial Sample Collection if empty
+const INITIAL_COLLECTION = [
+  {
+    id: "col-1",
+    cardId: "055db36d-0683-4318-ae78-a3f290d23a4a",
+    quantity: 1,
+    quantityFoil: 0,
+    condition: "NM",
+    language: "EN",
+    purchasePrice: 1.50,
+    notes: "Staple w Commanderze",
+    binder: "Klaser Główny",
+    addedAt: new Date().toISOString(),
+    card: {
+      id: "055db36d-0683-4318-ae78-a3f290d23a4a",
+      name: "Sol Ring",
+      cmc: 1,
+      type_line: "Artifact",
+      oracle_text: "{T}: Add {C}{C}.",
+      colors: [],
+      color_identity: [],
+      mana_cost: "{1}",
+      set: "cmm",
+      set_name: "Commander Masters",
+      collector_number: "410",
+      rarity: "uncommon",
+      released_at: "2023-08-04",
+      image_uris: {
+        small: "https://cards.scryfall.io/small/front/0/5/055db36d-0683-4318-ae78-a3f290d23a4a.jpg",
+        normal: "https://cards.scryfall.io/normal/front/0/5/055db36d-0683-4318-ae78-a3f290d23a4a.jpg",
+        large: "https://cards.scryfall.io/large/front/0/5/055db36d-0683-4318-ae78-a3f290d23a4a.jpg",
+        art_crop: "https://cards.scryfall.io/art_crop/front/0/5/055db36d-0683-4318-ae78-a3f290d23a4a.jpg"
+      },
+      prices: {
+        usd: "1.65",
+        usd_foil: "3.20",
+        eur: "1.45",
+        eur_foil: "2.80"
+      },
+      legalities: { commander: "legal", vintage: "restricted", legacy: "banned" },
+      scryfall_uri: "https://scryfall.com/card/cmm/410/sol-ring"
+    }
+  },
+  {
+    id: "col-2",
+    cardId: "dbe1ed1c-5154-4e78-81d3-433e4de6e43f",
+    quantity: 1,
+    quantityFoil: 1,
+    condition: "NM",
+    language: "EN",
+    purchasePrice: 45.00,
+    notes: "Karta Mythic z LTR setu",
+    binder: "Klaser Główny",
+    addedAt: new Date().toISOString(),
+    card: {
+      id: "dbe1ed1c-5154-4e78-81d3-433e4de6e43f",
+      name: "The One Ring",
+      cmc: 4,
+      type_line: "Legendary Artifact",
+      oracle_text: "Indestructible\nWhen The One Ring enters the battlefield, if you cast it, you gain protection from everything until your next turn.\nAt the beginning of your upkeep, you lose 1 life for each burden counter on The One Ring.\n{T}: Put a burden counter on The One Ring, then draw a card for each burden counter on it.",
+      colors: [],
+      color_identity: [],
+      mana_cost: "{4}",
+      set: "ltr",
+      set_name: "The Lord of the Rings: Tales of Middle-earth",
+      collector_number: "246",
+      rarity: "mythic",
+      released_at: "2023-06-23",
+      image_uris: {
+        small: "https://cards.scryfall.io/small/front/d/b/dbe1ed1c-5154-4e78-81d3-433e4de6e43f.jpg",
+        normal: "https://cards.scryfall.io/normal/front/d/b/dbe1ed1c-5154-4e78-81d3-433e4de6e43f.jpg",
+        large: "https://cards.scryfall.io/large/front/d/b/dbe1ed1c-5154-4e78-81d3-433e4de6e43f.jpg",
+        art_crop: "https://cards.scryfall.io/art_crop/front/d/b/dbe1ed1c-5154-4e78-81d3-433e4de6e43f.jpg"
+      },
+      prices: {
+        usd: "88.50",
+        usd_foil: "105.00",
+        eur: "79.00",
+        eur_foil: "95.00"
+      },
+      legalities: { modern: "legal", commander: "legal", legacy: "legal" },
+      scryfall_uri: "https://scryfall.com/card/ltr/246/the-one-ring"
+    }
+  },
+  {
+    id: "col-3",
+    cardId: "0005a794-7d2d-45ec-8a71-fbd2958022a1",
+    quantity: 4,
+    quantityFoil: 0,
+    condition: "NM",
+    language: "EN",
+    purchasePrice: 0.50,
+    notes: "Klasyczny klasyk w czerwieni",
+    binder: "Klaser Główny",
+    addedAt: new Date().toISOString(),
+    card: {
+      id: "0005a794-7d2d-45ec-8a71-fbd2958022a1",
+      name: "Lightning Bolt",
+      cmc: 1,
+      type_line: "Instant",
+      oracle_text: "Lightning Bolt deals 3 damage to any target.",
+      colors: ["R"],
+      color_identity: ["R"],
+      mana_cost: "{R}",
+      set: "2x2",
+      set_name: "Double Masters 2022",
+      collector_number: "117",
+      rarity: "uncommon",
+      released_at: "2022-07-08",
+      image_uris: {
+        small: "https://cards.scryfall.io/small/front/f/5/f50328d5-3e3d-4078-8d7c-300188ef77a6.jpg",
+        normal: "https://cards.scryfall.io/normal/front/f/5/f50328d5-3e3d-4078-8d7c-300188ef77a6.jpg",
+        large: "https://cards.scryfall.io/large/front/f/5/f50328d5-3e3d-4078-8d7c-300188ef77a6.jpg",
+        art_crop: "https://cards.scryfall.io/art_crop/front/f/5/f50328d5-3e3d-4078-8d7c-300188ef77a6.jpg"
+      },
+      prices: {
+        usd: "0.80",
+        usd_foil: "2.10",
+        eur: "0.75",
+        eur_foil: "1.90"
+      },
+      legalities: { modern: "legal", commander: "legal", legacy: "legal", pauper: "legal" },
+      scryfall_uri: "https://scryfall.com/card/2x2/117/lightning-bolt"
+    }
+  },
+  {
+    id: "col-4",
+    cardId: "dbe1ed1c-5154-4e78-81d3-433e4de6e43f-rhystic",
+    quantity: 1,
+    quantityFoil: 0,
+    condition: "EX",
+    language: "EN",
+    purchasePrice: 30.00,
+    notes: "Did you pay the 1?",
+    binder: "Klaser Główny",
+    addedAt: new Date().toISOString(),
+    card: {
+      id: "dbe1ed1c-5154-4e78-81d3-433e4de6e43f-rhystic",
+      name: "Rhystic Study",
+      cmc: 3,
+      type_line: "Enchantment",
+      oracle_text: "Whenever an opponent casts a spell, you may draw a card unless that player pays {1}.",
+      colors: ["U"],
+      color_identity: ["U"],
+      mana_cost: "{2}{U}",
+      set: "woe",
+      set_name: "Wilds of Eldraine",
+      collector_number: "15",
+      rarity: "rare",
+      released_at: "2023-09-08",
+      image_uris: {
+        small: "https://cards.scryfall.io/small/front/d/6/d6635e26-3963-4f35-b0d3-3f0f665539a6.jpg",
+        normal: "https://cards.scryfall.io/normal/front/d/6/d6635e26-3963-4f35-b0d3-3f0f665539a6.jpg",
+        large: "https://cards.scryfall.io/large/front/d/6/d6635e26-3963-4f35-b0d3-3f0f665539a6.jpg",
+        art_crop: "https://cards.scryfall.io/art_crop/front/d/6/d6635e26-3963-4f35-b0d3-3f0f665539a6.jpg"
+      },
+      prices: {
+        usd: "38.50",
+        usd_foil: "45.00",
+        eur: "34.00",
+        eur_foil: "41.00"
+      },
+      legalities: { commander: "legal", legacy: "legal", vintage: "legal" },
+      scryfall_uri: "https://scryfall.com/card/woe/15/rhystic-study"
+    }
+  }
+];
+
+if (!fs.existsSync(COLLECTION_FILE)) {
+  writeJsonFile(COLLECTION_FILE, INITIAL_COLLECTION);
+}
+
+// Scryfall API Proxy Helper with Rate Limiting (~100ms interval) & In-Memory Cache
+const SCRYFALL_BASE = 'https://api.scryfall.com';
+
+let lastRequestTime = 0;
+const MIN_REQUEST_INTERVAL_MS = 100; // 100 ms rate-limiting delay between Scryfall API calls
+
+const scryfallCache = new Map<string, { data: any; timestamp: number }>();
+const CACHE_TTL_MS = 1000 * 60 * 60; // 1 hour cache
+
+async function fetchScryfallThrottled(url: string, options: RequestInit = {}) {
+  const now = Date.now();
+  const timeSinceLast = now - lastRequestTime;
+  if (timeSinceLast < MIN_REQUEST_INTERVAL_MS) {
+    const waitMs = MIN_REQUEST_INTERVAL_MS - timeSinceLast;
+    await new Promise(resolve => setTimeout(resolve, waitMs));
+  }
+  lastRequestTime = Date.now();
+
+  const response = await fetch(url, {
+    ...options,
+    headers: {
+      'User-Agent': 'MTGCollectionApp/1.0 (Contact: collector@app.local)',
+      'Accept': 'application/json',
+      ...(options.headers || {})
+    }
+  });
+
+  return response;
+}
+
+async function fetchScryfall(endpoint: string) {
+  const cached = scryfallCache.get(endpoint);
+  if (cached && (Date.now() - cached.timestamp < CACHE_TTL_MS)) {
+    return cached.data;
+  }
+
+  const url = `${SCRYFALL_BASE}${endpoint}`;
+  const response = await fetchScryfallThrottled(url);
+
+  if (response.status === 404) {
+    if (endpoint.startsWith('/cards/search')) {
+      return { object: 'list', total_cards: 0, data: [] };
+    }
+  }
+
+  if (!response.ok) {
+    const errorBody = await response.text();
+    let details = errorBody;
+    try {
+      const parsed = JSON.parse(errorBody);
+      details = parsed.details || parsed.message || errorBody;
+    } catch (_) {}
+    throw new Error(`Scryfall API error (${response.status}): ${details}`);
+  }
+
+  const data = await response.json();
+  scryfallCache.set(endpoint, { data, timestamp: Date.now() });
+  return data;
+}
+
+// --- API ROUTES ---
+
+// 1. Scryfall Image Proxy (solves referrer / CORS / hotlink blocking)
+app.get('/api/scryfall/image-proxy', async (req, res) => {
+  try {
+    const imageUrl = req.query.url as string;
+    if (!imageUrl || (!imageUrl.includes('scryfall.io') && !imageUrl.includes('scryfall.com'))) {
+      return res.status(400).send('Nieprawidłowy adres obrazu');
+    }
+
+    const imgRes = await fetchScryfallThrottled(imageUrl, {
+      headers: {
+        'Accept': 'image/jpeg,image/webp,image/png,image/*,*/*'
+      }
+    });
+
+    if (!imgRes.ok) {
+      return res.status(imgRes.status).send('Błąd pobierania obrazu');
+    }
+
+    const arrayBuffer = await imgRes.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
+    const contentType = imgRes.headers.get('content-type') || 'image/jpeg';
+
+    res.setHeader('Content-Type', contentType);
+    res.setHeader('Cache-Control', 'public, max-age=86400');
+    res.send(buffer);
+  } catch (err: any) {
+    res.status(500).send(err.message);
+  }
+});
+
+// 2. Scryfall Autocomplete
+app.get('/api/scryfall/autocomplete', async (req, res) => {
+  try {
+    const query = req.query.q as string;
+    if (!query || query.trim().length < 2) {
+      return res.json({ data: [] });
+    }
+    const data = await fetchScryfall(`/cards/autocomplete?q=${encodeURIComponent(query.trim())}`);
+    res.json(data);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// 3. Scryfall Search (with fallback to fuzzy named search)
+app.get('/api/scryfall/search', async (req, res) => {
+  try {
+    const query = (req.query.q as string || '').trim();
+    const page = req.query.page || '1';
+    if (!query) {
+      return res.status(400).json({ error: 'Parametr wyszukiwania "q" jest wymagany' });
+    }
+
+    let data;
+    try {
+      data = await fetchScryfall(`/cards/search?q=${encodeURIComponent(query)}&page=${page}`);
+    } catch (searchErr: any) {
+      // Try fuzzy search fallback if search returned 404 or syntax error
+      data = { object: 'list', total_cards: 0, data: [] };
+    }
+
+    // If search returned 0 results, try fuzzy lookup for card name
+    if ((!data.data || data.data.length === 0) && query.length >= 3) {
+      try {
+        const fuzzyResult = await fetchScryfall(`/cards/named?fuzzy=${encodeURIComponent(query)}`);
+        if (fuzzyResult && fuzzyResult.id) {
+          data = {
+            object: 'list',
+            total_cards: 1,
+            data: [fuzzyResult]
+          };
+        }
+      } catch (_) {
+        // Ignore fuzzy error and return empty list
+      }
+    }
+
+    res.json(data);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// 4. Scryfall Single Card by ID
+app.get('/api/scryfall/card/:id', async (req, res) => {
+  try {
+    const cardId = req.params.id;
+    const data = await fetchScryfall(`/cards/${cardId}`);
+    res.json(data);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// 5. Scryfall Random Card
+app.get('/api/scryfall/random', async (req, res) => {
+  try {
+    const query = req.query.q as string;
+    const endpoint = query ? `/cards/random?q=${encodeURIComponent(query)}` : '/cards/random';
+    const data = await fetchScryfall(endpoint);
+    res.json(data);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// 6. Scryfall All Sets
+app.get('/api/scryfall/sets', async (req, res) => {
+  try {
+    const data = await fetchScryfall('/sets');
+    if (!data || !Array.isArray(data.data)) {
+      return res.json({ data: [] });
+    }
+
+    const filteredSets = data.data
+      .filter((s: any) => !s.digital && s.card_count > 0)
+      .map((s: any) => ({
+        id: s.id,
+        code: s.code,
+        name: s.name,
+        released_at: s.released_at,
+        set_type: s.set_type,
+        card_count: s.card_count,
+        icon_svg_uri: s.icon_svg_uri,
+        scryfall_uri: s.scryfall_uri
+      }))
+      .sort((a: any, b: any) => {
+        const dateA = a.released_at ? new Date(a.released_at).getTime() : 0;
+        const dateB = b.released_at ? new Date(b.released_at).getTime() : 0;
+        return dateB - dateA;
+      });
+
+    res.json({ data: filteredSets });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// 7. Scryfall Top 5 Cards by Rarity for a Set
+app.get('/api/scryfall/set-top/:setCode', async (req, res) => {
+  try {
+    const setCode = req.params.setCode.toLowerCase();
+    
+    // Get set details
+    let setInfo: any = null;
+    try {
+      setInfo = await fetchScryfall(`/sets/${setCode}`);
+    } catch (_) {}
+
+    // Fetch cards for set ordered by Cardmarket EUR price
+    const searchData = await fetchScryfall(`/cards/search?q=set:${setCode}+unique:cards&order=eur&dir=desc`);
+    const cards: any[] = (searchData && Array.isArray(searchData.data)) ? searchData.data : [];
+
+    const rarities = ['mythic', 'rare', 'uncommon', 'common'];
+    const topByRarity: Record<string, any[]> = {
+      mythic: [],
+      rare: [],
+      uncommon: [],
+      common: []
+    };
+
+    cards.forEach(card => {
+      const r = card.rarity;
+      if (topByRarity[r]) {
+        topByRarity[r].push(card);
+      }
+    });
+
+    for (const r of rarities) {
+      topByRarity[r].sort((a, b) => {
+        const priceA = parseFloat(a.prices?.eur || a.prices?.eur_foil || '0');
+        const priceB = parseFloat(b.prices?.eur || b.prices?.eur_foil || '0');
+        return priceB - priceA;
+      });
+
+      // If fewer than 5 items, fetch specific rarity
+      if (topByRarity[r].length < 5) {
+        try {
+          const raritySearch = await fetchScryfall(`/cards/search?q=set:${setCode}+r:${r}&order=eur&dir=desc`);
+          if (raritySearch && Array.isArray(raritySearch.data)) {
+            const existingIds = new Set(topByRarity[r].map(c => c.id));
+            raritySearch.data.forEach((c: any) => {
+              if (!existingIds.has(c.id)) {
+                topByRarity[r].push(c);
+                existingIds.add(c.id);
+              }
+            });
+            topByRarity[r].sort((a, b) => {
+              const priceA = parseFloat(a.prices?.eur || a.prices?.eur_foil || '0');
+              const priceB = parseFloat(b.prices?.eur || b.prices?.eur_foil || '0');
+              return priceB - priceA;
+            });
+          }
+        } catch (_) {}
+      }
+
+      topByRarity[r] = topByRarity[r].slice(0, 5);
+    }
+
+    res.json({
+      set: setInfo ? {
+        id: setInfo.id,
+        code: setInfo.code,
+        name: setInfo.name,
+        released_at: setInfo.released_at,
+        set_type: setInfo.set_type,
+        card_count: setInfo.card_count,
+        icon_svg_uri: setInfo.icon_svg_uri,
+        scryfall_uri: setInfo.scryfall_uri
+      } : { code: setCode, name: setCode.toUpperCase() },
+      topCards: topByRarity
+    });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// 8. Scryfall Prints / Versions for a Card
+app.get('/api/scryfall/prints', async (req, res) => {
+  try {
+    const cardId = req.query.cardId as string;
+    const oracleId = req.query.oracle_id as string;
+    const cardName = req.query.name as string;
+
+    let targetOracleId = oracleId;
+    let targetName = cardName;
+
+    if (!targetOracleId && cardId) {
+      try {
+        const card = await fetchScryfall(`/cards/${cardId}`);
+        if (card.oracle_id) targetOracleId = card.oracle_id;
+        if (!targetName && card.name) targetName = card.name;
+      } catch (_) {
+        const collection = readJsonFile<any[]>(COLLECTION_FILE, []);
+        const item = collection.find(c => c.cardId === cardId || c.card?.id === cardId);
+        if (item && item.card) {
+          if (item.card.oracle_id) targetOracleId = item.card.oracle_id;
+          if (!targetName && item.card.name) targetName = item.card.name;
+        }
+      }
+    }
+
+    let searchUri = '';
+    if (targetOracleId) {
+      searchUri = `/cards/search?q=oracle_id:${encodeURIComponent(targetOracleId)}+unique:prints&order=released&dir=desc`;
+    } else if (targetName) {
+      searchUri = `/cards/search?q=!"${encodeURIComponent(targetName)}"+unique:prints&order=released&dir=desc`;
+    } else {
+      return res.status(400).json({ error: 'Wymagany parametr cardId, oracle_id lub name', data: [] });
+    }
+
+    const data = await fetchScryfall(searchUri);
+    const prints = Array.isArray(data.data) ? data.data : [];
+    res.json({ total_cards: prints.length, data: prints });
+  } catch (err: any) {
+    console.error('Error fetching card prints:', err);
+    res.status(500).json({ error: err.message, data: [] });
+  }
+});
+
+// --- COLLECTION ENDPOINTS ---
+
+app.get('/api/collection', (req, res) => {
+  const collection = readJsonFile(COLLECTION_FILE, INITIAL_COLLECTION);
+  res.json(collection);
+});
+
+app.post('/api/collection', (req, res) => {
+  const collection = readJsonFile<any[]>(COLLECTION_FILE, []);
+  const newItem = {
+    id: `col-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
+    addedAt: new Date().toISOString(),
+    ...req.body
+  };
+  collection.push(newItem);
+  writeJsonFile(COLLECTION_FILE, collection);
+  res.status(201).json(newItem);
+});
+
+app.put('/api/collection/:id', (req, res) => {
+  const { id } = req.params;
+  const collection = readJsonFile<any[]>(COLLECTION_FILE, []);
+  const index = collection.findIndex(item => item.id === id);
+  if (index === -1) {
+    return res.status(404).json({ error: 'Nie znaleziono pozycji w kolekcji' });
+  }
+  const cardId = req.body.card?.id || req.body.cardId || collection[index].cardId;
+  collection[index] = { 
+    ...collection[index], 
+    ...req.body,
+    cardId
+  };
+  writeJsonFile(COLLECTION_FILE, collection);
+  res.json(collection[index]);
+});
+
+app.delete('/api/collection/:id', (req, res) => {
+  const { id } = req.params;
+  let collection = readJsonFile<any[]>(COLLECTION_FILE, []);
+  collection = collection.filter(item => item.id !== id);
+  writeJsonFile(COLLECTION_FILE, collection);
+  res.json({ success: true, id });
+});
+
+// Batch price refresh from Scryfall using official POST /cards/collection Bulk API
+app.post('/api/collection/refresh-prices', async (req, res) => {
+  try {
+    const collection = readJsonFile<any[]>(COLLECTION_FILE, []);
+    let updatedCount = 0;
+
+    // Filter items with valid card IDs
+    const itemsWithCardId = collection.filter(item => item.card && item.card.id);
+
+    // Process in batches of 75 (Scryfall limit per batch request)
+    const BATCH_SIZE = 75;
+    for (let i = 0; i < itemsWithCardId.length; i += BATCH_SIZE) {
+      const chunk = itemsWithCardId.slice(i, i + BATCH_SIZE);
+      const identifiers = chunk.map(item => ({ id: item.card.id }));
+
+      try {
+        const batchResponse = await fetchScryfallThrottled(`${SCRYFALL_BASE}/cards/collection`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ identifiers })
+        });
+
+        if (batchResponse.ok) {
+          const batchData = await batchResponse.json();
+          if (batchData.data && Array.isArray(batchData.data)) {
+            const cardMap = new Map<string, any>(batchData.data.map((c: any) => [c.id, c]));
+
+            chunk.forEach(item => {
+              const updatedCard = cardMap.get(item.card.id);
+              if (updatedCard && updatedCard.prices) {
+                item.card.prices = updatedCard.prices;
+                if (updatedCard.image_uris) item.card.image_uris = updatedCard.image_uris;
+                item.lastUpdatedPriceAt = new Date().toISOString();
+                updatedCount++;
+              }
+            });
+          }
+        }
+      } catch (chunkErr) {
+        console.warn(`Failed to update prices for chunk ${i}:`, chunkErr);
+      }
+    }
+
+    writeJsonFile(COLLECTION_FILE, collection);
+    res.json({ success: true, updatedCount, collection });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// --- CATALOGS ENDPOINTS ---
+
+app.get('/api/catalogs', (req, res) => {
+  let catalogs = readJsonFile<any[]>(CATALOGS_FILE, INITIAL_CATALOGS);
+  
+  // Discover any binders present in existing collection that aren't yet in catalogs list
+  const collection = readJsonFile<any[]>(COLLECTION_FILE, INITIAL_COLLECTION);
+  let changed = false;
+  collection.forEach(item => {
+    if (item.binder && !catalogs.some(c => c.name.toLowerCase() === item.binder.toLowerCase())) {
+      catalogs.push({
+        id: `cat-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
+        name: item.binder,
+        description: `Katalog dla kart: ${item.binder}`,
+        color: 'blue',
+        createdAt: new Date().toISOString(),
+        isDefault: false
+      });
+      changed = true;
+    }
+  });
+
+  if (changed || !fs.existsSync(CATALOGS_FILE)) {
+    writeJsonFile(CATALOGS_FILE, catalogs);
+  }
+
+  res.json(catalogs);
+});
+
+app.post('/api/catalogs', (req, res) => {
+  const { name, description, color, isDefault } = req.body;
+  if (!name || !name.trim()) {
+    return res.status(400).json({ error: 'Nazwa katalogu jest wymagana' });
+  }
+
+  let catalogs = readJsonFile<any[]>(CATALOGS_FILE, INITIAL_CATALOGS);
+  if (catalogs.some(c => c.name.toLowerCase() === name.trim().toLowerCase())) {
+    return res.status(400).json({ error: 'Katalog o takiej nazwie już istnieje' });
+  }
+
+  const shouldBeDefault = Boolean(isDefault);
+  if (shouldBeDefault) {
+    catalogs = catalogs.map(c => ({ ...c, isDefault: false }));
+  }
+
+  const newCatalog = {
+    id: `cat-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
+    name: name.trim(),
+    description: description ? description.trim() : '',
+    color: color || 'amber',
+    createdAt: new Date().toISOString(),
+    isDefault: shouldBeDefault || catalogs.length === 0
+  };
+
+  catalogs.push(newCatalog);
+  writeJsonFile(CATALOGS_FILE, catalogs);
+  res.status(201).json(newCatalog);
+});
+
+app.put('/api/catalogs/:id', (req, res) => {
+  const { id } = req.params;
+  const { name, description, color, isDefault } = req.body;
+
+  let catalogs = readJsonFile<any[]>(CATALOGS_FILE, INITIAL_CATALOGS);
+  const index = catalogs.findIndex(c => c.id === id);
+  if (index === -1) {
+    return res.status(404).json({ error: 'Nie znaleziono katalogu' });
+  }
+
+  const oldName = catalogs[index].name;
+  const newName = name ? name.trim() : oldName;
+  
+  if (name && newName.toLowerCase() !== oldName.toLowerCase()) {
+    if (catalogs.some(c => c.id !== id && c.name.toLowerCase() === newName.toLowerCase())) {
+      return res.status(400).json({ error: 'Istnieje już inny katalog o takiej nazwie' });
+    }
+  }
+
+  if (isDefault) {
+    catalogs = catalogs.map(c => ({ ...c, isDefault: false }));
+  }
+
+  const updatedCatalog = {
+    ...catalogs[index],
+    name: newName,
+    description: description !== undefined ? description.trim() : catalogs[index].description,
+    color: color || catalogs[index].color,
+    isDefault: isDefault !== undefined ? Boolean(isDefault) : catalogs[index].isDefault
+  };
+
+  // If catalog name changed, update all collection items that were in this catalog
+  if (newName !== oldName) {
+    const collection = readJsonFile<any[]>(COLLECTION_FILE, []);
+    let colChanged = false;
+    collection.forEach(item => {
+      if (item.binder === oldName) {
+        item.binder = newName;
+        colChanged = true;
+      }
+    });
+    if (colChanged) {
+      writeJsonFile(COLLECTION_FILE, collection);
+    }
+  }
+
+  catalogs[index] = updatedCatalog;
+  writeJsonFile(CATALOGS_FILE, catalogs);
+  res.json(updatedCatalog);
+});
+
+// Set a catalog as default
+app.post('/api/catalogs/:id/set-default', (req, res) => {
+  const { id } = req.params;
+  let catalogs = readJsonFile<any[]>(CATALOGS_FILE, INITIAL_CATALOGS);
+  const target = catalogs.find(c => c.id === id);
+  if (!target) {
+    return res.status(404).json({ error: 'Nie znaleziono katalogu' });
+  }
+
+  catalogs = catalogs.map(c => ({
+    ...c,
+    isDefault: c.id === id
+  }));
+
+  writeJsonFile(CATALOGS_FILE, catalogs);
+  res.json({ success: true, defaultCatalog: target, catalogs });
+});
+
+app.delete('/api/catalogs/:id', (req, res) => {
+  const { id } = req.params;
+  let catalogs = readJsonFile<any[]>(CATALOGS_FILE, INITIAL_CATALOGS);
+  const targetIndex = catalogs.findIndex(c => c.id === id);
+  if (targetIndex === -1) {
+    return res.status(404).json({ error: 'Nie znaleziono katalogu' });
+  }
+
+  const target = catalogs[targetIndex];
+  const targetName = target.name;
+
+  // Remove the catalog
+  catalogs.splice(targetIndex, 1);
+
+  // If the deleted catalog was the default, or if there's no default left, designate a new default
+  let defaultCatalog = catalogs.find(c => c.isDefault);
+  if (!defaultCatalog) {
+    if (catalogs.length > 0) {
+      catalogs[0].isDefault = true;
+      defaultCatalog = catalogs[0];
+    } else {
+      // Re-create fallback main catalog if user deleted all catalogs
+      defaultCatalog = {
+        id: "cat-main",
+        name: "Klaser Główny",
+        description: "Główny klaser całej kolekcji",
+        color: "amber",
+        createdAt: new Date().toISOString(),
+        isDefault: true
+      };
+      catalogs.push(defaultCatalog);
+    }
+  }
+
+  writeJsonFile(CATALOGS_FILE, catalogs);
+
+  // Reassign cards in deleted catalog to the default catalog
+  const collection = readJsonFile<any[]>(COLLECTION_FILE, []);
+  let colChanged = false;
+  collection.forEach(item => {
+    if (item.binder === targetName) {
+      item.binder = defaultCatalog.name;
+      colChanged = true;
+    }
+  });
+  if (colChanged) {
+    writeJsonFile(COLLECTION_FILE, collection);
+  }
+
+  res.json({
+    success: true,
+    id,
+    reassignedTo: defaultCatalog.name,
+    defaultCatalogId: defaultCatalog.id,
+    catalogs
+  });
+});
+
+// --- WISHLIST ENDPOINTS ---
+
+app.get('/api/wishlist', (req, res) => {
+  const wishlist = readJsonFile(WISHLIST_FILE, []);
+  res.json(wishlist);
+});
+
+app.post('/api/wishlist', (req, res) => {
+  const wishlist = readJsonFile<any[]>(WISHLIST_FILE, []);
+  const newItem = {
+    id: `wish-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
+    addedAt: new Date().toISOString(),
+    ...req.body
+  };
+  wishlist.push(newItem);
+  writeJsonFile(WISHLIST_FILE, wishlist);
+  res.status(201).json(newItem);
+});
+
+app.delete('/api/wishlist/:id', (req, res) => {
+  const { id } = req.params;
+  let wishlist = readJsonFile<any[]>(WISHLIST_FILE, []);
+  wishlist = wishlist.filter(item => item.id !== id);
+  writeJsonFile(WISHLIST_FILE, wishlist);
+  res.json({ success: true, id });
+});
+
+// --- START SERVER ---
+
+async function startServer() {
+  if (process.env.NODE_ENV !== 'production') {
+    const vite = await createViteServer({
+      server: { middlewareMode: true },
+      appType: 'spa'
+    });
+    app.use(vite.middlewares);
+  } else {
+    const distPath = path.join(process.cwd(), 'dist');
+    app.use(express.static(distPath));
+    app.get('*', (req: express.Request, res: express.Response) => {
+      res.sendFile(path.join(distPath, 'index.html'));
+    });
+  }
+
+  app.listen(PORT, '0.0.0.0', () => {
+    console.log(`Server MTG App running on http://0.0.0.0:${PORT}`);
+  });
+}
+
+startServer();
