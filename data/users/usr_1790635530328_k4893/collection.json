@@ -1,1 +1,300 @@
-[]
+[
+  {
+    "id": "col-1790618664918-asyk",
+    "addedAt": "2026-09-28T18:04:24.918Z",
+    "cardId": "cb073d5b-9515-492d-9b2d-0f64e85f1da8",
+    "card": {
+      "object": "card",
+      "id": "cb073d5b-9515-492d-9b2d-0f64e85f1da8",
+      "oracle_id": "725880b2-1675-414f-b61b-cf6533797dbf",
+      "multiverse_ids": [
+        236504
+      ],
+      "mtgo_id": 40651,
+      "mtgo_foil_id": 40971,
+      "tcgplayer_id": 46940,
+      "cardmarket_id": 246728,
+      "name": "Animar, Soul of Elements",
+      "lang": "en",
+      "released_at": "2011-06-17",
+      "uri": "https://api.scryfall.com/cards/cb073d5b-9515-492d-9b2d-0f64e85f1da8",
+      "scryfall_uri": "https://scryfall.com/card/cmd/181/animar-soul-of-elements?utm_source=api",
+      "layout": "normal",
+      "highres_image": true,
+      "image_status": "highres_scan",
+      "image_updated_at": "2026-07-13T11:13:06Z",
+      "image_uris": {
+        "small": "https://cards.scryfall.io/small/front/c/b/cb073d5b-9515-492d-9b2d-0f64e85f1da8.jpg?1783941186",
+        "normal": "https://cards.scryfall.io/normal/front/c/b/cb073d5b-9515-492d-9b2d-0f64e85f1da8.jpg?1783941186",
+        "large": "https://cards.scryfall.io/large/front/c/b/cb073d5b-9515-492d-9b2d-0f64e85f1da8.jpg?1783941186",
+        "png": "https://cards.scryfall.io/png/front/c/b/cb073d5b-9515-492d-9b2d-0f64e85f1da8.png?1783941186",
+        "art_crop": "https://cards.scryfall.io/art_crop/front/c/b/cb073d5b-9515-492d-9b2d-0f64e85f1da8.jpg?1783941186",
+        "border_crop": "https://cards.scryfall.io/border_crop/front/c/b/cb073d5b-9515-492d-9b2d-0f64e85f1da8.jpg?1783941186",
+        "thumb": "https://cards.scryfall.io/thumb/front/c/b/cb073d5b-9515-492d-9b2d-0f64e85f1da8.webp?1783941186",
+        "grid": "https://cards.scryfall.io/grid/front/c/b/cb073d5b-9515-492d-9b2d-0f64e85f1da8.webp?1783941186",
+        "display": "https://cards.scryfall.io/display/front/c/b/cb073d5b-9515-492d-9b2d-0f64e85f1da8.webp?1783941186",
+        "art": "https://cards.scryfall.io/art/front/c/b/cb073d5b-9515-492d-9b2d-0f64e85f1da8.webp?1783941186",
+        "crop": "https://cards.scryfall.io/crop/front/c/b/cb073d5b-9515-492d-9b2d-0f64e85f1da8.webp?1783941186"
+      },
+      "mana_cost": "{G}{U}{R}",
+      "cmc": 3,
+      "type_line": "Legendary Creature — Elemental",
+      "oracle_text": "Protection from white and from black\nWhenever you cast a creature spell, put a +1/+1 counter on Animar.\nCreature spells you cast cost {1} less to cast for each +1/+1 counter on Animar.",
+      "power": "1",
+      "toughness": "1",
+      "colors": [
+        "G",
+        "R",
+        "U"
+      ],
+      "color_identity": [
+        "G",
+        "R",
+        "U"
+      ],
+      "keywords": [
+        "Protection"
+      ],
+      "legalities": {
+        "standard": "not_legal",
+        "future": "not_legal",
+        "historic": "not_legal",
+        "timeless": "not_legal",
+        "gladiator": "not_legal",
+        "pioneer": "not_legal",
+        "modern": "not_legal",
+        "legacy": "legal",
+        "pauper": "not_legal",
+        "vintage": "legal",
+        "penny": "not_legal",
+        "commander": "legal",
+        "oathbreaker": "legal",
+        "standardbrawl": "not_legal",
+        "brawl": "not_legal",
+        "competitivebrawl": "not_legal",
+        "alchemy": "not_legal",
+        "paupercommander": "not_legal",
+        "duel": "legal",
+        "oldschool": "not_legal",
+        "premodern": "not_legal",
+        "predh": "not_legal",
+        "tlr": "legal"
+      },
+      "games": [
+        "paper",
+        "mtgo"
+      ],
+      "reserved": false,
+      "game_changer": false,
+      "foil": false,
+      "nonfoil": true,
+      "finishes": [
+        "nonfoil"
+      ],
+      "oversized": false,
+      "promo": false,
+      "reprint": false,
+      "variation": false,
+      "set_id": "84ff1a64-4e69-4ed2-8c08-26206e3b97a0",
+      "set": "cmd",
+      "set_name": "Commander 2011",
+      "set_type": "commander",
+      "set_uri": "https://api.scryfall.com/sets/84ff1a64-4e69-4ed2-8c08-26206e3b97a0",
+      "set_search_uri": "https://api.scryfall.com/cards/search?order=set&q=e%3Acmd&unique=prints",
+      "scryfall_set_uri": "https://scryfall.com/sets/cmd?utm_source=api",
+      "rulings_uri": "https://api.scryfall.com/cards/cb073d5b-9515-492d-9b2d-0f64e85f1da8/rulings",
+      "prints_search_uri": "https://api.scryfall.com/cards/search?order=released&q=oracleid%3A725880b2-1675-414f-b61b-cf6533797dbf&unique=prints",
+      "collector_number": "181",
+      "digital": false,
+      "rarity": "mythic",
+      "card_back_id": "0aeebaf5-8c7d-4636-9e82-8c27447861f7",
+      "artist": "Peter Mohrbacher",
+      "artist_ids": [
+        "c8f27311-46a5-4eaf-9b2e-d660ed1db649"
+      ],
+      "illustration_id": "99c11f64-4fda-41af-ad5b-29d4554de465",
+      "border_color": "black",
+      "frame": "2003",
+      "full_art": false,
+      "textless": false,
+      "booster": false,
+      "story_spotlight": false,
+      "edhrec_rank": 2371,
+      "prices": {
+        "usd": "38.52",
+        "usd_foil": null,
+        "usd_etched": null,
+        "eur": "25.38",
+        "eur_foil": null,
+        "tix": "0.57"
+      },
+      "related_uris": {
+        "gatherer": "https://gatherer.wizards.com/Pages/Card/Details.aspx?multiverseid=236504&printed=false",
+        "tcgplayer_infinite_articles": "https://partner.tcgplayer.com/c/4931599/1830156/21018?subId1=api&trafcat=tcgplayer.com%2Fsearch%2Farticles&u=https%3A%2F%2Fwww.tcgplayer.com%2Fsearch%2Farticles%3FproductLineName%3Dmagic%26q%3DAnimar%252C%2BSoul%2Bof%2BElements",
+        "tcgplayer_infinite_decks": "https://partner.tcgplayer.com/c/4931599/1830156/21018?subId1=api&trafcat=tcgplayer.com%2Fsearch%2Fdecks&u=https%3A%2F%2Fwww.tcgplayer.com%2Fsearch%2Fdecks%3FproductLineName%3Dmagic%26q%3DAnimar%252C%2BSoul%2Bof%2BElements",
+        "edhrec": "https://edhrec.com/route/?cc=Animar%2C+Soul+of+Elements"
+      },
+      "purchase_uris": {
+        "tcgplayer": "https://partner.tcgplayer.com/c/4931599/1830156/21018?subId1=api&u=https%3A%2F%2Fwww.tcgplayer.com%2Fproduct%2F46940%3Fpage%3D1",
+        "cardmarket": "https://www.cardmarket.com/en/Magic/Products?idProduct=246728&referrer=scryfall&utm_campaign=card_prices&utm_medium=text&utm_source=scryfall",
+        "cardhoarder": "https://www.cardhoarder.com/cards/40651?affiliate_id=scryfall&ref=card-profile&utm_campaign=affiliate&utm_medium=card&utm_source=scryfall"
+      }
+    },
+    "quantity": 1,
+    "quantityFoil": 0,
+    "condition": "NM",
+    "language": "EN",
+    "purchasePrice": null,
+    "notes": "",
+    "binder": "Klaser Główny"
+  },
+  {
+    "id": "col-1790626588887-6wv4",
+    "addedAt": "2026-09-28T20:16:28.887Z",
+    "cardId": "b58a6a63-c7d8-4f2f-acaf-b0a871eb5a7c",
+    "card": {
+      "object": "card",
+      "id": "b58a6a63-c7d8-4f2f-acaf-b0a871eb5a7c",
+      "oracle_id": "83cf4235-eb4e-4c55-839a-f2740d41ed5e",
+      "multiverse_ids": [
+        370440
+      ],
+      "mtgo_id": 48676,
+      "mtgo_foil_id": 48677,
+      "tcgplayer_id": 68331,
+      "cardmarket_id": 262025,
+      "name": "Pestermite",
+      "lang": "en",
+      "released_at": "2013-06-07",
+      "uri": "https://api.scryfall.com/cards/b58a6a63-c7d8-4f2f-acaf-b0a871eb5a7c",
+      "scryfall_uri": "https://scryfall.com/card/mma/59/pestermite?utm_source=api",
+      "layout": "normal",
+      "highres_image": true,
+      "image_status": "highres_scan",
+      "image_updated_at": "2026-07-13T10:53:15Z",
+      "image_uris": {
+        "small": "https://cards.scryfall.io/small/front/b/5/b58a6a63-c7d8-4f2f-acaf-b0a871eb5a7c.jpg?1783939995",
+        "normal": "https://cards.scryfall.io/normal/front/b/5/b58a6a63-c7d8-4f2f-acaf-b0a871eb5a7c.jpg?1783939995",
+        "large": "https://cards.scryfall.io/large/front/b/5/b58a6a63-c7d8-4f2f-acaf-b0a871eb5a7c.jpg?1783939995",
+        "png": "https://cards.scryfall.io/png/front/b/5/b58a6a63-c7d8-4f2f-acaf-b0a871eb5a7c.png?1783939995",
+        "art_crop": "https://cards.scryfall.io/art_crop/front/b/5/b58a6a63-c7d8-4f2f-acaf-b0a871eb5a7c.jpg?1783939995",
+        "border_crop": "https://cards.scryfall.io/border_crop/front/b/5/b58a6a63-c7d8-4f2f-acaf-b0a871eb5a7c.jpg?1783939995",
+        "thumb": "https://cards.scryfall.io/thumb/front/b/5/b58a6a63-c7d8-4f2f-acaf-b0a871eb5a7c.webp?1783939995",
+        "grid": "https://cards.scryfall.io/grid/front/b/5/b58a6a63-c7d8-4f2f-acaf-b0a871eb5a7c.webp?1783939995",
+        "display": "https://cards.scryfall.io/display/front/b/5/b58a6a63-c7d8-4f2f-acaf-b0a871eb5a7c.webp?1783939995",
+        "art": "https://cards.scryfall.io/art/front/b/5/b58a6a63-c7d8-4f2f-acaf-b0a871eb5a7c.webp?1783939995",
+        "crop": "https://cards.scryfall.io/crop/front/b/5/b58a6a63-c7d8-4f2f-acaf-b0a871eb5a7c.webp?1783939995"
+      },
+      "mana_cost": "{2}{U}",
+      "cmc": 3,
+      "type_line": "Creature — Faerie Rogue",
+      "oracle_text": "Flash\nFlying\nWhen this creature enters, you may tap or untap target permanent.",
+      "power": "2",
+      "toughness": "1",
+      "colors": [
+        "U"
+      ],
+      "color_identity": [
+        "U"
+      ],
+      "keywords": [
+        "Flying",
+        "Flash"
+      ],
+      "legalities": {
+        "standard": "not_legal",
+        "future": "not_legal",
+        "historic": "legal",
+        "timeless": "legal",
+        "gladiator": "legal",
+        "pioneer": "not_legal",
+        "modern": "legal",
+        "legacy": "legal",
+        "pauper": "legal",
+        "vintage": "legal",
+        "penny": "legal",
+        "commander": "legal",
+        "oathbreaker": "legal",
+        "standardbrawl": "not_legal",
+        "brawl": "legal",
+        "competitivebrawl": "legal",
+        "alchemy": "not_legal",
+        "paupercommander": "legal",
+        "duel": "legal",
+        "oldschool": "not_legal",
+        "premodern": "not_legal",
+        "predh": "legal",
+        "tlr": "legal"
+      },
+      "games": [
+        "paper",
+        "mtgo"
+      ],
+      "reserved": false,
+      "game_changer": false,
+      "foil": true,
+      "nonfoil": true,
+      "finishes": [
+        "nonfoil",
+        "foil"
+      ],
+      "oversized": false,
+      "promo": false,
+      "reprint": true,
+      "variation": false,
+      "set_id": "0b7020f2-336d-4706-9ce6-f6710b9ebd5c",
+      "set": "mma",
+      "set_name": "Modern Masters",
+      "set_type": "masters",
+      "set_uri": "https://api.scryfall.com/sets/0b7020f2-336d-4706-9ce6-f6710b9ebd5c",
+      "set_search_uri": "https://api.scryfall.com/cards/search?order=set&q=e%3Amma&unique=prints",
+      "scryfall_set_uri": "https://scryfall.com/sets/mma?utm_source=api",
+      "rulings_uri": "https://api.scryfall.com/cards/b58a6a63-c7d8-4f2f-acaf-b0a871eb5a7c/rulings",
+      "prints_search_uri": "https://api.scryfall.com/cards/search?order=released&q=oracleid%3A83cf4235-eb4e-4c55-839a-f2740d41ed5e&unique=prints",
+      "collector_number": "59",
+      "digital": false,
+      "rarity": "common",
+      "flavor_text": "The fae know when they're not wanted. That's precisely why they show up.",
+      "card_back_id": "0aeebaf5-8c7d-4636-9e82-8c27447861f7",
+      "artist": "Christopher Moeller",
+      "artist_ids": [
+        "21e10012-06ae-44f2-b38d-3824dd2e73d4"
+      ],
+      "illustration_id": "c8e3a5e8-373c-4779-8d1f-7663e6c29010",
+      "border_color": "black",
+      "frame": "2003",
+      "full_art": false,
+      "textless": false,
+      "booster": true,
+      "story_spotlight": false,
+      "edhrec_rank": 10922,
+      "penny_rank": 2293,
+      "prices": {
+        "usd": "0.32",
+        "usd_foil": "1.69",
+        "usd_etched": null,
+        "eur": "0.17",
+        "eur_foil": "1.61",
+        "tix": "0.03"
+      },
+      "related_uris": {
+        "gatherer": "https://gatherer.wizards.com/Pages/Card/Details.aspx?multiverseid=370440&printed=false",
+        "tcgplayer_infinite_articles": "https://partner.tcgplayer.com/c/4931599/1830156/21018?subId1=api&trafcat=tcgplayer.com%2Fsearch%2Farticles&u=https%3A%2F%2Fwww.tcgplayer.com%2Fsearch%2Farticles%3FproductLineName%3Dmagic%26q%3DPestermite",
+        "tcgplayer_infinite_decks": "https://partner.tcgplayer.com/c/4931599/1830156/21018?subId1=api&trafcat=tcgplayer.com%2Fsearch%2Fdecks&u=https%3A%2F%2Fwww.tcgplayer.com%2Fsearch%2Fdecks%3FproductLineName%3Dmagic%26q%3DPestermite",
+        "edhrec": "https://edhrec.com/route/?cc=Pestermite"
+      },
+      "purchase_uris": {
+        "tcgplayer": "https://partner.tcgplayer.com/c/4931599/1830156/21018?subId1=api&u=https%3A%2F%2Fwww.tcgplayer.com%2Fproduct%2F68331%3Fpage%3D1",
+        "cardmarket": "https://www.cardmarket.com/en/Magic/Products?idProduct=262025&referrer=scryfall&utm_campaign=card_prices&utm_medium=text&utm_source=scryfall",
+        "cardhoarder": "https://www.cardhoarder.com/cards/48676?affiliate_id=scryfall&ref=card-profile&utm_campaign=affiliate&utm_medium=card&utm_source=scryfall"
+      }
+    },
+    "quantity": 0,
+    "quantityFoil": 1,
+    "condition": "NM",
+    "language": "EN",
+    "purchasePrice": 7.05,
+    "notes": "",
+    "binder": "Klaser Główny"
+  }
+]

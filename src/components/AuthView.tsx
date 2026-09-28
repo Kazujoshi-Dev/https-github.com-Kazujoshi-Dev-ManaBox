@@ -6,24 +6,28 @@ interface AuthViewProps {
   onAuthSuccess: (user: AuthUser, token: string) => void;
 }
 
+type AuthMode = 'login' | 'register' | 'recover';
+
 export const AuthView: React.FC<AuthViewProps> = ({ onAuthSuccess }) => {
-  const [isRegister, setIsRegister] = useState(false);
+  const [mode, setMode] = useState<AuthMode>('login');
   const [email, setEmail] = useState('');
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+    setSuccessMsg(null);
 
     if (!email.trim() || !password.trim()) {
       setError('Podaj adres email oraz hasło.');
       return;
     }
 
-    if (isRegister && !username.trim()) {
+    if (mode === 'register' && !username.trim()) {
       setError('Podaj nazwę użytkownika.');
       return;
     }
@@ -36,10 +40,15 @@ export const AuthView: React.FC<AuthViewProps> = ({ onAuthSuccess }) => {
     setIsLoading(true);
 
     try {
-      const endpoint = isRegister ? '/api/auth/register' : '/api/auth/login';
-      const body = isRegister 
-        ? { email: email.trim(), username: username.trim(), password }
-        : { email: email.trim(), password };
+      let endpoint = '/api/auth/login';
+      if (mode === 'register') endpoint = '/api/auth/register';
+      if (mode === 'recover') endpoint = '/api/auth/reset-password';
+
+      const body = {
+        email: email.trim().toLowerCase(),
+        password,
+        username: username.trim() || undefined
+      };
 
       const res = await fetch(endpoint, {
         method: 'POST',
@@ -47,14 +56,25 @@ export const AuthView: React.FC<AuthViewProps> = ({ onAuthSuccess }) => {
         body: JSON.stringify(body)
       });
 
-      const data = await res.json();
-
-      if (!res.ok) {
-        throw new Error(data.error || 'Wystąpił błąd podczas autoryzacji.');
+      let data: any = null;
+      try {
+        data = await res.json();
+      } catch (parseErr) {
+        // Fallback if response was plain text or HTML
+        if (res.status === 404) {
+          throw new Error('Serwer chwilowo nie odpowiada (404). Odśwież stronę za moment.');
+        }
+        throw new Error(`Wystąpił błąd komunikacji z serwerem (kod ${res.status}).`);
       }
 
-      if (data.token && data.user) {
+      if (!res.ok) {
+        throw new Error(data?.error || `Błąd autoryzacji (${res.status})`);
+      }
+
+      if (data?.token && data?.user) {
         onAuthSuccess(data.user, data.token);
+      } else {
+        throw new Error('Nieprawidłowa odpowiedź serwera autoryzacji.');
       }
     } catch (err: any) {
       setError(err.message || 'Nie udało się połączyć z serwerem.');
@@ -85,34 +105,51 @@ export const AuthView: React.FC<AuthViewProps> = ({ onAuthSuccess }) => {
         <div className="bg-stone-900/90 border border-stone-800 rounded-2xl p-6 sm:p-8 shadow-2xl backdrop-blur-xl space-y-6">
           
           {/* Mode Switch Tabs */}
-          <div className="grid grid-cols-2 p-1 bg-stone-950 rounded-xl border border-stone-800">
+          <div className="grid grid-cols-3 p-1 bg-stone-950 rounded-xl border border-stone-800 text-[11px] font-bold">
             <button
               type="button"
               onClick={() => {
-                setIsRegister(false);
+                setMode('login');
                 setError(null);
+                setSuccessMsg(null);
               }}
-              className={`py-2 text-xs font-bold rounded-lg transition-all cursor-pointer ${
-                !isRegister
+              className={`py-2 rounded-lg transition-all cursor-pointer ${
+                mode === 'login'
                   ? 'bg-amber-500 text-stone-950 shadow-md font-black'
                   : 'text-stone-400 hover:text-stone-200'
               }`}
             >
-              Zaloguj się
+              Logowanie
             </button>
             <button
               type="button"
               onClick={() => {
-                setIsRegister(true);
+                setMode('register');
                 setError(null);
+                setSuccessMsg(null);
               }}
-              className={`py-2 text-xs font-bold rounded-lg transition-all cursor-pointer ${
-                isRegister
+              className={`py-2 rounded-lg transition-all cursor-pointer ${
+                mode === 'register'
                   ? 'bg-amber-500 text-stone-950 shadow-md font-black'
                   : 'text-stone-400 hover:text-stone-200'
               }`}
             >
-              Utwórz konto
+              Nowe konto
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setMode('recover');
+                setError(null);
+                setSuccessMsg(null);
+              }}
+              className={`py-2 rounded-lg transition-all cursor-pointer ${
+                mode === 'recover'
+                  ? 'bg-amber-500 text-stone-950 shadow-md font-black'
+                  : 'text-stone-400 hover:text-stone-200'
+              }`}
+            >
+              Reset hasła
             </button>
           </div>
 
@@ -120,7 +157,39 @@ export const AuthView: React.FC<AuthViewProps> = ({ onAuthSuccess }) => {
           {error && (
             <div className="p-3 bg-rose-500/10 border border-rose-500/30 rounded-xl flex items-start gap-2.5 text-xs text-rose-300 animate-fadeIn">
               <AlertCircle className="w-4 h-4 shrink-0 text-rose-400 mt-0.5" />
-              <span>{error}</span>
+              <div className="space-y-1">
+                <span>{error}</span>
+                {mode === 'login' && error.includes('hasło') && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMode('recover');
+                      setError(null);
+                    }}
+                    className="block text-amber-400 hover:text-amber-300 underline font-semibold mt-1 cursor-pointer"
+                  >
+                    Kliknij tutaj, aby zresetować hasło do tego konta
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Success Banner */}
+          {successMsg && (
+            <div className="p-3 bg-emerald-500/10 border border-emerald-500/30 rounded-xl flex items-start gap-2.5 text-xs text-emerald-300 animate-fadeIn">
+              <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-400 mt-0.5" />
+              <span>{successMsg}</span>
+            </div>
+          )}
+
+          {/* Mode description */}
+          {mode === 'recover' && (
+            <div className="p-3 bg-amber-500/10 border border-amber-500/20 rounded-xl text-xs text-amber-300 space-y-1">
+              <p className="font-bold">Resetowanie hasła / Odzyskiwanie dostępu</p>
+              <p className="text-[11px] text-amber-200/80">
+                Wpisz swój email oraz nowe hasło (min. 6 znaków). Zostanie ono natychmiast zaktualizowane i zostaniesz zalogowany do swojej kolekcji.
+              </p>
             </div>
           )}
 
@@ -128,7 +197,7 @@ export const AuthView: React.FC<AuthViewProps> = ({ onAuthSuccess }) => {
           <form onSubmit={handleSubmit} className="space-y-4">
             
             {/* Username field (only registration) */}
-            {isRegister && (
+            {mode === 'register' && (
               <div>
                 <label className="block text-[11px] font-bold uppercase tracking-wider text-stone-400 mb-1.5">
                   Nazwa gracza / użytkownika
@@ -167,9 +236,23 @@ export const AuthView: React.FC<AuthViewProps> = ({ onAuthSuccess }) => {
 
             {/* Password field */}
             <div>
-              <label className="block text-[11px] font-bold uppercase tracking-wider text-stone-400 mb-1.5">
-                Hasło
-              </label>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="block text-[11px] font-bold uppercase tracking-wider text-stone-400">
+                  {mode === 'recover' ? 'Nowe hasło' : 'Hasło'}
+                </label>
+                {mode === 'login' && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMode('recover');
+                      setError(null);
+                    }}
+                    className="text-[11px] text-amber-400 hover:text-amber-300 transition-colors cursor-pointer"
+                  >
+                    Zapomniałeś hasła?
+                  </button>
+                )}
+              </div>
               <div className="relative">
                 <Lock className="w-4 h-4 text-stone-500 absolute left-3.5 top-3" />
                 <input
@@ -182,7 +265,7 @@ export const AuthView: React.FC<AuthViewProps> = ({ onAuthSuccess }) => {
                   className="w-full bg-stone-950 border border-stone-700 focus:border-amber-500 focus:ring-1 focus:ring-amber-500 rounded-xl pl-10 pr-3.5 py-2.5 text-sm text-stone-100 placeholder-stone-600 focus:outline-none transition-colors"
                 />
               </div>
-              {isRegister && (
+              {(mode === 'register' || mode === 'recover') && (
                 <p className="text-[10px] text-stone-500 mt-1">Minimum 6 znaków</p>
               )}
             </div>
@@ -198,9 +281,14 @@ export const AuthView: React.FC<AuthViewProps> = ({ onAuthSuccess }) => {
                   <Loader2 className="w-4 h-4 animate-spin" />
                   <span>Przetwarzanie...</span>
                 </>
-              ) : isRegister ? (
+              ) : mode === 'register' ? (
                 <>
-                  <span>Zarejestruj konto i utwórz kolekcję</span>
+                  <span>Zarejestruj konto i wejdź do kolekcji</span>
+                  <ArrowRight className="w-4 h-4" />
+                </>
+              ) : mode === 'recover' ? (
+                <>
+                  <span>Zapisz nowe hasło i wejdź do kolekcji</span>
                   <ArrowRight className="w-4 h-4" />
                 </>
               ) : (

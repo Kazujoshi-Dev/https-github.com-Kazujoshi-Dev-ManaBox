@@ -232,6 +232,35 @@ export async function getUserById(id: string): Promise<DbUser | null> {
   return users.find(u => u.id === id) || null;
 }
 
+export async function updateUserPassword(
+  email: string,
+  passwordHash: string,
+  salt: string
+): Promise<DbUser | null> {
+  const cleanEmail = email.toLowerCase().trim();
+  if (isPostgresActive && pool) {
+    try {
+      const res = await pool.query(
+        'UPDATE users SET password_hash = $1, salt = $2 WHERE email = $3 RETURNING *',
+        [passwordHash, salt, cleanEmail]
+      );
+      if (res.rows[0]) return res.rows[0];
+    } catch (err) {
+      console.warn('[DB] PostgreSQL error on updateUserPassword, falling back to local JSON:', err);
+    }
+  }
+
+  const users = readJsonFile<DbUser[]>(USERS_FILE, []);
+  const idx = users.findIndex(u => u.email.toLowerCase() === cleanEmail);
+  if (idx !== -1) {
+    users[idx].password_hash = passwordHash;
+    users[idx].salt = salt;
+    writeJsonFile(USERS_FILE, users);
+    return users[idx];
+  }
+  return null;
+}
+
 export async function createUser(
   id: string,
   email: string,
