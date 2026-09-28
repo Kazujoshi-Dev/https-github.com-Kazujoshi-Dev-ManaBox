@@ -122,19 +122,23 @@ export interface WishlistItem {
   addedAt: string;
 }
 
+export interface DeckCardEntry {
+  collectionItemId?: string;
+  card: ScryfallCard;
+  quantity: number;
+  isCommander?: boolean;
+  isSideboard?: boolean;
+}
+
 export interface DeckItem {
   id: string;
   name: string;
-  format: string; // Commander, Standard, Modern, Casual, etc.
+  format: string; // 'EDH Commander'
   description?: string;
-  cards: {
-    collectionItemId?: string;
-    card: ScryfallCard;
-    quantity: number;
-    isCommander?: boolean;
-    isSideboard?: boolean;
-  }[];
+  commander?: ScryfallCard | null;
+  cards: DeckCardEntry[];
   createdAt: string;
+  updatedAt?: string;
 }
 
 export interface FilterOptions {

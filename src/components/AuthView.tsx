@@ -73,13 +73,8 @@ export const AuthView: React.FC<AuthViewProps> = ({ onAuthSuccess }) => {
         
         {/* Brand Header */}
         <div className="text-center space-y-2">
-          <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-gradient-to-tr from-amber-600 via-amber-500 to-yellow-500 p-0.5 shadow-2xl shadow-amber-500/20 mb-2">
-            <div className="w-full h-full bg-stone-950 rounded-[14px] flex items-center justify-center">
-              <Sparkles className="w-7 h-7 text-amber-400" />
-            </div>
-          </div>
           <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-white">
-            Kolekcja Kart MTG
+            Mana Screw
           </h1>
           <p className="text-xs sm:text-sm text-stone-400 max-w-sm mx-auto">
             Zaloguj się, aby zarządzać swoją prywatną kolekcją kart, klaserami i wycenami w PLN.

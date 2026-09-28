@@ -921,6 +921,71 @@ app.post('/api/settings', authMiddleware, async (req, res) => {
   }
 });
 
+// --- DECKS ENDPOINTS (USER-ISOLATED, DEFAULT EDH COMMANDER) ---
+
+app.get('/api/decks', authMiddleware, async (req, res) => {
+  try {
+    const userId = (req as any).userId;
+    const decks = await db.getDecks(userId);
+    res.json(decks);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/decks', authMiddleware, async (req, res) => {
+  try {
+    const userId = (req as any).userId;
+    const { name, format, description, commander, cards } = req.body;
+    if (!name || !name.trim()) {
+      return res.status(400).json({ error: 'Nazwa talii jest wymagana.' });
+    }
+
+    const newDeck = {
+      id: `deck-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
+      name: name.trim(),
+      format: format || 'EDH Commander', // default always EDH Commander
+      description: description || '',
+      commander: commander || null,
+      cards: Array.isArray(cards) ? cards : [],
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+
+    const saved = await db.saveDeck(userId, newDeck);
+    res.status(201).json(saved);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.put('/api/decks/:id', authMiddleware, async (req, res) => {
+  try {
+    const userId = (req as any).userId;
+    const { id } = req.params;
+    const deckToSave = {
+      ...req.body,
+      id,
+      format: req.body.format || 'EDH Commander'
+    };
+    const saved = await db.saveDeck(userId, deckToSave);
+    res.json(saved);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.delete('/api/decks/:id', authMiddleware, async (req, res) => {
+  try {
+    const userId = (req as any).userId;
+    const { id } = req.params;
+    const success = await db.deleteDeck(userId, id);
+    res.json({ success, id });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // --- START SERVER ---
 
 async function startServer() {

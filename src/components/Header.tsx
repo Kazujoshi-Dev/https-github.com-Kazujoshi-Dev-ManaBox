@@ -15,18 +15,20 @@ import {
   SlidersHorizontal,
   Trophy,
   LogOut,
-  User
+  User,
+  Swords
 } from 'lucide-react';
 import { formatCurrency } from '../utils/formatters';
 import { AppSettings, AuthUser } from '../types';
 
 interface HeaderProps {
-  activeTab: 'collection' | 'search' | 'set-top' | 'analytics' | 'wishlist';
-  setActiveTab: (tab: 'collection' | 'search' | 'set-top' | 'analytics' | 'wishlist') => void;
+  activeTab: 'collection' | 'search' | 'set-top' | 'analytics' | 'wishlist' | 'decks';
+  setActiveTab: (tab: 'collection' | 'search' | 'set-top' | 'analytics' | 'wishlist' | 'decks') => void;
   totalCards: number;
   totalValue: number;
   totalPurchaseCost: number;
   settings: AppSettings;
+  decksCount?: number;
   onOpenSettings: () => void;
   onRefreshPrices: () => void;
   isRefreshing: boolean;
@@ -44,6 +46,7 @@ export const Header: React.FC<HeaderProps> = ({
   totalValue,
   totalPurchaseCost,
   settings,
+  decksCount = 0,
   onOpenSettings,
   onRefreshPrices,
   isRefreshing,
@@ -70,7 +73,7 @@ export const Header: React.FC<HeaderProps> = ({
             <div>
               <div className="flex items-center gap-2">
                 <h1 className="text-xl font-bold tracking-tight bg-gradient-to-r from-amber-200 via-amber-100 to-stone-200 bg-clip-text text-transparent">
-                  Kolekcja Kart MTG
+                  Mana Screw
                 </h1>
                 <span className="text-[10px] uppercase font-mono px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20 font-semibold">
                   {settings.pricingSource === 'CARDMARKET' ? 'Cardmarket Trend' : 'TCGPlayer Market'}
@@ -170,6 +173,23 @@ export const Header: React.FC<HeaderProps> = ({
               <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-stone-800 text-stone-300 font-mono">
                 {totalCards}
               </span>
+            </button>
+
+            <button
+              onClick={() => setActiveTab('decks')}
+              className={`px-3.5 py-2 rounded-lg text-xs font-semibold flex items-center gap-2 transition-all whitespace-nowrap ${
+                activeTab === 'decks'
+                  ? 'bg-purple-500/20 text-purple-300 border border-purple-500/40 font-bold'
+                  : 'text-stone-400 hover:text-stone-200 hover:bg-stone-800/60'
+              }`}
+            >
+              <Swords className="w-4 h-4 text-purple-300" />
+              <span>Talie (EDH)</span>
+              {decksCount > 0 && (
+                <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-purple-950 text-purple-300 font-mono font-bold border border-purple-800/50">
+                  {decksCount}
+                </span>
+              )}
             </button>
 
             <button

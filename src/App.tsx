@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { CollectionItem, WishlistItem, ScryfallCard, CardCondition, CardLanguage, AppSettings, Catalog, AuthUser } from './types';
+import { CollectionItem, WishlistItem, ScryfallCard, CardCondition, CardLanguage, AppSettings, Catalog, AuthUser, DeckItem } from './types';
 import { Header } from './components/Header';
 import { CollectionList } from './components/CollectionList';
 import { CardSearch } from './components/CardSearch';
@@ -9,8 +9,10 @@ import { CardModal } from './components/CardModal';
 import { SettingsModal } from './components/SettingsModal';
 import { SetTopCards } from './components/SetTopCards';
 import { AuthView } from './components/AuthView';
-import { getCardPrice, DEFAULT_SETTINGS } from './utils/formatters';
-import { Sparkles, Check, AlertCircle } from 'lucide-react';
+import { DeckBuilder } from './components/DeckBuilder';
+import { DeckCreateModal } from './components/DeckCreateModal';
+import { getCardPrice, DEFAULT_SETTINGS, formatCurrency } from './utils/formatters';
+import { Sparkles, Check, AlertCircle, Swords, Crown, Plus, Trash2 } from 'lucide-react';
 
 export default function App() {
   const [currentUser, setCurrentUser] = useState<AuthUser | null>(() => {
@@ -22,10 +24,13 @@ export default function App() {
     }
   });
 
-  const [activeTab, setActiveTab] = useState<'collection' | 'search' | 'set-top' | 'analytics' | 'wishlist'>('collection');
+  const [activeTab, setActiveTab] = useState<'collection' | 'decks' | 'search' | 'set-top' | 'analytics' | 'wishlist'>('collection');
   const [collection, setCollection] = useState<CollectionItem[]>([]);
   const [wishlist, setWishlist] = useState<WishlistItem[]>([]);
   const [catalogs, setCatalogs] = useState<Catalog[]>([]);
+  const [decks, setDecks] = useState<DeckItem[]>([]);
+  const [selectedDeck, setSelectedDeck] = useState<DeckItem | null>(null);
+  const [isDeckCreateModalOpen, setIsDeckCreateModalOpen] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isRefreshingPrices, setIsRefreshingPrices] = useState<boolean>(false);
   
@@ -90,6 +95,8 @@ export default function App() {
     setCollection([]);
     setWishlist([]);
     setCatalogs([]);
+    setDecks([]);
+    setSelectedDeck(null);
     showToast('Pomyślnie wylogowano z konta.');
   };
 
@@ -144,11 +151,12 @@ export default function App() {
           return;
         }
 
-        const [colRes, wishRes, catRes, setRes] = await Promise.all([
+        const [colRes, wishRes, catRes, setRes, deckRes] = await Promise.all([
           fetchWithAuth('/api/collection'),
           fetchWithAuth('/api/wishlist'),
           fetchWithAuth('/api/catalogs'),
-          fetchWithAuth('/api/settings')
+          fetchWithAuth('/api/settings'),
+          fetchWithAuth('/api/decks')
         ]);
 
         if (colRes.ok) {
@@ -164,6 +172,11 @@ export default function App() {
         if (catRes.ok) {
           const catData = await catRes.json();
           setCatalogs(catData);
+        }
+
+        if (deckRes && deckRes.ok) {
+          const deckData = await deckRes.json();
+          setDecks(deckData);
         }
 
         if (setRes.ok) {
@@ -450,6 +463,65 @@ export default function App() {
     handleRemoveFromWishlist(wishlistItem.id);
   };
 
+  // Deck Management Handlers (Defaults to EDH Commander)
+  const handleCreateDeck = async (data: {
+    name: string;
+    format: string;
+    description: string;
+    commander?: ScryfallCard | null;
+  }) => {
+    try {
+      const res = await fetchWithAuth('/api/decks', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      });
+      if (res.ok) {
+        const newDeck: DeckItem = await res.json();
+        setDecks(prev => [newDeck, ...prev]);
+        setSelectedDeck(newDeck);
+        setActiveTab('decks');
+        showToast(`Utworzono talię "${newDeck.name}" [${newDeck.format || 'EDH Commander'}]!`);
+      } else {
+        const err = await res.json();
+        throw new Error(err.error || 'Nie udało się utworzyć talii.');
+      }
+    } catch (err: any) {
+      showToast(err.message || 'Błąd tworzenia talii.');
+      throw err;
+    }
+  };
+
+  const handleUpdateDeck = async (updated: DeckItem) => {
+    setSelectedDeck(updated);
+    setDecks(prev => prev.map(d => d.id === updated.id ? updated : d));
+    try {
+      await fetchWithAuth(`/api/decks/${updated.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updated)
+      });
+    } catch (err) {
+      console.error('Failed to update deck:', err);
+    }
+  };
+
+  const handleDeleteDeck = async (deckId: string) => {
+    try {
+      const res = await fetchWithAuth(`/api/decks/${deckId}`, { method: 'DELETE' });
+      if (res.ok) {
+        setDecks(prev => prev.filter(d => d.id !== deckId));
+        if (selectedDeck?.id === deckId) {
+          setSelectedDeck(null);
+        }
+        showToast('Usunięto talię.');
+      }
+    } catch (err) {
+      console.error('Failed to delete deck:', err);
+    }
+  };
+
+
   // Refresh Prices Batch
   const handleRefreshPrices = async () => {
     try {
@@ -474,7 +546,7 @@ export default function App() {
     const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(collection, null, 2));
     const downloadAnchor = document.createElement('a');
     downloadAnchor.setAttribute("href", dataStr);
-    downloadAnchor.setAttribute("download", `kolekcja-mtg-${new Date().toISOString().slice(0, 10)}.json`);
+    downloadAnchor.setAttribute("download", `mana-screw-${new Date().toISOString().slice(0, 10)}.json`);
     document.body.appendChild(downloadAnchor);
     downloadAnchor.click();
     downloadAnchor.remove();
@@ -537,6 +609,7 @@ export default function App() {
         totalValue={totals.totalValue}
         totalPurchaseCost={totals.totalPurchaseCost}
         settings={settings}
+        decksCount={decks.length}
         onOpenSettings={() => setIsSettingsOpen(true)}
         onRefreshPrices={handleRefreshPrices}
         isRefreshing={isRefreshingPrices}
@@ -561,10 +634,16 @@ export default function App() {
                 collection={collection}
                 settings={settings}
                 catalogs={catalogs}
+                decks={decks}
                 onCreateCatalog={handleCreateCatalog}
                 onUpdateCatalog={handleUpdateCatalog}
                 onDeleteCatalog={handleDeleteCatalog}
                 onSetDefaultCatalog={handleSetDefaultCatalog}
+                onOpenCreateDeckModal={() => setIsDeckCreateModalOpen(true)}
+                onSelectDeck={(deck) => {
+                  setSelectedDeck(deck);
+                  setActiveTab('decks');
+                }}
                 onUpdateQuantity={handleUpdateQuantity}
                 onDeleteItem={handleDeleteItem}
                 onEditItem={(item) => {
@@ -577,6 +656,180 @@ export default function App() {
                 }}
                 onOpenAddModal={() => setActiveTab('search')}
               />
+            )}
+
+            {activeTab === 'decks' && (
+              selectedDeck ? (
+                <DeckBuilder
+                  deck={selectedDeck}
+                  collection={collection}
+                  settings={settings}
+                  onUpdateDeck={handleUpdateDeck}
+                  onBack={() => setSelectedDeck(null)}
+                  onViewCardDetails={(card) => {
+                    setSelectedCardForModal(card);
+                    setSelectedCollectionItemForModal(null);
+                  }}
+                />
+              ) : (
+                <div className="space-y-6">
+                  {/* Decks Header Banner */}
+                  <div className="bg-stone-900 border border-stone-800 rounded-2xl p-6 shadow-xl flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                    <div>
+                      <div className="flex items-center gap-2.5">
+                        <div className="w-10 h-10 rounded-xl bg-purple-600/30 border border-purple-500/40 flex items-center justify-center">
+                          <Swords className="w-5 h-5 text-purple-300" />
+                        </div>
+                        <div>
+                          <h2 className="text-xl sm:text-2xl font-black text-white tracking-tight">
+                            Twoje Talie (Format EDH Commander)
+                          </h2>
+                          <p className="text-xs text-stone-400">
+                            Twórz talie 100-kartowe, stakuj karty według typów i zarządzaj dowódcą.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
+                    <button
+                      onClick={() => setIsDeckCreateModalOpen(true)}
+                      className="px-4 py-2.5 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-bold text-xs rounded-xl shadow-lg shadow-purple-950/50 flex items-center justify-center gap-2 cursor-pointer transition-all shrink-0"
+                    >
+                      <Plus className="w-4 h-4 stroke-[3]" />
+                      <span>Utwórz nową talię EDH Commander</span>
+                    </button>
+                  </div>
+
+                  {/* Decks Grid */}
+                  {decks.length === 0 ? (
+                    <div className="bg-stone-900/60 border border-dashed border-stone-800 rounded-2xl p-12 text-center space-y-4">
+                      <div className="w-16 h-16 rounded-2xl bg-purple-950/50 border border-purple-800/40 text-purple-400 mx-auto flex items-center justify-center">
+                        <Swords className="w-8 h-8" />
+                      </div>
+                      <div>
+                        <h3 className="text-base font-bold text-white">Nie masz jeszcze żadnych talii</h3>
+                        <p className="text-xs text-stone-400 max-w-sm mx-auto mt-1">
+                          Kliknij przycisk poniżej, aby utworzyć swoją pierwszą 100-kartową talię w formacie EDH Commander.
+                        </p>
+                      </div>
+                      <button
+                        onClick={() => setIsDeckCreateModalOpen(true)}
+                        className="px-4 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white text-xs font-bold rounded-xl shadow-md cursor-pointer transition-all inline-flex items-center gap-2"
+                      >
+                        <Plus className="w-4 h-4" />
+                        <span>Utwórz nową talię</span>
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                      {decks.map(deck => {
+                        const count = (deck.commander ? 1 : 0) + (deck.cards?.reduce((s, c) => s + c.quantity, 0) || 0);
+                        let deckVal = 0;
+                        if (deck.commander) deckVal += getCardPrice(deck.commander, false, settings);
+                        deck.cards?.forEach(c => {
+                          deckVal += getCardPrice(c.card, false, settings) * c.quantity;
+                        });
+
+                        return (
+                          <div
+                            key={deck.id}
+                            onClick={() => setSelectedDeck(deck)}
+                            className="group bg-stone-900 border border-stone-800 hover:border-purple-500/50 rounded-2xl p-5 shadow-xl transition-all cursor-pointer flex flex-col justify-between space-y-4 relative overflow-hidden"
+                          >
+                            {/* Subtle commander art background glow if present */}
+                            {deck.commander && (
+                              <div
+                                className="absolute inset-0 opacity-15 bg-cover bg-center pointer-events-none group-hover:opacity-25 transition-opacity"
+                                style={{
+                                  backgroundImage: `url(${deck.commander.image_uris?.art_crop || deck.commander.image_uris?.normal || ''})`
+                                }}
+                              />
+                            )}
+
+                            <div className="relative z-10 space-y-3">
+                              <div className="flex items-start justify-between gap-2">
+                                <div className="space-y-1">
+                                  <div className="flex items-center gap-2">
+                                    <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold uppercase tracking-wider bg-purple-500/20 text-purple-300 border border-purple-500/30">
+                                      {deck.format || 'EDH Commander'}
+                                    </span>
+                                  </div>
+                                  <h3 className="text-lg font-black text-white group-hover:text-purple-200 transition-colors">
+                                    {deck.name}
+                                  </h3>
+                                </div>
+
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleDeleteDeck(deck.id);
+                                  }}
+                                  className="text-stone-500 hover:text-rose-400 p-1 rounded-lg hover:bg-stone-800 transition-colors"
+                                  title="Usuń talię"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                              </div>
+
+                              {deck.description && (
+                                <p className="text-xs text-stone-400 line-clamp-2">
+                                  {deck.description}
+                                </p>
+                              )}
+
+                              {/* Commander Info if selected */}
+                              {deck.commander ? (
+                                <div className="flex items-center gap-2.5 p-2 bg-stone-950/80 rounded-xl border border-amber-500/30">
+                                  <div className="w-8 h-10 rounded overflow-hidden border border-amber-500/40 shrink-0">
+                                    <img
+                                      src={deck.commander.image_uris?.art_crop || deck.commander.image_uris?.small}
+                                      alt={deck.commander.name}
+                                      className="w-full h-full object-cover"
+                                    />
+                                  </div>
+                                  <div className="min-w-0">
+                                    <span className="text-[10px] text-amber-400 font-bold block">
+                                      👑 {deck.commander.name}
+                                    </span>
+                                    <span className="text-[10px] text-stone-400 truncate block">
+                                      {deck.commander.type_line}
+                                    </span>
+                                  </div>
+                                </div>
+                              ) : (
+                                <div className="p-2 bg-stone-950/50 rounded-xl border border-dashed border-stone-800 text-[11px] text-stone-500 flex items-center gap-1.5">
+                                  <Crown className="w-3.5 h-3.5 text-stone-600" />
+                                  <span>Brak wybranego dowódcy</span>
+                                </div>
+                              )}
+                            </div>
+
+                            <div className="relative z-10 pt-3 border-t border-stone-800/80 flex items-center justify-between text-xs">
+                              <div className="flex items-center gap-1.5">
+                                <span className={`px-2 py-0.5 rounded font-mono font-bold text-[11px] ${
+                                  count === 100
+                                    ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
+                                    : count > 100
+                                    ? 'bg-rose-500/20 text-rose-300 border border-rose-500/30'
+                                    : 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
+                                }`}>
+                                  {count} / 100 kart
+                                </span>
+                              </div>
+
+                              <span className="font-mono font-bold text-amber-300">
+                                {formatCurrency(deckVal, settings.currency)}
+                              </span>
+                            </div>
+
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              )
             )}
 
             {activeTab === 'search' && (
@@ -665,6 +918,16 @@ export default function App() {
           }}
           onSaveToCollection={handleSaveToCollection}
           onAddToWishlist={handleAddToWishlist}
+        />
+      )}
+
+      {/* Deck Create Modal */}
+      {isDeckCreateModalOpen && (
+        <DeckCreateModal
+          isOpen={isDeckCreateModalOpen}
+          collection={collection}
+          onClose={() => setIsDeckCreateModalOpen(false)}
+          onCreateDeck={handleCreateDeck}
         />
       )}
 

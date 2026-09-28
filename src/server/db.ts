@@ -1,7 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import pg from 'pg';
-import { CollectionItem, WishlistItem, Catalog, AppSettings } from '../types';
+import { CollectionItem, WishlistItem, Catalog, AppSettings, DeckItem } from '../types';
 
 const DATA_DIR = path.join(process.cwd(), 'data');
 if (!fs.existsSync(DATA_DIR)) {
@@ -140,6 +140,18 @@ export async function initDb(): Promise<void> {
           is_foil BOOLEAN DEFAULT FALSE,
           notes TEXT,
           added_at TIMESTAMPTZ DEFAULT NOW()
+        );
+
+        CREATE TABLE IF NOT EXISTS user_decks (
+          id VARCHAR(64) PRIMARY KEY,
+          user_id VARCHAR(64) NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+          name VARCHAR(150) NOT NULL,
+          format VARCHAR(50) DEFAULT 'EDH Commander',
+          description TEXT,
+          commander JSONB,
+          cards JSONB NOT NULL DEFAULT '[]',
+          created_at TIMESTAMPTZ DEFAULT NOW(),
+          updated_at TIMESTAMPTZ DEFAULT NOW()
         );
       `);
       console.log('[Storage] PostgreSQL connected & tables verified successfully');
@@ -650,3 +662,89 @@ export async function saveSettings(userId: string, settings: AppSettings): Promi
   writeJsonFile(path.join(userDir, 'settings.json'), settings);
   return settings;
 }
+
+// User Decks Methods
+export async function getDecks(userId: string): Promise<DeckItem[]> {
+  if (isPostgresActive && pool) {
+    const res = await pool.query(
+      `SELECT id, name, format, description, commander, cards,
+              created_at as "createdAt", updated_at as "updatedAt"
+       FROM user_decks WHERE user_id = $1 ORDER BY updated_at DESC`,
+      [userId]
+    );
+    return res.rows.map(r => ({
+      ...r,
+      format: r.format || 'EDH Commander',
+      cards: Array.isArray(r.cards) ? r.cards : []
+    }));
+  }
+
+  const userDir = getUserDir(userId);
+  return readJsonFile<DeckItem[]>(path.join(userDir, 'decks.json'), []);
+}
+
+export async function saveDeck(userId: string, deck: DeckItem): Promise<DeckItem> {
+  const format = deck.format || 'EDH Commander';
+  const now = new Date().toISOString();
+  const deckToSave: DeckItem = {
+    ...deck,
+    format,
+    updatedAt: now
+  };
+
+  if (isPostgresActive && pool) {
+    await pool.query(
+      `INSERT INTO user_decks (id, user_id, name, format, description, commander, cards, created_at, updated_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+       ON CONFLICT (id) DO UPDATE SET
+         name = EXCLUDED.name,
+         format = EXCLUDED.format,
+         description = EXCLUDED.description,
+         commander = EXCLUDED.commander,
+         cards = EXCLUDED.cards,
+         updated_at = EXCLUDED.updated_at`,
+      [
+        deckToSave.id,
+        userId,
+        deckToSave.name,
+        deckToSave.format,
+        deckToSave.description || '',
+        deckToSave.commander ? JSON.stringify(deckToSave.commander) : null,
+        JSON.stringify(deckToSave.cards || []),
+        deckToSave.createdAt || now,
+        now
+      ]
+    );
+    return deckToSave;
+  }
+
+  const userDir = getUserDir(userId);
+  const file = path.join(userDir, 'decks.json');
+  const decks = readJsonFile<DeckItem[]>(file, []);
+  const idx = decks.findIndex(d => d.id === deck.id);
+  if (idx >= 0) {
+    decks[idx] = deckToSave;
+  } else {
+    decks.unshift(deckToSave);
+  }
+  writeJsonFile(file, decks);
+  return deckToSave;
+}
+
+export async function deleteDeck(userId: string, id: string): Promise<boolean> {
+  if (isPostgresActive && pool) {
+    const res = await pool.query('DELETE FROM user_decks WHERE id = $1 AND user_id = $2', [id, userId]);
+    return (res.rowCount ?? 0) > 0;
+  }
+
+  const userDir = getUserDir(userId);
+  const file = path.join(userDir, 'decks.json');
+  const decks = readJsonFile<DeckItem[]>(file, []);
+  const nextDecks = decks.filter(d => d.id !== id);
+  if (nextDecks.length !== decks.length) {
+    writeJsonFile(file, nextDecks);
+    return true;
+  }
+  return false;
+}
+

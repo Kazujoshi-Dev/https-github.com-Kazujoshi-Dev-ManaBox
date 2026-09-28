@@ -63,10 +63,28 @@ CREATE TABLE IF NOT EXISTS user_settings (
 CREATE TABLE IF NOT EXISTS user_wishlists (
   id VARCHAR(64) PRIMARY KEY,
   user_id VARCHAR(64) NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  card_id VARCHAR(64) NOT NULL,
   card JSONB NOT NULL,
-  target_price NUMERIC(10, 2),
+  target_quantity INT DEFAULT 1,
+  is_foil BOOLEAN DEFAULT FALSE,
   notes TEXT,
   added_at TIMESTAMPTZ DEFAULT NOW()
 );
 
 CREATE INDEX IF NOT EXISTS idx_user_wishlists_user_id ON user_wishlists(user_id);
+
+-- 6. Tabela Talii (Decks) per użytkownik (domyślnie EDH Commander)
+CREATE TABLE IF NOT EXISTS user_decks (
+  id VARCHAR(64) PRIMARY KEY,
+  user_id VARCHAR(64) NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  name VARCHAR(150) NOT NULL,
+  format VARCHAR(50) DEFAULT 'EDH Commander',
+  description TEXT,
+  commander JSONB,
+  cards JSONB NOT NULL DEFAULT '[]',
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_user_decks_user_id ON user_decks(user_id);
+
