@@ -17,7 +17,10 @@ import {
   CheckCircle2,
   ScanLine,
   ExternalLink,
-  Smartphone
+  Smartphone,
+  Copy,
+  Radio,
+  Video
 } from 'lucide-react';
 import { ScryfallCard, CardCondition, CardLanguage, Catalog, AppSettings } from '../../types';
 import { formatCurrency, getCardImageUri, getCardPrice, getRarityColor, getRarityLabel, handleCardImageError } from '../../utils/formatters';
@@ -46,8 +49,23 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
   const [hasTorch, setHasTorch] = useState<boolean>(false);
   const [isTorchOn, setIsTorchOn] = useState<boolean>(false);
   const [isDraggingOver, setIsDraggingOver] = useState<boolean>(false);
+  const [copiedUrl, setCopiedUrl] = useState<boolean>(false);
+  const prevDeviceIdRef = useRef<string>('');
 
   const isMobile = typeof navigator !== 'undefined' && /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+
+  const standaloneUrl = typeof window !== 'undefined'
+    ? `${window.location.origin}${window.location.pathname}?scanner=open`
+    : '';
+
+  const handleCopyStandaloneUrl = () => {
+    if (standaloneUrl) {
+      navigator.clipboard.writeText(standaloneUrl);
+      setCopiedUrl(true);
+      showToast('Skopiowano bezpośredni link URL do schowka!');
+      setTimeout(() => setCopiedUrl(false), 2500);
+    }
+  };
 
   // Scanning State
   const [isScanning, setIsScanning] = useState<boolean>(false);
@@ -79,7 +97,7 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
   const [manualQuery, setManualQuery] = useState<string>('');
   const [isSearchingManual, setIsSearchingManual] = useState<boolean>(false);
 
-  // 1. Enumerate available video inputs
+  // 1. Enumerate available video inputs (Auto-detecting OBS Virtual Camera & mobile webcams)
   const enumerateCameras = useCallback(async () => {
     try {
       if (!navigator?.mediaDevices?.enumerateDevices) return;
@@ -92,12 +110,29 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
         }));
 
       setCameraDevices(videoInputs);
-      if (videoInputs.length > 0 && !selectedDeviceId) {
-        // Prefer back camera if available
-        const backCam = videoInputs.find(
-          (c) => c.label.toLowerCase().includes('back') || c.label.toLowerCase().includes('tył') || c.label.toLowerCase().includes('environment')
+      if (videoInputs.length > 0) {
+        // Automatically check if OBS Virtual Camera or phone camera utility is available
+        const obsCam = videoInputs.find((c) =>
+          /obs|virtual/i.test(c.label)
         );
-        setSelectedDeviceId(backCam ? backCam.deviceId : videoInputs[0].deviceId);
+        const phoneCam = videoInputs.find((c) =>
+          /droidcam|iriun|camo|epoccam/i.test(c.label)
+        );
+        const backCam = videoInputs.find((c) =>
+          /back|tył|environment/i.test(c.label)
+        );
+
+        if (!selectedDeviceId) {
+          if (obsCam) {
+            setSelectedDeviceId(obsCam.deviceId);
+          } else if (phoneCam) {
+            setSelectedDeviceId(phoneCam.deviceId);
+          } else if (backCam) {
+            setSelectedDeviceId(backCam.deviceId);
+          } else {
+            setSelectedDeviceId(videoInputs[0].deviceId);
+          }
+        }
       }
     } catch (err) {
       console.warn('Błąd wykrywania kamer:', err);
@@ -181,6 +216,14 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
       }
     }
   }, [isOpen, selectedDeviceId, stopCamera, enumerateCameras]);
+
+  // Restart camera when device selection changes
+  useEffect(() => {
+    if (isOpen && selectedDeviceId && selectedDeviceId !== prevDeviceIdRef.current && isCameraActive) {
+      prevDeviceIdRef.current = selectedDeviceId;
+      startCamera();
+    }
+  }, [isOpen, selectedDeviceId, isCameraActive, startCamera]);
 
   // Toggle Torch / Latarka
   const toggleTorch = useCallback(async () => {
@@ -534,38 +577,73 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
 
               {/* Camera Offline / Blocked State */}
               {!isCameraActive && (
-                <div className="p-6 text-center space-y-4 max-w-md my-auto">
+                <div className="p-5 text-center space-y-3.5 max-w-lg my-auto">
                   <div className="w-14 h-14 rounded-2xl bg-stone-900 border border-stone-800 flex items-center justify-center mx-auto text-amber-400 shadow-lg">
-                    <Camera className="w-7 h-7" />
+                    <Video className="w-7 h-7" />
                   </div>
 
                   <div>
                     <h4 className="text-sm sm:text-base font-extrabold text-stone-100 flex items-center justify-center gap-1.5">
-                      <span>Kamera w oknie podglądu AI Studio</span>
+                      <span>Kamera z OBS / Telefonu</span>
                     </h4>
-                    <p className="text-xs text-stone-300 mt-1.5 leading-relaxed">
-                      Przeglądarka internetowa blokuje bezpośredni strumień wideo z kamery wewnątrz wbudowanej ramki (iframe).
+                    <p className="text-xs text-stone-300 mt-1 leading-relaxed">
+                      Wbudowana ramka podglądu AI Studio blokuje dostęp do kamer systemowych (w tym wirtualnej kamery OBS).
                     </p>
-                    <p className="text-[11px] text-amber-400 font-semibold mt-1">
-                      Aby korzystać z kamery internetowej na żywo ze skanowaniem w czasie rzeczywistym, kliknij przycisk poniżej:
+                    <p className="text-xs text-amber-400 font-semibold mt-1">
+                      Otwórz aplikację w pełnym oknie przeglądarki, aby połączyć się z OBS Virtual Camera:
                     </p>
                   </div>
 
-                  <div className="flex flex-col gap-2.5 pt-1">
-                    {/* Primary Button: Open Standalone App with auto-scanner */}
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const standaloneUrl = window.location.origin + window.location.pathname + '?scanner=open';
-                        window.open(standaloneUrl, '_blank');
-                      }}
+                  <div className="flex flex-col gap-2 pt-1">
+                    {/* Primary Button: Direct Native Anchor to bypass popup blocker */}
+                    <a
+                      href={standaloneUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
                       className="w-full py-2.5 px-4 rounded-xl bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-400 hover:to-emerald-500 text-stone-950 font-extrabold text-xs flex items-center justify-center gap-2 cursor-pointer shadow-lg shadow-emerald-950/50 transition-all hover:scale-[1.01]"
                     >
                       <ExternalLink className="w-4 h-4 stroke-[2.5]" />
-                      <span>↗️ Uruchom kamerę w nowej karcie (Kamera na żywo)</span>
-                    </button>
+                      <span>↗️ Otwórz w nowej karcie (Dla OBS / Kamery)</span>
+                    </a>
 
-                    {/* Secondary button: Device camera on mobile OR file chooser on desktop */}
+                    {/* Copy Link Button */}
+                    <div className="flex items-center gap-1.5">
+                      <div className="flex-1 bg-stone-950 px-2.5 py-1.5 rounded-lg border border-stone-800 text-[10px] font-mono text-stone-300 truncate text-left select-all">
+                        {standaloneUrl}
+                      </div>
+                      <button
+                        type="button"
+                        onClick={handleCopyStandaloneUrl}
+                        className="px-3 py-1.5 rounded-lg bg-stone-800 hover:bg-stone-750 text-stone-200 border border-stone-700 text-xs font-semibold flex items-center gap-1.5 cursor-pointer transition-colors shrink-0"
+                      >
+                        {copiedUrl ? (
+                          <>
+                            <Check className="w-3.5 h-3.5 text-emerald-400" />
+                            <span className="text-emerald-400">Skopiowano</span>
+                          </>
+                        ) : (
+                          <>
+                            <Copy className="w-3.5 h-3.5 text-stone-400" />
+                            <span>Kopiuj link</span>
+                          </>
+                        )}
+                      </button>
+                    </div>
+
+                    {/* OBS Quick Setup Instructions */}
+                    <div className="p-3 rounded-xl bg-stone-950/90 border border-stone-800/90 text-left space-y-1.5 text-xs text-stone-300">
+                      <p className="font-bold text-amber-400 text-[11px] uppercase tracking-wider flex items-center gap-1.5">
+                        <Radio className="w-3 h-3 text-amber-400" />
+                        <span>Połączenie z telefonem przez OBS (3 proste kroki):</span>
+                      </p>
+                      <ol className="list-decimal list-inside space-y-1 text-[11px] text-stone-300 leading-normal pl-0.5">
+                        <li>W programie OBS podłącz obraz z telefonu i kliknij w prawym dolnym rogu: <strong className="text-stone-100">„Uruchom kamerę wirtualną”</strong> (Start Virtual Camera).</li>
+                        <li>Otwórz aplikację w osobnej karcie przeglądarki klikając zielony przycisk powyżej.</li>
+                        <li>Zezwól przeglądarce na dostęp do kamery i wybierz z listy: <strong className="text-emerald-400">„OBS Virtual Camera”</strong>!</li>
+                      </ol>
+                    </div>
+
+                    {/* Secondary Desktop / Mobile Actions */}
                     {isMobile ? (
                       <button
                         type="button"
@@ -573,7 +651,7 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
                         className="w-full py-2 px-4 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 text-amber-300 font-bold text-xs flex items-center justify-center gap-2 cursor-pointer transition-colors"
                       >
                         <Camera className="w-3.5 h-3.5" />
-                        <span>📸 Zrób zdjęcie aparatem (Telefon)</span>
+                        <span>📸 Zrób zdjęcie aparatem w telefonie</span>
                       </button>
                     ) : (
                       <button
@@ -582,13 +660,9 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
                         className="w-full py-2 px-4 rounded-xl bg-stone-800 hover:bg-stone-750 border border-stone-700 text-stone-200 font-bold text-xs flex items-center justify-center gap-2 cursor-pointer transition-colors"
                       >
                         <Upload className="w-3.5 h-3.5 text-stone-400" />
-                        <span>📁 Wybierz plik ze zdjęciem karty z dysku</span>
+                        <span>📁 Wybierz plik ze zdjęciem karty z dysku (lub wklej Ctrl+V)</span>
                       </button>
                     )}
-
-                    <div className="p-2.5 rounded-lg bg-stone-950/80 border border-stone-800/80 text-[11px] text-stone-400 text-center leading-normal">
-                      💡 Wskazówka: Możesz też wkleić zdjęcie karty ze schowka (<strong className="text-stone-200 font-mono">Ctrl + V</strong>) lub przeciągnąć plik tutaj.
-                    </div>
                   </div>
                 </div>
               )}
@@ -641,15 +715,16 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
             <div className="pt-3 flex flex-wrap items-center justify-between gap-2 text-xs">
               <div className="flex items-center gap-2">
                 {/* Camera selector */}
-                {cameraDevices.length > 1 && (
+                {cameraDevices.length > 0 && (
                   <select
                     value={selectedDeviceId}
                     onChange={(e) => setSelectedDeviceId(e.target.value)}
-                    className="bg-stone-900 border border-stone-700 rounded-lg px-2.5 py-1.5 text-stone-200 text-xs focus:outline-none focus:border-amber-500 cursor-pointer"
+                    className="bg-stone-900 border border-stone-700 rounded-lg px-2.5 py-1.5 text-stone-200 text-xs focus:outline-none focus:border-amber-500 cursor-pointer max-w-[220px] truncate"
                   >
                     {cameraDevices.map((c) => (
                       <option key={c.deviceId} value={c.deviceId}>
-                        📷 {c.label}
+                        {/obs|virtual/i.test(c.label) ? '🎥 OBS: ' : '📷 '}
+                        {c.label}
                       </option>
                     ))}
                   </select>

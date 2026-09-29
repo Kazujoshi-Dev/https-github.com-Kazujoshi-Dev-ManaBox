@@ -17,7 +17,8 @@ import {
   LogOut,
   User,
   Swords,
-  Camera
+  Camera,
+  ExternalLink
 } from 'lucide-react';
 import { formatCurrency } from '../utils/formatters';
 import { AppSettings, AuthUser } from '../types';
@@ -160,6 +161,17 @@ export const Header: React.FC<HeaderProps> = ({
                 <span className="sm:hidden">Skaner</span>
               </button>
             )}
+
+            <a
+              href={`${typeof window !== 'undefined' ? window.location.origin + window.location.pathname : ''}?scanner=open`}
+              target="_blank"
+              rel="noopener noreferrer"
+              title="Otwórz aplikację w osobnym oknie przeglądarki (pełny dostęp do OBS Virtual Camera)"
+              className="px-2.5 py-2 text-xs font-semibold rounded-lg bg-stone-800 hover:bg-stone-750 text-stone-300 hover:text-stone-100 border border-stone-700 flex items-center gap-1.5 transition-colors cursor-pointer"
+            >
+              <ExternalLink className="w-3.5 h-3.5 text-stone-400" />
+              <span className="hidden md:inline">Otwórz poza ramką (OBS)</span>
+            </a>
 
             <button
               onClick={onOpenAddModal}
