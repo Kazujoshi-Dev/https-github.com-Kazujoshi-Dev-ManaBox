@@ -17,7 +17,11 @@ export const DeckCardRow: React.FC<DeckCardRowProps> = ({
     <div
       onMouseEnter={(e) => onHover(card, e)}
       onMouseLeave={onLeave}
-      className="group relative h-10 w-full rounded-xl overflow-hidden border border-stone-700/80 hover:border-amber-400/80 transition-all shadow-md hover:shadow-amber-500/10 cursor-pointer flex items-center justify-between px-2.5"
+      className={`group relative h-10 w-full rounded-xl overflow-hidden border transition-all shadow-md cursor-pointer flex items-center justify-between px-2.5 ${
+        entry.isFoil
+          ? 'border-amber-400/60 hover:border-amber-300 shadow-amber-500/10'
+          : 'border-stone-700/80 hover:border-amber-400/80 hover:shadow-amber-500/10'
+      }`}
     >
       {/* Artwork banner background crop */}
       <div
@@ -31,11 +35,16 @@ export const DeckCardRow: React.FC<DeckCardRowProps> = ({
       {/* High-legibility text gradient overlay */}
       <div className="absolute inset-0 bg-gradient-to-r from-stone-950/95 via-stone-950/70 to-stone-950/40 group-hover:from-stone-950/90 group-hover:via-stone-950/50 transition-colors" />
 
-      {/* Left: Quantity Badge & Card Name */}
+      {/* Left: Quantity Badge, Foil tag & Card Name */}
       <div className="relative z-10 flex items-center gap-2 min-w-0 pr-2">
         <span className="px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 font-mono text-[10px] font-bold border border-amber-500/30 shrink-0">
           {entry.quantity}x
         </span>
+        {entry.isFoil && (
+          <span className="px-1.5 py-0.2 rounded bg-gradient-to-r from-amber-500/30 to-purple-500/30 text-amber-300 font-mono text-[9px] font-black border border-amber-400/40 shrink-0 flex items-center gap-0.5">
+            ✨ FOIL
+          </span>
+        )}
         <span className="font-bold text-xs text-stone-100 truncate group-hover:text-amber-200 transition-colors drop-shadow-md">
           {card.name}
         </span>

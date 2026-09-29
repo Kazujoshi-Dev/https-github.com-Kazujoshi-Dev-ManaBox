@@ -26,6 +26,7 @@ export interface DeckHeaderProps {
 
 export interface CommanderShowcaseProps {
   commander: ScryfallCard | null | undefined;
+  commanderIsFoil?: boolean;
   onViewDetails: (card: ScryfallCard) => void;
   onRemoveCommander: () => void;
   onOpenSearch: () => void;

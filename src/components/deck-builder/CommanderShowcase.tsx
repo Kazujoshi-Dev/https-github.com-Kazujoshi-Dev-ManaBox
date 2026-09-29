@@ -4,15 +4,20 @@ import { CommanderShowcaseProps } from './types';
 
 export const CommanderShowcase: React.FC<CommanderShowcaseProps> = ({
   commander,
+  commanderIsFoil,
   onViewDetails,
   onRemoveCommander,
   onOpenSearch,
 }) => {
   if (commander) {
     return (
-      <div className="mt-5 p-4 rounded-xl bg-gradient-to-r from-amber-950/30 via-stone-950 to-purple-950/20 border border-amber-500/30 flex flex-col sm:flex-row items-center justify-between gap-4">
+      <div className={`mt-5 p-4 rounded-xl bg-gradient-to-r from-amber-950/30 via-stone-950 to-purple-950/20 border flex flex-col sm:flex-row items-center justify-between gap-4 ${
+        commanderIsFoil ? 'border-amber-400/60 shadow-lg shadow-amber-500/10' : 'border-amber-500/30'
+      }`}>
         <div className="flex items-center gap-3.5">
-          <div className="relative w-16 h-20 rounded-lg overflow-hidden border-2 border-amber-400 shadow-md shrink-0">
+          <div className={`relative w-16 h-20 rounded-lg overflow-hidden border-2 shadow-md shrink-0 ${
+            commanderIsFoil ? 'border-amber-300 ring-2 ring-amber-400/40' : 'border-amber-400'
+          }`}>
             <img
               src={commander.image_uris?.art_crop || commander.image_uris?.normal}
               alt={commander.name}
@@ -24,6 +29,11 @@ export const CommanderShowcase: React.FC<CommanderShowcaseProps> = ({
               <span className="text-[10px] uppercase font-mono font-bold px-2 py-0.5 rounded-full bg-amber-500 text-stone-950">
                 👑 Dowódca Talii
               </span>
+              {commanderIsFoil && (
+                <span className="text-[9px] uppercase font-mono font-bold px-2 py-0.5 rounded-full bg-gradient-to-r from-amber-500/30 to-purple-500/30 text-amber-300 border border-amber-400/50">
+                  ✨ FOIL
+                </span>
+              )}
               <span className="text-xs font-mono text-amber-300 font-bold">
                 {commander.mana_cost}
               </span>

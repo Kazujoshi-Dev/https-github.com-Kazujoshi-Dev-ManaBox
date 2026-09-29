@@ -10,6 +10,8 @@ interface UseCardModalFormProps {
   onSaveToCollection: (itemData: CardSaveData) => void;
   onClose: () => void;
   onSelectPrint?: (newCard: ScryfallCard, oldCard: ScryfallCard) => void;
+  onToggleFoil?: (isFoil: boolean) => void;
+  initialFoil?: boolean;
 }
 
 export function useCardModalForm({
@@ -20,14 +22,24 @@ export function useCardModalForm({
   onSaveToCollection,
   onClose,
   onSelectPrint,
+  onToggleFoil,
+  initialFoil,
 }: UseCardModalFormProps) {
   // Current active card version (can be switched between prints)
   const [activeCard, setActiveCard] = useState<ScryfallCard>(card);
   const [faceIndex, setFaceIndex] = useState<number>(0);
 
   // Form Fields
-  const [quantity, setQuantity] = useState<number>(existingItem ? existingItem.quantity : 1);
-  const [quantityFoil, setQuantityFoil] = useState<number>(existingItem ? existingItem.quantityFoil : 0);
+  const [quantity, setQuantity] = useState<number>(() => {
+    if (existingItem) return existingItem.quantity;
+    if (initialFoil !== undefined) return initialFoil ? 0 : 1;
+    return 1;
+  });
+  const [quantityFoil, setQuantityFoil] = useState<number>(() => {
+    if (existingItem) return existingItem.quantityFoil;
+    if (initialFoil !== undefined) return initialFoil ? 1 : 0;
+    return 0;
+  });
   const [condition, setCondition] = useState<CardCondition>(existingItem ? existingItem.condition : 'NM');
   const [language, setLanguage] = useState<CardLanguage>(existingItem ? existingItem.language : 'EN');
   const [purchasePrice, setPurchasePrice] = useState<string>(
@@ -118,6 +130,10 @@ export function useCardModalForm({
       setPurchasePrice(newPrice);
     }
 
+    if (onToggleFoil) {
+      onToggleFoil(toFoil);
+    }
+
     if (existingItem) {
       onSaveToCollection({
         card: activeCard,
@@ -137,11 +153,11 @@ export function useCardModalForm({
     } else {
       showNotice(
         toFoil
-          ? `Wybrano wersję Foil (Błyszcząca) ✨${updatePriceWithMarket && newPrice ? ` (cena: ${newPrice} zł)` : ''}`
-          : `Wybrano wersję Standard (Zwykła)${updatePriceWithMarket && newPrice ? ` (cena: ${newPrice} zł)` : ''}`
+          ? `Zapisano wersję Foil (Błyszcząca) ✨${updatePriceWithMarket && newPrice ? ` (cena: ${newPrice} zł)` : ''}`
+          : `Zapisano wersję Standard (Zwykła)${updatePriceWithMarket && newPrice ? ` (cena: ${newPrice} zł)` : ''}`
       );
     }
-  }, [quantity, quantityFoil, purchasePrice, existingItem, onSaveToCollection, activeCard, condition, language, notes, selectedBinder, showNotice]);
+  }, [quantity, quantityFoil, purchasePrice, onToggleFoil, existingItem, onSaveToCollection, activeCard, condition, language, notes, selectedBinder, showNotice]);
 
   const handleSelectPrint = useCallback((print: ScryfallCard) => {
     const oldCard = activeCard;
@@ -216,6 +232,9 @@ export function useCardModalForm({
 
   const handleSave = useCallback((e: FormEvent) => {
     e.preventDefault();
+    if (onToggleFoil) {
+      onToggleFoil(quantityFoil > 0);
+    }
     onSaveToCollection({
       card: activeCard,
       quantity,
@@ -232,7 +251,7 @@ export function useCardModalForm({
       setIsSaved(false);
       onClose();
     }, 600);
-  }, [onSaveToCollection, activeCard, quantity, quantityFoil, condition, language, purchasePrice, notes, selectedBinder, onClose]);
+  }, [onToggleFoil, onSaveToCollection, activeCard, quantity, quantityFoil, condition, language, purchasePrice, notes, selectedBinder, onClose]);
 
   return {
     activeCard,

@@ -24,6 +24,8 @@ export const CardModal: React.FC<CardModalProps> = ({
   onSaveToCollection,
   onAddToWishlist,
   onSelectPrint,
+  onToggleFoil,
+  initialFoil,
 }) => {
   if (!card) return null;
 
@@ -69,6 +71,8 @@ export const CardModal: React.FC<CardModalProps> = ({
     onSaveToCollection,
     onClose,
     onSelectPrint,
+    onToggleFoil,
+    initialFoil,
   });
 
   // Prints fetching and filtering hook

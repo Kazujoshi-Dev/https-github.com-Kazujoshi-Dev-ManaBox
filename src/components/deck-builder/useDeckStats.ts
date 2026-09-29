@@ -24,11 +24,11 @@ export function useDeckStats({ deck, settings }: UseDeckStatsProps) {
   const totalDeckValue = useMemo(() => {
     let val = 0;
     if (deck.commander) {
-      val += getCardPrice(deck.commander, false, settings);
+      val += getCardPrice(deck.commander, Boolean(deck.commanderIsFoil), settings);
     }
     deck.cards.forEach(entry => {
       if (!entry.isCommander) {
-        val += getCardPrice(entry.card, false, settings) * entry.quantity;
+        val += getCardPrice(entry.card, Boolean(entry.isFoil), settings) * entry.quantity;
       }
     });
     return val;

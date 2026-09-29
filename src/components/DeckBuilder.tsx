@@ -162,6 +162,7 @@ export const DeckBuilder: React.FC<DeckBuilderProps> = ({
         {/* Commander Featured Showcase / Select Placeholder */}
         <CommanderShowcase
           commander={deck.commander}
+          commanderIsFoil={deck.commanderIsFoil}
           onViewDetails={onViewCardDetails}
           onRemoveCommander={handleRemoveCommander}
           onOpenSearch={openSearchModal}

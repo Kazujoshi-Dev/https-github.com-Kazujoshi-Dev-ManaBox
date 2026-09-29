@@ -60,19 +60,31 @@ export default function App() {
   const [selectedCardForModal, setSelectedCardForModal] = useState<ScryfallCard | null>(null);
   const [selectedCollectionItemForModal, setSelectedCollectionItemForModal] = useState<CollectionItem | null>(null);
   const [deckCardBeingViewed, setDeckCardBeingViewed] = useState<ScryfallCard | null>(null);
+  const [deckCardIsFoil, setDeckCardIsFoil] = useState<boolean | undefined>(undefined);
 
   // Modal Handlers
   const handleOpenCardModal = useCallback((card: ScryfallCard, item: CollectionItem | null = null) => {
     setSelectedCardForModal(card);
     setSelectedCollectionItemForModal(item);
+    setDeckCardIsFoil(item ? item.quantityFoil > 0 : undefined);
   }, []);
 
   const handleOpenDeckCardModal = useCallback((card: ScryfallCard) => {
     setDeckCardBeingViewed(card);
+    let isFoil = false;
+    if (selectedDeck) {
+      if (selectedDeck.commander && (selectedDeck.commander.id === card.id || selectedDeck.commander.name.toLowerCase() === card.name.toLowerCase())) {
+        isFoil = Boolean(selectedDeck.commanderIsFoil);
+      } else {
+        const found = selectedDeck.cards.find(e => e.card.id === card.id || e.card.name.toLowerCase() === card.name.toLowerCase());
+        isFoil = Boolean(found?.isFoil);
+      }
+    }
+    setDeckCardIsFoil(isFoil);
     const existing = collection.find(c => c.card.id === card.id || c.card.name.toLowerCase() === card.name.toLowerCase()) || null;
     setSelectedCardForModal(card);
     setSelectedCollectionItemForModal(existing);
-  }, [collection]);
+  }, [collection, selectedDeck]);
 
   const handleCardPrintSelectedInModal = useCallback((newCard: ScryfallCard) => {
     // If viewing a card from the active deck, update the deck version automatically
@@ -110,10 +122,46 @@ export default function App() {
     }
   }, [selectedDeck, deckCardBeingViewed, updateDeck, showToast]);
 
+  const handleCardFoilToggledInModal = useCallback((isFoil: boolean) => {
+    if (selectedDeck && deckCardBeingViewed) {
+      const targetId = deckCardBeingViewed.id;
+      const targetName = deckCardBeingViewed.name.toLowerCase();
+
+      const isCommander = Boolean(
+        selectedDeck.commander && 
+        (selectedDeck.commander.id === targetId || selectedDeck.commander.name.toLowerCase() === targetName)
+      );
+
+      const updatedCommanderIsFoil = isCommander ? isFoil : selectedDeck.commanderIsFoil;
+
+      const updatedCards = selectedDeck.cards.map(entry => {
+        if (entry.card.id === targetId || entry.card.name.toLowerCase() === targetName) {
+          return {
+            ...entry,
+            isFoil,
+          };
+        }
+        return entry;
+      });
+
+      const updatedDeck: DeckItem = {
+        ...selectedDeck,
+        commanderIsFoil: updatedCommanderIsFoil,
+        cards: updatedCards,
+      };
+
+      setSelectedDeck(updatedDeck);
+      updateDeck(updatedDeck);
+      setDeckCardIsFoil(isFoil);
+      showToast(isFoil ? `Ustawiono wersję Foil ✨ w talii "${selectedDeck.name}"!` : `Ustawiono wersję Standard w talii "${selectedDeck.name}"!`);
+    }
+  }, [selectedDeck, deckCardBeingViewed, updateDeck, showToast]);
+
   const handleCloseCardModal = useCallback(() => {
     setSelectedCardForModal(null);
     setSelectedCollectionItemForModal(null);
     setDeckCardBeingViewed(null);
+    setDeckCardIsFoil(undefined);
   }, []);
 
   const handleSaveCardModal = useCallback(async (data: {
@@ -264,6 +312,8 @@ export default function App() {
           onSaveToCollection={handleSaveCardModal}
           onAddToWishlist={addToWishlist}
           onSelectPrint={handleCardPrintSelectedInModal}
+          onToggleFoil={handleCardFoilToggledInModal}
+          initialFoil={deckCardIsFoil}
         />
       )}
 

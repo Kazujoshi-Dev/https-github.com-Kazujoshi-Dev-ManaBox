@@ -126,6 +126,7 @@ export interface DeckCardEntry {
   collectionItemId?: string;
   card: ScryfallCard;
   quantity: number;
+  isFoil?: boolean;
   isCommander?: boolean;
   isSideboard?: boolean;
 }
@@ -137,6 +138,7 @@ export interface DeckItem {
   description?: string;
   cardSource?: 'all' | 'collection'; // 'collection' (tylko z kolekcji) lub 'all' (wszystkie karty MTG)
   commander?: ScryfallCard | null;
+  commanderIsFoil?: boolean;
   cards: DeckCardEntry[];
   createdAt: string;
   updatedAt?: string;

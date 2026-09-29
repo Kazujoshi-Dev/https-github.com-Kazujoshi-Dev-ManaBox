@@ -22,6 +22,8 @@ export interface CardModalProps {
   onSaveToCollection: (itemData: CardSaveData) => void;
   onAddToWishlist?: (card: ScryfallCard) => void;
   onSelectPrint?: (newCard: ScryfallCard, oldCard: ScryfallCard) => void;
+  onToggleFoil?: (isFoil: boolean) => void;
+  initialFoil?: boolean;
 }
 
 export type CardModalTab = 'details' | 'prints';
