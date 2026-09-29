@@ -7,7 +7,8 @@ export async function getDecks(userId: string): Promise<DeckItem[]> {
   return withDb(
     async (p) => {
       const res = await p.query(
-        `SELECT id, name, format, description, card_source as "cardSource", commander, cards,
+        `SELECT id, name, format, description, card_source as "cardSource", commander,
+                commander_is_foil as "commanderIsFoil", cards,
                 created_at as "createdAt", updated_at as "updatedAt"
          FROM user_decks WHERE user_id = $1 ORDER BY updated_at DESC`,
         [userId]
@@ -35,14 +36,15 @@ export async function saveDeck(userId: string, deck: DeckItem): Promise<DeckItem
   return withDb(
     async (p) => {
       await p.query(
-        `INSERT INTO user_decks (id, user_id, name, format, description, card_source, commander, cards, created_at, updated_at)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+        `INSERT INTO user_decks (id, user_id, name, format, description, card_source, commander, commander_is_foil, cards, created_at, updated_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
          ON CONFLICT (id) DO UPDATE SET
            name = EXCLUDED.name,
            format = EXCLUDED.format,
            description = EXCLUDED.description,
            card_source = EXCLUDED.card_source,
            commander = EXCLUDED.commander,
+           commander_is_foil = EXCLUDED.commander_is_foil,
            cards = EXCLUDED.cards,
            updated_at = EXCLUDED.updated_at`,
         [
@@ -53,6 +55,7 @@ export async function saveDeck(userId: string, deck: DeckItem): Promise<DeckItem
           deckToSave.description || '',
           deckToSave.cardSource,
           deckToSave.commander ? JSON.stringify(deckToSave.commander) : null,
+          Boolean(deckToSave.commanderIsFoil),
           JSON.stringify(deckToSave.cards || []),
           deckToSave.createdAt || now,
           now

@@ -16,7 +16,8 @@ import {
   Trophy,
   LogOut,
   User,
-  Swords
+  Swords,
+  Camera
 } from 'lucide-react';
 import { formatCurrency } from '../utils/formatters';
 import { AppSettings, AuthUser } from '../types';
@@ -33,6 +34,7 @@ interface HeaderProps {
   onRefreshPrices: () => void;
   isRefreshing: boolean;
   onOpenAddModal: () => void;
+  onOpenScannerModal?: () => void;
   onExportCollection: () => void;
   onImportCollection: (e: React.ChangeEvent<HTMLInputElement>) => void;
   user?: AuthUser | null;
@@ -51,6 +53,7 @@ export const Header: React.FC<HeaderProps> = ({
   onRefreshPrices,
   isRefreshing,
   onOpenAddModal,
+  onOpenScannerModal,
   onExportCollection,
   onImportCollection,
   user,
@@ -146,9 +149,21 @@ export const Header: React.FC<HeaderProps> = ({
               <span className="hidden sm:inline">Odśwież ceny</span>
             </button>
 
+            {onOpenScannerModal && (
+              <button
+                onClick={onOpenScannerModal}
+                title="Skanuj karty kamerą (darmowy OCR w przeglądarce)"
+                className="px-3 py-2 text-xs font-semibold rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center gap-1.5 transition-colors cursor-pointer shadow-sm"
+              >
+                <Camera className="w-4 h-4 text-emerald-400" />
+                <span className="hidden sm:inline">Skanuj kamerą</span>
+                <span className="sm:hidden">Skaner</span>
+              </button>
+            )}
+
             <button
               onClick={onOpenAddModal}
-              className="px-3 py-2 text-xs font-semibold rounded-lg bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-500 hover:to-amber-600 text-stone-900 flex items-center gap-1.5 transition-all shadow-sm"
+              className="px-3 py-2 text-xs font-semibold rounded-lg bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-500 hover:to-amber-600 text-stone-900 flex items-center gap-1.5 transition-all shadow-sm cursor-pointer"
             >
               <Plus className="w-4 h-4 stroke-[2.5]" />
               <span>Dodaj kartę</span>

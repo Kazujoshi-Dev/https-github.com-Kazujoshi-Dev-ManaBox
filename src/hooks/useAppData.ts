@@ -136,8 +136,18 @@ export function useAppData({ userId, onUnauthorized, showToast, onSettingsLoaded
     existingItem?: CollectionItem | null
   ): Promise<CollectionItem | null> => {
     try {
-      if (existingItem) {
-        const res = await collectionApi.update(existingItem.id, {
+      // Find existing item if passed or match by card ID / name in current collection
+      const targetExisting = existingItem || collection.find(
+        (c) =>
+          c.card.id === data.card.id ||
+          c.cardId === data.card.id ||
+          (c.card.name.toLowerCase() === data.card.name.toLowerCase() &&
+           c.card.set.toLowerCase() === data.card.set.toLowerCase() &&
+           c.card.collector_number === data.card.collector_number)
+      );
+
+      if (targetExisting) {
+        const res = await collectionApi.update(targetExisting.id, {
           cardId: data.card.id,
           ...data
         }, onUnauthorized);
@@ -165,7 +175,7 @@ export function useAppData({ userId, onUnauthorized, showToast, onSettingsLoaded
       console.error('Failed to save card:', err);
     }
     return null;
-  }, [onUnauthorized, showToast]);
+  }, [collection, onUnauthorized, showToast]);
 
   const quickAddToCollection = useCallback((card: ScryfallCard) => {
     const defaultBinder = (catalogs && catalogs.length > 0)

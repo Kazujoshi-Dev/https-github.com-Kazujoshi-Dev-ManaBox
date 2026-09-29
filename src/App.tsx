@@ -6,6 +6,7 @@ import { TabContent, NavigationTab } from './components/TabContent';
 import { SettingsModal } from './components/SettingsModal';
 import { CardModal } from './components/CardModal';
 import { DeckCreateModal } from './components/DeckCreateModal';
+import { CameraScannerModal } from './components/camera-scanner/CameraScannerModal';
 import { Toast } from './components/Toast';
 import { useAuth } from './hooks/useAuth';
 import { useToast } from './hooks/useToast';
@@ -57,6 +58,7 @@ export default function App() {
   // Modal Visibility States
   const [isSettingsOpen, setIsSettingsOpen] = useState<boolean>(false);
   const [isDeckCreateModalOpen, setIsDeckCreateModalOpen] = useState<boolean>(false);
+  const [isScannerModalOpen, setIsScannerModalOpen] = useState<boolean>(false);
   const [selectedCardForModal, setSelectedCardForModal] = useState<ScryfallCard | null>(null);
   const [selectedCollectionItemForModal, setSelectedCollectionItemForModal] = useState<CollectionItem | null>(null);
   const [deckCardBeingViewed, setDeckCardBeingViewed] = useState<ScryfallCard | null>(null);
@@ -66,6 +68,7 @@ export default function App() {
   const handleOpenCardModal = useCallback((card: ScryfallCard, item: CollectionItem | null = null) => {
     setSelectedCardForModal(card);
     setSelectedCollectionItemForModal(item);
+    setDeckCardBeingViewed(null);
     setDeckCardIsFoil(item ? item.quantityFoil > 0 : undefined);
   }, []);
 
@@ -145,22 +148,8 @@ export default function App() {
       }
     });
 
-    // 3. Update collection item if present
-    if (selectedCollectionItemForModal) {
-      saveToCollection({
-        card: newCard,
-        quantity: selectedCollectionItemForModal.quantity,
-        quantityFoil: selectedCollectionItemForModal.quantityFoil,
-        condition: selectedCollectionItemForModal.condition,
-        language: selectedCollectionItemForModal.language,
-        purchasePrice: selectedCollectionItemForModal.purchasePrice,
-        notes: selectedCollectionItemForModal.notes,
-        binder: selectedCollectionItemForModal.binder,
-      }, selectedCollectionItemForModal);
-    }
-
     showToast(`Zaktualizowano wersję [${newCard.set.toUpperCase()}] #${newCard.collector_number} dla "${newCard.name}"!`);
-  }, [deckCardBeingViewed, selectedCardForModal, selectedDeck, decks, selectedCollectionItemForModal, updateDeck, saveToCollection, showToast]);
+  }, [deckCardBeingViewed, selectedCardForModal, selectedDeck, decks, updateDeck, showToast]);
 
   const handleCardFoilToggledInModal = useCallback((isFoil: boolean) => {
     const targetCard = deckCardBeingViewed || selectedCardForModal;
@@ -239,16 +228,52 @@ export default function App() {
     notes?: string;
     binder?: string;
   }) => {
+    const isFoil = data.quantityFoil > 0;
     const updated = await saveToCollection(data, selectedCollectionItemForModal);
-    if (updated && selectedCollectionItemForModal) {
+    if (updated) {
       setSelectedCollectionItemForModal(updated);
       setSelectedCardForModal(updated.card);
     }
-    // Also sync to deck if card was opened from deck
-    if (selectedDeck && deckCardBeingViewed) {
-      handleCardPrintSelectedInModal(data.card);
+
+    // Synchronize to active deck directly with the exact saved data without race condition
+    if (selectedDeck) {
+      const targetId = (deckCardBeingViewed || selectedCardForModal)?.id || data.card.id;
+      const targetName = (deckCardBeingViewed || selectedCardForModal)?.name.toLowerCase() || data.card.name.toLowerCase();
+
+      const isCommander = Boolean(
+        selectedDeck.commander && 
+        (selectedDeck.commander.id === targetId || selectedDeck.commander.name.toLowerCase() === targetName)
+      );
+
+      const updatedCommander = isCommander ? data.card : selectedDeck.commander;
+      const updatedCommanderIsFoil = isCommander ? isFoil : selectedDeck.commanderIsFoil;
+
+      const updatedCards = selectedDeck.cards.map(entry => {
+        if (entry.card.id === targetId || entry.card.name.toLowerCase() === targetName) {
+          return {
+            ...entry,
+            card: data.card,
+            isFoil: isFoil,
+          };
+        }
+        return entry;
+      });
+
+      const updatedDeck: DeckItem = {
+        ...selectedDeck,
+        commander: updatedCommander,
+        commanderIsFoil: updatedCommanderIsFoil,
+        cards: updatedCards,
+      };
+
+      setSelectedDeck(updatedDeck);
+      updateDeck(updatedDeck);
+      if (deckCardBeingViewed) {
+        setDeckCardBeingViewed(data.card);
+        setDeckCardIsFoil(isFoil);
+      }
     }
-  }, [saveToCollection, selectedCollectionItemForModal, selectedDeck, deckCardBeingViewed, handleCardPrintSelectedInModal]);
+  }, [saveToCollection, selectedCollectionItemForModal, selectedDeck, deckCardBeingViewed, selectedCardForModal, updateDeck]);
 
   const handleMoveWishlistToCollection = useCallback((wishlistItem: { id: string; card: ScryfallCard }) => {
     handleOpenCardModal(wishlistItem.card, null);
@@ -304,6 +329,7 @@ export default function App() {
         onRefreshPrices={refreshPrices}
         isRefreshing={isRefreshingPrices}
         onOpenAddModal={() => setActiveTab('search')}
+        onOpenScannerModal={() => setIsScannerModalOpen(true)}
         onExportCollection={exportCollection}
         onImportCollection={importCollection}
         user={currentUser}
@@ -349,6 +375,7 @@ export default function App() {
             onMoveWishlistToCollection={handleMoveWishlistToCollection}
             onSelectCard={(card) => handleOpenCardModal(card, null)}
             onViewDeckCardDetails={handleOpenDeckCardModal}
+            onOpenScannerModal={() => setIsScannerModalOpen(true)}
           />
         )}
       </main>
@@ -362,6 +389,18 @@ export default function App() {
             await updateSettings(newSettings);
             showToast('Zapisano nowe ustawienia wyceny i waluty!');
           }}
+        />
+      )}
+
+      {/* Camera OCR Card Scanner Modal */}
+      {isScannerModalOpen && (
+        <CameraScannerModal
+          isOpen={isScannerModalOpen}
+          onClose={() => setIsScannerModalOpen(false)}
+          catalogs={catalogs}
+          settings={settings}
+          onSaveToCollection={saveToCollection}
+          showToast={showToast}
         />
       )}
 

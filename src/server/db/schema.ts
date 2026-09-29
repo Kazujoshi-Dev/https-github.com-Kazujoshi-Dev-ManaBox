@@ -109,6 +109,7 @@ export async function initDb(): Promise<void> {
             description TEXT,
             card_source VARCHAR(30) DEFAULT 'collection',
             commander JSONB,
+            commander_is_foil BOOLEAN DEFAULT FALSE,
             cards JSONB NOT NULL DEFAULT '[]',
             created_at TIMESTAMPTZ DEFAULT NOW(),
             updated_at TIMESTAMPTZ DEFAULT NOW()
@@ -116,6 +117,7 @@ export async function initDb(): Promise<void> {
 
           -- Safe forward-compatible migrations
           ALTER TABLE user_decks ADD COLUMN IF NOT EXISTS card_source VARCHAR(30) DEFAULT 'collection';
+          ALTER TABLE user_decks ADD COLUMN IF NOT EXISTS commander_is_foil BOOLEAN DEFAULT FALSE;
           ALTER TABLE user_collections ADD COLUMN IF NOT EXISTS last_updated_price_at TIMESTAMPTZ;
           ALTER TABLE user_settings ADD COLUMN IF NOT EXISTS auto_nbp_rate BOOLEAN DEFAULT TRUE;
         `);

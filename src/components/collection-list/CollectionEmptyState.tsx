@@ -1,10 +1,11 @@
 import React from 'react';
-import { FolderOpen, Plus } from 'lucide-react';
+import { FolderOpen, Plus, Camera } from 'lucide-react';
 import { CollectionEmptyStateProps } from './types';
 
 export const CollectionEmptyState: React.FC<CollectionEmptyStateProps> = ({
   activeBinder,
   onOpenAddModal,
+  onOpenScannerModal,
 }) => {
   const isCatalogFiltered = activeBinder !== 'ALL';
 
@@ -20,16 +21,28 @@ export const CollectionEmptyState: React.FC<CollectionEmptyStateProps> = ({
         <p className="text-xs text-stone-400 mt-1 max-w-md mx-auto">
           {isCatalogFiltered 
             ? 'W tym katalogu nie ma jeszcze kart spełniających filtry. Możesz dodać do niego kartę z wyszukiwarki lub edytując istniejącą pozycję.'
-            : 'Nie znaleziono kart spełniających kryteria wyszukiwania. Dodaj nową kartę wyszukując w API Scryfall lub zmień filtry.'}
+            : 'Nie znaleziono kart spełniających kryteria wyszukiwania. Dodaj nową kartę wyszukując w API Scryfall, skanując kamerą lub zmień filtry.'}
         </p>
       </div>
-      <button
-        onClick={onOpenAddModal}
-        className="px-4 py-2.5 rounded-xl bg-amber-500 text-stone-950 font-bold text-xs inline-flex items-center gap-2 shadow-lg hover:bg-amber-400 transition-colors cursor-pointer"
-      >
-        <Plus className="w-4 h-4 stroke-[3]" />
-        <span>Szukaj i dodaj kartę do katalogu</span>
-      </button>
+      <div className="flex flex-wrap items-center justify-center gap-3">
+        {onOpenScannerModal && (
+          <button
+            onClick={onOpenScannerModal}
+            className="px-4 py-2.5 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 font-bold text-xs inline-flex items-center gap-2 shadow-lg transition-colors cursor-pointer"
+          >
+            <Camera className="w-4 h-4 text-emerald-400" />
+            <span>Skanuj karty kamerą (OCR)</span>
+          </button>
+        )}
+        <button
+          onClick={onOpenAddModal}
+          className="px-4 py-2.5 rounded-xl bg-amber-500 text-stone-950 font-bold text-xs inline-flex items-center gap-2 shadow-lg hover:bg-amber-400 transition-colors cursor-pointer"
+        >
+          <Plus className="w-4 h-4 stroke-[3]" />
+          <span>Szukaj i dodaj kartę do katalogu</span>
+        </button>
+      </div>
     </div>
   );
 };
+

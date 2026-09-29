@@ -1,0 +1,938 @@
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { 
+  Camera, 
+  X, 
+  Sparkles, 
+  Check, 
+  Layers, 
+  RefreshCw, 
+  Upload, 
+  Zap, 
+  ZapOff, 
+  FolderPlus, 
+  Search, 
+  AlertCircle,
+  Plus,
+  Minus,
+  CheckCircle2,
+  ScanLine
+} from 'lucide-react';
+import { ScryfallCard, CardCondition, CardLanguage, Catalog, AppSettings } from '../../types';
+import { formatCurrency, getCardImageUri, getCardPrice, getRarityColor, getRarityLabel, handleCardImageError } from '../../utils/formatters';
+import { CameraScannerModalProps, CameraDeviceOption, ScanResult } from './types';
+import { scanMtgCardFrame, searchCardInScryfall } from './ocrProcessor';
+
+export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
+  isOpen,
+  onClose,
+  catalogs,
+  settings,
+  onSaveToCollection,
+  showToast,
+}) => {
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const streamRef = useRef<MediaStream | null>(null);
+  const autoScanTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+  // Camera State
+  const [cameraDevices, setCameraDevices] = useState<CameraDeviceOption[]>([]);
+  const [selectedDeviceId, setSelectedDeviceId] = useState<string>('');
+  const [isCameraActive, setIsCameraActive] = useState<boolean>(false);
+  const [cameraError, setCameraError] = useState<string | null>(null);
+  const [hasTorch, setHasTorch] = useState<boolean>(false);
+  const [isTorchOn, setIsTorchOn] = useState<boolean>(false);
+
+  // Scanning State
+  const [isScanning, setIsScanning] = useState<boolean>(false);
+  const [scanStatus, setScanStatus] = useState<string>('Nakieruj kartę na ramkę');
+  const [isAutoScanEnabled, setIsAutoScanEnabled] = useState<boolean>(false);
+  const [isBatchMode, setIsBatchMode] = useState<boolean>(true);
+  const [sessionAddedCount, setSessionAddedCount] = useState<number>(0);
+
+  // Detection & Confirmation State
+  const [scanResult, setScanResult] = useState<ScanResult | null>(null);
+  const [activeCard, setActiveCard] = useState<ScryfallCard | null>(null);
+  const [isFoil, setIsFoil] = useState<boolean>(false);
+  const [selectedBinder, setSelectedBinder] = useState<string>(() => {
+    const def = catalogs.find((c) => c.isDefault);
+    return def ? def.name : catalogs[0]?.name || 'Klaser Główny';
+  });
+  const [quantity, setQuantity] = useState<number>(1);
+  const [condition, setCondition] = useState<CardCondition>('NM');
+  const [language, setLanguage] = useState<CardLanguage>('EN');
+  const [isAdding, setIsAdding] = useState<boolean>(false);
+  const [lastAddedNotice, setLastAddedNotice] = useState<string | null>(null);
+
+  // Prints Drawer
+  const [isPrintsOpen, setIsPrintsOpen] = useState<boolean>(false);
+  const [prints, setPrints] = useState<ScryfallCard[]>([]);
+  const [isLoadingPrints, setIsLoadingPrints] = useState<boolean>(false);
+
+  // Manual fallback search
+  const [manualQuery, setManualQuery] = useState<string>('');
+  const [isSearchingManual, setIsSearchingManual] = useState<boolean>(false);
+
+  // 1. Enumerate available video inputs
+  const enumerateCameras = useCallback(async () => {
+    try {
+      if (!navigator.mediaDevices?.enumerateDevices) return;
+      const devices = await navigator.mediaDevices.enumerateDevices();
+      const videoInputs = devices
+        .filter((d) => d.kind === 'videoinput')
+        .map((d, idx) => ({
+          deviceId: d.deviceId,
+          label: d.label || `Kamera ${idx + 1}`,
+        }));
+
+      setCameraDevices(videoInputs);
+      if (videoInputs.length > 0 && !selectedDeviceId) {
+        // Prefer back camera if available
+        const backCam = videoInputs.find(
+          (c) => c.label.toLowerCase().includes('back') || c.label.toLowerCase().includes('tył') || c.label.toLowerCase().includes('environment')
+        );
+        setSelectedDeviceId(backCam ? backCam.deviceId : videoInputs[0].deviceId);
+      }
+    } catch (err) {
+      console.warn('Błąd wykrywania kamer:', err);
+    }
+  }, [selectedDeviceId]);
+
+  // 2. Start / Stop Camera Stream
+  const stopCamera = useCallback(() => {
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach((track) => track.stop());
+      streamRef.current = null;
+    }
+    if (videoRef.current) {
+      videoRef.current.srcObject = null;
+    }
+    setIsCameraActive(false);
+    setIsTorchOn(false);
+  }, []);
+
+  const startCamera = useCallback(async () => {
+    if (!isOpen) return;
+    stopCamera();
+    setCameraError(null);
+
+    try {
+      const constraints: MediaStreamConstraints = {
+        video: {
+          deviceId: selectedDeviceId ? { exact: selectedDeviceId } : undefined,
+          facingMode: selectedDeviceId ? undefined : { ideal: 'environment' },
+          width: { ideal: 1920 },
+          height: { ideal: 1080 },
+        },
+        audio: false,
+      };
+
+      const stream = await navigator.mediaDevices.getUserMedia(constraints);
+      streamRef.current = stream;
+
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        videoRef.current.play().catch((e) => console.warn('Video play err:', e));
+      }
+
+      setIsCameraActive(true);
+
+      // Check for torch capability
+      const videoTrack = stream.getVideoTracks()[0];
+      const capabilities = (videoTrack?.getCapabilities?.() || {}) as any;
+      setHasTorch(Boolean(capabilities.torch));
+
+      // Refresh camera labels after permission granted
+      enumerateCameras();
+    } catch (err: any) {
+      console.error('Błąd kamery:', err);
+      setIsCameraActive(false);
+      if (err.name === 'NotAllowedError') {
+        setCameraError('Dostęp do kamery został zablokowany w przeglądarce. Zezwól na dostęp w pasku adresu.');
+      } else if (err.name === 'NotFoundError') {
+        setCameraError('Nie znaleziono podłączonej kamery. Możesz wgrać zdjęcie karty z dysku.');
+      } else {
+        setCameraError(`Nie udało się uruchomić kamery (${err.message || 'błąd urządzenia'}).`);
+      }
+    }
+  }, [isOpen, selectedDeviceId, stopCamera, enumerateCameras]);
+
+  // Toggle Torch / Latarka
+  const toggleTorch = useCallback(async () => {
+    if (!streamRef.current || !hasTorch) return;
+    const videoTrack = streamRef.current.getVideoTracks()[0];
+    if (videoTrack) {
+      try {
+        const nextTorch = !isTorchOn;
+        await (videoTrack as any).applyConstraints({
+          advanced: [{ torch: nextTorch }],
+        });
+        setIsTorchOn(nextTorch);
+      } catch (err) {
+        console.warn('Błąd włączania latarki:', err);
+      }
+    }
+  }, [hasTorch, isTorchOn]);
+
+  // Manage Camera on Modal Open/Close
+  useEffect(() => {
+    if (isOpen) {
+      startCamera();
+    } else {
+      stopCamera();
+      if (autoScanTimerRef.current) clearInterval(autoScanTimerRef.current);
+      setScanResult(null);
+      setActiveCard(null);
+      setLastAddedNotice(null);
+    }
+    return () => {
+      stopCamera();
+      if (autoScanTimerRef.current) clearInterval(autoScanTimerRef.current);
+    };
+  }, [isOpen, startCamera, stopCamera]);
+
+  // 3. OCR Scan Action
+  const performScan = useCallback(async () => {
+    if (isScanning) return;
+    if (!videoRef.current || videoRef.current.readyState < 2) return;
+
+    setIsScanning(true);
+    setScanStatus('Pobieranie klatki i analiza OCR...');
+
+    try {
+      const video = videoRef.current;
+      const width = video.videoWidth || 1280;
+      const height = video.videoHeight || 720;
+
+      const result = await scanMtgCardFrame(video, width, height, (_p, statusText) => {
+        setScanStatus(statusText);
+      });
+
+      setScanResult(result);
+
+      if (result.matchedCard) {
+        setActiveCard(result.matchedCard);
+        setManualQuery(result.matchedCard.name);
+        setScanStatus(`Rozpoznano: "${result.matchedCard.name}"`);
+      } else if (result.cleanedTitle) {
+        setManualQuery(result.cleanedTitle);
+        setScanStatus(`Odczytano: "${result.cleanedTitle}" - doprecyzuj wyszukiwanie`);
+      } else {
+        setScanStatus('Nie odczytano tekstu. Zbliż kartę i upewnij się, że nie ma odblasków.');
+      }
+    } catch (err: any) {
+      console.error('Błąd OCR skanowania:', err);
+      setScanStatus('Błąd przetwarzania OCR. Spróbuj ponownie lub wgraj zdjęcie.');
+    } finally {
+      setIsScanning(false);
+    }
+  }, [isScanning]);
+
+  // Auto-scan interval handler
+  useEffect(() => {
+    if (isAutoScanEnabled && isCameraActive && !activeCard && !isScanning) {
+      autoScanTimerRef.current = setInterval(() => {
+        performScan();
+      }, 3500);
+    } else {
+      if (autoScanTimerRef.current) {
+        clearInterval(autoScanTimerRef.current);
+        autoScanTimerRef.current = null;
+      }
+    }
+    return () => {
+      if (autoScanTimerRef.current) clearInterval(autoScanTimerRef.current);
+    };
+  }, [isAutoScanEnabled, isCameraActive, activeCard, isScanning, performScan]);
+
+  // 4. File Upload fallback scan
+  const handleFileUpload = useCallback(
+    async (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+
+      setIsScanning(true);
+      setScanStatus('Wczytywanie pliku graficznego...');
+
+      const img = new Image();
+      img.onload = async () => {
+        try {
+          const result = await scanMtgCardFrame(img, img.naturalWidth, img.naturalHeight, (_p, statusText) => {
+            setScanStatus(statusText);
+          });
+          setScanResult(result);
+          if (result.matchedCard) {
+            setActiveCard(result.matchedCard);
+            setManualQuery(result.matchedCard.name);
+            setScanStatus(`Rozpoznano: "${result.matchedCard.name}"`);
+          } else {
+            setScanStatus('Nie znaleziono pasującej karty. Spróbuj innego zdjęcia.');
+          }
+        } catch (err: any) {
+          console.error('Błąd OCR pliku:', err);
+          setScanStatus('Nie udało się przetworzyć wskazanego pliku.');
+        } finally {
+          setIsScanning(false);
+        }
+      };
+      img.src = URL.createObjectURL(file);
+    },
+    []
+  );
+
+  // 5. Fetch Alternate Prints for active card
+  const loadAlternatePrints = useCallback(async (card: ScryfallCard) => {
+    setIsLoadingPrints(true);
+    try {
+      const res = await fetch(`/api/scryfall/prints?name=${encodeURIComponent(card.name)}`);
+      if (res.ok) {
+        const data = await res.json();
+        const list: ScryfallCard[] = Array.isArray(data.data) ? data.data : [];
+        setPrints(list);
+      }
+    } catch (err) {
+      console.error('Błąd pobierania wydań:', err);
+    } finally {
+      setIsLoadingPrints(false);
+    }
+  }, []);
+
+  const handleOpenPrints = useCallback(() => {
+    if (!activeCard) return;
+    setIsPrintsOpen(true);
+    loadAlternatePrints(activeCard);
+  }, [activeCard, loadAlternatePrints]);
+
+  const handleSelectAlternatePrint = useCallback((printCard: ScryfallCard) => {
+    setActiveCard(printCard);
+    setIsPrintsOpen(false);
+    showToast(`Wybrano wersję [${printCard.set.toUpperCase()}] #${printCard.collector_number}`);
+  }, [showToast]);
+
+  // 6. Manual Query Search
+  const handleManualSearch = useCallback(async () => {
+    if (!manualQuery.trim()) return;
+    setIsSearchingManual(true);
+    try {
+      const { matchedCard, possibleCards } = await searchCardInScryfall(manualQuery.trim());
+      if (matchedCard) {
+        setActiveCard(matchedCard);
+        setScanStatus(`Znaleziono: "${matchedCard.name}"`);
+      } else {
+        showToast(`Nie znaleziono karty dla "${manualQuery}"`);
+      }
+    } catch (err) {
+      console.error('Błąd wyszukiwania:', err);
+    } finally {
+      setIsSearchingManual(false);
+    }
+  }, [manualQuery, showToast]);
+
+  // 7. Save Card to Collection
+  const handleAddCardToCollection = useCallback(async () => {
+    if (!activeCard) return;
+    setIsAdding(true);
+
+    try {
+      const normQty = isFoil ? 0 : quantity;
+      const foilQty = isFoil ? quantity : 0;
+
+      // Price calculation in PLN
+      const plnPrice = getCardPrice(activeCard, isFoil, { ...settings, currency: 'PLN' });
+
+      await onSaveToCollection({
+        card: activeCard,
+        quantity: normQty,
+        quantityFoil: foilQty,
+        condition,
+        language,
+        binder: selectedBinder,
+        purchasePrice: plnPrice > 0 ? plnPrice : null,
+      });
+
+      setSessionAddedCount((prev) => prev + 1);
+      const notice = `Dodano: "${activeCard.name}" [${activeCard.set.toUpperCase()}] (${isFoil ? 'Foil ✨' : 'Standard'}) do katalogu "${selectedBinder}"`;
+      setLastAddedNotice(notice);
+      showToast(notice);
+
+      if (isBatchMode) {
+        // In Batch mode, clear the current match and resume scanning immediately
+        setActiveCard(null);
+        setScanResult(null);
+        setQuantity(1);
+        setIsPrintsOpen(false);
+        setScanStatus('Gotowy na następną kartę. Nakieruj na ramkę.');
+      } else {
+        // In Single mode, close the modal
+        onClose();
+      }
+    } catch (err: any) {
+      console.error('Błąd zapisu karty:', err);
+      showToast('Wystąpił błąd podczas zapisywania karty.');
+    } finally {
+      setIsAdding(false);
+    }
+  }, [
+    activeCard,
+    isFoil,
+    quantity,
+    condition,
+    language,
+    selectedBinder,
+    settings,
+    onSaveToCollection,
+    isBatchMode,
+    onClose,
+    showToast,
+  ]);
+
+  if (!isOpen) return null;
+
+  // Active Card Prices
+  const normPln = activeCard ? getCardPrice(activeCard, false, { ...settings, currency: 'PLN' }) : 0;
+  const foilPln = activeCard ? getCardPrice(activeCard, true, { ...settings, currency: 'PLN' }) : 0;
+  const activeThumbnail = activeCard ? getCardImageUri(activeCard, 'normal') : '';
+
+  return (
+    <div
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+      className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/85 backdrop-blur-md overflow-y-auto animate-fade-in"
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className="relative bg-stone-900 border border-stone-800 rounded-2xl max-w-4xl w-full overflow-hidden shadow-2xl my-auto text-stone-100 max-h-[95vh] flex flex-col"
+      >
+        {/* Modal Top Header */}
+        <div className="flex items-center justify-between px-5 py-3.5 border-b border-stone-800 bg-stone-950/80">
+          <div className="flex items-center gap-2.5">
+            <div className="p-2 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-400">
+              <Camera className="w-5 h-5" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h2 className="text-sm sm:text-base font-extrabold text-stone-100">
+                  Skaner Kart Kamerą
+                </h2>
+                <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
+                  100% Darmowy OCR
+                </span>
+              </div>
+              <p className="text-xs text-stone-400">
+                Lokalne rozpoznawanie tekstu bezpośrednio w przeglądarce (Tesseract.js & Canvas)
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-3">
+            {sessionAddedCount > 0 && (
+              <span className="hidden sm:inline-flex items-center gap-1.5 text-xs font-mono font-bold text-amber-400 bg-amber-500/10 px-2.5 py-1 rounded-lg border border-amber-500/20">
+                <CheckCircle2 className="w-3.5 h-3.5" />
+                <span>Dodano w sesji: {sessionAddedCount}</span>
+              </span>
+            )}
+
+            <button
+              onClick={onClose}
+              title="Zamknij skaner"
+              className="p-1.5 text-stone-400 hover:text-stone-100 hover:bg-stone-800 rounded-lg transition-colors cursor-pointer"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+        </div>
+
+        {/* Modal Body: 2 Columns on Desktop */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 flex-1 overflow-y-auto">
+          {/* Left Column: Camera Viewport */}
+          <div className="lg:col-span-7 bg-black p-4 flex flex-col justify-between relative border-b lg:border-b-0 lg:border-r border-stone-800">
+            {/* Camera Viewfinder Container */}
+            <div className="relative aspect-[3/4] sm:aspect-[4/3] w-full rounded-xl overflow-hidden bg-stone-950 border border-stone-800 flex items-center justify-center shadow-inner">
+              {/* Video Element */}
+              <video
+                ref={videoRef}
+                autoPlay
+                playsInline
+                muted
+                className={`w-full h-full object-cover ${!isCameraActive ? 'hidden' : ''}`}
+              />
+
+              {/* Camera Offline / Error State */}
+              {!isCameraActive && (
+                <div className="p-6 text-center space-y-3 max-w-sm">
+                  <div className="w-12 h-12 rounded-2xl bg-stone-800 flex items-center justify-center mx-auto text-stone-400">
+                    <Camera className="w-6 h-6" />
+                  </div>
+                  <p className="text-sm font-semibold text-stone-200">
+                    {cameraError || 'Kamera jest wyłączona lub nieaktywna'}
+                  </p>
+                  <p className="text-xs text-stone-400">
+                    Kliknij poniżej, aby uruchomić kamerę lub wgraj zdjęcie z pliku.
+                  </p>
+                  <div className="flex items-center justify-center gap-2 pt-2">
+                    <button
+                      onClick={startCamera}
+                      className="px-4 py-2 rounded-lg bg-amber-500 text-stone-950 font-bold text-xs hover:bg-amber-400 transition-colors cursor-pointer"
+                    >
+                      Uruchom kamerę
+                    </button>
+                    <button
+                      onClick={() => fileInputRef.current?.click()}
+                      className="px-4 py-2 rounded-lg bg-stone-800 text-stone-200 font-semibold text-xs hover:bg-stone-700 transition-colors cursor-pointer flex items-center gap-1.5"
+                    >
+                      <Upload className="w-3.5 h-3.5" />
+                      <span>Wgraj plik</span>
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* MTG Card Target Reticle Overlay */}
+              {isCameraActive && (
+                <div className="absolute inset-0 pointer-events-none flex items-center justify-center p-4">
+                  {/* Card Outline Bounding Box (2.5 : 3.5 aspect ratio) */}
+                  <div className="relative aspect-[2.5/3.5] h-[82%] max-w-[85%] border-2 border-amber-400/80 rounded-2xl shadow-[0_0_0_9999px_rgba(0,0,0,0.45)] flex flex-col justify-between p-2 transition-all">
+                    {/* Corner Guides */}
+                    <div className="absolute -top-1.5 -left-1.5 w-4 h-4 border-t-4 border-l-4 border-amber-400 rounded-tl" />
+                    <div className="absolute -top-1.5 -right-1.5 w-4 h-4 border-t-4 border-r-4 border-amber-400 rounded-tr" />
+                    <div className="absolute -bottom-1.5 -left-1.5 w-4 h-4 border-b-4 border-l-4 border-amber-400 rounded-bl" />
+                    <div className="absolute -bottom-1.5 -right-1.5 w-4 h-4 border-b-4 border-r-4 border-amber-400 rounded-br" />
+
+                    {/* Zone 1: Title Line Target */}
+                    <div className="w-[88%] h-[16%] border border-dashed border-amber-400/70 bg-amber-400/10 rounded-lg flex items-center justify-between px-2 text-[10px] text-amber-300 font-mono font-bold mx-auto mt-2">
+                      <span>🏷️ NAZWA KARTY</span>
+                      <span className="text-[9px] opacity-75">Tytuł</span>
+                    </div>
+
+                    {/* Laser Scanning Animation Line */}
+                    {isScanning && (
+                      <div className="absolute inset-x-2 h-1 bg-gradient-to-r from-transparent via-amber-400 to-transparent shadow-[0_0_12px_#fbbf24] animate-pulse transition-all" />
+                    )}
+
+                    {/* Zone 2: Collector & Set Info Target */}
+                    <div className="w-[70%] h-[12%] border border-dashed border-amber-400/70 bg-amber-400/10 rounded-lg flex items-center justify-between px-2 text-[10px] text-amber-300 font-mono font-bold mb-2">
+                      <span>🔢 SET / NR</span>
+                      <span className="text-[9px] opacity-75">np. OTJ 125</span>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Status Message Overlay at Bottom of Viewport */}
+              <div className="absolute bottom-2 inset-x-4 flex items-center justify-center">
+                <div className="px-3.5 py-1.5 rounded-full bg-stone-950/85 backdrop-blur-md border border-stone-800 text-xs text-stone-200 font-medium flex items-center gap-2 shadow-lg">
+                  {isScanning ? (
+                    <RefreshCw className="w-3.5 h-3.5 text-amber-400 animate-spin" />
+                  ) : (
+                    <ScanLine className="w-3.5 h-3.5 text-amber-400" />
+                  )}
+                  <span className="truncate max-w-[260px] sm:max-w-xs">{scanStatus}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Camera Controls Bar */}
+            <div className="pt-3 flex flex-wrap items-center justify-between gap-2 text-xs">
+              <div className="flex items-center gap-2">
+                {/* Camera selector */}
+                {cameraDevices.length > 1 && (
+                  <select
+                    value={selectedDeviceId}
+                    onChange={(e) => setSelectedDeviceId(e.target.value)}
+                    className="bg-stone-900 border border-stone-700 rounded-lg px-2.5 py-1.5 text-stone-200 text-xs focus:outline-none focus:border-amber-500 cursor-pointer"
+                  >
+                    {cameraDevices.map((c) => (
+                      <option key={c.deviceId} value={c.deviceId}>
+                        📷 {c.label}
+                      </option>
+                    ))}
+                  </select>
+                )}
+
+                {/* Torch / Latarka Toggle */}
+                {hasTorch && (
+                  <button
+                    onClick={toggleTorch}
+                    title="Włącz/wyłącz doświetlenie (latarkę)"
+                    className={`p-2 rounded-lg border transition-colors cursor-pointer flex items-center gap-1 ${
+                      isTorchOn
+                        ? 'bg-amber-500 text-stone-950 border-amber-400'
+                        : 'bg-stone-900 text-stone-300 border-stone-700 hover:bg-stone-800'
+                    }`}
+                  >
+                    {isTorchOn ? <Zap className="w-4 h-4 fill-stone-950" /> : <ZapOff className="w-4 h-4" />}
+                  </button>
+                )}
+
+                {/* Upload File Input */}
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={handleFileUpload}
+                  className="hidden"
+                />
+                <button
+                  onClick={() => fileInputRef.current?.click()}
+                  title="Wgraj zdjęcie karty z pliku lub galerii"
+                  className="px-2.5 py-1.5 rounded-lg bg-stone-900 hover:bg-stone-800 border border-stone-700 text-stone-300 hover:text-stone-100 flex items-center gap-1.5 transition-colors cursor-pointer"
+                >
+                  <Upload className="w-3.5 h-3.5 text-stone-400" />
+                  <span className="hidden sm:inline">Wgraj zdjęcie</span>
+                </button>
+              </div>
+
+              {/* Main Snapshot & Scan Button */}
+              <div className="flex items-center gap-2">
+                <label className="flex items-center gap-1.5 text-stone-400 text-xs cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={isAutoScanEnabled}
+                    onChange={(e) => setIsAutoScanEnabled(e.target.checked)}
+                    className="rounded border-stone-700 text-amber-500 focus:ring-0 bg-stone-900"
+                  />
+                  <span>Auto-skan (3s)</span>
+                </label>
+
+                <button
+                  onClick={performScan}
+                  disabled={isScanning || !isCameraActive}
+                  className="px-4 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-stone-950 font-extrabold text-xs flex items-center gap-2 shadow-lg shadow-amber-950/50 transition-all cursor-pointer disabled:opacity-50"
+                >
+                  {isScanning ? (
+                    <>
+                      <RefreshCw className="w-4 h-4 animate-spin" />
+                      <span>Analiza OCR...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Camera className="w-4 h-4 stroke-[2.5]" />
+                      <span>Zeskanuj klatkę</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Right Column: Card Confirmation & Add Form */}
+          <div className="lg:col-span-5 p-4 sm:p-5 flex flex-col justify-between space-y-4 bg-stone-900/90">
+            {activeCard ? (
+              <div className="space-y-4 animate-fade-in">
+                {/* Recognized Card Header Card */}
+                <div className="p-3.5 bg-stone-950/80 rounded-xl border border-stone-800 space-y-3">
+                  <div className="flex items-start gap-3">
+                    {/* Card Thumbnail */}
+                    <div className="shrink-0 w-20 h-28 rounded-lg overflow-hidden bg-stone-900 border border-stone-700 shadow-md relative">
+                      <img
+                        src={activeThumbnail}
+                        alt={activeCard.name}
+                        referrerPolicy="no-referrer"
+                        onError={(e) => handleCardImageError(e, activeThumbnail)}
+                        className="w-full h-full object-cover"
+                      />
+                      {isFoil && (
+                        <div className="absolute top-1 right-1 bg-amber-500 text-stone-950 p-0.5 rounded shadow">
+                          <Sparkles className="w-3 h-3 fill-stone-950" />
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Metadata */}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <span className="uppercase font-mono text-[10px] font-bold bg-stone-800 text-stone-200 px-1.5 py-0.5 rounded border border-stone-700">
+                          {activeCard.set.toUpperCase()}
+                        </span>
+                        <span className="font-mono text-[10px] text-stone-400">
+                          #{activeCard.collector_number}
+                        </span>
+                        <span className={`text-[9px] px-1.5 py-0.5 rounded border font-semibold ${getRarityColor(activeCard.rarity)}`}>
+                          {getRarityLabel(activeCard.rarity)}
+                        </span>
+                      </div>
+
+                      <h3 className="font-bold text-stone-100 text-sm mt-1 leading-snug">
+                        {activeCard.name}
+                      </h3>
+                      <p className="text-[11px] text-stone-400 truncate mt-0.5">
+                        {activeCard.type_line}
+                      </p>
+
+                      {/* Interactive Foil / Non-Foil Switcher */}
+                      <div className="pt-2 mt-2 border-t border-stone-800/80 grid grid-cols-2 gap-2 text-xs">
+                        <button
+                          type="button"
+                          onClick={() => setIsFoil(false)}
+                          className={`p-1.5 rounded-lg border text-left transition-all cursor-pointer flex flex-col justify-between ${
+                            !isFoil
+                              ? 'bg-amber-500/15 border-amber-500 ring-1 ring-amber-500/40'
+                              : 'bg-stone-900 hover:bg-stone-850 border-stone-800 text-stone-400'
+                          }`}
+                        >
+                          <span className={`text-[10px] font-bold ${!isFoil ? 'text-amber-300' : 'text-stone-400'}`}>
+                            Standard
+                          </span>
+                          <span className="font-mono font-bold text-emerald-400 text-xs mt-0.5">
+                            {formatCurrency(normPln, 'PLN')}
+                          </span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => setIsFoil(true)}
+                          className={`p-1.5 rounded-lg border text-left transition-all cursor-pointer flex flex-col justify-between ${
+                            isFoil
+                              ? 'bg-amber-500/20 border-amber-400 ring-1 ring-amber-500/50'
+                              : 'bg-stone-900 hover:bg-stone-850 border-stone-800 text-stone-400'
+                          }`}
+                        >
+                          <span className="text-[10px] font-bold text-amber-400 flex items-center gap-1">
+                            <Sparkles className="w-2.5 h-2.5" />
+                            <span>Foil ✨</span>
+                          </span>
+                          <span className="font-mono font-bold text-amber-300 text-xs mt-0.5">
+                            {formatCurrency(foilPln, 'PLN')}
+                          </span>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Print Correction Button */}
+                  <div className="pt-2 border-t border-stone-800/80 flex items-center justify-between">
+                    <span className="text-[11px] text-stone-400">
+                      Wydanie: <strong className="text-stone-200">{activeCard.set_name}</strong>
+                    </span>
+                    <button
+                      type="button"
+                      onClick={handleOpenPrints}
+                      className="text-[11px] text-amber-400 hover:text-amber-300 font-semibold flex items-center gap-1 underline cursor-pointer"
+                    >
+                      <Layers className="w-3.5 h-3.5" />
+                      <span>Zmień print / edycję</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Alternate Prints Selector Drawer */}
+                {isPrintsOpen && (
+                  <div className="p-3 bg-stone-950 rounded-xl border border-stone-800 space-y-2 max-h-56 overflow-y-auto">
+                    <div className="flex items-center justify-between sticky top-0 bg-stone-950 pb-1 z-10 border-b border-stone-800/60">
+                      <span className="text-[11px] font-bold text-amber-300 uppercase font-mono">
+                        Dostępne wydania ({prints.length}):
+                      </span>
+                      <button
+                        onClick={() => setIsPrintsOpen(false)}
+                        className="text-[11px] text-stone-400 hover:text-stone-200"
+                      >
+                        ✕ Zamknij
+                      </button>
+                    </div>
+
+                    {isLoadingPrints ? (
+                      <div className="py-6 flex items-center justify-center space-x-2 text-stone-400 text-xs">
+                        <RefreshCw className="w-4 h-4 animate-spin text-amber-400" />
+                        <span>Pobieranie wydań...</span>
+                      </div>
+                    ) : (
+                      <div className="space-y-1.5">
+                        {prints.map((p) => {
+                          const isCur = p.id === activeCard.id;
+                          return (
+                            <div
+                              key={p.id}
+                              onClick={() => handleSelectAlternatePrint(p)}
+                              className={`p-2 rounded-lg border text-xs flex items-center justify-between cursor-pointer transition-colors ${
+                                isCur
+                                  ? 'bg-amber-500/20 border-amber-500 text-stone-100 font-bold'
+                                  : 'bg-stone-900 hover:bg-stone-850 border-stone-800 text-stone-300'
+                              }`}
+                            >
+                              <div className="flex items-center gap-2 truncate">
+                                <span className="uppercase font-mono text-[10px] bg-stone-800 px-1 py-0.2 rounded border border-stone-700">
+                                  {p.set.toUpperCase()}
+                                </span>
+                                <span className="truncate">{p.set_name} (#{p.collector_number})</span>
+                              </div>
+                              <div className="shrink-0 font-mono text-emerald-400 text-[11px]">
+                                {formatCurrency(getCardPrice(p, false, { ...settings, currency: 'PLN' }), 'PLN')}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Catalog & Parameters Form */}
+                <div className="space-y-3 p-3 bg-stone-950/60 rounded-xl border border-stone-800/80 text-xs">
+                  {/* Catalog selection */}
+                  <div>
+                    <label className="block text-[10px] uppercase font-bold text-amber-300 mb-1 flex items-center gap-1.5">
+                      <FolderPlus className="w-3.5 h-3.5 text-amber-400" />
+                      <span>Docelowy Klaser / Katalog:</span>
+                    </label>
+                    <select
+                      value={selectedBinder}
+                      onChange={(e) => setSelectedBinder(e.target.value)}
+                      className="w-full bg-stone-900 border border-stone-700 rounded-lg px-2.5 py-1.5 text-stone-100 text-xs focus:outline-none focus:border-amber-500 cursor-pointer"
+                    >
+                      {catalogs.map((c) => (
+                        <option key={c.id} value={c.name}>
+                          📁 {c.name} {c.isDefault ? '(Domyślny)' : ''}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Quantity & Condition */}
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="block text-[10px] uppercase font-semibold text-stone-400 mb-1">
+                        Ilość sztuk
+                      </label>
+                      <div className="flex items-center gap-1">
+                        <button
+                          type="button"
+                          onClick={() => setQuantity((q) => Math.max(1, q - 1))}
+                          className="w-7 h-7 rounded bg-stone-900 hover:bg-stone-800 border border-stone-700 text-stone-300 flex items-center justify-center cursor-pointer"
+                        >
+                          <Minus className="w-3 h-3" />
+                        </button>
+                        <span className="w-8 text-center font-mono font-bold text-stone-100">
+                          {quantity}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => setQuantity((q) => q + 1)}
+                          className="w-7 h-7 rounded bg-stone-900 hover:bg-stone-800 border border-stone-700 text-stone-300 flex items-center justify-center cursor-pointer"
+                        >
+                          <Plus className="w-3 h-3" />
+                        </button>
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-[10px] uppercase font-semibold text-stone-400 mb-1">
+                        Stan karty
+                      </label>
+                      <select
+                        value={condition}
+                        onChange={(e) => setCondition(e.target.value as CardCondition)}
+                        className="w-full bg-stone-900 border border-stone-700 rounded-lg px-2 py-1.5 text-stone-100 text-xs focus:outline-none focus:border-amber-500 cursor-pointer"
+                      >
+                        <option value="NM">Near Mint (NM)</option>
+                        <option value="EX">Excellent (EX)</option>
+                        <option value="GD">Good (GD)</option>
+                        <option value="LP">Light Played (LP)</option>
+                        <option value="PL">Played (PL)</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              /* Empty state before card is scanned */
+              <div className="p-8 text-center space-y-3 my-auto">
+                <div className="w-12 h-12 rounded-2xl bg-stone-950 border border-stone-800 flex items-center justify-center mx-auto text-amber-400">
+                  <ScanLine className="w-6 h-6 animate-pulse" />
+                </div>
+                <h3 className="text-sm font-bold text-stone-200">
+                  Brak aktywnego skanu
+                </h3>
+                <p className="text-xs text-stone-400 leading-relaxed max-w-xs mx-auto">
+                  Umieść kartę w kadrze kamery i kliknij <strong className="text-amber-400">„Zeskanuj klatkę”</strong>. Algorytm OCR automatycznie odczyta tytuł i wydanie.
+                </p>
+
+                {/* Manual text search fallback */}
+                <div className="pt-4 border-t border-stone-800/80 space-y-2">
+                  <p className="text-[11px] text-stone-400">
+                    Lub wpisz nazwę karty ręcznie:
+                  </p>
+                  <div className="flex items-center gap-1.5">
+                    <input
+                      type="text"
+                      placeholder="np. Lightning Bolt, Sol Ring..."
+                      value={manualQuery}
+                      onChange={(e) => setManualQuery(e.target.value)}
+                      onKeyDown={(e) => e.key === 'Enter' && handleManualSearch()}
+                      className="flex-1 bg-stone-950 border border-stone-700 rounded-lg px-3 py-1.5 text-xs text-stone-200 placeholder-stone-500 focus:outline-none focus:border-amber-500"
+                    />
+                    <button
+                      onClick={handleManualSearch}
+                      disabled={isSearchingManual || !manualQuery.trim()}
+                      className="px-3 py-1.5 rounded-lg bg-stone-800 hover:bg-stone-700 border border-stone-700 text-stone-200 text-xs font-semibold cursor-pointer disabled:opacity-40"
+                    >
+                      {isSearchingManual ? 'Szukam...' : 'Znajdź'}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Bottom Actions Area */}
+            <div className="pt-3 border-t border-stone-800 space-y-2.5">
+              {lastAddedNotice && (
+                <div className="p-2 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-300 text-xs flex items-center gap-2">
+                  <Check className="w-3.5 h-3.5 stroke-[3]" />
+                  <span className="truncate">{lastAddedNotice}</span>
+                </div>
+              )}
+
+              <div className="flex items-center justify-between text-xs">
+                <label className="flex items-center gap-2 text-stone-300 cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={isBatchMode}
+                    onChange={(e) => setIsBatchMode(e.target.checked)}
+                    className="rounded border-stone-700 text-amber-500 focus:ring-0 bg-stone-900"
+                  />
+                  <span>Skanowanie seryjne (nie zamykaj po dodaniu)</span>
+                </label>
+              </div>
+
+              <div className="flex items-center gap-2">
+                {activeCard && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setActiveCard(null);
+                      setScanResult(null);
+                    }}
+                    className="px-3 py-2.5 rounded-xl bg-stone-800 hover:bg-stone-700 text-stone-300 text-xs font-semibold cursor-pointer transition-colors"
+                  >
+                    Odrzuć
+                  </button>
+                )}
+
+                <button
+                  type="button"
+                  onClick={handleAddCardToCollection}
+                  disabled={!activeCard || isAdding}
+                  className="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-500 hover:to-emerald-400 text-stone-950 font-extrabold text-xs tracking-wider uppercase flex items-center justify-center gap-2 shadow-lg shadow-emerald-950/40 transition-all cursor-pointer disabled:opacity-40"
+                >
+                  {isAdding ? (
+                    <>
+                      <RefreshCw className="w-4 h-4 animate-spin" />
+                      <span>Zapisywanie w klaserze...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Plus className="w-4 h-4 stroke-[3]" />
+                      <span>
+                        Dodaj do klasera "{selectedBinder}"
+                      </span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};

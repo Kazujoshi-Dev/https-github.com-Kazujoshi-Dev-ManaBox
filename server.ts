@@ -562,6 +562,17 @@ app.get('/api/scryfall/card/:id', async (req, res) => {
   }
 });
 
+// 4b. Scryfall Card by Set and Collector Number
+app.get('/api/scryfall/card-print/:set/:number', async (req, res) => {
+  try {
+    const { set, number } = req.params;
+    const data = await fetchScryfall(`/cards/${encodeURIComponent(set.toLowerCase())}/${encodeURIComponent(number)}`);
+    res.json(data);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // 5. Scryfall Random Card
 app.get('/api/scryfall/random', async (req, res) => {
   try {

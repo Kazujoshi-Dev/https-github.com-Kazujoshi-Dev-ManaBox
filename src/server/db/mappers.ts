@@ -72,6 +72,7 @@ export function mapDeckRow(r: any): DeckItem {
     description: r.description || '',
     cardSource: (r.cardSource || r.card_source || 'collection') as 'all' | 'collection',
     commander: r.commander ? (typeof r.commander === 'string' ? JSON.parse(r.commander) : r.commander) : null,
+    commanderIsFoil: Boolean(r.commanderIsFoil ?? r.commander_is_foil),
     cards: Array.isArray(r.cards)
       ? r.cards
       : (typeof r.cards === 'string' ? JSON.parse(r.cards) : []),

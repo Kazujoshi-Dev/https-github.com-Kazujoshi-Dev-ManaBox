@@ -55,6 +55,7 @@ interface TabContentProps {
   // Card search interactions
   onSelectCard: (card: ScryfallCard) => void;
   onViewDeckCardDetails?: (card: ScryfallCard) => void;
+  onOpenScannerModal?: () => void;
 }
 
 export const TabContent: React.FC<TabContentProps> = ({
@@ -85,6 +86,7 @@ export const TabContent: React.FC<TabContentProps> = ({
   onMoveWishlistToCollection,
   onSelectCard,
   onViewDeckCardDetails,
+  onOpenScannerModal,
 }) => {
   switch (activeTab) {
     case 'collection':
@@ -108,6 +110,7 @@ export const TabContent: React.FC<TabContentProps> = ({
           onEditItem={onEditCollectionItem}
           onViewCardDetails={onViewCollectionItemDetails}
           onOpenAddModal={() => setActiveTab('search')}
+          onOpenScannerModal={onOpenScannerModal}
         />
       );
 

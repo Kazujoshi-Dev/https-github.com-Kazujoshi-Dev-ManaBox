@@ -29,6 +29,7 @@ export const CollectionList: React.FC<CollectionListProps> = ({
   onEditItem,
   onViewCardDetails,
   onOpenAddModal,
+  onOpenScannerModal,
 }) => {
   const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid');
 
@@ -117,6 +118,7 @@ export const CollectionList: React.FC<CollectionListProps> = ({
         <CollectionEmptyState
           activeBinder={filters.binder}
           onOpenAddModal={onOpenAddModal}
+          onOpenScannerModal={onOpenScannerModal}
         />
       ) : viewMode === 'grid' ? (
         <CollectionGridView

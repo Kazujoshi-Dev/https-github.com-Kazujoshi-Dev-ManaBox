@@ -17,6 +17,7 @@ export interface CollectionListProps {
   onEditItem: (item: CollectionItem) => void;
   onViewCardDetails: (item: CollectionItem) => void;
   onOpenAddModal: () => void;
+  onOpenScannerModal?: () => void;
 }
 
 export interface CatalogStatItem {
@@ -62,6 +63,7 @@ export interface CollectionResultsHeaderProps {
 export interface CollectionEmptyStateProps {
   activeBinder: string;
   onOpenAddModal: () => void;
+  onOpenScannerModal?: () => void;
 }
 
 export interface CollectionItemHandlers {
