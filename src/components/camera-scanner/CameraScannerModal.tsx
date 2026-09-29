@@ -15,7 +15,9 @@ import {
   Plus,
   Minus,
   CheckCircle2,
-  ScanLine
+  ScanLine,
+  ExternalLink,
+  Smartphone
 } from 'lucide-react';
 import { ScryfallCard, CardCondition, CardLanguage, Catalog, AppSettings } from '../../types';
 import { formatCurrency, getCardImageUri, getCardPrice, getRarityColor, getRarityLabel, handleCardImageError } from '../../utils/formatters';
@@ -34,6 +36,7 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
   const streamRef = useRef<MediaStream | null>(null);
   const autoScanTimerRef = useRef<NodeJS.Timeout | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const cameraSnapInputRef = useRef<HTMLInputElement | null>(null);
 
   // Camera State
   const [cameraDevices, setCameraDevices] = useState<CameraDeviceOption[]>([]);
@@ -76,7 +79,7 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
   // 1. Enumerate available video inputs
   const enumerateCameras = useCallback(async () => {
     try {
-      if (!navigator.mediaDevices?.enumerateDevices) return;
+      if (!navigator?.mediaDevices?.enumerateDevices) return;
       const devices = await navigator.mediaDevices.enumerateDevices();
       const videoInputs = devices
         .filter((d) => d.kind === 'videoinput')
@@ -115,6 +118,20 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
     if (!isOpen) return;
     stopCamera();
     setCameraError(null);
+
+    // Check for Secure Context and MediaDevices support
+    const isIframe = typeof window !== 'undefined' && window.self !== window.top;
+    const hasMediaDevices = typeof navigator !== 'undefined' && Boolean(navigator?.mediaDevices?.getUserMedia);
+
+    if (!hasMediaDevices) {
+      setIsCameraActive(false);
+      if (isIframe) {
+        setCameraError('IFRAME_BLOCKED');
+      } else {
+        setCameraError('MEDIA_NOT_SUPPORTED');
+      }
+      return;
+    }
 
     try {
       const constraints: MediaStreamConstraints = {
@@ -460,31 +477,89 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
 
               {/* Camera Offline / Error State */}
               {!isCameraActive && (
-                <div className="p-6 text-center space-y-3 max-w-sm">
-                  <div className="w-12 h-12 rounded-2xl bg-stone-800 flex items-center justify-center mx-auto text-stone-400">
-                    <Camera className="w-6 h-6" />
+                <div className="p-6 text-center space-y-3.5 max-w-md my-auto">
+                  <div className="w-14 h-14 rounded-2xl bg-stone-900 border border-stone-800 flex items-center justify-center mx-auto text-amber-400 shadow-lg">
+                    <Camera className="w-7 h-7" />
                   </div>
-                  <p className="text-sm font-semibold text-stone-200">
-                    {cameraError || 'Kamera jest wyłączona lub nieaktywna'}
-                  </p>
-                  <p className="text-xs text-stone-400">
-                    Kliknij poniżej, aby uruchomić kamerę lub wgraj zdjęcie z pliku.
-                  </p>
-                  <div className="flex items-center justify-center gap-2 pt-2">
-                    <button
-                      onClick={startCamera}
-                      className="px-4 py-2 rounded-lg bg-amber-500 text-stone-950 font-bold text-xs hover:bg-amber-400 transition-colors cursor-pointer"
-                    >
-                      Uruchom kamerę
-                    </button>
-                    <button
-                      onClick={() => fileInputRef.current?.click()}
-                      className="px-4 py-2 rounded-lg bg-stone-800 text-stone-200 font-semibold text-xs hover:bg-stone-700 transition-colors cursor-pointer flex items-center gap-1.5"
-                    >
-                      <Upload className="w-3.5 h-3.5" />
-                      <span>Wgraj plik</span>
-                    </button>
-                  </div>
+
+                  {cameraError === 'IFRAME_BLOCKED' ? (
+                    <>
+                      <div>
+                        <h4 className="text-sm font-extrabold text-stone-100 flex items-center justify-center gap-1.5">
+                          <span>Podgląd kamery w oknie AI Studio</span>
+                        </h4>
+                        <p className="text-xs text-stone-400 mt-1 leading-relaxed">
+                          Przeglądarka ogranicza bezpośredni strumień wideo wewnątrz ramki (iframe). Możesz od razu wykonać zdjęcie aparatem lub otworzyć aplikację w pełnym oknie:
+                        </p>
+                      </div>
+
+                      <div className="flex flex-col gap-2 pt-1">
+                        <button
+                          type="button"
+                          onClick={() => cameraSnapInputRef.current?.click()}
+                          className="w-full py-2.5 px-4 rounded-xl bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-400 hover:to-emerald-500 text-stone-950 font-extrabold text-xs flex items-center justify-center gap-2 cursor-pointer shadow-lg transition-all"
+                        >
+                          <Camera className="w-4 h-4 stroke-[2.5]" />
+                          <span>📸 Zrób zdjęcie aparatem (Otwórz aparat)</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => window.open(window.location.href, '_blank')}
+                          className="w-full py-2 px-4 rounded-xl bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/30 text-amber-300 font-bold text-xs flex items-center justify-center gap-2 cursor-pointer transition-colors"
+                        >
+                          <ExternalLink className="w-3.5 h-3.5" />
+                          <span>↗️ Otwórz w nowej karcie (Kamera na żywo)</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => fileInputRef.current?.click()}
+                          className="w-full py-1.5 px-3 rounded-lg bg-stone-900 hover:bg-stone-800 border border-stone-800 text-stone-400 hover:text-stone-200 text-xs flex items-center justify-center gap-1.5 cursor-pointer transition-colors"
+                        >
+                          <Upload className="w-3.5 h-3.5" />
+                          <span>Wybierz plik z dysku / galerii</span>
+                        </button>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <div>
+                        <p className="text-sm font-semibold text-stone-200">
+                          {cameraError || 'Kamera jest wyłączona lub nieaktywna'}
+                        </p>
+                        <p className="text-xs text-stone-400 mt-1">
+                          Zezwól na dostęp do kamery lub zrób zdjęcie aparatem.
+                        </p>
+                      </div>
+
+                      <div className="flex flex-col sm:flex-row items-center justify-center gap-2 pt-2">
+                        <button
+                          type="button"
+                          onClick={() => cameraSnapInputRef.current?.click()}
+                          className="w-full sm:w-auto px-4 py-2 rounded-lg bg-emerald-500 text-stone-950 font-bold text-xs hover:bg-emerald-400 transition-colors cursor-pointer flex items-center justify-center gap-1.5"
+                        >
+                          <Camera className="w-3.5 h-3.5" />
+                          <span>Zrób zdjęcie aparatem</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={startCamera}
+                          className="w-full sm:w-auto px-4 py-2 rounded-lg bg-amber-500 text-stone-950 font-bold text-xs hover:bg-amber-400 transition-colors cursor-pointer"
+                        >
+                          Spróbuj ponownie
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => fileInputRef.current?.click()}
+                          className="w-full sm:w-auto px-4 py-2 rounded-lg bg-stone-800 text-stone-200 font-semibold text-xs hover:bg-stone-700 transition-colors cursor-pointer flex items-center justify-center gap-1.5"
+                        >
+                          <Upload className="w-3.5 h-3.5" />
+                          <span>Wgraj plik</span>
+                        </button>
+                      </div>
+                    </>
+                  )}
                 </div>
               )}
 
@@ -564,6 +639,25 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
                     {isTorchOn ? <Zap className="w-4 h-4 fill-stone-950" /> : <ZapOff className="w-4 h-4" />}
                   </button>
                 )}
+
+                {/* Direct native camera snapshot input (works 100% even in iframes!) */}
+                <input
+                  ref={cameraSnapInputRef}
+                  type="file"
+                  accept="image/*"
+                  capture="environment"
+                  onChange={handleFileUpload}
+                  className="hidden"
+                />
+                <button
+                  type="button"
+                  onClick={() => cameraSnapInputRef.current?.click()}
+                  title="Zrób zdjęcie aparatem (telefon lub laptop)"
+                  className="px-2.5 py-1.5 rounded-lg bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/30 text-emerald-400 font-semibold flex items-center gap-1.5 transition-colors cursor-pointer"
+                >
+                  <Camera className="w-3.5 h-3.5" />
+                  <span>Aparat</span>
+                </button>
 
                 {/* Upload File Input */}
                 <input
