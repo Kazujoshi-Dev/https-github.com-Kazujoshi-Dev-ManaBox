@@ -45,6 +45,9 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
   const [cameraError, setCameraError] = useState<string | null>(null);
   const [hasTorch, setHasTorch] = useState<boolean>(false);
   const [isTorchOn, setIsTorchOn] = useState<boolean>(false);
+  const [isDraggingOver, setIsDraggingOver] = useState<boolean>(false);
+
+  const isMobile = typeof navigator !== 'undefined' && /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
 
   // Scanning State
   const [isScanning, setIsScanning] = useState<boolean>(false);
@@ -119,19 +122,24 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
     stopCamera();
     setCameraError(null);
 
-    // Check for Secure Context and MediaDevices support
-    const isIframe = typeof window !== 'undefined' && window.self !== window.top;
-    const hasMediaDevices = typeof navigator !== 'undefined' && Boolean(navigator?.mediaDevices?.getUserMedia);
-
-    if (!hasMediaDevices) {
-      setIsCameraActive(false);
-      if (isIframe) {
-        setCameraError('IFRAME_BLOCKED');
-      } else {
-        setCameraError('MEDIA_NOT_SUPPORTED');
+    // Try modern navigator.mediaDevices.getUserMedia or legacy vendor prefixes
+    const getMediaStream = async (constraints: MediaStreamConstraints): Promise<MediaStream> => {
+      if (navigator?.mediaDevices?.getUserMedia) {
+        return navigator.mediaDevices.getUserMedia(constraints);
       }
-      return;
-    }
+      const legacy =
+        (navigator as any)?.getUserMedia ||
+        (navigator as any)?.webkitGetUserMedia ||
+        (navigator as any)?.mozGetUserMedia ||
+        (navigator as any)?.msGetUserMedia;
+
+      if (legacy) {
+        return new Promise((resolve, reject) => {
+          legacy.call(navigator, constraints, resolve, reject);
+        });
+      }
+      throw new Error('NO_MEDIA_DEVICES');
+    };
 
     try {
       const constraints: MediaStreamConstraints = {
@@ -144,7 +152,7 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
         audio: false,
       };
 
-      const stream = await navigator.mediaDevices.getUserMedia(constraints);
+      const stream = await getMediaStream(constraints);
       streamRef.current = stream;
 
       if (videoRef.current) {
@@ -162,14 +170,14 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
       // Refresh camera labels after permission granted
       enumerateCameras();
     } catch (err: any) {
-      console.error('Błąd kamery:', err);
+      console.warn('Błąd kamery:', err);
       setIsCameraActive(false);
-      if (err.name === 'NotAllowedError') {
-        setCameraError('Dostęp do kamery został zablokowany w przeglądarce. Zezwól na dostęp w pasku adresu.');
-      } else if (err.name === 'NotFoundError') {
-        setCameraError('Nie znaleziono podłączonej kamery. Możesz wgrać zdjęcie karty z dysku.');
+      if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+        setCameraError('PERMISSION_DENIED');
+      } else if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
+        setCameraError('NO_CAMERA_FOUND');
       } else {
-        setCameraError(`Nie udało się uruchomić kamery (${err.message || 'błąd urządzenia'}).`);
+        setCameraError('IFRAME_OR_UNSUPPORTED');
       }
     }
   }, [isOpen, selectedDeviceId, stopCamera, enumerateCameras]);
@@ -262,14 +270,13 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
     };
   }, [isAutoScanEnabled, isCameraActive, activeCard, isScanning, performScan]);
 
-  // 4. File Upload fallback scan
-  const handleFileUpload = useCallback(
-    async (e: React.ChangeEvent<HTMLInputElement>) => {
-      const file = e.target.files?.[0];
-      if (!file) return;
+  // 4. File and Image Processing (Upload, Drag-and-Drop, Clipboard Paste)
+  const processImageFile = useCallback(
+    async (file: File) => {
+      if (!file || !file.type.startsWith('image/')) return;
 
       setIsScanning(true);
-      setScanStatus('Wczytywanie pliku graficznego...');
+      setScanStatus('Wczytywanie i analiza OCR zdjęcia...');
 
       const img = new Image();
       img.onload = async () => {
@@ -282,8 +289,11 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
             setActiveCard(result.matchedCard);
             setManualQuery(result.matchedCard.name);
             setScanStatus(`Rozpoznano: "${result.matchedCard.name}"`);
+          } else if (result.cleanedTitle) {
+            setManualQuery(result.cleanedTitle);
+            setScanStatus(`Odczytano tekst: "${result.cleanedTitle}" - sprawdź podpowiedzi`);
           } else {
-            setScanStatus('Nie znaleziono pasującej karty. Spróbuj innego zdjęcia.');
+            setScanStatus('Nie znaleziono pasującej karty na zdjęciu. Spróbuj innego ujęcia.');
           }
         } catch (err: any) {
           console.error('Błąd OCR pliku:', err);
@@ -296,6 +306,36 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
     },
     []
   );
+
+  const handleFileUpload = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      if (file) {
+        processImageFile(file);
+      }
+    },
+    [processImageFile]
+  );
+
+  // Paste image directly from clipboard (Ctrl + V)
+  useEffect(() => {
+    if (!isOpen) return;
+    const handlePaste = (e: ClipboardEvent) => {
+      const items = e.clipboardData?.items;
+      if (!items) return;
+      for (let i = 0; i < items.length; i++) {
+        if (items[i].type.startsWith('image/')) {
+          const file = items[i].getAsFile();
+          if (file) {
+            processImageFile(file);
+            break;
+          }
+        }
+      }
+    };
+    window.addEventListener('paste', handlePaste);
+    return () => window.removeEventListener('paste', handlePaste);
+  }, [isOpen, processImageFile]);
 
   // 5. Fetch Alternate Prints for active card
   const loadAlternatePrints = useCallback(async (card: ScryfallCard) => {
@@ -465,7 +505,24 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
           {/* Left Column: Camera Viewport */}
           <div className="lg:col-span-7 bg-black p-4 flex flex-col justify-between relative border-b lg:border-b-0 lg:border-r border-stone-800">
             {/* Camera Viewfinder Container */}
-            <div className="relative aspect-[3/4] sm:aspect-[4/3] w-full rounded-xl overflow-hidden bg-stone-950 border border-stone-800 flex items-center justify-center shadow-inner">
+            <div
+              onDragOver={(e) => {
+                e.preventDefault();
+                setIsDraggingOver(true);
+              }}
+              onDragLeave={() => setIsDraggingOver(false)}
+              onDrop={(e) => {
+                e.preventDefault();
+                setIsDraggingOver(false);
+                const file = e.dataTransfer.files?.[0];
+                if (file) processImageFile(file);
+              }}
+              className={`relative aspect-[3/4] sm:aspect-[4/3] w-full rounded-xl overflow-hidden bg-stone-950 border flex items-center justify-center shadow-inner transition-colors ${
+                isDraggingOver
+                  ? 'border-amber-400 ring-2 ring-amber-400/50 bg-amber-950/20'
+                  : 'border-stone-800'
+              }`}
+            >
               {/* Video Element */}
               <video
                 ref={videoRef}
@@ -475,91 +532,64 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
                 className={`w-full h-full object-cover ${!isCameraActive ? 'hidden' : ''}`}
               />
 
-              {/* Camera Offline / Error State */}
+              {/* Camera Offline / Blocked State */}
               {!isCameraActive && (
-                <div className="p-6 text-center space-y-3.5 max-w-md my-auto">
+                <div className="p-6 text-center space-y-4 max-w-md my-auto">
                   <div className="w-14 h-14 rounded-2xl bg-stone-900 border border-stone-800 flex items-center justify-center mx-auto text-amber-400 shadow-lg">
                     <Camera className="w-7 h-7" />
                   </div>
 
-                  {cameraError === 'IFRAME_BLOCKED' ? (
-                    <>
-                      <div>
-                        <h4 className="text-sm font-extrabold text-stone-100 flex items-center justify-center gap-1.5">
-                          <span>Podgląd kamery w oknie AI Studio</span>
-                        </h4>
-                        <p className="text-xs text-stone-400 mt-1 leading-relaxed">
-                          Przeglądarka ogranicza bezpośredni strumień wideo wewnątrz ramki (iframe). Możesz od razu wykonać zdjęcie aparatem lub otworzyć aplikację w pełnym oknie:
-                        </p>
-                      </div>
+                  <div>
+                    <h4 className="text-sm sm:text-base font-extrabold text-stone-100 flex items-center justify-center gap-1.5">
+                      <span>Kamera w oknie podglądu AI Studio</span>
+                    </h4>
+                    <p className="text-xs text-stone-300 mt-1.5 leading-relaxed">
+                      Przeglądarka internetowa blokuje bezpośredni strumień wideo z kamery wewnątrz wbudowanej ramki (iframe).
+                    </p>
+                    <p className="text-[11px] text-amber-400 font-semibold mt-1">
+                      Aby korzystać z kamery internetowej na żywo ze skanowaniem w czasie rzeczywistym, kliknij przycisk poniżej:
+                    </p>
+                  </div>
 
-                      <div className="flex flex-col gap-2 pt-1">
-                        <button
-                          type="button"
-                          onClick={() => cameraSnapInputRef.current?.click()}
-                          className="w-full py-2.5 px-4 rounded-xl bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-400 hover:to-emerald-500 text-stone-950 font-extrabold text-xs flex items-center justify-center gap-2 cursor-pointer shadow-lg transition-all"
-                        >
-                          <Camera className="w-4 h-4 stroke-[2.5]" />
-                          <span>📸 Zrób zdjęcie aparatem (Otwórz aparat)</span>
-                        </button>
+                  <div className="flex flex-col gap-2.5 pt-1">
+                    {/* Primary Button: Open Standalone App with auto-scanner */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const standaloneUrl = window.location.origin + window.location.pathname + '?scanner=open';
+                        window.open(standaloneUrl, '_blank');
+                      }}
+                      className="w-full py-2.5 px-4 rounded-xl bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-400 hover:to-emerald-500 text-stone-950 font-extrabold text-xs flex items-center justify-center gap-2 cursor-pointer shadow-lg shadow-emerald-950/50 transition-all hover:scale-[1.01]"
+                    >
+                      <ExternalLink className="w-4 h-4 stroke-[2.5]" />
+                      <span>↗️ Uruchom kamerę w nowej karcie (Kamera na żywo)</span>
+                    </button>
 
-                        <button
-                          type="button"
-                          onClick={() => window.open(window.location.href, '_blank')}
-                          className="w-full py-2 px-4 rounded-xl bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/30 text-amber-300 font-bold text-xs flex items-center justify-center gap-2 cursor-pointer transition-colors"
-                        >
-                          <ExternalLink className="w-3.5 h-3.5" />
-                          <span>↗️ Otwórz w nowej karcie (Kamera na żywo)</span>
-                        </button>
+                    {/* Secondary button: Device camera on mobile OR file chooser on desktop */}
+                    {isMobile ? (
+                      <button
+                        type="button"
+                        onClick={() => cameraSnapInputRef.current?.click()}
+                        className="w-full py-2 px-4 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 text-amber-300 font-bold text-xs flex items-center justify-center gap-2 cursor-pointer transition-colors"
+                      >
+                        <Camera className="w-3.5 h-3.5" />
+                        <span>📸 Zrób zdjęcie aparatem (Telefon)</span>
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => fileInputRef.current?.click()}
+                        className="w-full py-2 px-4 rounded-xl bg-stone-800 hover:bg-stone-750 border border-stone-700 text-stone-200 font-bold text-xs flex items-center justify-center gap-2 cursor-pointer transition-colors"
+                      >
+                        <Upload className="w-3.5 h-3.5 text-stone-400" />
+                        <span>📁 Wybierz plik ze zdjęciem karty z dysku</span>
+                      </button>
+                    )}
 
-                        <button
-                          type="button"
-                          onClick={() => fileInputRef.current?.click()}
-                          className="w-full py-1.5 px-3 rounded-lg bg-stone-900 hover:bg-stone-800 border border-stone-800 text-stone-400 hover:text-stone-200 text-xs flex items-center justify-center gap-1.5 cursor-pointer transition-colors"
-                        >
-                          <Upload className="w-3.5 h-3.5" />
-                          <span>Wybierz plik z dysku / galerii</span>
-                        </button>
-                      </div>
-                    </>
-                  ) : (
-                    <>
-                      <div>
-                        <p className="text-sm font-semibold text-stone-200">
-                          {cameraError || 'Kamera jest wyłączona lub nieaktywna'}
-                        </p>
-                        <p className="text-xs text-stone-400 mt-1">
-                          Zezwól na dostęp do kamery lub zrób zdjęcie aparatem.
-                        </p>
-                      </div>
-
-                      <div className="flex flex-col sm:flex-row items-center justify-center gap-2 pt-2">
-                        <button
-                          type="button"
-                          onClick={() => cameraSnapInputRef.current?.click()}
-                          className="w-full sm:w-auto px-4 py-2 rounded-lg bg-emerald-500 text-stone-950 font-bold text-xs hover:bg-emerald-400 transition-colors cursor-pointer flex items-center justify-center gap-1.5"
-                        >
-                          <Camera className="w-3.5 h-3.5" />
-                          <span>Zrób zdjęcie aparatem</span>
-                        </button>
-                        <button
-                          type="button"
-                          onClick={startCamera}
-                          className="w-full sm:w-auto px-4 py-2 rounded-lg bg-amber-500 text-stone-950 font-bold text-xs hover:bg-amber-400 transition-colors cursor-pointer"
-                        >
-                          Spróbuj ponownie
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => fileInputRef.current?.click()}
-                          className="w-full sm:w-auto px-4 py-2 rounded-lg bg-stone-800 text-stone-200 font-semibold text-xs hover:bg-stone-700 transition-colors cursor-pointer flex items-center justify-center gap-1.5"
-                        >
-                          <Upload className="w-3.5 h-3.5" />
-                          <span>Wgraj plik</span>
-                        </button>
-                      </div>
-                    </>
-                  )}
+                    <div className="p-2.5 rounded-lg bg-stone-950/80 border border-stone-800/80 text-[11px] text-stone-400 text-center leading-normal">
+                      💡 Wskazówka: Możesz też wkleić zdjęcie karty ze schowka (<strong className="text-stone-200 font-mono">Ctrl + V</strong>) lub przeciągnąć plik tutaj.
+                    </div>
+                  </div>
                 </div>
               )}
 

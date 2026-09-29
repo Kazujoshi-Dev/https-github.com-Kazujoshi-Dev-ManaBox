@@ -10,6 +10,13 @@ const PORT = 3000;
 
 app.use(express.json({ limit: '10mb' }));
 
+// Allow camera access in headers
+app.use((req, res, next) => {
+  res.setHeader('Permissions-Policy', 'camera=*, microphone=*');
+  res.setHeader('Feature-Policy', "camera '*'");
+  next();
+});
+
 // Auth verification middleware
 function authMiddleware(req: express.Request, res: express.Response, next: express.NextFunction) {
   const authHeader = req.headers.authorization;

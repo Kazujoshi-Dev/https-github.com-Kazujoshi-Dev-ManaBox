@@ -64,6 +64,20 @@ export default function App() {
   const [deckCardBeingViewed, setDeckCardBeingViewed] = useState<ScryfallCard | null>(null);
   const [deckCardIsFoil, setDeckCardIsFoil] = useState<boolean | undefined>(undefined);
 
+  // Auto-open scanner modal if opened in a standalone tab with ?scanner=open
+  React.useEffect(() => {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('scanner') === 'open') {
+        setIsScannerModalOpen(true);
+        const newUrl = window.location.pathname + window.location.hash;
+        window.history.replaceState({}, '', newUrl);
+      }
+    } catch (_) {
+      // ignore
+    }
+  }, []);
+
   // Modal Handlers
   const handleOpenCardModal = useCallback((card: ScryfallCard, item: CollectionItem | null = null) => {
     setSelectedCardForModal(card);
