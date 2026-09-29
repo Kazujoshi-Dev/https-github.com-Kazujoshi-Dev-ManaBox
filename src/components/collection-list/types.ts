@@ -27,18 +27,18 @@ export interface CatalogStatItem {
 
 export interface CatalogsBarProps {
   catalogs: Catalog[];
-  decks: DeckItem[];
   activeBinder: string;
   catalogStats: Map<string, CatalogStatItem>;
   totalCollectionCount: number;
   currency: AppSettings['currency'];
   onSelectBinder: (binder: string) => void;
   onOpenCreateCatalog: () => void;
-  onOpenCreateDeck: () => void;
-  onSelectDeck?: (deck: DeckItem) => void;
   onOpenEditCatalog: (cat: Catalog, e?: MouseEvent) => void;
   onRequestDeleteCatalog: (cat: Catalog) => void;
   onSetDefaultCatalog?: (id: string) => Promise<void>;
+  decks?: DeckItem[];
+  onOpenCreateDeck?: () => void;
+  onSelectDeck?: (deck: DeckItem) => void;
 }
 
 export interface CollectionFiltersBarProps {

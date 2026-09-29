@@ -59,6 +59,7 @@ export default function App() {
   const [isDeckCreateModalOpen, setIsDeckCreateModalOpen] = useState<boolean>(false);
   const [selectedCardForModal, setSelectedCardForModal] = useState<ScryfallCard | null>(null);
   const [selectedCollectionItemForModal, setSelectedCollectionItemForModal] = useState<CollectionItem | null>(null);
+  const [deckCardBeingViewed, setDeckCardBeingViewed] = useState<ScryfallCard | null>(null);
 
   // Modal Handlers
   const handleOpenCardModal = useCallback((card: ScryfallCard, item: CollectionItem | null = null) => {
@@ -66,9 +67,53 @@ export default function App() {
     setSelectedCollectionItemForModal(item);
   }, []);
 
+  const handleOpenDeckCardModal = useCallback((card: ScryfallCard) => {
+    setDeckCardBeingViewed(card);
+    const existing = collection.find(c => c.card.id === card.id || c.card.name.toLowerCase() === card.name.toLowerCase()) || null;
+    setSelectedCardForModal(card);
+    setSelectedCollectionItemForModal(existing);
+  }, [collection]);
+
+  const handleCardPrintSelectedInModal = useCallback((newCard: ScryfallCard) => {
+    // If viewing a card from the active deck, update the deck version automatically
+    if (selectedDeck && deckCardBeingViewed) {
+      const targetId = deckCardBeingViewed.id;
+      const targetName = deckCardBeingViewed.name.toLowerCase();
+
+      const isCommander = Boolean(
+        selectedDeck.commander && 
+        (selectedDeck.commander.id === targetId || selectedDeck.commander.name.toLowerCase() === targetName)
+      );
+
+      const updatedCommander = isCommander ? newCard : selectedDeck.commander;
+
+      const updatedCards = selectedDeck.cards.map(entry => {
+        if (entry.card.id === targetId || entry.card.name.toLowerCase() === targetName) {
+          return {
+            ...entry,
+            card: newCard,
+          };
+        }
+        return entry;
+      });
+
+      const updatedDeck: DeckItem = {
+        ...selectedDeck,
+        commander: updatedCommander,
+        cards: updatedCards,
+      };
+
+      setSelectedDeck(updatedDeck);
+      updateDeck(updatedDeck);
+      setDeckCardBeingViewed(newCard);
+      showToast(`Zaktualizowano wersję [${newCard.set.toUpperCase()}] w talii "${selectedDeck.name}"!`);
+    }
+  }, [selectedDeck, deckCardBeingViewed, updateDeck, showToast]);
+
   const handleCloseCardModal = useCallback(() => {
     setSelectedCardForModal(null);
     setSelectedCollectionItemForModal(null);
+    setDeckCardBeingViewed(null);
   }, []);
 
   const handleSaveCardModal = useCallback(async (data: {
@@ -86,7 +131,11 @@ export default function App() {
       setSelectedCollectionItemForModal(updated);
       setSelectedCardForModal(updated.card);
     }
-  }, [saveToCollection, selectedCollectionItemForModal]);
+    // Also sync to deck if card was opened from deck
+    if (selectedDeck && deckCardBeingViewed) {
+      handleCardPrintSelectedInModal(data.card);
+    }
+  }, [saveToCollection, selectedCollectionItemForModal, selectedDeck, deckCardBeingViewed, handleCardPrintSelectedInModal]);
 
   const handleMoveWishlistToCollection = useCallback((wishlistItem: { id: string; card: ScryfallCard }) => {
     handleOpenCardModal(wishlistItem.card, null);
@@ -186,6 +235,7 @@ export default function App() {
             onRemoveFromWishlist={removeFromWishlist}
             onMoveWishlistToCollection={handleMoveWishlistToCollection}
             onSelectCard={(card) => handleOpenCardModal(card, null)}
+            onViewDeckCardDetails={handleOpenDeckCardModal}
           />
         )}
       </main>
@@ -213,6 +263,7 @@ export default function App() {
           onClose={handleCloseCardModal}
           onSaveToCollection={handleSaveCardModal}
           onAddToWishlist={addToWishlist}
+          onSelectPrint={handleCardPrintSelectedInModal}
         />
       )}
 

@@ -230,32 +230,32 @@ export const SetTopCards: React.FC<SetTopCardsProps> = ({
   const rarityConfigs = [
     {
       key: 'mythic',
-      label: 'Mityczne (Mythic Rare)',
-      shortLabel: 'Mityczne',
+      label: 'Mythic Rare',
+      shortLabel: 'Mythic',
       color: 'border-orange-500/40 text-orange-400 bg-orange-500/10',
       badge: 'bg-orange-500/20 text-orange-300 border-orange-500/40',
       iconColor: 'text-orange-400',
     },
     {
       key: 'rare',
-      label: 'Rzadkie (Rare)',
-      shortLabel: 'Rzadkie',
+      label: 'Rare',
+      shortLabel: 'Rare',
       color: 'border-amber-400/40 text-amber-300 bg-amber-400/10',
       badge: 'bg-amber-400/20 text-amber-300 border-amber-400/40',
       iconColor: 'text-amber-400',
     },
     {
       key: 'uncommon',
-      label: 'Niepospolite (Uncommon)',
-      shortLabel: 'Niepospolite',
+      label: 'Uncommon',
+      shortLabel: 'Uncommon',
       color: 'border-cyan-400/40 text-cyan-300 bg-cyan-400/10',
       badge: 'bg-cyan-400/20 text-cyan-300 border-cyan-400/40',
       iconColor: 'text-cyan-400',
     },
     {
       key: 'common',
-      label: 'Zwykłe (Common)',
-      shortLabel: 'Zwykłe',
+      label: 'Common',
+      shortLabel: 'Common',
       color: 'border-stone-500/40 text-stone-300 bg-stone-500/10',
       badge: 'bg-stone-700/60 text-stone-300 border-stone-600',
       iconColor: 'text-stone-400',
@@ -508,7 +508,7 @@ export const SetTopCards: React.FC<SetTopCardsProps> = ({
                   <p className="text-sm font-bold text-orange-400 font-mono">
                     {formatCurrency(setMetrics.mythicSumPln, 'PLN')}
                   </p>
-                  <p className="text-[10px] text-stone-500">Mityczne</p>
+                  <p className="text-[10px] text-stone-500">Mythic</p>
                 </div>
 
                 <div className="border-l border-stone-800/80 pl-3 col-span-2 sm:col-span-1">
@@ -516,7 +516,7 @@ export const SetTopCards: React.FC<SetTopCardsProps> = ({
                   <p className="text-sm font-bold text-amber-300 font-mono">
                     {formatCurrency(setMetrics.rareSumPln, 'PLN')}
                   </p>
-                  <p className="text-[10px] text-stone-500">Rzadkie</p>
+                  <p className="text-[10px] text-stone-500">Rare</p>
                 </div>
               </div>
             )}

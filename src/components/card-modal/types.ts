@@ -21,6 +21,7 @@ export interface CardModalProps {
   onClose: () => void;
   onSaveToCollection: (itemData: CardSaveData) => void;
   onAddToWishlist?: (card: ScryfallCard) => void;
+  onSelectPrint?: (newCard: ScryfallCard, oldCard: ScryfallCard) => void;
 }
 
 export type CardModalTab = 'details' | 'prints';

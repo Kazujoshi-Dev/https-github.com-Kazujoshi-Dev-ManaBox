@@ -3,8 +3,6 @@ import {
   Folder, 
   FolderPlus, 
   FolderOpen, 
-  Swords, 
-  Crown, 
   Star, 
   Edit2, 
   Trash2 
@@ -15,15 +13,12 @@ import { COLOR_MAP } from './constants';
 
 export const CatalogsBar: React.FC<CatalogsBarProps> = ({
   catalogs,
-  decks,
   activeBinder,
   catalogStats,
   totalCollectionCount,
   currency,
   onSelectBinder,
   onOpenCreateCatalog,
-  onOpenCreateDeck,
-  onSelectDeck,
   onOpenEditCatalog,
   onRequestDeleteCatalog,
   onSetDefaultCatalog,
@@ -46,7 +41,7 @@ export const CatalogsBar: React.FC<CatalogsBarProps> = ({
               </span>
             </h2>
             <p className="text-[11px] text-stone-400">
-              Wybierz katalog, aby filtrować karty lub utwórz nowy do organizacji swoich talii i klaserów.
+              Wybierz katalog, aby filtrować karty lub utwórz nowy do organizacji swoich klaserów.
             </p>
           </div>
         </div>
@@ -59,52 +54,11 @@ export const CatalogsBar: React.FC<CatalogsBarProps> = ({
             <FolderPlus className="w-4 h-4 stroke-[2.5]" />
             <span>+ Utwórz nowy katalog</span>
           </button>
-
-          {onOpenCreateDeck && (
-            <button
-              onClick={onOpenCreateDeck}
-              className="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-extrabold text-xs flex items-center justify-center gap-1.5 shadow-md shadow-purple-950/40 transition-all cursor-pointer shrink-0 border border-purple-400/30"
-            >
-              <Swords className="w-4 h-4 stroke-[2.5] text-purple-200" />
-              <span>+ Utwórz nową talię</span>
-            </button>
-          )}
         </div>
       </div>
 
       {/* Catalog Navigation Tabs */}
       <div className="flex items-center gap-2 overflow-x-auto pb-1 pt-1 scrollbar-thin">
-        {/* Decks quick access (if any exist) */}
-        {decks && decks.length > 0 && (
-          <div className="flex items-center gap-1.5 pr-2 mr-1 border-r border-stone-800 shrink-0">
-            <span className="text-[10px] uppercase font-mono font-bold text-purple-400 px-1.5 flex items-center gap-1">
-              <Crown className="w-3 h-3 text-amber-400" />
-              <span>Talii EDH:</span>
-            </span>
-            {decks.map(deck => {
-              const count = (deck.commander ? 1 : 0) + (deck.cards?.reduce((s, c) => s + c.quantity, 0) || 0);
-              return (
-                <button
-                  key={deck.id}
-                  onClick={() => onSelectDeck && onSelectDeck(deck)}
-                  className="px-2.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer shrink-0 flex items-center gap-1.5 border bg-purple-950/60 text-purple-200 border-purple-800/80 hover:bg-purple-900/80 hover:border-purple-500 shadow-sm"
-                  title={`Otwórz talię ${deck.name} (${deck.format || 'EDH Commander'})`}
-                >
-                  <Swords className="w-3 h-3 text-purple-300" />
-                  <span className="truncate max-w-[120px]">{deck.name}</span>
-                  <span className={`px-1.5 py-0.2 rounded-full font-mono text-[10px] font-bold ${
-                    count === 100
-                      ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
-                      : 'bg-purple-900/90 text-purple-300 border border-purple-700/50'
-                  }`}>
-                    {count}/100
-                  </span>
-                </button>
-              );
-            })}
-          </div>
-        )}
-
         {/* All Cards Tab */}
         <button
           onClick={() => onSelectBinder('ALL')}

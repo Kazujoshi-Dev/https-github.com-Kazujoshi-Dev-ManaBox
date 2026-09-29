@@ -9,6 +9,7 @@ interface UseCardModalFormProps {
   onCreateCatalog?: (name: string, description?: string, color?: string) => Promise<Catalog | null>;
   onSaveToCollection: (itemData: CardSaveData) => void;
   onClose: () => void;
+  onSelectPrint?: (newCard: ScryfallCard, oldCard: ScryfallCard) => void;
 }
 
 export function useCardModalForm({
@@ -18,6 +19,7 @@ export function useCardModalForm({
   onCreateCatalog,
   onSaveToCollection,
   onClose,
+  onSelectPrint,
 }: UseCardModalFormProps) {
   // Current active card version (can be switched between prints)
   const [activeCard, setActiveCard] = useState<ScryfallCard>(card);
@@ -142,8 +144,13 @@ export function useCardModalForm({
   }, [quantity, quantityFoil, purchasePrice, existingItem, onSaveToCollection, activeCard, condition, language, notes, selectedBinder, showNotice]);
 
   const handleSelectPrint = useCallback((print: ScryfallCard) => {
+    const oldCard = activeCard;
     setActiveCard(print);
     setFaceIndex(0);
+
+    if (onSelectPrint) {
+      onSelectPrint(print, oldCard);
+    }
 
     if (existingItem) {
       onSaveToCollection({
@@ -156,11 +163,11 @@ export function useCardModalForm({
         notes,
         binder: selectedBinder,
       });
-      showNotice(`Zapisano nową wersję printu w kolekcji: [${print.set.toUpperCase()}] #${print.collector_number} (${print.set_name})`);
+      showNotice(`Zapisano nową wersję printu: [${print.set.toUpperCase()}] #${print.collector_number} (${print.set_name})`);
     } else {
       showNotice(`Wybrano wersję: [${print.set.toUpperCase()}] #${print.collector_number} (${print.set_name})`);
     }
-  }, [existingItem, onSaveToCollection, quantity, quantityFoil, condition, language, purchasePrice, notes, selectedBinder, showNotice]);
+  }, [activeCard, onSelectPrint, existingItem, onSaveToCollection, quantity, quantityFoil, condition, language, purchasePrice, notes, selectedBinder, showNotice]);
 
   const handleSelectCurrencyPrice = useCallback((priceStr: string | undefined, currency: 'EUR' | 'USD') => {
     if (!priceStr) return;

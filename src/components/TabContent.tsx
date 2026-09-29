@@ -54,6 +54,7 @@ interface TabContentProps {
 
   // Card search interactions
   onSelectCard: (card: ScryfallCard) => void;
+  onViewDeckCardDetails?: (card: ScryfallCard) => void;
 }
 
 export const TabContent: React.FC<TabContentProps> = ({
@@ -82,7 +83,8 @@ export const TabContent: React.FC<TabContentProps> = ({
   onAddToWishlist,
   onRemoveFromWishlist,
   onMoveWishlistToCollection,
-  onSelectCard
+  onSelectCard,
+  onViewDeckCardDetails,
 }) => {
   switch (activeTab) {
     case 'collection':
@@ -118,7 +120,7 @@ export const TabContent: React.FC<TabContentProps> = ({
             settings={settings}
             onUpdateDeck={onUpdateDeck}
             onBack={onBackFromDeck}
-            onViewCardDetails={onSelectCard}
+            onViewCardDetails={onViewDeckCardDetails || onSelectCard}
           />
         );
       }

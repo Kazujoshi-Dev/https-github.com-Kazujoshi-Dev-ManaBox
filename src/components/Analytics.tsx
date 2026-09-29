@@ -133,10 +133,10 @@ export const Analytics: React.FC<AnalyticsProps> = ({ collection, settings, onVi
   ].filter(d => d.value > 0);
 
   const rarityChartData = [
-    { name: 'Mityczne', value: stats.rarityCounts.Mythic, color: '#f59e0b' },
-    { name: 'Rzadkie', value: stats.rarityCounts.Rare, color: '#eab308' },
-    { name: 'Niepospolite', value: stats.rarityCounts.Uncommon, color: '#cbd5e1' },
-    { name: 'Pospolite', value: stats.rarityCounts.Common, color: '#78716c' },
+    { name: 'Mythic', value: stats.rarityCounts.Mythic, color: '#f59e0b' },
+    { name: 'Rare', value: stats.rarityCounts.Rare, color: '#eab308' },
+    { name: 'Uncommon', value: stats.rarityCounts.Uncommon, color: '#cbd5e1' },
+    { name: 'Common', value: stats.rarityCounts.Common, color: '#78716c' },
   ].filter(d => d.value > 0);
 
   const profit = stats.totalValue - stats.totalPurchaseCost;

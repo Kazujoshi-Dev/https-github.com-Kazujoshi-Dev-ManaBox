@@ -111,12 +111,13 @@ export function getRarityColor(rarity: string): string {
 
 export function getRarityLabel(rarity: string): string {
   switch (rarity.toLowerCase()) {
-    case 'mythic': return 'Mityczna';
-    case 'rare': return 'Rzadka';
-    case 'uncommon': return 'Niepospolita';
-    case 'common': return 'Pospolita';
-    case 'special': return 'Specjalna';
-    default: return rarity;
+    case 'mythic': return 'Mythic';
+    case 'rare': return 'Rare';
+    case 'uncommon': return 'Uncommon';
+    case 'common': return 'Common';
+    case 'special': return 'Special';
+    case 'bonus': return 'Bonus';
+    default: return rarity ? (rarity.charAt(0).toUpperCase() + rarity.slice(1)) : rarity;
   }
 }
 

@@ -43,10 +43,10 @@ export const CARD_TYPES = [
 
 export const CARD_RARITIES = [
   { value: 'ALL', label: 'Wszystkie rzadkości' },
-  { value: 'mythic', label: 'Mityczne (Mythic)' },
-  { value: 'rare', label: 'Rzadkie (Rare)' },
-  { value: 'uncommon', label: 'Niepospolite (Uncommon)' },
-  { value: 'common', label: 'Pospolite (Common)' }
+  { value: 'mythic', label: 'Mythic' },
+  { value: 'rare', label: 'Rare' },
+  { value: 'uncommon', label: 'Uncommon' },
+  { value: 'common', label: 'Common' }
 ];
 
 export const SORT_OPTIONS: { value: FilterOptions['sortBy']; label: string }[] = [

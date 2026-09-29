@@ -4,8 +4,6 @@ import { formatCurrency, getCardImageUri, getCardPrice, getRarityColor, getRarit
 import { ManaSymbol } from './ManaSymbol';
 import { 
   Search, 
-  Sparkles, 
-  Dice5, 
   Plus, 
   ExternalLink, 
   Loader2, 
@@ -88,28 +86,6 @@ export const CardSearch: React.FC<CardSearchProps> = ({ onSelectCard, settings }
     }
   };
 
-  const handleRandomCard = async () => {
-    setIsLoading(true);
-    setError(null);
-    try {
-      const res = await fetch('/api/scryfall/random');
-      const card = await res.json();
-      if (res.ok && card && card.name) {
-        setSearchResults([card]);
-        setQuery(card.name);
-      }
-    } catch (err: any) {
-      setError('Nie udało się pobrać losowej karty');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handlePresetClick = (presetQuery: string) => {
-    setQuery(presetQuery);
-    executeSearch(presetQuery);
-  };
-
   return (
     <div className="space-y-6">
       
@@ -167,17 +143,6 @@ export const CardSearch: React.FC<CardSearchProps> = ({ onSelectCard, settings }
                 </>
               )}
             </button>
-
-            <button
-              type="button"
-              onClick={handleRandomCard}
-              disabled={isLoading}
-              title="Wyszukaj losową kartę Magic: The Gathering"
-              className="px-3.5 py-3 rounded-xl bg-stone-800 hover:bg-stone-700 text-amber-300 border border-stone-700 flex items-center gap-1.5 text-xs font-semibold transition-colors cursor-pointer shrink-0"
-            >
-              <Dice5 className="w-4 h-4" />
-              <span className="hidden sm:inline">Losowa karta</span>
-            </button>
           </form>
 
           {/* Autocomplete Dropdown */}
@@ -200,32 +165,6 @@ export const CardSearch: React.FC<CardSearchProps> = ({ onSelectCard, settings }
               ))}
             </div>
           )}
-        </div>
-
-        {/* Preset Quick Chips */}
-        <div className="flex items-center gap-2 flex-wrap pt-2 text-xs">
-          <span className="text-stone-400 text-[11px] font-medium flex items-center gap-1">
-            <Sparkles className="w-3 h-3 text-amber-400" />
-            Popularne zapytania:
-          </span>
-          {[
-            { label: 'Commander Staples', q: 'is:commander_staple' },
-            { label: 'The One Ring', q: 'The One Ring' },
-            { label: 'Sol Ring', q: 'Sol Ring' },
-            { label: 'Ragavan', q: 'Ragavan, Nimble Pilferer' },
-            { label: 'Sheoldred', q: 'Sheoldred, the Apocalypse' },
-            { label: 'Dual Lands', q: 'is:dual' },
-            { label: 'Mityki red >5 cmc', q: 'c:r rarity:mythic cmc>=5' }
-          ].map((preset, i) => (
-            <button
-              key={i}
-              type="button"
-              onClick={() => handlePresetClick(preset.q)}
-              className="px-2.5 py-1 rounded-lg bg-stone-950/80 hover:bg-stone-800 text-stone-300 hover:text-amber-300 border border-stone-800 text-[11px] font-mono transition-colors cursor-pointer"
-            >
-              {preset.label}
-            </button>
-          ))}
         </div>
 
       </div>

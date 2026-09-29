@@ -81,15 +81,12 @@ export const CollectionList: React.FC<CollectionListProps> = ({
       {/* 1. Catalogs Bar */}
       <CatalogsBar
         catalogs={catalogs}
-        decks={decks}
         activeBinder={filters.binder}
         catalogStats={catalogStats}
         totalCollectionCount={collection.length}
         currency={settings.currency}
         onSelectBinder={(binder) => updateFilters({ binder })}
         onOpenCreateCatalog={openCreateCatalogModal}
-        onOpenCreateDeck={onOpenCreateDeckModal || (() => {})}
-        onSelectDeck={onSelectDeck}
         onOpenEditCatalog={openEditCatalogModal}
         onRequestDeleteCatalog={(cat) => setCatalogToDelete(cat)}
         onSetDefaultCatalog={onSetDefaultCatalog}
