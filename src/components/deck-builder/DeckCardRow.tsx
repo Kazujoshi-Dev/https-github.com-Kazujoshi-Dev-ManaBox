@@ -1,9 +1,11 @@
 import React from 'react';
 import { PlusCircle, MinusCircle, Crown, ExternalLink } from 'lucide-react';
 import { DeckCardRowProps } from './types';
+import { formatCurrency, getCardPrice } from '../../utils/formatters';
 
 export const DeckCardRow: React.FC<DeckCardRowProps> = ({
   entry,
+  settings,
   onHover,
   onLeave,
   onUpdateQuantity,
@@ -12,11 +14,14 @@ export const DeckCardRow: React.FC<DeckCardRowProps> = ({
 }) => {
   const card = entry.card;
   const isLegendary = (card.type_line || '').toLowerCase().includes('legendary');
+  const singlePrice = settings ? getCardPrice(card, Boolean(entry.isFoil), settings) : 0;
+  const totalPrice = singlePrice * entry.quantity;
 
   return (
     <div
       onMouseEnter={(e) => onHover(card, e)}
       onMouseLeave={onLeave}
+      onClick={() => onViewDetails(card)}
       className={`group relative h-10 w-full rounded-xl overflow-hidden border transition-all shadow-md cursor-pointer flex items-center justify-between px-2.5 ${
         entry.isFoil
           ? 'border-amber-400/60 hover:border-amber-300 shadow-amber-500/10'
@@ -50,8 +55,18 @@ export const DeckCardRow: React.FC<DeckCardRowProps> = ({
         </span>
       </div>
 
-      {/* Right: Mana Cost & Quick Actions */}
+      {/* Right: Price, Mana Cost & Quick Actions */}
       <div className="relative z-10 flex items-center gap-1.5 shrink-0">
+        {settings && singlePrice > 0 && (
+          <span className={`text-[10px] font-mono font-bold px-1.5 py-0.5 rounded shadow ${
+            entry.isFoil
+              ? 'text-amber-300 bg-amber-950/70 border border-amber-500/40'
+              : 'text-emerald-300 bg-stone-900/80 border border-stone-700/60'
+          }`}>
+            {formatCurrency(totalPrice, settings.currency)}
+          </span>
+        )}
+
         {card.mana_cost && (
           <span className="text-[11px] font-mono font-bold text-amber-300 drop-shadow">
             {card.mana_cost}

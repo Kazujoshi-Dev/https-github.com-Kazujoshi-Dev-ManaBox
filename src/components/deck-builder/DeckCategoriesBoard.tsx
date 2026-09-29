@@ -5,6 +5,7 @@ import { DeckCategoryColumn } from './DeckCategoryColumn';
 
 export const DeckCategoriesBoard: React.FC<DeckCategoriesBoardProps> = ({
   categorizedCards,
+  settings,
   onHoverCard,
   onLeaveCard,
   onUpdateQuantity,
@@ -22,6 +23,7 @@ export const DeckCategoriesBoard: React.FC<DeckCategoriesBoardProps> = ({
             key={category.id}
             category={category}
             cards={cardsInCat}
+            settings={settings}
             onHoverCard={onHoverCard}
             onLeaveCard={onLeaveCard}
             onUpdateQuantity={onUpdateQuantity}

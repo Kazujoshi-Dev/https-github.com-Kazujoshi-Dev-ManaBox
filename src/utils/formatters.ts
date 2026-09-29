@@ -48,29 +48,71 @@ export function getCardPrice(
   let baseCurrency: 'EUR' | 'USD' = 'EUR';
 
   if (pricingSource === 'CARDMARKET') {
-    baseCurrency = 'EUR';
-    if (preferFoil && card.prices.eur_foil) {
-      basePrice = parseFloat(card.prices.eur_foil) || 0;
-    } else if (card.prices.eur) {
-      basePrice = parseFloat(card.prices.eur) || 0;
-    } else if (card.prices.eur_foil) {
-      basePrice = parseFloat(card.prices.eur_foil) || 0;
-    } else if (card.prices.usd) {
-      basePrice = parseFloat(card.prices.usd) || 0;
-      baseCurrency = 'USD';
+    if (preferFoil) {
+      if (card.prices.eur_foil) {
+        basePrice = parseFloat(card.prices.eur_foil) || 0;
+        baseCurrency = 'EUR';
+      } else if (card.prices.usd_foil) {
+        basePrice = parseFloat(card.prices.usd_foil) || 0;
+        baseCurrency = 'USD';
+      } else if (card.prices.usd_etched) {
+        basePrice = parseFloat(card.prices.usd_etched) || 0;
+        baseCurrency = 'USD';
+      } else if (card.prices.eur) {
+        basePrice = parseFloat(card.prices.eur) || 0;
+        baseCurrency = 'EUR';
+      } else if (card.prices.usd) {
+        basePrice = parseFloat(card.prices.usd) || 0;
+        baseCurrency = 'USD';
+      }
+    } else {
+      if (card.prices.eur) {
+        basePrice = parseFloat(card.prices.eur) || 0;
+        baseCurrency = 'EUR';
+      } else if (card.prices.usd) {
+        basePrice = parseFloat(card.prices.usd) || 0;
+        baseCurrency = 'USD';
+      } else if (card.prices.eur_foil) {
+        basePrice = parseFloat(card.prices.eur_foil) || 0;
+        baseCurrency = 'EUR';
+      } else if (card.prices.usd_foil) {
+        basePrice = parseFloat(card.prices.usd_foil) || 0;
+        baseCurrency = 'USD';
+      }
     }
   } else {
     // TCGPLAYER
-    baseCurrency = 'USD';
-    if (preferFoil && card.prices.usd_foil) {
-      basePrice = parseFloat(card.prices.usd_foil) || 0;
-    } else if (card.prices.usd) {
-      basePrice = parseFloat(card.prices.usd) || 0;
-    } else if (card.prices.usd_foil) {
-      basePrice = parseFloat(card.prices.usd_foil) || 0;
-    } else if (card.prices.eur) {
-      basePrice = parseFloat(card.prices.eur) || 0;
-      baseCurrency = 'EUR';
+    if (preferFoil) {
+      if (card.prices.usd_foil) {
+        basePrice = parseFloat(card.prices.usd_foil) || 0;
+        baseCurrency = 'USD';
+      } else if (card.prices.eur_foil) {
+        basePrice = parseFloat(card.prices.eur_foil) || 0;
+        baseCurrency = 'EUR';
+      } else if (card.prices.usd_etched) {
+        basePrice = parseFloat(card.prices.usd_etched) || 0;
+        baseCurrency = 'USD';
+      } else if (card.prices.usd) {
+        basePrice = parseFloat(card.prices.usd) || 0;
+        baseCurrency = 'USD';
+      } else if (card.prices.eur) {
+        basePrice = parseFloat(card.prices.eur) || 0;
+        baseCurrency = 'EUR';
+      }
+    } else {
+      if (card.prices.usd) {
+        basePrice = parseFloat(card.prices.usd) || 0;
+        baseCurrency = 'USD';
+      } else if (card.prices.eur) {
+        basePrice = parseFloat(card.prices.eur) || 0;
+        baseCurrency = 'EUR';
+      } else if (card.prices.usd_foil) {
+        basePrice = parseFloat(card.prices.usd_foil) || 0;
+        baseCurrency = 'USD';
+      } else if (card.prices.eur_foil) {
+        basePrice = parseFloat(card.prices.eur_foil) || 0;
+        baseCurrency = 'EUR';
+      }
     }
   }
 

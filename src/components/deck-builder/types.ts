@@ -27,6 +27,7 @@ export interface DeckHeaderProps {
 export interface CommanderShowcaseProps {
   commander: ScryfallCard | null | undefined;
   commanderIsFoil?: boolean;
+  settings?: AppSettings;
   onViewDetails: (card: ScryfallCard) => void;
   onRemoveCommander: () => void;
   onOpenSearch: () => void;
@@ -39,6 +40,7 @@ export interface DeckStatsBarProps {
 
 export interface DeckCardRowProps {
   entry: DeckCardEntry;
+  settings?: AppSettings;
   onHover: (card: ScryfallCard, e: MouseEvent) => void;
   onLeave: () => void;
   onUpdateQuantity: (cardId: string, delta: number) => void;
@@ -49,6 +51,7 @@ export interface DeckCardRowProps {
 export interface DeckCategoryColumnProps {
   category: DeckCategoryConfig;
   cards: DeckCardEntry[];
+  settings?: AppSettings;
   onHoverCard: (card: ScryfallCard, e: MouseEvent) => void;
   onLeaveCard: () => void;
   onUpdateQuantity: (cardId: string, delta: number) => void;
@@ -58,6 +61,7 @@ export interface DeckCategoryColumnProps {
 
 export interface DeckCategoriesBoardProps {
   categorizedCards: Map<string, DeckCardEntry[]>;
+  settings?: AppSettings;
   onHoverCard: (card: ScryfallCard, e: MouseEvent) => void;
   onLeaveCard: () => void;
   onUpdateQuantity: (cardId: string, delta: number) => void;

@@ -163,6 +163,7 @@ export const DeckBuilder: React.FC<DeckBuilderProps> = ({
         <CommanderShowcase
           commander={deck.commander}
           commanderIsFoil={deck.commanderIsFoil}
+          settings={settings}
           onViewDetails={onViewCardDetails}
           onRemoveCommander={handleRemoveCommander}
           onOpenSearch={openSearchModal}
@@ -178,6 +179,7 @@ export const DeckBuilder: React.FC<DeckBuilderProps> = ({
       {/* 3. Main Stacked Categories Board */}
       <DeckCategoriesBoard
         categorizedCards={categorizedCards}
+        settings={settings}
         onHoverCard={handleHoverCard}
         onLeaveCard={handleLeaveCard}
         onUpdateQuantity={handleUpdateQuantity}

@@ -87,11 +87,14 @@ export default function App() {
   }, [collection, selectedDeck]);
 
   const handleCardPrintSelectedInModal = useCallback((newCard: ScryfallCard) => {
-    // If viewing a card from the active deck, update the deck version automatically
-    if (selectedDeck && deckCardBeingViewed) {
-      const targetId = deckCardBeingViewed.id;
-      const targetName = deckCardBeingViewed.name.toLowerCase();
+    const targetCard = deckCardBeingViewed || selectedCardForModal;
+    if (!targetCard) return;
 
+    const targetId = targetCard.id;
+    const targetName = targetCard.name.toLowerCase();
+
+    // 1. Update active deck if present
+    if (selectedDeck) {
       const isCommander = Boolean(
         selectedDeck.commander && 
         (selectedDeck.commander.id === targetId || selectedDeck.commander.name.toLowerCase() === targetName)
@@ -117,16 +120,57 @@ export default function App() {
 
       setSelectedDeck(updatedDeck);
       updateDeck(updatedDeck);
-      setDeckCardBeingViewed(newCard);
-      showToast(`Zaktualizowano wersję [${newCard.set.toUpperCase()}] w talii "${selectedDeck.name}"!`);
+      if (deckCardBeingViewed) {
+        setDeckCardBeingViewed(newCard);
+      }
     }
-  }, [selectedDeck, deckCardBeingViewed, updateDeck, showToast]);
+
+    // 2. Also sync other decks that contain this card
+    decks.forEach(deck => {
+      if (selectedDeck && deck.id === selectedDeck.id) return;
+      const hasCommander = Boolean(deck.commander && (deck.commander.id === targetId || deck.commander.name.toLowerCase() === targetName));
+      const hasInCards = deck.cards.some(entry => entry.card.id === targetId || entry.card.name.toLowerCase() === targetName);
+
+      if (hasCommander || hasInCards) {
+        const updatedDeck: DeckItem = {
+          ...deck,
+          commander: hasCommander ? newCard : deck.commander,
+          cards: deck.cards.map(entry => 
+            (entry.card.id === targetId || entry.card.name.toLowerCase() === targetName)
+              ? { ...entry, card: newCard }
+              : entry
+          ),
+        };
+        updateDeck(updatedDeck);
+      }
+    });
+
+    // 3. Update collection item if present
+    if (selectedCollectionItemForModal) {
+      saveToCollection({
+        card: newCard,
+        quantity: selectedCollectionItemForModal.quantity,
+        quantityFoil: selectedCollectionItemForModal.quantityFoil,
+        condition: selectedCollectionItemForModal.condition,
+        language: selectedCollectionItemForModal.language,
+        purchasePrice: selectedCollectionItemForModal.purchasePrice,
+        notes: selectedCollectionItemForModal.notes,
+        binder: selectedCollectionItemForModal.binder,
+      }, selectedCollectionItemForModal);
+    }
+
+    showToast(`Zaktualizowano wersję [${newCard.set.toUpperCase()}] #${newCard.collector_number} dla "${newCard.name}"!`);
+  }, [deckCardBeingViewed, selectedCardForModal, selectedDeck, decks, selectedCollectionItemForModal, updateDeck, saveToCollection, showToast]);
 
   const handleCardFoilToggledInModal = useCallback((isFoil: boolean) => {
-    if (selectedDeck && deckCardBeingViewed) {
-      const targetId = deckCardBeingViewed.id;
-      const targetName = deckCardBeingViewed.name.toLowerCase();
+    const targetCard = deckCardBeingViewed || selectedCardForModal;
+    if (!targetCard) return;
 
+    const targetId = targetCard.id;
+    const targetName = targetCard.name.toLowerCase();
+
+    // 1. Update active deck if present
+    if (selectedDeck) {
       const isCommander = Boolean(
         selectedDeck.commander && 
         (selectedDeck.commander.id === targetId || selectedDeck.commander.name.toLowerCase() === targetName)
@@ -152,10 +196,31 @@ export default function App() {
 
       setSelectedDeck(updatedDeck);
       updateDeck(updatedDeck);
-      setDeckCardIsFoil(isFoil);
-      showToast(isFoil ? `Ustawiono wersję Foil ✨ w talii "${selectedDeck.name}"!` : `Ustawiono wersję Standard w talii "${selectedDeck.name}"!`);
     }
-  }, [selectedDeck, deckCardBeingViewed, updateDeck, showToast]);
+
+    // 2. Also sync other decks that contain this card
+    decks.forEach(deck => {
+      if (selectedDeck && deck.id === selectedDeck.id) return;
+      const hasCommander = Boolean(deck.commander && (deck.commander.id === targetId || deck.commander.name.toLowerCase() === targetName));
+      const hasInCards = deck.cards.some(entry => entry.card.id === targetId || entry.card.name.toLowerCase() === targetName);
+
+      if (hasCommander || hasInCards) {
+        const updatedDeck: DeckItem = {
+          ...deck,
+          commanderIsFoil: hasCommander ? isFoil : deck.commanderIsFoil,
+          cards: deck.cards.map(entry => 
+            (entry.card.id === targetId || entry.card.name.toLowerCase() === targetName)
+              ? { ...entry, isFoil }
+              : entry
+          ),
+        };
+        updateDeck(updatedDeck);
+      }
+    });
+
+    setDeckCardIsFoil(isFoil);
+    showToast(isFoil ? `Ustawiono wersję Foil ✨ dla "${targetCard.name}"!` : `Ustawiono wersję Standard dla "${targetCard.name}"!`);
+  }, [deckCardBeingViewed, selectedCardForModal, selectedDeck, decks, updateDeck, showToast]);
 
   const handleCloseCardModal = useCallback(() => {
     setSelectedCardForModal(null);

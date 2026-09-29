@@ -1,23 +1,29 @@
 import React from 'react';
-import { Crown, X } from 'lucide-react';
+import { Crown, X, Coins } from 'lucide-react';
 import { CommanderShowcaseProps } from './types';
+import { formatCurrency, getCardPrice } from '../../utils/formatters';
 
 export const CommanderShowcase: React.FC<CommanderShowcaseProps> = ({
   commander,
   commanderIsFoil,
+  settings,
   onViewDetails,
   onRemoveCommander,
   onOpenSearch,
 }) => {
   if (commander) {
+    const commanderPrice = settings ? getCardPrice(commander, Boolean(commanderIsFoil), settings) : 0;
+
     return (
       <div className={`mt-5 p-4 rounded-xl bg-gradient-to-r from-amber-950/30 via-stone-950 to-purple-950/20 border flex flex-col sm:flex-row items-center justify-between gap-4 ${
         commanderIsFoil ? 'border-amber-400/60 shadow-lg shadow-amber-500/10' : 'border-amber-500/30'
       }`}>
         <div className="flex items-center gap-3.5">
-          <div className={`relative w-16 h-20 rounded-lg overflow-hidden border-2 shadow-md shrink-0 ${
+          <div className={`relative w-16 h-20 rounded-lg overflow-hidden border-2 shadow-md shrink-0 cursor-pointer ${
             commanderIsFoil ? 'border-amber-300 ring-2 ring-amber-400/40' : 'border-amber-400'
-          }`}>
+          }`}
+          onClick={() => onViewDetails(commander)}
+          >
             <img
               src={commander.image_uris?.art_crop || commander.image_uris?.normal}
               alt={commander.name}
@@ -25,7 +31,7 @@ export const CommanderShowcase: React.FC<CommanderShowcaseProps> = ({
             />
           </div>
           <div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
               <span className="text-[10px] uppercase font-mono font-bold px-2 py-0.5 rounded-full bg-amber-500 text-stone-950">
                 👑 Dowódca Talii
               </span>
@@ -34,11 +40,24 @@ export const CommanderShowcase: React.FC<CommanderShowcaseProps> = ({
                   ✨ FOIL
                 </span>
               )}
+              {settings && commanderPrice > 0 && (
+                <span className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded-full border flex items-center gap-1 ${
+                  commanderIsFoil
+                    ? 'text-amber-300 bg-amber-950/60 border-amber-500/40'
+                    : 'text-emerald-300 bg-stone-900 border-stone-700'
+                }`}>
+                  <Coins className="w-3 h-3 text-amber-400" />
+                  {formatCurrency(commanderPrice, settings.currency)}
+                </span>
+              )}
               <span className="text-xs font-mono text-amber-300 font-bold">
                 {commander.mana_cost}
               </span>
             </div>
-            <h3 className="text-base font-bold text-white mt-0.5">
+            <h3 
+              onClick={() => onViewDetails(commander)}
+              className="text-base font-bold text-white mt-0.5 hover:text-amber-300 transition-colors cursor-pointer"
+            >
               {commander.name}
             </h3>
             <p className="text-xs text-stone-400">
