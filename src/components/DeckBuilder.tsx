@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { DeckItem, DeckCardEntry, ScryfallCard, AppSettings, CollectionItem } from '../types';
 import { getCardPrice, formatCurrency } from '../utils/formatters';
 import { 
@@ -19,7 +19,8 @@ import {
   PlusCircle,
   MinusCircle,
   Flame,
-  Check
+  Check,
+  Globe
 } from 'lucide-react';
 
 interface DeckBuilderProps {
@@ -32,7 +33,6 @@ interface DeckBuilderProps {
 }
 
 export const DECK_CATEGORIES = [
-  { id: 'Dowódca', name: 'Dowódca (Commander)', icon: '👑', color: 'amber', border: 'border-amber-500/40', badge: 'bg-amber-500/20 text-amber-300' },
   { id: 'Stwory', name: 'Stwory (Creatures)', icon: '🐉', color: 'emerald', border: 'border-emerald-500/40', badge: 'bg-emerald-500/20 text-emerald-300' },
   { id: 'Czary natychmiastowe', name: 'Czary natychmiastowe (Instants)', icon: '⚡', color: 'cyan', border: 'border-cyan-500/40', badge: 'bg-cyan-500/20 text-cyan-300' },
   { id: 'Czary', name: 'Czary główne (Sorceries)', icon: '📜', color: 'blue', border: 'border-blue-500/40', badge: 'bg-blue-500/20 text-blue-300' },
@@ -43,8 +43,7 @@ export const DECK_CATEGORIES = [
   { id: 'Inne', name: 'Inne czary', icon: '⚔️', color: 'stone', border: 'border-stone-500/40', badge: 'bg-stone-500/20 text-stone-300' },
 ];
 
-export function getCardCategory(card: ScryfallCard, isCommander?: boolean): string {
-  if (isCommander) return 'Dowódca';
+export function getCardCategory(card: ScryfallCard): string {
   const type = (card.type_line || '').toLowerCase();
   if (type.includes('creature')) return 'Stwory';
   if (type.includes('instant')) return 'Czary natychmiastowe';
@@ -68,14 +67,24 @@ export const DeckBuilder: React.FC<DeckBuilderProps> = ({
   const [hoverPosition, setHoverPosition] = useState<{ x: number; y: number } | null>(null);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [searchSource, setSearchSource] = useState<'collection' | 'all'>(deck.cardSource || 'collection');
   const [searchResults, setSearchResults] = useState<ScryfallCard[]>([]);
   const [isSearchingScryfall, setIsSearchingScryfall] = useState(false);
+
+  // Sync searchSource when deck changes
+  useEffect(() => {
+    if (deck.cardSource) {
+      setSearchSource(deck.cardSource);
+    }
+  }, [deck.cardSource]);
 
   // Total cards in deck
   const totalCardsCount = useMemo(() => {
     let count = deck.commander ? 1 : 0;
     deck.cards.forEach(entry => {
-      count += entry.quantity;
+      if (!entry.isCommander) {
+        count += entry.quantity;
+      }
     });
     return count;
   }, [deck]);
@@ -87,18 +96,21 @@ export const DeckBuilder: React.FC<DeckBuilderProps> = ({
       val += getCardPrice(deck.commander, false, settings);
     }
     deck.cards.forEach(entry => {
-      val += getCardPrice(entry.card, false, settings) * entry.quantity;
+      if (!entry.isCommander) {
+        val += getCardPrice(entry.card, false, settings) * entry.quantity;
+      }
     });
     return val;
   }, [deck, settings]);
 
-  // Group cards by category
+  // Group cards by category (excluding commander so it is never duplicated)
   const categorizedCards = useMemo(() => {
     const map = new Map<string, DeckCardEntry[]>();
     DECK_CATEGORIES.forEach(cat => map.set(cat.id, []));
 
     deck.cards.forEach(entry => {
-      const cat = getCardCategory(entry.card, entry.isCommander);
+      if (entry.isCommander) return;
+      const cat = getCardCategory(entry.card);
       const list = map.get(cat) || [];
       list.push(entry);
       map.set(cat, list);
@@ -111,6 +123,7 @@ export const DeckBuilder: React.FC<DeckBuilderProps> = ({
   const manaCurve = useMemo(() => {
     const curve = [0, 0, 0, 0, 0, 0, 0]; // 0, 1, 2, 3, 4, 5, 6+
     deck.cards.forEach(entry => {
+      if (entry.isCommander) return;
       if ((entry.card.type_line || '').toLowerCase().includes('land')) return;
       const cmc = Math.floor(entry.card.cmc || 0);
       const index = Math.min(cmc, 6);
@@ -126,29 +139,37 @@ export const DeckBuilder: React.FC<DeckBuilderProps> = ({
     }
     const colors = new Set<string>();
     deck.cards.forEach(e => {
-      e.card.color_identity?.forEach(c => colors.add(c));
+      if (!e.isCommander) {
+        e.card.color_identity?.forEach(c => colors.add(c));
+      }
     });
     return Array.from(colors);
   }, [deck]);
 
-  // Quick search handler (from user collection first, then Scryfall)
-  const handleSearchCards = async (query: string) => {
+  // Search handler based on chosen card source ('collection' vs 'all')
+  const handleSearchCards = async (query: string, sourceOverride?: 'collection' | 'all') => {
     setSearchQuery(query);
+    const activeSource = sourceOverride || searchSource;
+
     if (!query.trim()) {
       setSearchResults([]);
       return;
     }
 
-    // 1. Search in user collection first
     const qLower = query.toLowerCase();
     const localMatches = collection
       .filter(item => item.card.name.toLowerCase().includes(qLower))
       .map(item => item.card)
-      .slice(0, 8);
+      .slice(0, 10);
 
+    if (activeSource === 'collection') {
+      setSearchResults(localMatches);
+      return;
+    }
+
+    // When source is 'all', show local matches first and then search Scryfall
     setSearchResults(localMatches);
 
-    // 2. Fetch from Scryfall if query >= 3 chars
     if (query.trim().length >= 3) {
       setIsSearchingScryfall(true);
       try {
@@ -156,9 +177,8 @@ export const DeckBuilder: React.FC<DeckBuilderProps> = ({
         if (res.ok) {
           const data = await res.json();
           if (data.data && Array.isArray(data.data)) {
-            // merge without duplicates
             const existingIds = new Set(localMatches.map(c => c.id));
-            const newCards = data.data.filter((c: ScryfallCard) => !existingIds.has(c.id)).slice(0, 12);
+            const newCards = data.data.filter((c: ScryfallCard) => !existingIds.has(c.id)).slice(0, 15);
             setSearchResults([...localMatches, ...newCards]);
           }
         }
@@ -240,6 +260,15 @@ export const DeckBuilder: React.FC<DeckBuilderProps> = ({
     });
   };
 
+  const handleToggleCardSource = () => {
+    const nextSource = (deck.cardSource || 'collection') === 'collection' ? 'all' : 'collection';
+    onUpdateDeck({
+      ...deck,
+      cardSource: nextSource
+    });
+    setSearchSource(nextSource);
+  };
+
   return (
     <div className="space-y-6 pb-20">
       
@@ -266,6 +295,30 @@ export const DeckBuilder: React.FC<DeckBuilderProps> = ({
                   <Crown className="w-3.5 h-3.5 text-amber-400" />
                   <span>{deck.format || 'EDH Commander'}</span>
                 </span>
+                
+                {/* Card Source Badge & Switcher */}
+                <button
+                  type="button"
+                  onClick={handleToggleCardSource}
+                  className={`px-2.5 py-0.5 rounded-full text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 font-mono border transition-all cursor-pointer ${
+                    (deck.cardSource || 'collection') === 'collection'
+                      ? 'bg-amber-500/15 text-amber-300 border-amber-500/40 hover:bg-amber-500/25'
+                      : 'bg-purple-500/15 text-purple-300 border-purple-500/40 hover:bg-purple-500/25'
+                  }`}
+                  title="Kliknij, aby przełączyć źródło wyszukiwania kart"
+                >
+                  {(deck.cardSource || 'collection') === 'collection' ? (
+                    <>
+                      <Layers className="w-3.5 h-3.5 text-amber-400" />
+                      <span>Źródło: Tylko kolekcja</span>
+                    </>
+                  ) : (
+                    <>
+                      <Globe className="w-3.5 h-3.5 text-purple-400" />
+                      <span>Źródło: Wszystkie karty MTG</span>
+                    </>
+                  )}
+                </button>
               </div>
               <p className="text-xs text-stone-400 mt-0.5">
                 {deck.description || 'Talia w formacie EDH Commander (1 Dowódca + 99 kart w talii)'}
@@ -310,8 +363,8 @@ export const DeckBuilder: React.FC<DeckBuilderProps> = ({
 
         </div>
 
-        {/* Commander Featured Card Showcase */}
-        {deck.commander && (
+        {/* Commander Featured Card Showcase / Placeholder */}
+        {deck.commander ? (
           <div className="mt-5 p-4 rounded-xl bg-gradient-to-r from-amber-950/30 via-stone-950 to-purple-950/20 border border-amber-500/30 flex flex-col sm:flex-row items-center justify-between gap-4">
             <div className="flex items-center gap-3.5">
               <div className="relative w-16 h-20 rounded-lg overflow-hidden border-2 border-amber-400 shadow-md shrink-0">
@@ -354,6 +407,32 @@ export const DeckBuilder: React.FC<DeckBuilderProps> = ({
                 <X className="w-4 h-4" />
               </button>
             </div>
+          </div>
+        ) : (
+          <div className="mt-5 p-4 rounded-xl bg-stone-950/60 border border-dashed border-amber-500/30 flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div className="flex items-center gap-3.5">
+              <div className="w-12 h-16 rounded-lg bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-xl shrink-0">
+                👑
+              </div>
+              <div>
+                <span className="text-[10px] uppercase font-mono font-bold px-2 py-0.5 rounded-full bg-stone-800 text-stone-400">
+                  Brak wybranego dowódcy
+                </span>
+                <h3 className="text-sm font-bold text-stone-200 mt-1">
+                  Wybierz dowódcę dla tej talii EDH
+                </h3>
+                <p className="text-xs text-stone-400">
+                  Wybierz legendarnego stwora, który poprowadzi Twoją talię i wyznaczy tożsamość kolorów.
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={() => setIsSearchOpen(true)}
+              className="px-4 py-2 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-stone-950 font-bold text-xs rounded-xl shadow-md flex items-center gap-2 transition-all cursor-pointer shrink-0"
+            >
+              <Crown className="w-4 h-4" />
+              <span>Wybierz Dowódcę</span>
+            </button>
           </div>
         )}
       </div>
@@ -414,11 +493,11 @@ export const DeckBuilder: React.FC<DeckBuilderProps> = ({
         )}
       </div>
 
-      {/* Main Stacked Categories Board */}
+      {/* Main Stacked Categories Board (99 Library Cards) */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 items-start">
         {DECK_CATEGORIES.map(category => {
           const cardsInCat = categorizedCards.get(category.id) || [];
-          if (cardsInCat.length === 0 && category.id !== 'Dowódca') return null;
+          if (cardsInCat.length === 0) return null;
 
           const totalCatQty = cardsInCat.reduce((sum, e) => sum + e.quantity, 0);
 
@@ -591,13 +670,51 @@ export const DeckBuilder: React.FC<DeckBuilderProps> = ({
               </button>
             </div>
 
-            {/* Search Input */}
-            <div className="p-4 border-b border-stone-800">
+            {/* Search Input & Source Switcher */}
+            <div className="p-4 border-b border-stone-800 space-y-3">
+              {/* Segmented Source Switcher */}
+              <div className="grid grid-cols-2 p-1 bg-stone-950 rounded-xl border border-stone-800 text-xs font-bold">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSearchSource('collection');
+                    handleSearchCards(searchQuery, 'collection');
+                  }}
+                  className={`py-2 rounded-lg flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+                    searchSource === 'collection'
+                      ? 'bg-amber-500 text-stone-950 font-black shadow-sm'
+                      : 'text-stone-400 hover:text-stone-200'
+                  }`}
+                >
+                  <Layers className="w-3.5 h-3.5" />
+                  <span>Tylko moja kolekcja ({collection.length})</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSearchSource('all');
+                    handleSearchCards(searchQuery, 'all');
+                  }}
+                  className={`py-2 rounded-lg flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+                    searchSource === 'all'
+                      ? 'bg-purple-500 text-white font-black shadow-sm'
+                      : 'text-stone-400 hover:text-stone-200'
+                  }`}
+                >
+                  <Globe className="w-3.5 h-3.5" />
+                  <span>Wszystkie karty MTG (Scryfall)</span>
+                </button>
+              </div>
+
               <div className="relative">
                 <Search className="w-4 h-4 text-stone-400 absolute left-3.5 top-3" />
                 <input
                   type="text"
-                  placeholder="Wyszukaj kartę z Twojej kolekcji lub ze Scryfall..."
+                  placeholder={
+                    searchSource === 'collection'
+                      ? 'Wyszukaj kartę wyłącznie w Twojej kolekcji...'
+                      : 'Wyszukaj kartę w kolekcji lub w bazie Scryfall...'
+                  }
                   value={searchQuery}
                   onChange={(e) => handleSearchCards(e.target.value)}
                   autoFocus
@@ -609,26 +726,31 @@ export const DeckBuilder: React.FC<DeckBuilderProps> = ({
             {/* Search Results List */}
             <div className="flex-1 overflow-y-auto p-4 space-y-2">
               {isSearchingScryfall && (
-                <div className="text-center py-4 text-xs text-amber-400">
-                  Wyszukiwanie w Scryfall API...
+                <div className="text-center py-4 text-xs text-amber-400 animate-pulse font-mono">
+                  Wyszukiwanie w pełnej bazie Scryfall API...
                 </div>
               )}
 
               {searchResults.length === 0 && searchQuery.trim() && !isSearchingScryfall && (
                 <div className="text-center py-8 text-xs text-stone-500">
-                  Nie znaleziono pasujących kart.
+                  {searchSource === 'collection'
+                    ? 'Nie znaleziono pasujących kart w Twojej kolekcji. Możesz przełączyć na "Wszystkie karty MTG (Scryfall)".'
+                    : 'Nie znaleziono pasujących kart w bazie Scryfall.'}
                 </div>
               )}
 
               {searchResults.length === 0 && !searchQuery.trim() && (
                 <div className="text-center py-8 text-xs text-stone-400">
-                  Wpisz nazwę karty, aby dodać ją do talii.
+                  {searchSource === 'collection'
+                    ? 'Wpisz nazwę karty, aby przeszukać Twoją kolekcję.'
+                    : 'Wpisz nazwę karty (min. 3 znaki), aby przeszukać bazę Scryfall.'}
                 </div>
               )}
 
               {searchResults.map(card => {
-                const inDeck = deck.cards.find(e => e.card.id === card.id || e.card.name === card.name);
+                const inDeck = deck.cards.find(e => !e.isCommander && (e.card.id === card.id || e.card.name === card.name));
                 const isLegendary = (card.type_line || '').toLowerCase().includes('legendary');
+                const ownedItem = collection.find(c => c.card.name.toLowerCase() === card.name.toLowerCase());
 
                 return (
                   <div
@@ -644,7 +766,7 @@ export const DeckBuilder: React.FC<DeckBuilderProps> = ({
                         />
                       </div>
                       <div className="min-w-0">
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 flex-wrap">
                           <h4 className="font-bold text-xs text-stone-100 truncate">
                             {card.name}
                           </h4>
@@ -653,8 +775,17 @@ export const DeckBuilder: React.FC<DeckBuilderProps> = ({
                               {card.mana_cost}
                             </span>
                           )}
+                          {ownedItem ? (
+                            <span className="text-[10px] font-mono text-emerald-300 bg-emerald-950/60 px-1.5 py-0.5 rounded border border-emerald-500/30">
+                              W kolekcji: {ownedItem.quantity} szt.
+                            </span>
+                          ) : (
+                            <span className="text-[10px] font-mono text-purple-300 bg-purple-950/40 px-1.5 py-0.5 rounded border border-purple-500/30">
+                              Scryfall
+                            </span>
+                          )}
                         </div>
-                        <p className="text-[11px] text-stone-400 truncate">
+                        <p className="text-[11px] text-stone-400 truncate mt-0.5">
                           {card.type_line} • {card.set_name}
                         </p>
                       </div>

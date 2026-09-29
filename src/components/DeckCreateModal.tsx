@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ScryfallCard, DeckItem, CollectionItem } from '../types';
-import { Crown, Swords, X, Sparkles, Check, Search } from 'lucide-react';
+import { Crown, Swords, X, Sparkles, Check, Search, Layers, Globe } from 'lucide-react';
 
 interface DeckCreateModalProps {
   isOpen: boolean;
@@ -10,6 +10,7 @@ interface DeckCreateModalProps {
     name: string;
     format: string;
     description: string;
+    cardSource?: 'all' | 'collection';
     commander?: ScryfallCard | null;
   }) => Promise<void>;
 }
@@ -23,15 +24,47 @@ export const DeckCreateModal: React.FC<DeckCreateModalProps> = ({
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [format, setFormat] = useState('EDH Commander'); // Domyślnie zawsze EDH Commander
+  const [cardSource, setCardSource] = useState<'collection' | 'all'>('collection');
   const [selectedCommander, setSelectedCommander] = useState<ScryfallCard | null>(null);
   const [commanderSearch, setCommanderSearch] = useState('');
+  const [scryfallCommanders, setScryfallCommanders] = useState<ScryfallCard[]>([]);
+  const [isSearchingScryfall, setIsSearchingScryfall] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Search commanders from Scryfall when 'all' is selected and search query is >= 3 chars
+  useEffect(() => {
+    if (cardSource !== 'all' || !commanderSearch.trim() || commanderSearch.trim().length < 3) {
+      setScryfallCommanders([]);
+      setIsSearchingScryfall(false);
+      return;
+    }
+
+    const timer = setTimeout(async () => {
+      setIsSearchingScryfall(true);
+      try {
+        const query = `${commanderSearch.trim()} (type:legendary and (type:creature or type:planeswalker))`;
+        const res = await fetch(`/api/scryfall/search?q=${encodeURIComponent(query)}`);
+        if (res.ok) {
+          const data = await res.json();
+          if (data.data && Array.isArray(data.data)) {
+            setScryfallCommanders(data.data.slice(0, 10));
+          }
+        }
+      } catch (err) {
+        console.error('Error searching commanders on Scryfall:', err);
+      } finally {
+        setIsSearchingScryfall(false);
+      }
+    }, 350);
+
+    return () => clearTimeout(timer);
+  }, [commanderSearch, cardSource]);
 
   if (!isOpen) return null;
 
   // Filter legendaries from collection for quick commander pick
-  const potentialCommanders = collection
+  const potentialCommandersFromCollection = collection
     .filter(item => {
       const type = (item.card.type_line || '').toLowerCase();
       return type.includes('legendary') && (type.includes('creature') || type.includes('planeswalker'));
@@ -39,7 +72,11 @@ export const DeckCreateModal: React.FC<DeckCreateModalProps> = ({
     .map(item => item.card)
     .filter((card, idx, arr) => arr.findIndex(c => c.id === card.id) === idx)
     .filter(card => !commanderSearch || card.name.toLowerCase().includes(commanderSearch.toLowerCase()))
-    .slice(0, 6);
+    .slice(0, 8);
+
+  const potentialCommanders = cardSource === 'all' && scryfallCommanders.length > 0
+    ? scryfallCommanders
+    : potentialCommandersFromCollection;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -56,6 +93,7 @@ export const DeckCreateModal: React.FC<DeckCreateModalProps> = ({
         name: name.trim(),
         format: format || 'EDH Commander',
         description: description.trim(),
+        cardSource,
         commander: selectedCommander
       });
       onClose();
@@ -68,7 +106,7 @@ export const DeckCreateModal: React.FC<DeckCreateModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 bg-stone-950/80 backdrop-blur-md flex items-center justify-center p-4">
-      <div className="bg-stone-900 border border-stone-800 rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden flex flex-col">
+      <div className="bg-stone-900 border border-stone-800 rounded-2xl w-full max-w-xl shadow-2xl overflow-hidden flex flex-col">
         
         {/* Modal Header */}
         <div className="p-5 border-b border-stone-800 flex items-center justify-between bg-gradient-to-r from-purple-950/30 to-stone-900">
@@ -134,6 +172,70 @@ export const DeckCreateModal: React.FC<DeckCreateModalProps> = ({
             </div>
           </div>
 
+          {/* Card Source Selection: Collection vs All MTG Cards */}
+          <div>
+            <label className="block text-[11px] font-bold uppercase tracking-wider text-stone-400 mb-1.5">
+              Zasób kart do budowy talii *
+            </label>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+              {/* Option 1: Tylko z mojej kolekcji */}
+              <button
+                type="button"
+                onClick={() => setCardSource('collection')}
+                className={`p-3 rounded-xl border text-left flex items-start gap-3 transition-all cursor-pointer ${
+                  cardSource === 'collection'
+                    ? 'bg-amber-500/10 border-amber-500/80 ring-1 ring-amber-500/50 shadow-md'
+                    : 'bg-stone-950 border-stone-800 hover:border-stone-700 opacity-75 hover:opacity-100'
+                }`}
+              >
+                <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${
+                  cardSource === 'collection' ? 'bg-amber-500 text-stone-950 font-bold' : 'bg-stone-800 text-stone-400'
+                }`}>
+                  <Layers className="w-4 h-4" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center justify-between">
+                    <span className={`text-xs font-bold ${cardSource === 'collection' ? 'text-amber-300' : 'text-stone-200'}`}>
+                      Tylko z mojej kolekcji
+                    </span>
+                    {cardSource === 'collection' && <Check className="w-3.5 h-3.5 text-amber-400" />}
+                  </div>
+                  <p className="text-[10px] text-stone-400 mt-1 leading-snug">
+                    Buduj talię wyłącznie z kart, które posiadasz fizycznie w swojej kolekcji ({collection.length} pozycji).
+                  </p>
+                </div>
+              </button>
+
+              {/* Option 2: Wszystkie karty MTG */}
+              <button
+                type="button"
+                onClick={() => setCardSource('all')}
+                className={`p-3 rounded-xl border text-left flex items-start gap-3 transition-all cursor-pointer ${
+                  cardSource === 'all'
+                    ? 'bg-purple-500/10 border-purple-500/80 ring-1 ring-purple-500/50 shadow-md'
+                    : 'bg-stone-950 border-stone-800 hover:border-stone-700 opacity-75 hover:opacity-100'
+                }`}
+              >
+                <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${
+                  cardSource === 'all' ? 'bg-purple-500 text-white' : 'bg-stone-800 text-stone-400'
+                }`}>
+                  <Globe className="w-4 h-4" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center justify-between">
+                    <span className={`text-xs font-bold ${cardSource === 'all' ? 'text-purple-300' : 'text-stone-200'}`}>
+                      Wszystkie karty MTG
+                    </span>
+                    {cardSource === 'all' && <Check className="w-3.5 h-3.5 text-purple-400" />}
+                  </div>
+                  <p className="text-[10px] text-stone-400 mt-1 leading-snug">
+                    Dostęp do pełnej bazy Scryfall (ponad 30 000 kart) do projektowania talii marzeń.
+                  </p>
+                </div>
+              </button>
+            </div>
+          </div>
+
           {/* Optional Commander Picker */}
           <div>
             <label className="block text-[11px] font-bold uppercase tracking-wider text-stone-400 mb-1.5">
@@ -162,7 +264,7 @@ export const DeckCreateModal: React.FC<DeckCreateModalProps> = ({
                 <button
                   type="button"
                   onClick={() => setSelectedCommander(null)}
-                  className="text-stone-400 hover:text-rose-400 p-1 text-xs"
+                  className="text-stone-400 hover:text-rose-400 p-1 text-xs cursor-pointer"
                 >
                   Zmień
                 </button>
@@ -173,11 +275,20 @@ export const DeckCreateModal: React.FC<DeckCreateModalProps> = ({
                   <Search className="w-3.5 h-3.5 text-stone-500 absolute left-3 top-3" />
                   <input
                     type="text"
-                    placeholder="Szukaj legendarnego stwora w kolekcji..."
+                    placeholder={
+                      cardSource === 'collection'
+                        ? 'Szukaj legendarnego stwora w kolekcji...'
+                        : 'Szukaj legendarnego stwora w kolekcji lub Scryfall...'
+                    }
                     value={commanderSearch}
                     onChange={(e) => setCommanderSearch(e.target.value)}
                     className="w-full bg-stone-950 border border-stone-800 rounded-xl pl-9 pr-3 py-2 text-xs text-stone-200 placeholder-stone-600 focus:outline-none focus:border-purple-500"
                   />
+                  {isSearchingScryfall && (
+                    <span className="absolute right-3 top-2.5 text-[10px] text-purple-400 animate-pulse font-mono">
+                      Szukam w Scryfall...
+                    </span>
+                  )}
                 </div>
 
                 {potentialCommanders.length > 0 && (

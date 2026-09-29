@@ -62,7 +62,7 @@ export const Header: React.FC<HeaderProps> = ({
   return (
     <header className="bg-stone-900 border-b border-stone-800 text-stone-100 sticky top-0 z-30 shadow-md">
       {/* Top Banner & Stats */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3">
+      <div className="max-w-[1760px] w-full mx-auto px-4 sm:px-6 lg:px-8 xl:px-10 py-3">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           
           {/* Logo & Title */}
@@ -158,8 +158,8 @@ export const Header: React.FC<HeaderProps> = ({
         </div>
 
         {/* Navigation Tabs */}
-        <div className="flex items-center justify-between border-t border-stone-800/80 mt-3 pt-2 gap-2 overflow-x-auto no-scrollbar">
-          <div className="flex items-center gap-1">
+        <div className="flex flex-wrap items-center justify-between border-t border-stone-800/80 mt-3 pt-2 gap-y-2 gap-x-4 no-scrollbar">
+          <div className="flex flex-wrap items-center gap-1.5">
             <button
               onClick={() => setActiveTab('collection')}
               className={`px-3.5 py-2 rounded-lg text-xs font-semibold flex items-center gap-2 transition-all whitespace-nowrap ${
@@ -245,7 +245,7 @@ export const Header: React.FC<HeaderProps> = ({
           </div>
 
           {/* Backup / Export Actions */}
-          <div className="flex items-center gap-2 text-stone-400">
+          <div className="flex items-center gap-2 text-stone-400 shrink-0 ml-auto">
             <button
               onClick={onExportCollection}
               title="Pobierz kopię zapasową kolekcji (JSON)"

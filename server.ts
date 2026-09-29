@@ -982,7 +982,7 @@ app.get('/api/decks', authMiddleware, async (req, res) => {
 app.post('/api/decks', authMiddleware, async (req, res) => {
   try {
     const userId = (req as any).userId;
-    const { name, format, description, commander, cards } = req.body;
+    const { name, format, description, commander, cards, cardSource } = req.body;
     if (!name || !name.trim()) {
       return res.status(400).json({ error: 'Nazwa talii jest wymagana.' });
     }
@@ -992,6 +992,7 @@ app.post('/api/decks', authMiddleware, async (req, res) => {
       name: name.trim(),
       format: format || 'EDH Commander', // default always EDH Commander
       description: description || '',
+      cardSource: (cardSource === 'all' ? 'all' : 'collection') as 'all' | 'collection',
       commander: commander || null,
       cards: Array.isArray(cards) ? cards : [],
       createdAt: new Date().toISOString(),
@@ -1012,6 +1013,7 @@ app.put('/api/decks/:id', authMiddleware, async (req, res) => {
     const deckToSave = {
       ...req.body,
       id,
+      cardSource: req.body.cardSource === 'all' ? 'all' : 'collection',
       format: req.body.format || 'EDH Commander'
     };
     const saved = await db.saveDeck(userId, deckToSave);

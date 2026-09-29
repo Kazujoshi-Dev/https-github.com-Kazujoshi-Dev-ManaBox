@@ -135,6 +135,7 @@ export interface DeckItem {
   name: string;
   format: string; // 'EDH Commander'
   description?: string;
+  cardSource?: 'all' | 'collection'; // 'collection' (tylko z kolekcji) lub 'all' (wszystkie karty MTG)
   commander?: ScryfallCard | null;
   cards: DeckCardEntry[];
   createdAt: string;

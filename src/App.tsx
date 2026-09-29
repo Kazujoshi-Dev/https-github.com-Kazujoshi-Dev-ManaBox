@@ -468,6 +468,7 @@ export default function App() {
     name: string;
     format: string;
     description: string;
+    cardSource?: 'all' | 'collection';
     commander?: ScryfallCard | null;
   }) => {
     try {
@@ -621,7 +622,7 @@ export default function App() {
       />
 
       {/* Main Container */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6">
+      <main className="max-w-[1760px] w-full mx-auto px-4 sm:px-6 lg:px-8 xl:px-10 pt-6">
         {isLoading ? (
           <div className="flex flex-col items-center justify-center py-20 space-y-4">
             <div className="w-12 h-12 rounded-full border-4 border-amber-500/20 border-t-amber-500 animate-spin" />
