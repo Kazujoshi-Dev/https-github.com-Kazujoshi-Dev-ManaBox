@@ -16,7 +16,8 @@ services:
       - DATABASE_URL=postgresql://mtg_user:twoje_bezpieczne_haslo@postgres:5432/mtg_db?sslmode=disable
       - JWT_SECRET=twoj_bezpieczny_unikalny_klucz_jwt_produkcja
     depends_on:
-      - postgres
+      postgres:
+        condition: service_healthy
     volumes:
       - app_data:/app/data
 
@@ -33,6 +34,12 @@ services:
       - "5432:5432"
     volumes:
       - pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U mtg_user -d mtg_db"]
+      interval: 3s
+      timeout: 3s
+      retries: 5
+      start_period: 2s
 
 volumes:
   app_data:

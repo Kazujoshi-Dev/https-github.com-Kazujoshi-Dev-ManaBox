@@ -1,0 +1,55 @@
+import React from 'react';
+import { X, Layers } from 'lucide-react';
+import { ManaSymbol } from '../ManaSymbol';
+import { CardModalHeaderProps } from './types';
+
+export const CardModalHeader: React.FC<CardModalHeaderProps> = ({
+  cardName,
+  manaCost,
+  isPromo,
+  activeTab,
+  printsCount,
+  isLoadingPrints,
+  onToggleTab,
+  onClose,
+}) => {
+  return (
+    <div className="px-6 py-4 border-b border-stone-800 bg-stone-950/70 flex items-center justify-between shrink-0">
+      <div className="flex items-center gap-3">
+        <h2 className="text-xl sm:text-2xl font-black text-amber-100 tracking-tight flex items-center gap-2">
+          <span>{cardName}</span>
+          {isPromo && (
+            <span className="text-[10px] uppercase font-mono px-2 py-0.5 rounded bg-purple-500/20 text-purple-300 border border-purple-500/40">
+              Promo
+            </span>
+          )}
+        </h2>
+        <ManaSymbol cost={manaCost} size="md" />
+      </div>
+
+      <div className="flex items-center gap-2">
+        {/* Prints Switcher Pill in Top Bar */}
+        <button
+          onClick={onToggleTab}
+          className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 border transition-all cursor-pointer ${
+            activeTab === 'prints'
+              ? 'bg-amber-500 text-stone-950 border-amber-400 shadow-md'
+              : 'bg-stone-900 hover:bg-stone-800 text-amber-400 border-amber-500/30'
+          }`}
+          title="Przełącz widok wydań karty"
+        >
+          <Layers className="w-3.5 h-3.5" />
+          <span>Wersje / Printy ({isLoadingPrints ? '...' : printsCount})</span>
+        </button>
+
+        <button
+          onClick={onClose}
+          className="p-1.5 rounded-full bg-stone-900 hover:bg-stone-800 text-stone-400 hover:text-stone-100 border border-stone-800 transition-colors cursor-pointer"
+          aria-label="Zamknij okno"
+        >
+          <X className="w-5 h-5" />
+        </button>
+      </div>
+    </div>
+  );
+};
