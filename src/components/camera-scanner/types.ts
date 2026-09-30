@@ -1,6 +1,6 @@
 import { ScryfallCard, CardCondition, CardLanguage, Catalog, AppSettings } from '../../types';
 
-export type ScannerEngine = 'delver_lens' | 'ai_vision' | 'local_ocr';
+export type ScannerEngine = 'delver_lens';
 
 export type CardRarityDetection = 'common' | 'uncommon' | 'rare' | 'mythic';
 

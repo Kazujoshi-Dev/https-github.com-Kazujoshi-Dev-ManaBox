@@ -32,8 +32,8 @@ import {
 } from 'lucide-react';
 import { ScryfallCard, CardCondition, CardLanguage, Catalog, AppSettings } from '../../types';
 import { formatCurrency, getCardImageUri, getCardPrice, getRarityColor, getRarityLabel, handleCardImageError } from '../../utils/formatters';
-import { CameraScannerModalProps, CameraDeviceOption, ScanResult, ScannerEngine } from './types';
-import { scanMtgCardFrame, scanCardWithAi, scanCardWithDelverLens, searchCardInScryfall, playScannerChime } from './ocrProcessor';
+import { CameraScannerModalProps, CameraDeviceOption, ScanResult } from './types';
+import { scanCardWithDelverLens, searchCardInScryfall, playScannerChime } from './ocrProcessor';
 import { calculateVideoSensorCrop, CardCropRect, detectFrameMotion } from './cvCardPipeline';
 import { EdhrecBadge } from '../EdhrecBadge';
 
@@ -88,8 +88,7 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
     }
   };
 
-  // Scanning State (Default to Delver Lens / ManaBox Vision Engine)
-  const [selectedEngine, setSelectedEngine] = useState<ScannerEngine>('delver_lens');
+  // Scanning State (Delver Lens / ManaBox Vision Engine)
   const [zoomRange, setZoomRange] = useState<{ min: number; max: number; step: number } | null>(null);
   const [zoomLevel, setZoomLevel] = useState<number>(1);
   const [showTips, setShowTips] = useState<boolean>(false);
@@ -321,19 +320,13 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
     };
   }, [isOpen, startCamera, stopCamera]);
 
-  // 3. Scan Action (Delver Lens, AI Vision, or Local OCR)
+  // 3. Scan Action (Delver Lens & ManaBox Engine)
   const performScan = useCallback(async () => {
     if (isScanning) return;
     if (!videoRef.current || videoRef.current.readyState < 2) return;
 
     setIsScanning(true);
-    setScanStatus(
-      selectedEngine === 'delver_lens'
-        ? '⚡ Delver Lens: Wycinanie ilustracji i analiza dHash...'
-        : selectedEngine === 'ai_vision'
-        ? '✨ Analiza klatki przez Gemini AI Vision...'
-        : 'Pobieranie klatki i analiza OCR...'
-    );
+    setScanStatus('⚡ Delver Lens: Wycinanie cech i analiza dHash...');
 
     try {
       const video = videoRef.current;
@@ -361,46 +354,14 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
         };
       }
 
-      let result: ScanResult;
-
-      if (selectedEngine === 'delver_lens') {
-        // Główny potok Delver Lens & ManaBox: dHash ilustracji + stopka + rzadkość symbolu
-        result = await scanCardWithDelverLens(
-          video,
-          width,
-          height,
-          (_p, statusText) => setScanStatus(statusText),
-          { cardCrop }
-        );
-      } else if (selectedEngine === 'ai_vision') {
-        try {
-          result = await scanCardWithAi(
-            video,
-            width,
-            height,
-            (_p, statusText) => setScanStatus(statusText),
-            { cardArea: cardCrop }
-          );
-        } catch (aiErr: any) {
-          console.warn('AI Vision scan failed, fallback do Delver Lens:', aiErr);
-          setScanStatus('AI niedostępne, przejście na potok Delver Lens...');
-          result = await scanCardWithDelverLens(
-            video,
-            width,
-            height,
-            (_p, statusText) => setScanStatus(statusText),
-            { cardCrop }
-          );
-        }
-      } else {
-        result = await scanMtgCardFrame(
-          video,
-          width,
-          height,
-          (_p, statusText) => setScanStatus(statusText),
-          { cardCrop }
-        );
-      }
+      // Główny potok Delver Lens & ManaBox: dHash ilustracji + stopka + rzadkość symbolu
+      const result = await scanCardWithDelverLens(
+        video,
+        width,
+        height,
+        (_p, statusText) => setScanStatus(statusText),
+        { cardCrop }
+      );
 
       setScanResult(result);
 
@@ -421,12 +382,12 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
         setScanStatus('Nie odczytano karty. Skorzystaj z suwaka Zoom lub zmień kąt oświetlenia.');
       }
     } catch (err: any) {
-      console.error('Błąd skanowania:', err);
+      console.error('Błąd skanowania Delver Lens:', err);
       setScanStatus('Błąd przetwarzania klatki. Spróbuj ponownie lub wgraj zdjęcie.');
     } finally {
       setIsScanning(false);
     }
-  }, [isScanning, selectedEngine, soundEnabled]);
+  }, [isScanning, soundEnabled]);
 
   // Live Frame Stability & Lock-On Tracker (Delver Lens / ManaBox Auto-Trigger)
   useEffect(() => {
@@ -495,29 +456,19 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
       if (!file || !file.type.startsWith('image/')) return;
 
       setIsScanning(true);
-      setScanStatus(selectedEngine === 'ai_vision' ? '✨ Analiza zdjęcia przez Gemini AI...' : 'Wczytywanie i analiza OCR zdjęcia...');
+      setScanStatus('⚡ Delver Lens: Wczytywanie i analiza ilustracji...');
 
       const img = new Image();
       img.onload = async () => {
         try {
-          let result: ScanResult;
-
-          if (selectedEngine === 'ai_vision') {
-            try {
-              result = await scanCardWithAi(img, img.naturalWidth, img.naturalHeight, (_p, statusText) => {
-                setScanStatus(statusText);
-              });
-            } catch (aiErr) {
-              console.warn('AI vision file scan fallback:', aiErr);
-              result = await scanMtgCardFrame(img, img.naturalWidth, img.naturalHeight, (_p, statusText) => {
-                setScanStatus(statusText);
-              });
-            }
-          } else {
-            result = await scanMtgCardFrame(img, img.naturalWidth, img.naturalHeight, (_p, statusText) => {
+          const result = await scanCardWithDelverLens(
+            img,
+            img.naturalWidth,
+            img.naturalHeight,
+            (_p, statusText) => {
               setScanStatus(statusText);
-            });
-          }
+            }
+          );
 
           setScanResult(result);
           if (result.matchedCard) {
@@ -527,6 +478,9 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
               setIsFoil(true);
             }
             setScanStatus(`Rozpoznano: "${result.matchedCard.name}"`);
+            if (soundEnabled) {
+              playScannerChime('success');
+            }
           } else if (result.cleanedTitle) {
             setManualQuery(result.cleanedTitle);
             setScanStatus(`Odczytano tekst: "${result.cleanedTitle}" - sprawdź podpowiedzi`);
@@ -542,7 +496,7 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
       };
       img.src = URL.createObjectURL(file);
     },
-    [selectedEngine]
+    [soundEnabled]
   );
 
   const handleFileUpload = useCallback(
@@ -702,7 +656,7 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
         {/* Modal Top Header */}
         <div className="flex flex-wrap items-center justify-between gap-3 px-5 py-3 border-b border-stone-800 bg-stone-950/80">
           <div className="flex items-center gap-2.5">
-            <div className="p-2 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-400">
+            <div className="p-2 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400">
               <Camera className="w-5 h-5" />
             </div>
             <div>
@@ -710,62 +664,25 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
                 <h2 className="text-sm sm:text-base font-extrabold text-stone-100">
                   Skaner Kart MTG
                 </h2>
-                <span className="text-[10px] font-bold uppercase tracking-wider text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20 flex items-center gap-1">
-                  <Sparkles className="w-3 h-3 fill-amber-400" />
-                  <span>AI Vision + OCR</span>
+                <span className="text-[10px] font-extrabold uppercase tracking-wider text-emerald-400 bg-emerald-500/10 px-2.5 py-0.5 rounded border border-emerald-500/20 flex items-center gap-1.5 shadow-sm">
+                  <Zap className="w-3 h-3 fill-emerald-400" />
+                  <span>Delver Lens Engine</span>
                 </span>
               </div>
               <p className="text-xs text-stone-400 hidden sm:block">
-                Automatyczna identyfikacja karty, wycena rynkowa Scryfall i ranking EDHREC
+                Szybkie rozpoznawanie grafiki dHash, edycji i wyceny rynkowej Scryfall
               </p>
             </div>
           </div>
 
           <div className="flex items-center gap-2">
-            {/* Engine Selector */}
-            <div className="flex items-center p-0.5 bg-stone-900 border border-stone-800 rounded-xl shadow-inner text-xs">
-              <button
-                type="button"
-                onClick={() => setSelectedEngine('delver_lens')}
-                className={`px-3 py-1 rounded-lg font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
-                  selectedEngine === 'delver_lens'
-                    ? 'bg-gradient-to-r from-emerald-500 to-emerald-600 text-stone-950 shadow-md font-extrabold'
-                    : 'text-stone-400 hover:text-stone-200'
-                }`}
-                title="Delver Lens & ManaBox: Rozpoznawanie grafiki dHash + detekcja rzadkości symbolu dodatku (ultraszybki)"
-              >
-                <Zap className="w-3.5 h-3.5 fill-current" />
-                <span>Delver Lens</span>
-                <span className="hidden md:inline text-[9px] uppercase px-1 py-0.2 rounded bg-black/20 font-black">dHash</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setSelectedEngine('ai_vision')}
-                className={`px-2.5 py-1 rounded-lg font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
-                  selectedEngine === 'ai_vision'
-                    ? 'bg-gradient-to-r from-amber-500 to-amber-600 text-stone-950 shadow-md font-extrabold'
-                    : 'text-stone-400 hover:text-stone-200'
-                }`}
-                title="Gemini 3.8 Flash AI Vision: Multimodalna analiza klatki"
-              >
-                <Sparkles className="w-3.5 h-3.5 fill-current" />
-                <span>AI Vision</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setSelectedEngine('local_ocr')}
-                className={`px-2 py-1 rounded-lg font-semibold flex items-center gap-1.5 transition-all cursor-pointer ${
-                  selectedEngine === 'local_ocr'
-                    ? 'bg-stone-800 text-stone-100 border border-stone-700 shadow-md'
-                    : 'text-stone-400 hover:text-stone-200'
-                }`}
-                title="Tesseract.js: Lokalne rozpoznawanie tekstu bezpośrednio w przeglądarce"
-              >
-                <ScanLine className="w-3.5 h-3.5" />
-                <span className="hidden sm:inline">Lokalny OCR</span>
-              </button>
+            {/* Active Engine Badge */}
+            <div className="flex items-center gap-1.5 px-3 py-1 bg-emerald-950/70 border border-emerald-500/30 rounded-xl text-emerald-300 text-xs font-bold shadow-inner">
+              <Zap className="w-3.5 h-3.5 fill-emerald-400" />
+              <span>Delver Lens & ManaBox</span>
+              <span className="hidden md:inline text-[9px] uppercase px-1 py-0.2 rounded bg-emerald-500/20 font-black text-emerald-200">
+                dHash
+              </span>
             </div>
 
             {/* Audio Feedback Toggle */}
@@ -833,13 +750,13 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
                 </p>
               </div>
 
-              <div className="p-2.5 rounded-lg bg-stone-950/80 border border-amber-500/20 space-y-1">
-                <span className="font-bold text-amber-300 flex items-center gap-1">
-                  <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-                  <span>2. Używaj trybu AI Vision</span>
+              <div className="p-2.5 rounded-lg bg-stone-950/80 border border-emerald-500/20 space-y-1">
+                <span className="font-bold text-emerald-300 flex items-center gap-1">
+                  <Zap className="w-3.5 h-3.5 text-emerald-400" />
+                  <span>2. Silnik Delver Lens (dHash)</span>
                 </span>
                 <p className="text-stone-300">
-                  Karty MTG mają stylizowaną czcionkę <em>Beleren</em>, na której klasyczny OCR często się myli. Silnik <strong>AI Vision (Gemini)</strong> analizuje całą grafikę, ilustrację i kolory – rozpoznaje kartę w ułamku sekundy nawet pod kątem!
+                  Skaner identyfikuje karty MTG za pomocą fingerprintu ilustracji (dHash) oraz segmentacji pasków tekstu – dokładnie tak jak Delver Lens i ManaBox, eliminując błędy klasycznego OCR.
                 </p>
               </div>
 
@@ -999,89 +916,56 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
                     <div className={`absolute -bottom-1.5 -left-1.5 w-4 h-4 border-b-4 border-l-4 rounded-bl transition-colors ${isReticleLocked ? 'border-emerald-400' : 'border-amber-400'}`} />
                     <div className={`absolute -bottom-1.5 -right-1.5 w-4 h-4 border-b-4 border-r-4 rounded-br transition-colors ${isReticleLocked ? 'border-emerald-400' : 'border-amber-400'}`} />
 
-                    {/* Reticle Target Display depending on engine */}
-                    {selectedEngine === 'delver_lens' ? (
-                      <div className="flex-1 flex flex-col justify-between relative py-0.5">
-                        {/* Zone 1: Pasek nazwy (Górne 15%) */}
-                        <div
-                          ref={titleBoxRef}
-                          className="w-[92%] h-[14%] border border-dashed border-emerald-300/80 bg-emerald-500/10 rounded-lg flex items-center justify-between px-2 text-[9px] text-emerald-200 font-mono font-bold mx-auto shadow-sm backdrop-blur-[1px]"
-                        >
-                          <span>🏷️ NAZWA & KOSZT</span>
-                          <span className="text-[8px] bg-emerald-500/20 px-1 py-0.5 rounded text-emerald-300">15%</span>
-                        </div>
+                    {/* Reticle Target Display (Delver Lens & ManaBox) */}
+                    <div className="flex-1 flex flex-col justify-between relative py-0.5">
+                      {/* Zone 1: Pasek nazwy (Górne 15%) */}
+                      <div
+                        ref={titleBoxRef}
+                        className="w-[92%] h-[14%] border border-dashed border-emerald-300/80 bg-emerald-500/10 rounded-lg flex items-center justify-between px-2 text-[9px] text-emerald-200 font-mono font-bold mx-auto shadow-sm backdrop-blur-[1px]"
+                      >
+                        <span>🏷️ NAZWA & KOSZT</span>
+                        <span className="text-[8px] bg-emerald-500/20 px-1 py-0.5 rounded text-emerald-300">15%</span>
+                      </div>
 
-                        {/* Zone 2: Artwork Box (Ilustracja - Serce Delver Lens) */}
-                        <div className="w-[88%] h-[42%] border-2 border-dashed border-emerald-400/70 bg-emerald-500/10 rounded-xl mx-auto flex flex-col items-center justify-center relative p-1 shadow-inner">
-                          <span className="text-[10px] font-extrabold text-emerald-300 uppercase tracking-wider flex items-center gap-1 bg-black/40 px-2 py-0.5 rounded">
-                            <Sparkles className="w-3 h-3 text-emerald-400" />
-                            <span>ILUSTRACJA (dHash)</span>
-                          </span>
-                          <span className="text-[8px] text-emerald-200/80 font-mono mt-0.5">
-                            Odcisk palca karty MTG
-                          </span>
+                      {/* Zone 2: Artwork Box (Ilustracja - Serce Delver Lens) */}
+                      <div className="w-[88%] h-[42%] border-2 border-dashed border-emerald-400/70 bg-emerald-500/10 rounded-xl mx-auto flex flex-col items-center justify-center relative p-1 shadow-inner">
+                        <span className="text-[10px] font-extrabold text-emerald-300 uppercase tracking-wider flex items-center gap-1 bg-black/40 px-2 py-0.5 rounded">
+                          <Sparkles className="w-3 h-3 text-emerald-400" />
+                          <span>ILUSTRACJA (dHash)</span>
+                        </span>
+                        <span className="text-[8px] text-emerald-200/80 font-mono mt-0.5">
+                          Odcisk palca karty MTG
+                        </span>
 
-                          {/* Symbol Setu na wysokości linii typu */}
-                          <div className="absolute -bottom-3 right-1 px-1.5 py-0.5 rounded bg-black/70 border border-emerald-400/60 text-[8px] font-mono text-emerald-300 flex items-center gap-1 shadow">
-                            <span>💠 Set & Rzadkość</span>
-                          </div>
-                        </div>
-
-                        {/* Zone 3: Stopka z kodem dodatku i numerem (Dolne 10%) */}
-                        <div
-                          ref={collectorBoxRef}
-                          className="w-[92%] h-[10%] border border-dashed border-emerald-300/80 bg-emerald-500/15 rounded-lg flex items-center justify-between px-2 text-[9px] text-emerald-300 font-mono font-bold mx-auto mb-0.5 shadow-sm backdrop-blur-[1px]"
-                        >
-                          <span>🔢 STOPKA (SET & NR)</span>
-                          <span className="text-[8px] opacity-90">OTJ / MH3 / 125</span>
-                        </div>
-
-                        {/* Status Lock Indicator Badge */}
-                        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none">
-                          {isReticleLocked ? (
-                            <span className="px-3 py-1 rounded-full bg-emerald-500 text-stone-950 font-black text-[10px] uppercase tracking-wider shadow-lg flex items-center gap-1 animate-pulse">
-                              <CheckCircle2 className="w-3.5 h-3.5 stroke-[3]" />
-                              <span>CEL ZABLOKOWANY</span>
-                            </span>
-                          ) : (
-                            <span className="px-2.5 py-0.5 rounded-full bg-black/60 border border-stone-700 text-stone-300 font-mono text-[9px] shadow backdrop-blur-sm">
-                              Dopasuj kartę do ramki
-                            </span>
-                          )}
+                        {/* Symbol Setu na wysokości linii typu */}
+                        <div className="absolute -bottom-3 right-1 px-1.5 py-0.5 rounded bg-black/70 border border-emerald-400/60 text-[8px] font-mono text-emerald-300 flex items-center gap-1 shadow">
+                          <span>💠 Set & Rzadkość</span>
                         </div>
                       </div>
-                    ) : selectedEngine === 'ai_vision' ? (
-                      <div className="flex-1 flex flex-col justify-between items-center py-2 px-1">
-                        <div className="px-3 py-1 rounded-full bg-amber-500/25 border border-amber-400/50 text-amber-200 text-[10px] font-bold flex items-center gap-1.5 shadow backdrop-blur-sm">
-                          <Sparkles className="w-3.5 h-3.5 fill-amber-300" />
-                          <span>Umieść całą kartę w kadrze (63x88mm)</span>
-                        </div>
 
-                        <div className="text-[10px] text-stone-300 bg-stone-950/85 border border-stone-800 px-3 py-1 rounded-md font-mono text-center shadow">
-                          AI rozpozna kartę po ilustracji, ramce i tekście
-                        </div>
+                      {/* Zone 3: Stopka z kodem dodatku i numerem (Dolne 10%) */}
+                      <div
+                        ref={collectorBoxRef}
+                        className="w-[92%] h-[10%] border border-dashed border-emerald-300/80 bg-emerald-500/15 rounded-lg flex items-center justify-between px-2 text-[9px] text-emerald-300 font-mono font-bold mx-auto mb-0.5 shadow-sm backdrop-blur-[1px]"
+                      >
+                        <span>🔢 STOPKA (SET & NR)</span>
+                        <span className="text-[8px] opacity-90">OTJ / MH3 / 125</span>
                       </div>
-                    ) : (
-                      <>
-                        {/* Zone 1: Title Line Target (Górne 15%) */}
-                        <div
-                          ref={titleBoxRef}
-                          className="w-[92%] h-[15%] border-2 border-dashed border-amber-300 bg-amber-400/20 rounded-lg flex items-center justify-between px-2 text-[10px] text-amber-200 font-mono font-bold mx-auto mt-1 shadow-sm backdrop-blur-[1px]"
-                        >
-                          <span className="flex items-center gap-1">🏷️ NAZWA & KOSZT (GÓRNE 15%)</span>
-                          <span className="text-[9px] bg-amber-500/30 px-1 py-0.5 rounded text-amber-300 font-sans font-bold">OCR</span>
-                        </div>
 
-                        {/* Zone 2: Collector & Set Info Target (Dolne 10%) */}
-                        <div
-                          ref={collectorBoxRef}
-                          className="w-[92%] h-[10%] border border-dashed border-amber-300/80 bg-amber-400/15 rounded-lg flex items-center justify-between px-2 text-[10px] text-amber-300 font-mono font-bold mb-1 shadow-sm backdrop-blur-[1px]"
-                        >
-                          <span>🔢 KOD SETU & NR (DOLNE 10%)</span>
-                          <span className="text-[9px] opacity-80 font-sans">np. OTJ 125</span>
-                        </div>
-                      </>
-                    )}
+                      {/* Status Lock Indicator Badge */}
+                      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none">
+                        {isReticleLocked ? (
+                          <span className="px-3 py-1 rounded-full bg-emerald-500 text-stone-950 font-black text-[10px] uppercase tracking-wider shadow-lg flex items-center gap-1 animate-pulse">
+                            <CheckCircle2 className="w-3.5 h-3.5 stroke-[3]" />
+                            <span>CEL ZABLOKOWANY</span>
+                          </span>
+                        ) : (
+                          <span className="px-2.5 py-0.5 rounded-full bg-black/60 border border-stone-700 text-stone-300 font-mono text-[9px] shadow backdrop-blur-sm">
+                            Dopasuj kartę do ramki
+                          </span>
+                        )}
+                      </div>
+                    </div>
 
                     {/* Laser Scanning Animation Line */}
                     {isScanning && (
@@ -1227,30 +1111,17 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
                 <button
                   onClick={performScan}
                   disabled={isScanning || !isCameraActive}
-                  className={`px-4 py-2 rounded-xl text-stone-950 font-extrabold text-xs flex items-center gap-2 shadow-lg transition-all cursor-pointer disabled:opacity-50 ${
-                    selectedEngine === 'ai_vision'
-                      ? 'bg-gradient-to-r from-amber-400 via-amber-500 to-amber-600 hover:from-amber-300 hover:to-amber-500 shadow-amber-950/60'
-                      : 'bg-stone-200 hover:bg-white shadow-stone-950/60'
-                  }`}
+                  className="px-4 py-2 rounded-xl bg-gradient-to-r from-emerald-400 via-emerald-500 to-emerald-600 hover:from-emerald-300 hover:to-emerald-500 text-stone-950 font-extrabold text-xs flex items-center gap-2 shadow-lg shadow-emerald-950/60 transition-all cursor-pointer disabled:opacity-50"
                 >
                   {isScanning ? (
                     <>
                       <RefreshCw className="w-4 h-4 animate-spin" />
-                      <span>{selectedEngine === 'ai_vision' ? 'Analiza AI...' : 'OCR...'}</span>
+                      <span>Skanowanie Delver Lens...</span>
                     </>
                   ) : (
                     <>
-                      {selectedEngine === 'ai_vision' ? (
-                        <>
-                          <Sparkles className="w-4 h-4 fill-stone-950" />
-                          <span>Zeskanuj (AI Vision)</span>
-                        </>
-                      ) : (
-                        <>
-                          <Camera className="w-4 h-4 stroke-[2.5]" />
-                          <span>Zeskanuj (OCR)</span>
-                        </>
-                      )}
+                      <Zap className="w-4 h-4 fill-stone-950" />
+                      <span>Zeskanuj (Delver Lens)</span>
                     </>
                   )}
                 </button>
@@ -1265,22 +1136,8 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
               <div className="p-2.5 bg-stone-950/85 rounded-xl border border-stone-800 space-y-2 text-xs text-left shrink-0">
                 <div className="flex items-center justify-between text-[10px] text-stone-400">
                   <span className="font-semibold text-stone-300 flex items-center gap-1.5">
-                    {scanResult.engineUsed === 'delver_lens' ? (
-                      <>
-                        <Zap className="w-3.5 h-3.5 text-emerald-400 fill-emerald-400" />
-                        <span className="text-emerald-400 font-extrabold">Potok Delver Lens (dHash + Vision):</span>
-                      </>
-                    ) : scanResult.engineUsed === 'ai_vision' ? (
-                      <>
-                        <Sparkles className="w-3.5 h-3.5 text-amber-400 fill-amber-400" />
-                        <span className="text-amber-300 font-bold">Silnik AI Vision (Gemini 3.8 Flash):</span>
-                      </>
-                    ) : (
-                      <>
-                        <ScanLine className="w-3.5 h-3.5 text-stone-400" />
-                        <span className="text-stone-300 font-bold">Lokalny OCR (Tesseract):</span>
-                      </>
-                    )}
+                    <Zap className="w-3.5 h-3.5 text-emerald-400 fill-emerald-400" />
+                    <span className="text-emerald-400 font-extrabold">Potok Delver Lens (dHash + segmentacja):</span>
                   </span>
                   <div className="flex items-center gap-2">
                     {scanResult.detectedRarity && (
@@ -1616,7 +1473,7 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
                   Brak aktywnego skanu
                 </h3>
                 <p className="text-xs text-stone-400 leading-relaxed max-w-xs mx-auto">
-                  Umieść kartę w kadrze kamery i kliknij <strong className="text-amber-400">„Zeskanuj klatkę”</strong>. Algorytm OCR automatycznie odczyta tytuł i wydanie.
+                  Umieść kartę w kadrze kamery i kliknij <strong className="text-emerald-400">„Zeskanuj (Delver Lens)”</strong>. Algorytm dHash błyskawicznie dopasuje grafikę i dane karty.
                 </p>
 
                 {/* Suggested Cards if found */}
