@@ -967,7 +967,7 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
                   {/* Card Outline Bounding Box (dokładne proporcje karty MTG 63x88mm) z maską zewnętrzną */}
                   <div
                     ref={cardReticleRef}
-                    className={`relative aspect-[63/88] h-[84%] max-w-[85%] rounded-2xl flex flex-col justify-between p-2 transition-all duration-200 ${
+                    className={`relative aspect-[63/88] h-[84%] max-w-[85%] rounded-2xl flex flex-col justify-between transition-all duration-200 ${
                       isReticleLocked
                         ? 'border-2 border-emerald-400 ring-4 ring-emerald-500/50 shadow-[0_0_35px_rgba(52,211,153,0.55),0_0_0_9999px_rgba(0,0,0,0.65)]'
                         : 'border-2 border-amber-400 shadow-[0_0_0_9999px_rgba(0,0,0,0.60)]'

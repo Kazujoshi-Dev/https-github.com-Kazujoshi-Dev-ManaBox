@@ -560,6 +560,7 @@ app.post('/api/scanner/delver-identify', async (req, res) => {
     const { 
       cardImageBase64, 
       artImageBase64, 
+      titleImageBase64,
       bottomImageBase64, 
       fullFrameBase64,
       perceptualHash, 
@@ -571,7 +572,7 @@ app.post('/api/scanner/delver-identify', async (req, res) => {
       hintTitle 
     } = req.body;
 
-    if (!cardImageBase64 && !artImageBase64 && !fullFrameBase64) {
+    if (!cardImageBase64 && !artImageBase64 && !fullFrameBase64 && !titleImageBase64) {
       return res.status(400).json({ error: 'Brak danych wizualnych karty (cardImageBase64 lub artImageBase64 jest wymagane)' });
     }
 
@@ -599,27 +600,70 @@ app.post('/api/scanner/delver-identify', async (req, res) => {
     if (!matchedCard) {
       const ai = getAiClient();
       if (ai) {
-        const imageToAnalyze = cardImageBase64 || fullFrameBase64 || artImageBase64;
-        const cleanBase64 = imageToAnalyze.replace(/^data:[a-zA-Z0-9/+-]+;base64,/, '');
+        const imageParts: any[] = [];
+        if (cardImageBase64) {
+          imageParts.push({
+            inlineData: {
+              mimeType: 'image/jpeg',
+              data: cardImageBase64.replace(/^data:[a-zA-Z0-9/+-]+;base64,/, ''),
+            },
+          });
+        }
+        if (titleImageBase64) {
+          imageParts.push({
+            inlineData: {
+              mimeType: 'image/png',
+              data: titleImageBase64.replace(/^data:[a-zA-Z0-9/+-]+;base64,/, ''),
+            },
+          });
+        }
+        if (bottomImageBase64) {
+          imageParts.push({
+            inlineData: {
+              mimeType: 'image/png',
+              data: bottomImageBase64.replace(/^data:[a-zA-Z0-9/+-]+;base64,/, ''),
+            },
+          });
+        }
+        if (fullFrameBase64) {
+          imageParts.push({
+            inlineData: {
+              mimeType: 'image/jpeg',
+              data: fullFrameBase64.replace(/^data:[a-zA-Z0-9/+-]+;base64,/, ''),
+            },
+          });
+        } else if (artImageBase64) {
+          imageParts.push({
+            inlineData: {
+              mimeType: 'image/jpeg',
+              data: artImageBase64.replace(/^data:[a-zA-Z0-9/+-]+;base64,/, ''),
+            },
+          });
+        }
 
         const prompt = `You are the Delver Lens / ManaBox high-precision Computer Vision Engine for Magic: The Gathering.
-You are given a photographic crop of an MTG card ${isAutoCropped ? '(automatically edge-detected and cropped from a surface/white paper)' : ''}.
+You are given:
+1. The cropped MTG card.
+2. The isolated title strip (card name and mana cost).
+3. The isolated footer strip (collector number and expansion code).
+4. The full-frame camera context.
+
 Visual metadata:
 - dHash perceptual fingerprint: "${perceptualHash || 'unknown'}"
 - Detected rarity from symbol: "${detectedRarity || 'unknown'}"
 - Frame color identity: ${JSON.stringify(detectedColors)}
-${hintTitle ? `- Title hint: "${hintTitle}"` : ''}
+${hintTitle ? `- OCR Title Hint: "${hintTitle}"` : ''}
 ${hintSet ? `- Set hint: "${hintSet}"` : ''}
 
 Task:
-1. Read the EXACT printed English card name from the top header bar of the card (e.g. "Lightning Bolt", "Dark Ritual", "Counterspell", "Thoughtseize", "Llanowar Elves", etc.).
-2. Identify the expansion set code (3-5 uppercase letters like "OTJ", "MH3", "BLB", "LTR", "CMM", "NEO", "FDN", "WOE", "MKM", "RVR", "UNF", "DMU", "BRO", etc.) from the expansion symbol on the middle-right or the bottom-left corner.
-3. Identify the collector number (e.g. "123", "045", "1") from the bottom-left corner.
+1. Read the EXACT printed English card name from the card title bar (e.g. "Quicken", "Lightning Bolt", "Dark Ritual", "Counterspell", "Sheoldred, the Apocalypse", etc.).
+2. Read the expansion set code (3-5 uppercase letters like "M14", "BLB", "OTJ", "MH3", "LTR", "CMM", "NEO", "FDN", "WOE", "MKM", "RVR", "DMU", "BRO", etc.) from the bottom footer line or expansion symbol.
+3. Read the collector number (e.g. "68", "123", "045", "1") from the bottom footer line.
 4. Detect if the card is foil (look for holographic rainbow reflection, shooting star, or etched finish).
 Return strictly valid JSON:
 {"cardName": "...", "setCode": "...", "collectorNumber": "...", "confidence": 95, "isFoil": false}`;
 
-        const modelsToTry = ['gemini-3.8-flash', 'gemini-3.1-flash-lite'];
+        const modelsToTry = ['gemini-flash-latest', 'gemini-3.8-flash', 'gemini-3.1-flash-lite'];
 
         for (const model of modelsToTry) {
           try {
@@ -627,12 +671,7 @@ Return strictly valid JSON:
               model,
               contents: {
                 parts: [
-                  {
-                    inlineData: {
-                      mimeType: 'image/jpeg',
-                      data: cleanBase64,
-                    },
-                  },
+                  ...imageParts,
                   { text: prompt },
                 ],
               },
@@ -660,13 +699,18 @@ Return strictly valid JSON:
               if (parsed.collectorNumber) detectedNumber = parsed.collectorNumber.trim().replace(/^0+/, '');
               if (parsed.confidence) confidence = parsed.confidence;
               if (parsed.isFoil) isFoilDetected = true;
-              break; // Sukces, nie próbujemy zapasowego modelu
+              break; // Sukces
             }
           } catch (visionErr: any) {
-            console.warn(`Model ${model} tymczasowo niedostępny (${visionErr.message || visionErr.status}), sprawdzam alternatywę...`);
+            console.warn(`Model ${model} próba nieudana (${visionErr.message || visionErr.status}), sprawdzam kolejny model...`);
           }
         }
       }
+    }
+
+    // Jeśli wizja nie zwróciła nazwy, a mieliśmy podpowiedź tekstową z OCR paska tytułowego, używamy jej!
+    if (!detectedTitle && hintTitle) {
+      detectedTitle = hintTitle;
     }
 
     // KROK 3: Niezawodne dopasowanie do bazy Scryfall (od najbardziej precyzyjnego do ogólnego)

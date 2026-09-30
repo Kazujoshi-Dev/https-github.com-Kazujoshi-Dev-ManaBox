@@ -498,19 +498,25 @@ export async function scanCardWithDelverLens(
     };
   }
 
-  onProgress?.(0.15, 'Skanowanie powierzchni: wykrywanie krawędzi karty (auto-crop)...');
+  onProgress?.(0.15, 'Segmentacja sekcji karty (pasek nazwy, ilustracja, stopka)...');
 
-  // 1. Ekstrakcja cech Delver Lens: Automatyczna detekcja obrysu karty na białej kartce / stole + segmentacja cech
-  const features = extractAndSegmentDelverFeatures(source, cardCrop, { autoDetectOnSurface: true });
+  // 1. Ekstrakcja cech Delver Lens z wykadrowanej karty (dokładny wizjer 63x88mm)
+  const features = extractAndSegmentDelverFeatures(source, cardCrop);
 
-  if (features.isAutoCropped) {
-    onProgress?.(0.30, '✨ Karta precyzyjnie wycięta z białego tła (63×88mm)!');
-  } else {
-    onProgress?.(0.30, `Wycinek karty | dHash [${features.perceptualHash.slice(0, 8)}...] | Rzadkość: ${features.detectedRarity.toUpperCase()}`);
-  }
+  onProgress?.(0.30, `Wycinek karty | dHash [${features.perceptualHash.slice(0, 8)}...] | Rzadkość: ${features.detectedRarity.toUpperCase()}`);
+
+  // 2. Szybki odczyt tekstu paska tytułowego (PSM 7) jako silna podpowiedź nazwy
+  let titleHint = '';
+  try {
+    const worker = await getTesseractWorker();
+    const titleRes = await worker.recognize(features.titleCanvas);
+    if (titleRes?.data?.text) {
+      titleHint = cleanCardTitle(titleRes.data.text);
+    }
+  } catch (_) {}
 
   try {
-    onProgress?.(0.55, 'Identyfikacja wizualna ilustracji i edycji (Delver Engine)...');
+    onProgress?.(0.55, 'Identyfikacja wizualna i dopasowanie bazy Scryfall...');
 
     const response = await fetch('/api/scanner/delver-identify', {
       method: 'POST',
@@ -518,12 +524,14 @@ export async function scanCardWithDelverLens(
       body: JSON.stringify({
         cardImageBase64: features.cardDataUrl,
         artImageBase64: features.artDataUrl,
+        titleImageBase64: features.titleDataUrl,
         bottomImageBase64: features.bottomDataUrl,
         fullFrameBase64: features.fullFrameDataUrl,
         perceptualHash: features.perceptualHash,
         detectedRarity: features.detectedRarity,
         detectedColors: features.detectedColors,
         isAutoCropped: features.isAutoCropped,
+        hintTitle: titleHint,
       }),
     });
 

@@ -524,17 +524,147 @@ export interface CardDetectionResult {
 }
 
 /**
+ * Automatyczne wykrycie i przycięcie marginesów tła (białej kartki / blatu)
+ * wokół właściwej karty MTG, tak aby canvas zawierał w 100% samą kartę od krawędzi do krawędzi.
+ */
+export function trimCardCanvasMargins(
+  canvas: HTMLCanvasElement
+): { trimmedCanvas: HTMLCanvasElement; isTrimmed: boolean } {
+  const w = canvas.width;
+  const h = canvas.height;
+  if (w < 120 || h < 160) {
+    return { trimmedCanvas: canvas, isTrimmed: false };
+  }
+
+  const ctx = canvas.getContext('2d', { willReadFrequently: true });
+  if (!ctx) return { trimmedCanvas: canvas, isTrimmed: false };
+
+  const imgData = ctx.getImageData(0, 0, w, h);
+  const data = imgData.data;
+
+  // Próbkujemy 4 narożniki kadru (np. promień w narożnikach)
+  let cornerLumSum = 0;
+  let cornerCount = 0;
+  const sampleRadius = Math.max(4, Math.min(10, Math.floor(w * 0.04)));
+
+  for (const corner of [
+    { startX: 0, startY: 0 },
+    { startX: w - sampleRadius, startY: 0 },
+    { startX: 0, startY: h - sampleRadius },
+    { startX: w - sampleRadius, startY: h - sampleRadius },
+  ]) {
+    for (let y = corner.startY; y < corner.startY + sampleRadius; y++) {
+      for (let x = corner.startX; x < corner.startX + sampleRadius; x++) {
+        const idx = (y * w + x) * 4;
+        const lum = 0.299 * data[idx] + 0.587 * data[idx + 1] + 0.114 * data[idx + 2];
+        cornerLumSum += lum;
+        cornerCount++;
+      }
+    }
+  }
+
+  const avgCornerLum = cornerCount > 0 ? cornerLumSum / cornerCount : 210;
+  const isWhiteBg = avgCornerLum > 135; // Biała kartka papieru / jasny blat
+  const isDarkBg = avgCornerLum < 55;   // Ciemna mata do grania
+
+  if (!isWhiteBg && !isDarkBg) {
+    // Tło o pośredniej jasności bez wyraźnego kontrastu w rogach - nie ucinamy
+    return { trimmedCanvas: canvas, isTrimmed: false };
+  }
+
+  const isCardPixel = (x: number, y: number): boolean => {
+    const idx = (y * w + x) * 4;
+    const r = data[idx];
+    const g = data[idx + 1];
+    const b = data[idx + 2];
+    const lum = 0.299 * r + 0.587 * g + 0.114 * b;
+
+    if (isWhiteBg) {
+      // Na białej kartce: obramowanie karty jest ciemniejsze lub nasycone barwnie
+      const isDarker = lum < avgCornerLum - 35;
+      const isSaturated = Math.max(r, g, b) - Math.min(r, g, b) > 26;
+      return isDarker || isSaturated;
+    } else {
+      // Na ciemnej macie: karta jest jaśniejsza lub barwna
+      const isBrighter = lum > avgCornerLum + 35;
+      const isSaturated = Math.max(r, g, b) - Math.min(r, g, b) > 26;
+      return isBrighter || isSaturated;
+    }
+  };
+
+  const minCardPixelsPerRow = Math.round(w * 0.18);
+  const minCardPixelsPerCol = Math.round(h * 0.18);
+
+  // Szukamy początku karty z góry (max do 35% wysokości)
+  let top = 0;
+  while (top < h * 0.35) {
+    let count = 0;
+    for (let x = 0; x < w; x += 2) {
+      if (isCardPixel(x, top)) count += 2;
+    }
+    if (count >= minCardPixelsPerRow) break;
+    top++;
+  }
+
+  // Szukamy końca karty z dołu (max do 35% od dołu)
+  let bottom = h - 1;
+  while (bottom > h * 0.65) {
+    let count = 0;
+    for (let x = 0; x < w; x += 2) {
+      if (isCardPixel(x, bottom)) count += 2;
+    }
+    if (count >= minCardPixelsPerRow) break;
+    bottom--;
+  }
+
+  // Szukamy początku karty z lewej (max do 35% szerokości)
+  let left = 0;
+  while (left < w * 0.35) {
+    let count = 0;
+    for (let y = top; y <= bottom; y += 2) {
+      if (isCardPixel(left, y)) count += 2;
+    }
+    if (count >= minCardPixelsPerCol) break;
+    left++;
+  }
+
+  // Szukamy końca karty z prawej (max do 35% od prawej)
+  let right = w - 1;
+  while (right > w * 0.65) {
+    let count = 0;
+    for (let y = top; y <= bottom; y += 2) {
+      if (isCardPixel(right, y)) count += 2;
+    }
+    if (count >= minCardPixelsPerCol) break;
+    right--;
+  }
+
+  const trimW = right - left + 1;
+  const trimH = bottom - top + 1;
+  const ratio = trimW / trimH;
+
+  // Weryfikacja geometrii karty MTG (63:88 = 0.716)
+  const hasSignificantMargin = top > 2 || (h - 1 - bottom) > 2 || left > 2 || (w - 1 - right) > 2;
+  const isMtgRatio = ratio >= 0.58 && ratio <= 0.88;
+  const isBigEnough = trimW >= w * 0.45 && trimH >= h * 0.45;
+
+  if (hasSignificantMargin && isMtgRatio && isBigEnough) {
+    const trimmedCanvas = document.createElement('canvas');
+    trimmedCanvas.width = trimW;
+    trimmedCanvas.height = trimH;
+    const tCtx = trimmedCanvas.getContext('2d');
+    if (tCtx) {
+      tCtx.drawImage(canvas, left, top, trimW, trimH, 0, 0, trimW, trimH);
+      return { trimmedCanvas, isTrimmed: true };
+    }
+  }
+
+  return { trimmedCanvas: canvas, isTrimmed: false };
+}
+
+/**
  * Automatyczne wykrywanie obrysu karty MTG na całej powierzchni widocznej przez kamerę
  * (ze szczególnym uwzględnieniem karty leżącej na białej kartce / jasnym blacie / kontrastowej macie).
- * 
- * Zamiast sztywno zakładać, że użytkownik idealnie wpasował kartę w statyczny wizjer (co przy
- * skanowaniu z telefonu/kamery na biurku powoduje obcięcie fragmentów karty i wciągnięcie białego tła),
- * algorytm:
- * 1. Analizuje całą powierzchnię klatki sensorycznej.
- * 2. Próbkuje tło obrzeży (np. białą kartkę papieru o wysokiej luminancji > 150).
- * 3. Wykrywa przejście kontrastowe między tłem (białą kartką) a obramowaniem karty MTG.
- * 4. Wyznacza dokładny prostokąt ograniczający (bounding box) karty o proporcjach ~63:88.
- * 5. Zwraca precyzyjny wycinek samej karty (0% białego tła).
  */
 export function detectCardBoundsInFrame(
   videoSource: HTMLVideoElement | HTMLImageElement | HTMLCanvasElement,
@@ -741,30 +871,33 @@ export function detectCardBoundsInFrame(
  */
 export function extractAndSegmentDelverFeatures(
   videoSource: HTMLVideoElement | HTMLImageElement | HTMLCanvasElement,
-  sensorCrop: CardCropRect,
+  sensorCrop?: CardCropRect,
   options?: {
     autoDetectOnSurface?: boolean;
   }
 ): SegmentedCardFeatures {
-  // Automatyczna detekcja na powierzchni (białej kartce / biurku):
-  // Jeśli na widoku kamery widoczny jest wyraźny obrys karty MTG na kontrastowym tle,
-  // używamy precyzyjnego bounding boxa samej karty (0% białego tła).
-  let effectiveCrop = sensorCrop;
+  let effectiveCrop: CardCropRect;
   let isAutoCropped = false;
 
-  if (options?.autoDetectOnSurface !== false) {
-    const detection = detectCardBoundsInFrame(videoSource, sensorCrop);
-    if (detection.detected) {
-      effectiveCrop = detection.crop;
-      isAutoCropped = true;
-    }
+  // 1. Próba automatycznego wykrycia konturu karty na powierzchni (np. biała kartka / stół / mata)
+  const surfaceDetection = detectCardBoundsInFrame(videoSource, sensorCrop);
+
+  if (surfaceDetection.detected && surfaceDetection.confidence >= 80) {
+    effectiveCrop = surfaceDetection.crop;
+    isAutoCropped = true;
+  } else if (sensorCrop && sensorCrop.width > 20 && sensorCrop.height > 20) {
+    effectiveCrop = sensorCrop;
+    isAutoCropped = false;
+  } else {
+    effectiveCrop = surfaceDetection.crop;
+    isAutoCropped = surfaceDetection.detected;
   }
 
-  // 1. Znormalizowany Canvas karty o stałych proporcjach 63 x 88 mm
-  const cardW = Math.max(160, effectiveCrop.width);
-  const cardH = Math.max(223, effectiveCrop.height);
+  // 2. Wstępny Canvas karty o stałych proporcjach 63 x 88 mm
+  let cardW = Math.max(260, effectiveCrop.width);
+  let cardH = Math.max(363, effectiveCrop.height);
 
-  const cardCanvas = document.createElement('canvas');
+  let cardCanvas = document.createElement('canvas');
   cardCanvas.width = cardW;
   cardCanvas.height = cardH;
 
@@ -788,17 +921,27 @@ export function extractAndSegmentDelverFeatures(
     cardH
   );
 
+  // 3. Precyzyjne odcięcie ewentualnych marginesów tła (białej kartki / maty wokół karty)
+  // Gwarantuje, że pasek górny i stopka trafią w 100% w rzeczywisty nadruk karty MTG
+  const trimmed = trimCardCanvasMargins(cardCanvas);
+  if (trimmed.isTrimmed) {
+    cardCanvas = trimmed.trimmedCanvas;
+    cardW = cardCanvas.width;
+    cardH = cardCanvas.height;
+    isAutoCropped = true;
+  }
+
   // --------------------------------------------------------------------------
-  // 2. SEGMENTACJA: Wycinek ilustracji (Artwork Crop) - serce Delver Lens
+  // 4. SEGMENTACJA: Wycinek ilustracji (Artwork Crop) - serce Delver Lens
   // --------------------------------------------------------------------------
   // W kartach MTG ilustracja zajmuje:
-  // X: 7% do 93% szerokości
-  // Y: 11.5% do 54.5% wysokości
+  // X: 6.5% do 93.5% szerokości
+  // Y: 12.5% do 54.0% wysokości
   const artCropArea: CardCropRect = {
-    x: Math.round(cardW * 0.07),
-    y: Math.round(cardH * 0.115),
-    width: Math.round(cardW * 0.86),
-    height: Math.round(cardH * 0.43),
+    x: Math.round(cardW * 0.065),
+    y: Math.round(cardH * 0.125),
+    width: Math.round(cardW * 0.870),
+    height: Math.round(cardH * 0.415),
   };
 
   const artCanvas = document.createElement('canvas');
@@ -825,14 +968,14 @@ export function extractAndSegmentDelverFeatures(
   const perceptualHash = computeArtworkDHash(artCanvas);
 
   // --------------------------------------------------------------------------
-  // 3. SEGMENTACJA: Symbol dodatku i rzadkość (Set Symbol & Rarity)
+  // 5. SEGMENTACJA: Symbol dodatku i rzadkość (Set Symbol & Rarity)
   // --------------------------------------------------------------------------
-  // Po prawej stronie pod ilustracją: X: 82%..95%, Y: 54%..62%
+  // Po prawej stronie pod ilustracją: X: 77%..96%, Y: 53.5%..62%
   const symbolCropArea: CardCropRect = {
-    x: Math.round(cardW * 0.82),
-    y: Math.round(cardH * 0.54),
-    width: Math.round(cardW * 0.14),
-    height: Math.round(cardH * 0.08),
+    x: Math.round(cardW * 0.770),
+    y: Math.round(cardH * 0.535),
+    width: Math.round(cardW * 0.190),
+    height: Math.round(cardH * 0.085),
   };
 
   const symbolCanvas = document.createElement('canvas');
@@ -856,13 +999,14 @@ export function extractAndSegmentDelverFeatures(
   const detectedRarity = detectSetSymbolRarity(symbolCanvas);
 
   // --------------------------------------------------------------------------
-  // 4. SEGMENTACJA: Pasek tytułowy (Górne 15%)
+  // 6. SEGMENTACJA: Pasek tytułowy (Górne 3.5%..13.2% - Nazwa i Koszt)
   // --------------------------------------------------------------------------
+  // Czarna ramka u góry to 0%..3.5%. Pasek tytułowy to Y: 3.5%..13.2%
   const titleCropArea: CardCropRect = {
-    x: Math.round(cardW * 0.04),
+    x: Math.round(cardW * 0.040),
     y: Math.round(cardH * 0.035),
-    width: Math.round(cardW * 0.92),
-    height: Math.round(cardH * 0.13),
+    width: Math.round(cardW * 0.920),
+    height: Math.round(cardH * 0.098),
   };
 
   const titleCanvas = binarizeStripCanvas(cardCanvas, titleCropArea, {
@@ -872,13 +1016,14 @@ export function extractAndSegmentDelverFeatures(
   });
 
   // --------------------------------------------------------------------------
-  // 5. SEGMENTACJA: Stopka z kodem dodatku i numerem (Dolne 10%)
+  // 7. SEGMENTACJA: Stopka z kodem dodatku i numerem (Dolne 88.0%..97.5%)
   // --------------------------------------------------------------------------
+  // Linia kolekcjonerska (numer karty i kod setu) to Y: 88.0%..97.5%
   const bottomCropArea: CardCropRect = {
-    x: Math.round(cardW * 0.04),
-    y: Math.round(cardH * 0.88),
-    width: Math.round(cardW * 0.92),
-    height: Math.round(cardH * 0.10),
+    x: Math.round(cardW * 0.035),
+    y: Math.round(cardH * 0.880),
+    width: Math.round(cardW * 0.930),
+    height: Math.round(cardH * 0.095),
   };
 
   const bottomCanvas = binarizeStripCanvas(cardCanvas, bottomCropArea, {
@@ -887,7 +1032,7 @@ export function extractAndSegmentDelverFeatures(
     invertIfDark: true,
   });
 
-  // 6. Tożsamość barwna ramki
+  // 8. Tożsamość barwna ramki
   const detectedColors = detectCardColorIdentity(cardCanvas);
 
   let cardDataUrl = '';
