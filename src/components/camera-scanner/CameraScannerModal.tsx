@@ -53,8 +53,6 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
   const cameraSnapInputRef = useRef<HTMLInputElement | null>(null);
   const viewfinderContainerRef = useRef<HTMLDivElement | null>(null);
   const cardReticleRef = useRef<HTMLDivElement | null>(null);
-  const titleBoxRef = useRef<HTMLDivElement | null>(null);
-  const collectorBoxRef = useRef<HTMLDivElement | null>(null);
   const prevFrameSampleRef = useRef<Uint8ClampedArray | null>(null);
   const steadyCountRef = useRef<number>(0);
 
@@ -635,6 +633,63 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
     showToast,
   ]);
 
+  // Blokada przewijania strony w tle, gdy modal skanera jest otwarty
+  useEffect(() => {
+    if (!isOpen) return;
+    const originalOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = originalOverflow;
+    };
+  }, [isOpen]);
+
+  // Globalne skróty klawiszowe w oknie skanera:
+  // - SPACJA: blokuje przewijanie strony i uruchamia skanowanie ponownie
+  // - ENTER: natychmiast dodaje rozpoznaną kartę do domyślnego klasera / kolekcji
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement | null;
+      const isTextInput = target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement;
+
+      // 1. KLAWISZ SPACJI: Zapobieganie przewijaniu strony + ponowne / nowe skanowanie
+      if (e.code === 'Space' || e.key === ' ') {
+        if (!isTextInput) {
+          e.preventDefault();
+          e.stopPropagation();
+
+          // Jeśli karta była już rozpoznana, czyścimy ją, by natychmiast zeskanować kolejną
+          if (activeCard) {
+            setActiveCard(null);
+            setScanResult(null);
+          }
+
+          if (!isScanning) {
+            performScan();
+          }
+        }
+      }
+
+      // 2. KLAWISZ ENTER: Dodanie rozpoznanej karty do kolekcji
+      if (e.key === 'Enter') {
+        // Jeśli użytkownik wpisuje frazę w wyszukiwarkę ręczną bez aktywnej karty, pozwól na standardowe Enter
+        if (isTextInput && !activeCard) {
+          return;
+        }
+
+        if (activeCard && !isAdding) {
+          e.preventDefault();
+          e.stopPropagation();
+          handleAddCardToCollection();
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown, { capture: true, passive: false });
+    return () => window.removeEventListener('keydown', handleKeyDown, { capture: true });
+  }, [isOpen, activeCard, isAdding, isScanning, performScan, handleAddCardToCollection]);
+
   if (!isOpen) return null;
 
   // Active Card Prices
@@ -916,56 +971,15 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
                     <div className={`absolute -bottom-1.5 -left-1.5 w-4 h-4 border-b-4 border-l-4 rounded-bl transition-colors ${isReticleLocked ? 'border-emerald-400' : 'border-amber-400'}`} />
                     <div className={`absolute -bottom-1.5 -right-1.5 w-4 h-4 border-b-4 border-r-4 rounded-br transition-colors ${isReticleLocked ? 'border-emerald-400' : 'border-amber-400'}`} />
 
-                    {/* Reticle Target Display (Delver Lens & ManaBox) */}
-                    <div className="flex-1 flex flex-col justify-between relative py-0.5">
-                      {/* Zone 1: Pasek nazwy (Górne 15%) */}
-                      <div
-                        ref={titleBoxRef}
-                        className="w-[92%] h-[14%] border border-dashed border-emerald-300/80 bg-emerald-500/10 rounded-lg flex items-center justify-between px-2 text-[9px] text-emerald-200 font-mono font-bold mx-auto shadow-sm backdrop-blur-[1px]"
-                      >
-                        <span>🏷️ NAZWA & KOSZT</span>
-                        <span className="text-[8px] bg-emerald-500/20 px-1 py-0.5 rounded text-emerald-300">15%</span>
-                      </div>
-
-                      {/* Zone 2: Artwork Box (Ilustracja - Serce Delver Lens) */}
-                      <div className="w-[88%] h-[42%] border-2 border-dashed border-emerald-400/70 bg-emerald-500/10 rounded-xl mx-auto flex flex-col items-center justify-center relative p-1 shadow-inner">
-                        <span className="text-[10px] font-extrabold text-emerald-300 uppercase tracking-wider flex items-center gap-1 bg-black/40 px-2 py-0.5 rounded">
-                          <Sparkles className="w-3 h-3 text-emerald-400" />
-                          <span>ILUSTRACJA (dHash)</span>
-                        </span>
-                        <span className="text-[8px] text-emerald-200/80 font-mono mt-0.5">
-                          Odcisk palca karty MTG
-                        </span>
-
-                        {/* Symbol Setu na wysokości linii typu */}
-                        <div className="absolute -bottom-3 right-1 px-1.5 py-0.5 rounded bg-black/70 border border-emerald-400/60 text-[8px] font-mono text-emerald-300 flex items-center gap-1 shadow">
-                          <span>💠 Set & Rzadkość</span>
-                        </div>
-                      </div>
-
-                      {/* Zone 3: Stopka z kodem dodatku i numerem (Dolne 10%) */}
-                      <div
-                        ref={collectorBoxRef}
-                        className="w-[92%] h-[10%] border border-dashed border-emerald-300/80 bg-emerald-500/15 rounded-lg flex items-center justify-between px-2 text-[9px] text-emerald-300 font-mono font-bold mx-auto mb-0.5 shadow-sm backdrop-blur-[1px]"
-                      >
-                        <span>🔢 STOPKA (SET & NR)</span>
-                        <span className="text-[8px] opacity-90">OTJ / MH3 / 125</span>
-                      </div>
-
-                      {/* Status Lock Indicator Badge */}
+                    {/* Czysta ramka karty MTG (63x88mm) bez wyjaśnień sekcji */}
+                    {isReticleLocked && (
                       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none">
-                        {isReticleLocked ? (
-                          <span className="px-3 py-1 rounded-full bg-emerald-500 text-stone-950 font-black text-[10px] uppercase tracking-wider shadow-lg flex items-center gap-1 animate-pulse">
-                            <CheckCircle2 className="w-3.5 h-3.5 stroke-[3]" />
-                            <span>CEL ZABLOKOWANY</span>
-                          </span>
-                        ) : (
-                          <span className="px-2.5 py-0.5 rounded-full bg-black/60 border border-stone-700 text-stone-300 font-mono text-[9px] shadow backdrop-blur-sm">
-                            Dopasuj kartę do ramki
-                          </span>
-                        )}
+                        <span className="px-3 py-1 rounded-full bg-emerald-500 text-stone-950 font-black text-[10px] uppercase tracking-wider shadow-lg flex items-center gap-1 animate-pulse">
+                          <CheckCircle2 className="w-3.5 h-3.5 stroke-[3]" />
+                          <span>KARTA WYKRYTA</span>
+                        </span>
                       </div>
-                    </div>
+                    )}
 
                     {/* Laser Scanning Animation Line */}
                     {isScanning && (
@@ -1111,17 +1125,21 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
                 <button
                   onClick={performScan}
                   disabled={isScanning || !isCameraActive}
+                  title="Rozpocznij skanowanie (lub naciśnij Spację)"
                   className="px-4 py-2 rounded-xl bg-gradient-to-r from-emerald-400 via-emerald-500 to-emerald-600 hover:from-emerald-300 hover:to-emerald-500 text-stone-950 font-extrabold text-xs flex items-center gap-2 shadow-lg shadow-emerald-950/60 transition-all cursor-pointer disabled:opacity-50"
                 >
                   {isScanning ? (
                     <>
                       <RefreshCw className="w-4 h-4 animate-spin" />
-                      <span>Skanowanie Delver Lens...</span>
+                      <span>Skanowanie...</span>
                     </>
                   ) : (
                     <>
                       <Zap className="w-4 h-4 fill-stone-950" />
-                      <span>Zeskanuj (Delver Lens)</span>
+                      <span>Zeskanuj</span>
+                      <kbd className="hidden sm:inline px-1.5 py-0.5 rounded bg-black/20 text-[9px] font-mono font-bold tracking-tight text-stone-900 border border-black/10">
+                        Spacja
+                      </kbd>
                     </>
                   )}
                 </button>
@@ -1567,6 +1585,7 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
                   type="button"
                   onClick={handleAddCardToCollection}
                   disabled={!activeCard || isAdding}
+                  title="Dodaj kartę do klasera (lub naciśnij Enter)"
                   className="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-500 hover:to-emerald-400 text-stone-950 font-extrabold text-xs tracking-wider uppercase flex items-center justify-center gap-2 shadow-lg shadow-emerald-950/40 transition-all cursor-pointer disabled:opacity-40"
                 >
                   {isAdding ? (
@@ -1580,6 +1599,9 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
                       <span>
                         Dodaj do klasera "{selectedBinder}"
                       </span>
+                      <kbd className="hidden sm:inline px-1.5 py-0.5 rounded bg-black/20 text-[9px] font-mono font-bold tracking-tight text-stone-900 border border-black/10">
+                        Enter ↵
+                      </kbd>
                     </>
                   )}
                 </button>
