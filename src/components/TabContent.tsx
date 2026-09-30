@@ -56,6 +56,9 @@ interface TabContentProps {
   onSelectCard: (card: ScryfallCard) => void;
   onViewDeckCardDetails?: (card: ScryfallCard) => void;
   onOpenScannerModal?: () => void;
+  onOpenImportDeck?: () => void;
+  onOpenCollectionImportExport?: (tab: 'export' | 'import') => void;
+  showToast?: (message: string) => void;
 }
 
 export const TabContent: React.FC<TabContentProps> = ({
@@ -87,6 +90,9 @@ export const TabContent: React.FC<TabContentProps> = ({
   onSelectCard,
   onViewDeckCardDetails,
   onOpenScannerModal,
+  onOpenImportDeck,
+  onOpenCollectionImportExport,
+  showToast,
 }) => {
   switch (activeTab) {
     case 'collection':
@@ -111,6 +117,7 @@ export const TabContent: React.FC<TabContentProps> = ({
           onViewCardDetails={onViewCollectionItemDetails}
           onOpenAddModal={() => setActiveTab('search')}
           onOpenScannerModal={onOpenScannerModal}
+          onOpenImportExport={onOpenCollectionImportExport}
         />
       );
 
@@ -124,6 +131,7 @@ export const TabContent: React.FC<TabContentProps> = ({
             onUpdateDeck={onUpdateDeck}
             onBack={onBackFromDeck}
             onViewCardDetails={onViewDeckCardDetails || onSelectCard}
+            showToast={showToast}
           />
         );
       }
@@ -134,6 +142,8 @@ export const TabContent: React.FC<TabContentProps> = ({
           onSelectDeck={onSelectDeck}
           onCreateDeckClick={onOpenCreateDeckModal}
           onDeleteDeck={onDeleteDeck}
+          onOpenImportDeck={onOpenImportDeck}
+          showToast={showToast}
         />
       );
 

@@ -5,7 +5,8 @@ import {
   FolderOpen, 
   Star, 
   Edit2, 
-  Trash2 
+  Trash2,
+  FileText
 } from 'lucide-react';
 import { formatCurrency } from '../../utils/formatters';
 import { CatalogsBarProps } from './types';
@@ -22,6 +23,7 @@ export const CatalogsBar: React.FC<CatalogsBarProps> = ({
   onOpenEditCatalog,
   onRequestDeleteCatalog,
   onSetDefaultCatalog,
+  onOpenImportExport,
 }) => {
   const activeCatalogObj = catalogs.find(c => c.name === activeBinder);
 
@@ -47,6 +49,17 @@ export const CatalogsBar: React.FC<CatalogsBarProps> = ({
         </div>
 
         <div className="flex items-center gap-2 flex-wrap shrink-0">
+          {onOpenImportExport && (
+            <button
+              onClick={() => onOpenImportExport('export')}
+              className="px-3 py-1.5 rounded-xl bg-stone-800 hover:bg-stone-750 text-amber-300 hover:text-amber-200 border border-amber-500/30 font-bold text-xs flex items-center justify-center gap-1.5 shadow-sm transition-all cursor-pointer shrink-0"
+              title="Eksportuj lub importuj kolekcję jako plik .txt (format '1x Talisman of Impulse (tdc) 332')"
+            >
+              <FileText className="w-4 h-4 text-amber-400" />
+              <span>Plik .txt (Kolekcja)</span>
+            </button>
+          )}
+
           <button
             onClick={onOpenCreateCatalog}
             className="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-stone-950 font-extrabold text-xs flex items-center justify-center gap-1.5 shadow-md shadow-amber-950/40 transition-all cursor-pointer shrink-0"

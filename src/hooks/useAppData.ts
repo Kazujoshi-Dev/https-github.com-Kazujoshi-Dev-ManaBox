@@ -415,6 +415,23 @@ export function useAppData({ userId, onUnauthorized, showToast, onSettingsLoaded
     reader.readAsText(file);
   }, [onUnauthorized, showToast]);
 
+  const bulkAddToCollection = useCallback(async (items: any[]) => {
+    try {
+      const res = await collectionApi.bulkAdd(items, onUnauthorized);
+      if (res.ok) {
+        const colRes = await collectionApi.getAll(onUnauthorized);
+        if (colRes.ok) {
+          const fresh = await colRes.json();
+          setCollection(fresh);
+          return true;
+        }
+      }
+    } catch (err) {
+      console.error('Failed to bulk add to collection:', err);
+    }
+    return false;
+  }, [onUnauthorized]);
+
   return {
     collection,
     wishlist,
@@ -437,6 +454,7 @@ export function useAppData({ userId, onUnauthorized, showToast, onSettingsLoaded
     deleteDeck,
     refreshPrices,
     exportCollection,
-    importCollection
+    importCollection,
+    bulkAddToCollection
   };
 }

@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from 'react';
-import { ScryfallCard } from '../types';
+import { ScryfallCard, DeckCardEntry, DeckItem } from '../types';
 import {
   DeckBuilderProps,
   DECK_CATEGORIES,
@@ -13,6 +13,7 @@ import {
   useDeckStats,
   useDeckSearch,
 } from './deck-builder';
+import { DeckImportExportModal } from './DeckImportExportModal';
 
 // Re-export constants for external consumers if needed
 export { DECK_CATEGORIES, getCardCategory };
@@ -24,10 +25,15 @@ export const DeckBuilder: React.FC<DeckBuilderProps> = ({
   onUpdateDeck,
   onBack,
   onViewCardDetails,
+  showToast = () => {},
 }) => {
   // Hover preview state
   const [hoveredCard, setHoveredCard] = useState<ScryfallCard | null>(null);
   const [hoverPosition, setHoverPosition] = useState<{ x: number; y: number } | null>(null);
+
+  // Deck Import / Export Modal state
+  const [isImportExportOpen, setIsImportExportOpen] = useState(false);
+  const [importExportTab, setImportExportTab] = useState<'export' | 'import'>('export');
 
   // Deck statistics hook (curve, counts, valuations, categories)
   const {
@@ -142,6 +148,45 @@ export const DeckBuilder: React.FC<DeckBuilderProps> = ({
     setSearchSource(nextSource);
   }, [deck, onUpdateDeck, setSearchSource]);
 
+  const handleUpdateDeckCards = useCallback(
+    async (
+      newCards: DeckCardEntry[],
+      newCommander?: ScryfallCard | null,
+      mode: 'append' | 'replace' = 'append'
+    ) => {
+      let finalCards: DeckCardEntry[] = [];
+      if (mode === 'replace') {
+        finalCards = newCards;
+      } else {
+        finalCards = [...deck.cards];
+        for (const item of newCards) {
+          const idx = finalCards.findIndex(
+            (c) =>
+              c.card.id === item.card.id ||
+              c.card.name.toLowerCase() === item.card.name.toLowerCase()
+          );
+          const isBasic = (item.card.type_line || '').toLowerCase().includes('basic');
+          if (idx >= 0) {
+            if (isBasic) {
+              finalCards[idx].quantity += item.quantity;
+            }
+          } else {
+            finalCards.push(item);
+          }
+        }
+      }
+
+      const updatedDeck: DeckItem = {
+        ...deck,
+        commander: newCommander !== undefined ? newCommander : deck.commander,
+        cards: finalCards,
+      };
+
+      onUpdateDeck(updatedDeck);
+    },
+    [deck, onUpdateDeck]
+  );
+
   return (
     <div className="space-y-6 pb-20">
       {/* 1. Top Deck Info & Actions Bar */}
@@ -157,6 +202,10 @@ export const DeckBuilder: React.FC<DeckBuilderProps> = ({
           onBack={onBack}
           onToggleCardSource={handleToggleCardSource}
           onOpenAddModal={openSearchModal}
+          onOpenImportExport={() => {
+            setImportExportTab('export');
+            setIsImportExportOpen(true);
+          }}
         />
 
         {/* Commander Featured Showcase / Select Placeholder */}
@@ -208,6 +257,18 @@ export const DeckBuilder: React.FC<DeckBuilderProps> = ({
         onSourceChange={setSearchSource}
         onAddCard={handleAddCardToDeck}
       />
+
+      {/* 6. Deck Import / Export (.txt) Modal */}
+      {isImportExportOpen && (
+        <DeckImportExportModal
+          isOpen={isImportExportOpen}
+          deck={deck}
+          initialTab={importExportTab}
+          onClose={() => setIsImportExportOpen(false)}
+          onUpdateDeckCards={handleUpdateDeckCards}
+          showToast={showToast}
+        />
+      )}
     </div>
   );
 };

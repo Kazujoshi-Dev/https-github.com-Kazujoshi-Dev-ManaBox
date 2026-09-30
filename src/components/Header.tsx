@@ -36,8 +36,9 @@ interface HeaderProps {
   isRefreshing: boolean;
   onOpenAddModal: () => void;
   onOpenScannerModal?: () => void;
-  onExportCollection: () => void;
-  onImportCollection: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  onExportCollection?: () => void;
+  onImportCollection?: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  onOpenImportExport?: (tab: 'export' | 'import') => void;
   user?: AuthUser | null;
   onLogout?: () => void;
 }
@@ -57,6 +58,7 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenScannerModal,
   onExportCollection,
   onImportCollection,
+  onOpenImportExport,
   user,
   onLogout
 }) => {
@@ -272,29 +274,24 @@ export const Header: React.FC<HeaderProps> = ({
           </div>
 
           {/* Backup / Export Actions */}
-          <div className="flex items-center gap-2 text-stone-400 shrink-0 ml-auto">
+          <div className="flex items-center gap-1.5 text-stone-400 shrink-0 ml-auto">
             <button
-              onClick={onExportCollection}
-              title="Pobierz kopię zapasową kolekcji (JSON)"
-              className="p-1.5 text-stone-400 hover:text-stone-200 hover:bg-stone-800 rounded-lg transition-colors text-xs flex items-center gap-1"
+              onClick={() => onOpenImportExport ? onOpenImportExport('export') : onExportCollection?.()}
+              title="Eksportuj kolekcję (.txt lub .json)"
+              className="p-1.5 px-2 text-stone-300 hover:text-amber-300 hover:bg-stone-800 rounded-lg transition-colors text-xs flex items-center gap-1.5 cursor-pointer font-medium border border-transparent hover:border-stone-700"
             >
-              <Download className="w-3.5 h-3.5" />
+              <Download className="w-3.5 h-3.5 text-amber-400" />
               <span className="hidden md:inline">Eksport</span>
             </button>
 
-            <label
-              title="Wczytaj kopię zapasową kolekcji (JSON)"
-              className="p-1.5 text-stone-400 hover:text-stone-200 hover:bg-stone-800 rounded-lg transition-colors text-xs flex items-center gap-1 cursor-pointer"
+            <button
+              onClick={() => onOpenImportExport ? onOpenImportExport('import') : undefined}
+              title="Importuj kolekcję z pliku .txt lub .json"
+              className="p-1.5 px-2 text-stone-300 hover:text-amber-300 hover:bg-stone-800 rounded-lg transition-colors text-xs flex items-center gap-1.5 cursor-pointer font-medium border border-transparent hover:border-stone-700"
             >
-              <Upload className="w-3.5 h-3.5" />
+              <Upload className="w-3.5 h-3.5 text-amber-400" />
               <span className="hidden md:inline">Import</span>
-              <input
-                type="file"
-                accept=".json"
-                onChange={onImportCollection}
-                className="hidden"
-              />
-            </label>
+            </button>
 
             {/* Logged in User Profile & Logout */}
             {user && (

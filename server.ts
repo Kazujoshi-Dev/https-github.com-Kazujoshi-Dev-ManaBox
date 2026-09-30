@@ -691,10 +691,13 @@ Return strictly valid JSON conforming to the schema.`,
       possibleCards,
     });
   } catch (err: any) {
-    console.error('Błąd w /api/scanner/ai-identify:', err);
-    res.status(500).json({
-      error: 'AI_SCAN_FAILED',
-      message: err.message || 'Wystąpił błąd podczas analizy obrazu przez AI.',
+    console.error('Błąd w /api/scanner/ai-identify:', err?.message || err);
+    const isQuota = err?.message?.includes('RESOURCE_EXHAUSTED') || err?.message?.includes('quota');
+    res.status(isQuota ? 429 : 500).json({
+      error: isQuota ? 'QUOTA_EXHAUSTED' : 'AI_SCAN_FAILED',
+      message: isQuota
+        ? 'Chwilowo wyczerpano limit zapytań AI Gemini. Przełącz na lokalny OCR w aparacie lub odczekaj chwilę.'
+        : (err.message || 'Wystąpił błąd podczas analizy obrazu przez AI.'),
     });
   }
 });
@@ -808,6 +811,44 @@ app.get('/api/scryfall/named', async (req, res) => {
     res.json(data);
   } catch (err: any) {
     res.status(404).json({ error: err.message });
+  }
+});
+
+// 3c. Scryfall Batch Collection Lookup (/cards/collection)
+app.post('/api/scryfall/collection', async (req, res) => {
+  try {
+    const { identifiers } = req.body;
+    if (!Array.isArray(identifiers) || identifiers.length === 0) {
+      return res.status(400).json({ error: 'Lista "identifiers" jest wymagana' });
+    }
+
+    const BATCH_SIZE = 75; // Scryfall allows up to 75 identifiers per POST
+    const allFound: any[] = [];
+    const notFound: any[] = [];
+
+    for (let i = 0; i < identifiers.length; i += BATCH_SIZE) {
+      const chunk = identifiers.slice(i, i + BATCH_SIZE);
+      const scryRes = await fetchScryfallThrottled(`${SCRYFALL_BASE}/cards/collection`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ identifiers: chunk }),
+      });
+
+      if (scryRes.ok) {
+        const result = await scryRes.json();
+        if (Array.isArray(result.data)) {
+          allFound.push(...result.data);
+        }
+        if (Array.isArray(result.not_found)) {
+          notFound.push(...result.not_found);
+        }
+      }
+    }
+
+    res.json({ object: 'list', data: allFound, not_found: notFound });
+  } catch (err: any) {
+    console.error('Error in /api/scryfall/collection:', err);
+    res.status(500).json({ error: err.message });
   }
 });
 
@@ -1058,6 +1099,18 @@ app.post('/api/collection/bulk-import', authMiddleware, async (req, res) => {
     await db.saveFullCollection(userId, items);
     res.json({ success: true, count: items.length });
   } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/collection/bulk-add', authMiddleware, async (req, res) => {
+  try {
+    const userId = (req as any).userId;
+    const items = Array.isArray(req.body) ? req.body : [];
+    const added = await db.addCollectionItems(userId, items);
+    res.json({ success: true, count: added.length, items: added });
+  } catch (err: any) {
+    console.error('Error in /api/collection/bulk-add:', err);
     res.status(500).json({ error: err.message });
   }
 });

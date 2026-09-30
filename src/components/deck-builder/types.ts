@@ -9,6 +9,7 @@ export interface DeckBuilderProps {
   onUpdateDeck: (updated: DeckItem) => void;
   onBack: () => void;
   onViewCardDetails: (card: ScryfallCard) => void;
+  showToast?: (message: string) => void;
 }
 
 export interface DeckHeaderProps {
@@ -22,6 +23,7 @@ export interface DeckHeaderProps {
   onBack: () => void;
   onToggleCardSource: () => void;
   onOpenAddModal: () => void;
+  onOpenImportExport?: () => void;
 }
 
 export interface CommanderShowcaseProps {

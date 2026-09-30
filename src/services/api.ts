@@ -73,6 +73,12 @@ export const collectionApi = {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(items)
+    }, onUnauthorized),
+  bulkAdd: (items: unknown[], onUnauthorized?: () => void) =>
+    fetchWithAuth('/api/collection/bulk-add', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(items)
     }, onUnauthorized)
 };
 

@@ -6,6 +6,8 @@ import { TabContent, NavigationTab } from './components/TabContent';
 import { SettingsModal } from './components/SettingsModal';
 import { CardModal } from './components/CardModal';
 import { DeckCreateModal } from './components/DeckCreateModal';
+import { ImportExportModal } from './components/ImportExportModal';
+import { DeckImportExportModal } from './components/DeckImportExportModal';
 import { CameraScannerModal } from './components/camera-scanner/CameraScannerModal';
 import { Toast } from './components/Toast';
 import { useAuth } from './hooks/useAuth';
@@ -41,7 +43,8 @@ export default function App() {
     deleteDeck,
     refreshPrices,
     exportCollection,
-    importCollection
+    importCollection,
+    bulkAddToCollection
   } = useAppData({
     userId: currentUser?.id,
     onUnauthorized: handleUnauthorized,
@@ -59,10 +62,22 @@ export default function App() {
   const [isSettingsOpen, setIsSettingsOpen] = useState<boolean>(false);
   const [isDeckCreateModalOpen, setIsDeckCreateModalOpen] = useState<boolean>(false);
   const [isScannerModalOpen, setIsScannerModalOpen] = useState<boolean>(false);
+  const [isCollectionImportExportOpen, setIsCollectionImportExportOpen] = useState<boolean>(false);
+  const [collectionImportExportTab, setCollectionImportExportTab] = useState<'export' | 'import'>('export');
+  const [isDeckImportModalOpen, setIsDeckImportModalOpen] = useState<boolean>(false);
   const [selectedCardForModal, setSelectedCardForModal] = useState<ScryfallCard | null>(null);
   const [selectedCollectionItemForModal, setSelectedCollectionItemForModal] = useState<CollectionItem | null>(null);
   const [deckCardBeingViewed, setDeckCardBeingViewed] = useState<ScryfallCard | null>(null);
   const [deckCardIsFoil, setDeckCardIsFoil] = useState<boolean | undefined>(undefined);
+
+  const handleOpenCollectionImportExport = useCallback((tab: 'export' | 'import' = 'export') => {
+    setCollectionImportExportTab(tab);
+    setIsCollectionImportExportOpen(true);
+  }, []);
+
+  const handleOpenDeckImport = useCallback(() => {
+    setIsDeckImportModalOpen(true);
+  }, []);
 
   // Auto-open scanner modal if opened in a standalone tab with ?scanner=open
   React.useEffect(() => {
@@ -346,6 +361,7 @@ export default function App() {
         onOpenScannerModal={() => setIsScannerModalOpen(true)}
         onExportCollection={exportCollection}
         onImportCollection={importCollection}
+        onOpenImportExport={handleOpenCollectionImportExport}
         user={currentUser}
         onLogout={handleLogout}
       />
@@ -390,6 +406,9 @@ export default function App() {
             onSelectCard={(card) => handleOpenCardModal(card, null)}
             onViewDeckCardDetails={handleOpenDeckCardModal}
             onOpenScannerModal={() => setIsScannerModalOpen(true)}
+            onOpenImportDeck={handleOpenDeckImport}
+            onOpenCollectionImportExport={handleOpenCollectionImportExport}
+            showToast={showToast}
           />
         )}
       </main>
@@ -414,6 +433,38 @@ export default function App() {
           catalogs={catalogs}
           settings={settings}
           onSaveToCollection={saveToCollection}
+          showToast={showToast}
+        />
+      )}
+
+      {/* Collection Import / Export Modal (.txt and .json) */}
+      {isCollectionImportExportOpen && (
+        <ImportExportModal
+          isOpen={isCollectionImportExportOpen}
+          initialTab={collectionImportExportTab}
+          collection={collection}
+          catalogs={catalogs}
+          onImportBulk={async (items) => {
+            await bulkAddToCollection(items);
+          }}
+          onClose={() => setIsCollectionImportExportOpen(false)}
+          showToast={showToast}
+        />
+      )}
+
+      {/* Deck Import Modal (.txt) */}
+      {isDeckImportModalOpen && (
+        <DeckImportExportModal
+          isOpen={isDeckImportModalOpen}
+          initialTab="import"
+          onClose={() => setIsDeckImportModalOpen(false)}
+          onCreateDeck={async (deckData) => {
+            const newDeck = await createDeck(deckData);
+            if (newDeck) {
+              setSelectedDeck(newDeck);
+              setActiveTab('decks');
+            }
+          }}
           showToast={showToast}
         />
       )}

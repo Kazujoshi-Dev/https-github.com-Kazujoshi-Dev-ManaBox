@@ -34,6 +34,7 @@ import { ScryfallCard, CardCondition, CardLanguage, Catalog, AppSettings } from 
 import { formatCurrency, getCardImageUri, getCardPrice, getRarityColor, getRarityLabel, handleCardImageError } from '../../utils/formatters';
 import { CameraScannerModalProps, CameraDeviceOption, ScanResult, ScannerEngine } from './types';
 import { scanMtgCardFrame, scanCardWithAi, searchCardInScryfall } from './ocrProcessor';
+import { calculateVideoSensorCrop, CardCropRect } from './cvCardPipeline';
 import { EdhrecBadge } from '../EdhrecBadge';
 
 export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
@@ -50,6 +51,7 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const cameraSnapInputRef = useRef<HTMLInputElement | null>(null);
   const viewfinderContainerRef = useRef<HTMLDivElement | null>(null);
+  const cardReticleRef = useRef<HTMLDivElement | null>(null);
   const titleBoxRef = useRef<HTMLDivElement | null>(null);
   const collectorBoxRef = useRef<HTMLDivElement | null>(null);
 
@@ -325,52 +327,25 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
       const width = video.videoWidth || 1280;
       const height = video.videoHeight || 720;
 
-      let customTitleCrop: { x: number; y: number; width: number; height: number } | undefined;
-      let customCollectorCrop: { x: number; y: number; width: number; height: number } | undefined;
-      let cardAreaCrop: { x: number; y: number; width: number; height: number } | undefined;
+      let cardCrop: CardCropRect | undefined;
 
-      // Project DOM reticle coordinates directly onto video sensor pixels
-      if (viewfinderContainerRef.current) {
-        const containerRect = viewfinderContainerRef.current.getBoundingClientRect();
-        const scale = Math.max(containerRect.width / width, containerRect.height / height);
-        const displayedW = width * scale;
-        const displayedH = height * scale;
-        const offsetX = (displayedW - containerRect.width) / 2;
-        const offsetY = (displayedH - containerRect.height) / 2;
-
-        if (titleBoxRef.current) {
-          const titleRect = titleBoxRef.current.getBoundingClientRect();
-          const relX = titleRect.left - containerRect.left;
-          const relY = titleRect.top - containerRect.top;
-          const padX = titleRect.width * 0.04;
-          const padY = titleRect.height * 0.15;
-
-          customTitleCrop = {
-            x: Math.max(0, Math.round((relX - padX + offsetX) / scale)),
-            y: Math.max(0, Math.round((relY - padY + offsetY) / scale)),
-            width: Math.min(width, Math.round((titleRect.width + padX * 2) / scale)),
-            height: Math.min(height, Math.round((titleRect.height + padY * 2) / scale)),
-          };
-        }
-
-        if (collectorBoxRef.current) {
-          const colRect = collectorBoxRef.current.getBoundingClientRect();
-          const colRelX = colRect.left - containerRect.left;
-          const colRelY = colRect.top - containerRect.top;
-          customCollectorCrop = {
-            x: Math.max(0, Math.round((colRelX + offsetX) / scale)),
-            y: Math.max(0, Math.round((colRelY + offsetY) / scale)),
-            width: Math.min(width, Math.round(colRect.width / scale)),
-            height: Math.min(height, Math.round(colRect.height / scale)),
-          };
-        }
-
-        // Entire card viewport area for AI Vision
-        cardAreaCrop = {
-          x: Math.max(0, Math.round((containerRect.width * 0.08 + offsetX) / scale)),
-          y: Math.max(0, Math.round((containerRect.height * 0.08 + offsetY) / scale)),
-          width: Math.min(width, Math.round((containerRect.width * 0.84) / scale)),
-          height: Math.min(height, Math.round((containerRect.height * 0.84) / scale)),
+      // Oblicz precyzyjne współrzędne fizycznej matrycy wideo odpowiadające wizjerowi 63x88mm w DOM
+      if (viewfinderContainerRef.current && cardReticleRef.current) {
+        cardCrop = calculateVideoSensorCrop(
+          video,
+          cardReticleRef.current,
+          viewfinderContainerRef.current
+        );
+      } else {
+        // Fallback jeśli refy nie były jeszcze zamontowane
+        const cardAspectRatio = 63 / 88;
+        const targetW = Math.round(width * 0.72);
+        const targetH = Math.round(targetW / cardAspectRatio);
+        cardCrop = {
+          x: Math.round((width - targetW) / 2),
+          y: Math.round((height - targetH) / 2),
+          width: targetW,
+          height: targetH,
         };
       }
 
@@ -383,26 +358,27 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
             width,
             height,
             (_p, statusText) => setScanStatus(statusText),
-            { cardArea: cardAreaCrop }
+            { cardArea: cardCrop }
           );
         } catch (aiErr: any) {
           console.warn('AI Vision scan failed, falling back to local OCR:', aiErr);
-          setScanStatus('AI niedostępne, automatyczne przejście na lokalny OCR...');
+          setScanStatus('AI niedostępne, przejście na lokalny potok Delver Lens (OCR)...');
           result = await scanMtgCardFrame(
             video,
             width,
             height,
             (_p, statusText) => setScanStatus(statusText),
-            { customTitleCrop, customCollectorCrop }
+            { cardCrop }
           );
         }
       } else {
+        // Lokalny potok Delver Lens: wycina kartę 63x88mm, segmentuje paski 15% i 10%, binarizuje ImageData i rozpoznaje OCR
         result = await scanMtgCardFrame(
           video,
           width,
           height,
           (_p, statusText) => setScanStatus(statusText),
-          { customTitleCrop, customCollectorCrop }
+          { cardCrop }
         );
       }
 
@@ -913,8 +889,11 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
               {/* MTG Card Target Reticle Overlay */}
               {isCameraActive && (
                 <div className="absolute inset-0 pointer-events-none flex items-center justify-center p-4">
-                  {/* Card Outline Bounding Box (2.5 : 3.5 aspect ratio) */}
-                  <div className="relative aspect-[2.5/3.5] h-[82%] max-w-[85%] border-2 border-amber-400/80 rounded-2xl shadow-[0_0_0_9999px_rgba(0,0,0,0.45)] flex flex-col justify-between p-2 transition-all">
+                  {/* Card Outline Bounding Box (dokładne proporcje karty MTG 63x88mm) z maską zewnętrzną */}
+                  <div
+                    ref={cardReticleRef}
+                    className="relative aspect-[63/88] h-[84%] max-w-[85%] border-2 border-amber-400 rounded-2xl shadow-[0_0_0_9999px_rgba(0,0,0,0.60)] flex flex-col justify-between p-2 transition-all"
+                  >
                     {/* Corner Guides */}
                     <div className="absolute -top-1.5 -left-1.5 w-4 h-4 border-t-4 border-l-4 border-amber-400 rounded-tl" />
                     <div className="absolute -top-1.5 -right-1.5 w-4 h-4 border-t-4 border-r-4 border-amber-400 rounded-tr" />
@@ -926,7 +905,7 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
                       <div className="flex-1 flex flex-col justify-between items-center py-2 px-1">
                         <div className="px-3 py-1 rounded-full bg-amber-500/25 border border-amber-400/50 text-amber-200 text-[10px] font-bold flex items-center gap-1.5 shadow backdrop-blur-sm">
                           <Sparkles className="w-3.5 h-3.5 fill-amber-300" />
-                          <span>Umieść całą kartę w kadrze</span>
+                          <span>Umieść całą kartę w kadrze (63x88mm)</span>
                         </div>
 
                         <div className="text-[10px] text-stone-300 bg-stone-950/85 border border-stone-800 px-3 py-1 rounded-md font-mono text-center shadow">
@@ -935,13 +914,13 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
                       </div>
                     ) : (
                       <>
-                        {/* Zone 1: Title Line Target */}
+                        {/* Zone 1: Title Line Target (Górne 15%) */}
                         <div
                           ref={titleBoxRef}
-                          className="w-[90%] h-[16%] border-2 border-dashed border-amber-400 bg-amber-400/15 rounded-lg flex items-center justify-between px-2 text-[10px] text-amber-200 font-mono font-bold mx-auto mt-1.5 shadow-sm"
+                          className="w-[92%] h-[15%] border-2 border-dashed border-amber-300 bg-amber-400/20 rounded-lg flex items-center justify-between px-2 text-[10px] text-amber-200 font-mono font-bold mx-auto mt-1 shadow-sm backdrop-blur-[1px]"
                         >
-                          <span className="flex items-center gap-1">🏷️ NAZWA KARTY</span>
-                          <span className="text-[9px] bg-amber-500/20 px-1 py-0.5 rounded text-amber-300">Tytuł</span>
+                          <span className="flex items-center gap-1">🏷️ NAZWA & KOSZT (GÓRNE 15%)</span>
+                          <span className="text-[9px] bg-amber-500/30 px-1 py-0.5 rounded text-amber-300 font-sans font-bold">OCR</span>
                         </div>
 
                         {/* Laser Scanning Animation Line */}
@@ -949,13 +928,13 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
                           <div className="absolute inset-x-2 h-1 bg-gradient-to-r from-transparent via-amber-400 to-transparent shadow-[0_0_12px_#fbbf24] animate-pulse transition-all" />
                         )}
 
-                        {/* Zone 2: Collector & Set Info Target */}
+                        {/* Zone 2: Collector & Set Info Target (Dolne 10%) */}
                         <div
                           ref={collectorBoxRef}
-                          className="w-[75%] h-[12%] border border-dashed border-amber-400/70 bg-amber-400/10 rounded-lg flex items-center justify-between px-2 text-[10px] text-amber-300 font-mono font-bold mb-1.5"
+                          className="w-[92%] h-[10%] border border-dashed border-amber-300/80 bg-amber-400/15 rounded-lg flex items-center justify-between px-2 text-[10px] text-amber-300 font-mono font-bold mb-1 shadow-sm backdrop-blur-[1px]"
                         >
-                          <span>🔢 SET / NR</span>
-                          <span className="text-[9px] opacity-75">np. OTJ 125</span>
+                          <span>🔢 KOD SETU & NR (DOLNE 10%)</span>
+                          <span className="text-[9px] opacity-80 font-sans">np. OTJ 125</span>
                         </div>
                       </>
                     )}
@@ -1132,9 +1111,9 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
 
           {/* Right Column: Card Confirmation & Add Form */}
           <div className="lg:col-span-5 p-4 sm:p-5 flex flex-col justify-between space-y-4 bg-stone-900/90">
-            {/* Visual Scan Debug Snippet */}
-            {scanResult?.debugCropUrl && (
-              <div className="p-2.5 bg-stone-950/85 rounded-xl border border-stone-800 space-y-1.5 text-xs text-left shrink-0">
+            {/* Visual Scan Debug Snippet (Delver Lens Preprocessing & Cutouts) */}
+            {scanResult && (scanResult.debugCropUrl || scanResult.debugTitleUrl) && (
+              <div className="p-2.5 bg-stone-950/85 rounded-xl border border-stone-800 space-y-2 text-xs text-left shrink-0">
                 <div className="flex items-center justify-between text-[10px] text-stone-400">
                   <span className="font-semibold text-stone-300 flex items-center gap-1.5">
                     {scanResult.engineUsed === 'ai_vision' ? (
@@ -1145,7 +1124,7 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
                     ) : (
                       <>
                         <ScanLine className="w-3.5 h-3.5 text-stone-400" />
-                        <span>Lokalny OCR (Tesseract.js):</span>
+                        <span className="text-emerald-400 font-bold">Potok Delver Lens (Canvas Image Preprocessing + OCR):</span>
                       </>
                     )}
                   </span>
@@ -1155,28 +1134,68 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
                     </span>
                   )}
                 </div>
-                <div className="flex items-center gap-2.5">
-                  <img
-                    src={scanResult.debugCropUrl}
-                    alt="Odczytany kadr"
-                    className="h-10 max-w-[120px] border border-amber-500/40 rounded bg-black object-contain px-1 shrink-0"
-                  />
-                  <div className="text-[11px] font-mono text-stone-200 truncate flex-1">
-                    {scanResult.cleanedTitle ? (
-                      <div>
-                        <span className="text-stone-400 text-[10px] block">Rozpoznano:</span>
-                        <span className="font-bold text-amber-300">"{scanResult.cleanedTitle}"</span>
-                        {scanResult.detectedSet && (
-                          <span className="ml-1 text-[10px] text-stone-400 font-sans">
-                            [{scanResult.detectedSet.toUpperCase()}]
-                          </span>
-                        )}
+
+                {/* Preprocessed Canvas Strips Preview */}
+                {scanResult.debugTitleUrl ? (
+                  <div className="space-y-1.5 pt-0.5">
+                    {/* Top 15% Strip */}
+                    <div className="p-1.5 rounded-lg bg-stone-900 border border-stone-800 space-y-1">
+                      <div className="flex items-center justify-between text-[9px] text-stone-400">
+                        <span className="font-mono text-amber-300 font-semibold">Górne 15% (Nazwa/Koszt): Filtr binarny Otsu + Contrast</span>
+                        <span className="text-stone-300 text-[8px] uppercase tracking-wider font-bold">Czarny tekst na białym tle</span>
                       </div>
-                    ) : (
-                      <span className="text-amber-400/80 italic">Brak wyraźnego dopasowania</span>
+                      <div className="bg-white rounded p-1 flex items-center justify-center overflow-hidden border border-stone-300">
+                        <img
+                          src={scanResult.debugTitleUrl}
+                          alt="Górne 15% po binarizacji"
+                          className="max-h-8 w-full object-contain filter contrast-125"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Bottom 10% Strip if available */}
+                    {scanResult.debugBottomUrl && (
+                      <div className="p-1.5 rounded-lg bg-stone-900 border border-stone-800 space-y-1">
+                        <div className="flex items-center justify-between text-[9px] text-stone-400">
+                          <span className="font-mono text-amber-300 font-semibold">Dolne 10% (Set/Numer): Filtr binarny Otsu</span>
+                          <span className="text-stone-300 text-[8px] uppercase tracking-wider font-bold">Czarny tekst na białym tle</span>
+                        </div>
+                        <div className="bg-white rounded p-1 flex items-center justify-center overflow-hidden border border-stone-300">
+                          <img
+                            src={scanResult.debugBottomUrl}
+                            alt="Dolne 10% po binarizacji"
+                            className="max-h-6 w-full object-contain filter contrast-125"
+                          />
+                        </div>
+                      </div>
                     )}
                   </div>
-                </div>
+                ) : (
+                  <div className="flex items-center gap-2.5">
+                    {scanResult.debugCropUrl && (
+                      <img
+                        src={scanResult.debugCropUrl}
+                        alt="Odczytany kadr"
+                        className="h-10 max-w-[120px] border border-amber-500/40 rounded bg-black object-contain px-1 shrink-0"
+                      />
+                    )}
+                    <div className="text-[11px] font-mono text-stone-200 truncate flex-1">
+                      {scanResult.cleanedTitle ? (
+                        <div>
+                          <span className="text-stone-400 text-[10px] block">Rozpoznano:</span>
+                          <span className="font-bold text-amber-300">"{scanResult.cleanedTitle}"</span>
+                          {scanResult.detectedSet && (
+                            <span className="ml-1 text-[10px] text-stone-400 font-sans">
+                              [{scanResult.detectedSet.toUpperCase()}]
+                            </span>
+                          )}
+                        </div>
+                      ) : (
+                        <span className="text-amber-400/80 italic">Brak wyraźnego dopasowania</span>
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 

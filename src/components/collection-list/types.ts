@@ -18,6 +18,7 @@ export interface CollectionListProps {
   onViewCardDetails: (item: CollectionItem) => void;
   onOpenAddModal: () => void;
   onOpenScannerModal?: () => void;
+  onOpenImportExport?: (tab: 'export' | 'import') => void;
 }
 
 export interface CatalogStatItem {
@@ -40,6 +41,7 @@ export interface CatalogsBarProps {
   decks?: DeckItem[];
   onOpenCreateDeck?: () => void;
   onSelectDeck?: (deck: DeckItem) => void;
+  onOpenImportExport?: (tab: 'export' | 'import') => void;
 }
 
 export interface CollectionFiltersBarProps {
@@ -64,6 +66,7 @@ export interface CollectionEmptyStateProps {
   activeBinder: string;
   onOpenAddModal: () => void;
   onOpenScannerModal?: () => void;
+  onOpenImportExport?: (tab: 'export' | 'import') => void;
 }
 
 export interface CollectionItemHandlers {

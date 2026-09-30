@@ -1,5 +1,5 @@
 import React from 'react';
-import { ArrowLeft, Crown, Layers, Globe, Plus } from 'lucide-react';
+import { ArrowLeft, Crown, Layers, Globe, Plus, FileText } from 'lucide-react';
 import { formatCurrency } from '../../utils/formatters';
 import { DeckHeaderProps } from './types';
 
@@ -14,6 +14,7 @@ export const DeckHeader: React.FC<DeckHeaderProps> = ({
   onBack,
   onToggleCardSource,
   onOpenAddModal,
+  onOpenImportExport,
 }) => {
   return (
     <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
@@ -92,6 +93,19 @@ export const DeckHeader: React.FC<DeckHeaderProps> = ({
             {formatCurrency(totalDeckValue, currency)}
           </span>
         </div>
+
+        {/* Import / Export TXT Button */}
+        {onOpenImportExport && (
+          <button
+            type="button"
+            onClick={onOpenImportExport}
+            className="px-3 py-2 bg-stone-850 hover:bg-stone-800 text-purple-300 hover:text-purple-200 border border-purple-500/30 rounded-xl font-bold text-xs flex items-center gap-1.5 transition-all cursor-pointer shadow-sm"
+            title="Importuj lub eksportuj talię jako plik .txt (np. format '1x Talisman of Impulse (tdc) 332')"
+          >
+            <FileText className="w-4 h-4 text-purple-400" />
+            <span>Plik .txt</span>
+          </button>
+        )}
 
         {/* Add Card to Deck Button */}
         <button

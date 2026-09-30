@@ -196,3 +196,130 @@ export async function saveFullCollection(userId: string, collection: CollectionI
     }
   );
 }
+
+export async function addCollectionItems(
+  userId: string,
+  newItems: CollectionItem[]
+): Promise<CollectionItem[]> {
+  if (!newItems || newItems.length === 0) return [];
+
+  return withDb(
+    async (p) => {
+      const client = await p.connect();
+      try {
+        await client.query('BEGIN');
+        const inserted: CollectionItem[] = [];
+
+        for (const item of newItems) {
+          const itemId = item.id || `col-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`;
+          const cardId = item.cardId || item.card.id;
+          const addedAt = item.addedAt || new Date().toISOString();
+          const binder = item.binder || 'Klaser Główny';
+          const condition = item.condition || 'NM';
+          const language = item.language || 'EN';
+
+          const existingRes = await client.query(
+            `SELECT id, quantity, quantity_foil FROM user_collections 
+             WHERE user_id = $1 AND card_id = $2 AND binder = $3 AND condition = $4 AND language = $5`,
+            [userId, cardId, binder, condition, language]
+          );
+
+          if (existingRes.rows.length > 0) {
+            const row = existingRes.rows[0];
+            const updatedQty = Number(row.quantity) + (item.quantity || 0);
+            const updatedFoil = Number(row.quantity_foil) + (item.quantityFoil || 0);
+            await client.query(
+              `UPDATE user_collections SET quantity = $1, quantity_foil = $2 WHERE id = $3 AND user_id = $4`,
+              [updatedQty, updatedFoil, row.id, userId]
+            );
+            inserted.push({
+              ...item,
+              id: row.id,
+              quantity: updatedQty,
+              quantityFoil: updatedFoil,
+            });
+          } else {
+            await client.query(
+              `INSERT INTO user_collections (
+                id, user_id, card_id, card, quantity, quantity_foil,
+                condition, language, purchase_price, notes, binder,
+                added_at, last_updated_price_at
+              ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)`,
+              [
+                itemId,
+                userId,
+                cardId,
+                JSON.stringify(item.card),
+                item.quantity || 0,
+                item.quantityFoil || 0,
+                condition,
+                language,
+                item.purchasePrice ?? null,
+                item.notes || '',
+                binder,
+                addedAt,
+                item.lastUpdatedPriceAt || null,
+              ]
+            );
+            inserted.push({
+              ...item,
+              id: itemId,
+              cardId,
+              addedAt,
+            });
+          }
+        }
+
+        await client.query('COMMIT');
+        return inserted;
+      } catch (err) {
+        await client.query('ROLLBACK');
+        throw err;
+      } finally {
+        client.release();
+      }
+    },
+    () => {
+      const userDir = getUserDir(userId);
+      const colFile = path.join(userDir, 'collection.json');
+      const items = readJsonFile<CollectionItem[]>(colFile, []);
+      const inserted: CollectionItem[] = [];
+
+      for (const item of newItems) {
+        const cardId = item.cardId || item.card?.id;
+        const binder = item.binder || 'Klaser Główny';
+        const condition = item.condition || 'NM';
+        const language = item.language || 'EN';
+
+        const existingIdx = items.findIndex(
+          (c) =>
+            (c.cardId === cardId || c.card?.id === cardId) &&
+            c.binder === binder &&
+            c.condition === condition &&
+            c.language === language
+        );
+
+        if (existingIdx >= 0) {
+          items[existingIdx].quantity += item.quantity || 0;
+          items[existingIdx].quantityFoil += item.quantityFoil || 0;
+          inserted.push(items[existingIdx]);
+        } else {
+          const newItem: CollectionItem = {
+            ...item,
+            id: item.id || `col-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`,
+            cardId,
+            addedAt: item.addedAt || new Date().toISOString(),
+            binder,
+            condition,
+            language,
+          };
+          items.unshift(newItem);
+          inserted.push(newItem);
+        }
+      }
+
+      writeJsonAtomic(colFile, items);
+      return inserted;
+    }
+  );
+}

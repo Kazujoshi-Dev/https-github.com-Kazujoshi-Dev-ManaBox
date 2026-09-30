@@ -1,6 +1,11 @@
 import { createWorker, Worker } from 'tesseract.js';
 import { ScryfallCard } from '../../types';
 import { ScanResult } from './types';
+import { 
+  extractAndPreprocessCardStrips, 
+  CardCropRect, 
+  binarizeStripCanvas 
+} from './cvCardPipeline';
 
 let tesseractWorkerPromise: Promise<Worker> | null = null;
 
@@ -395,10 +400,15 @@ export async function searchCardInScryfall(
 export interface ScanFrameOptions {
   customTitleCrop?: { x: number; y: number; width: number; height: number };
   customCollectorCrop?: { x: number; y: number; width: number; height: number };
+  cardCrop?: CardCropRect;
 }
 
 /**
- * Full Pipeline: Takes video/image source, executes multi-pass OCR on title, queries Scryfall
+ * Full Delver Lens Pipeline:
+ * 1. Kadrowanie karty (Cropping 63x88mm wewnątrz wizjera)
+ * 2. Segmentacja (Targeting: Górne 15% - Nazwa/Koszt, Dolne 10% - Kod Setu/Numer)
+ * 3. Filtrowanie binarne (ImageData: Skala szarości BT.601, Kontrast, Próg Otsu, Usuwanie szumów)
+ * 4. Rozpoznanie OCR (Tesseract.js z PSM 7 na czystym czarno-białym pasku)
  */
 export async function scanMtgCardFrame(
   source: HTMLVideoElement | HTMLImageElement,
@@ -407,12 +417,11 @@ export async function scanMtgCardFrame(
   onProgress?: (progress: number, status: string) => void,
   options?: ScanFrameOptions
 ): Promise<ScanResult> {
-  let titleCrop = options?.customTitleCrop;
-  let collectorCrop = options?.customCollectorCrop;
+  let cardCrop = options?.cardCrop;
 
-  // Default geometry fallback if custom crop wasn't provided
-  if (!titleCrop) {
-    const cardAspectRatio = 2.5 / 3.5;
+  // Obliczenie geometrii domyślnej proporcji MTG 63x88mm, jeśli nie przekazano dokładnego wycinka
+  if (!cardCrop) {
+    const cardAspectRatio = 63 / 88; // standardowa karta MTG 63mm x 88mm (~0.7159)
     let targetWidth = Math.round(frameWidth * 0.72);
     let targetHeight = Math.round(targetWidth / cardAspectRatio);
 
@@ -424,94 +433,58 @@ export async function scanMtgCardFrame(
     const cardX = Math.round((frameWidth - targetWidth) / 2);
     const cardY = Math.round((frameHeight - targetHeight) / 2);
 
-    titleCrop = {
-      x: cardX + Math.round(targetWidth * 0.06),
-      y: cardY + Math.round(targetHeight * 0.05),
-      width: Math.round(targetWidth * 0.84),
-      height: Math.round(targetHeight * 0.17),
-    };
-
-    collectorCrop = {
-      x: cardX + Math.round(targetWidth * 0.06),
-      y: cardY + Math.round(targetHeight * 0.83),
-      width: Math.round(targetWidth * 0.65),
-      height: Math.round(targetHeight * 0.13),
+    cardCrop = {
+      x: cardX,
+      y: cardY,
+      width: targetWidth,
+      height: targetHeight,
     };
   }
 
-  onProgress?.(0.15, 'Przetwarzanie klatki obrazu...');
+  onProgress?.(0.15, 'Kadrowanie karty i segmentacja pasków (Canvas)...');
 
-  // Generate 3 preprocessed canvases for the title banner with adaptive scaling
-  const canvasEnhanced = preprocessCanvasForOcr(source, titleCrop, { mode: 'grayscale_enhanced' });
-  const canvasOtsu = preprocessCanvasForOcr(source, titleCrop, { mode: 'otsu_binary' });
-  const canvasInvert = preprocessCanvasForOcr(source, titleCrop, { mode: 'otsu_inverted' });
+  // KROK 1 i 2 i 3: Kadrowanie karty, wyodrębnienie górnych 15% i dolnych 10% oraz binarizacja ImageData
+  const strips = extractAndPreprocessCardStrips(source, cardCrop);
 
-  // Generate debug thumbnail data URL so the user can see what's being analyzed
-  let debugCropUrl = '';
-  try {
-    debugCropUrl = canvasEnhanced.toDataURL('image/jpeg', 0.85);
-  } catch (_) {}
-
+  onProgress?.(0.3, 'Inicjalizacja silnika OCR Tesseract...');
   const worker = await getTesseractWorker(onProgress);
 
-  onProgress?.(0.35, 'Rozpoznawanie nazwy karty (Pass 1: Grayscale)...');
-  let ocrRes = await worker.recognize(canvasEnhanced);
+  // KROK 4: Rozpoznanie OCR zoptymalizowanego czarno-białego paska tytułowego (górne 15%)
+  onProgress?.(0.45, 'Rozpoznawanie nazwy karty (Pasek górny 15% - Binarized)...');
+  let ocrRes = await worker.recognize(strips.titleCanvas);
   let rawTitle = ocrRes.data.text || '';
   let confidence = ocrRes.data.confidence || 0;
 
-  // Pass 2: If Pass 1 gave weak or empty result, try Otsu Binarization
-  if (!rawTitle.trim() || confidence < 50) {
-    onProgress?.(0.55, 'Dostrojenie kontrastu (Pass 2: Dynamiczny próg Otsu)...');
-    const ocrOtsuRes = await worker.recognize(canvasOtsu);
-    if ((ocrOtsuRes.data.text || '').trim().length > rawTitle.trim().length || (ocrOtsuRes.data.confidence || 0) > confidence) {
-      rawTitle = ocrOtsuRes.data.text;
-      confidence = ocrOtsuRes.data.confidence || confidence;
+  // Fallback: jeśli binarizacja miała trudne tło (np. karta Extended Art lub mocne refleksy),
+  // wykonaj pass z ulepszoną skalą szarości
+  if (!rawTitle.trim() || confidence < 45) {
+    onProgress?.(0.6, 'Dostrajanie kontrastu (Pass 2: Adaptacyjna skala szarości)...');
+    const grayTitleCanvas = preprocessCanvasForOcr(strips.cardCanvas, {
+      x: Math.round(strips.cardCanvas.width * 0.04),
+      y: Math.round(strips.cardCanvas.height * 0.035),
+      width: Math.round(strips.cardCanvas.width * 0.92),
+      height: Math.round(strips.cardCanvas.height * 0.14),
+    }, { mode: 'grayscale_enhanced', targetHeight: 56 });
+
+    const ocrGrayRes = await worker.recognize(grayTitleCanvas);
+    if ((ocrGrayRes.data.text || '').trim().length > rawTitle.trim().length || (ocrGrayRes.data.confidence || 0) > confidence) {
+      rawTitle = ocrGrayRes.data.text;
+      confidence = ocrGrayRes.data.confidence || confidence;
     }
   }
 
-  // Pass 3: If still weak, try Inverted Otsu (for black/dark card frames with white lettering)
-  if (!rawTitle.trim() || confidence < 50) {
-    onProgress?.(0.65, 'Odczyt ciemnej ramki (Pass 3: Odwrócony kontrast)...');
-    const ocrInvertRes = await worker.recognize(canvasInvert);
-    if ((ocrInvertRes.data.text || '').trim().length > rawTitle.trim().length) {
-      rawTitle = ocrInvertRes.data.text;
-      confidence = ocrInvertRes.data.confidence || confidence;
-    }
-  }
-
-  // Pass 4: Expanded Crop Fallback if narrow crop failed (e.g. card was held slightly high/low)
-  if ((!rawTitle.trim() || confidence < 35) && titleCrop) {
-    try {
-      const expandedCrop = {
-        x: Math.max(0, titleCrop.x - Math.round(titleCrop.width * 0.05)),
-        y: Math.max(0, titleCrop.y - Math.round(titleCrop.height * 0.4)),
-        width: Math.min(frameWidth, Math.round(titleCrop.width * 1.1)),
-        height: Math.min(frameHeight, Math.round(titleCrop.height * 1.8)),
-      };
-      const expandedCanvas = preprocessCanvasForOcr(source, expandedCrop, { mode: 'grayscale_enhanced', targetHeight: 70 });
-      const expandedRes = await worker.recognize(expandedCanvas);
-      if ((expandedRes.data.text || '').trim().length > rawTitle.trim().length) {
-        rawTitle = expandedRes.data.text;
-        confidence = expandedRes.data.confidence || confidence;
-        try {
-          debugCropUrl = expandedCanvas.toDataURL('image/jpeg', 0.85);
-        } catch (_) {}
-      }
-    } catch (_) {}
-  }
-
-  // Also read collector info if present
+  // KROK 5: Rozpoznanie paska dolnego (dolne 10% - Set Code i Numer Kolekcjonera)
   let detectedSet: string | undefined;
   let detectedCollectorNumber: string | undefined;
 
-  if (collectorCrop) {
-    try {
-      const collectorCanvas = preprocessCanvasForOcr(source, collectorCrop, { mode: 'grayscale_enhanced', targetHeight: 40 });
-      const ocrCollector = await worker.recognize(collectorCanvas);
-      const extracted = extractSetAndCollectorNumber(ocrCollector.data.text || '');
-      detectedSet = extracted.set;
-      detectedCollectorNumber = extracted.collectorNumber;
-    } catch (_) {}
+  try {
+    onProgress?.(0.7, 'Rozpoznawanie kodu setu i numeru karty (Pasek dolny 10%)...');
+    const ocrBottom = await worker.recognize(strips.bottomCanvas);
+    const extracted = extractSetAndCollectorNumber(ocrBottom.data.text || '');
+    detectedSet = extracted.set;
+    detectedCollectorNumber = extracted.collectorNumber;
+  } catch (err) {
+    console.warn('Nie udało się odczytać dolnego paska karty:', err);
   }
 
   const cleanedTitle = cleanCardTitle(rawTitle);
@@ -533,7 +506,9 @@ export async function scanMtgCardFrame(
     confidence,
     matchedCard,
     possibleCards,
-    debugCropUrl,
+    debugCropUrl: strips.cardDataUrl,
+    debugTitleUrl: strips.titleDataUrl,
+    debugBottomUrl: strips.bottomDataUrl,
     engineUsed: 'local_ocr',
   };
 }

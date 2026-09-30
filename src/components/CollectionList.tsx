@@ -30,6 +30,7 @@ export const CollectionList: React.FC<CollectionListProps> = ({
   onViewCardDetails,
   onOpenAddModal,
   onOpenScannerModal,
+  onOpenImportExport,
 }) => {
   const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid');
 
@@ -91,6 +92,7 @@ export const CollectionList: React.FC<CollectionListProps> = ({
         onOpenEditCatalog={openEditCatalogModal}
         onRequestDeleteCatalog={(cat) => setCatalogToDelete(cat)}
         onSetDefaultCatalog={onSetDefaultCatalog}
+        onOpenImportExport={onOpenImportExport}
       />
 
       {/* 2. Search & Advanced Filters Bar */}
@@ -119,6 +121,7 @@ export const CollectionList: React.FC<CollectionListProps> = ({
           activeBinder={filters.binder}
           onOpenAddModal={onOpenAddModal}
           onOpenScannerModal={onOpenScannerModal}
+          onOpenImportExport={onOpenImportExport}
         />
       ) : viewMode === 'grid' ? (
         <CollectionGridView

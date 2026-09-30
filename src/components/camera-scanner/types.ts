@@ -11,6 +11,8 @@ export interface ScanResult {
   matchedCard: ScryfallCard | null;
   possibleCards: ScryfallCard[];
   debugCropUrl?: string;
+  debugTitleUrl?: string;
+  debugBottomUrl?: string;
   engineUsed?: ScannerEngine;
   isFoilDetected?: boolean;
 }

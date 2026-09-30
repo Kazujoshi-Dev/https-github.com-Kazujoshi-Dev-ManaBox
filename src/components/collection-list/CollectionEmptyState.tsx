@@ -1,11 +1,12 @@
 import React from 'react';
-import { FolderOpen, Plus, Camera } from 'lucide-react';
+import { FolderOpen, Plus, Camera, Upload } from 'lucide-react';
 import { CollectionEmptyStateProps } from './types';
 
 export const CollectionEmptyState: React.FC<CollectionEmptyStateProps> = ({
   activeBinder,
   onOpenAddModal,
   onOpenScannerModal,
+  onOpenImportExport,
 }) => {
   const isCatalogFiltered = activeBinder !== 'ALL';
 
@@ -20,11 +21,20 @@ export const CollectionEmptyState: React.FC<CollectionEmptyStateProps> = ({
         </h3>
         <p className="text-xs text-stone-400 mt-1 max-w-md mx-auto">
           {isCatalogFiltered 
-            ? 'W tym katalogu nie ma jeszcze kart spełniających filtry. Możesz dodać do niego kartę z wyszukiwarki lub edytując istniejącą pozycję.'
-            : 'Nie znaleziono kart spełniających kryteria wyszukiwania. Dodaj nową kartę wyszukując w API Scryfall, skanując kamerą lub zmień filtry.'}
+            ? 'W tym katalogu nie ma jeszcze kart spełniających filtry. Możesz dodać do niego kartę z wyszukiwarki lub zaimportować listę z pliku .txt.'
+            : 'Nie znaleziono kart spełniających kryteria wyszukiwania. Dodaj nową kartę ze Scryfall, zeskanuj kamerą lub zaimportuj listę kart z pliku .txt.'}
         </p>
       </div>
       <div className="flex flex-wrap items-center justify-center gap-3">
+        {onOpenImportExport && (
+          <button
+            onClick={() => onOpenImportExport('import')}
+            className="px-4 py-2.5 rounded-xl bg-stone-800 hover:bg-stone-750 text-amber-300 border border-amber-500/30 font-bold text-xs inline-flex items-center gap-2 shadow-lg transition-colors cursor-pointer"
+          >
+            <Upload className="w-4 h-4 text-amber-400" />
+            <span>Importuj listę z pliku .txt</span>
+          </button>
+        )}
         {onOpenScannerModal && (
           <button
             onClick={onOpenScannerModal}
