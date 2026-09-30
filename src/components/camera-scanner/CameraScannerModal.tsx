@@ -369,7 +369,11 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
         if (result.isFoilDetected) {
           setIsFoil(true);
         }
-        setScanStatus(`Rozpoznano: "${result.matchedCard.name}"`);
+        setScanStatus(
+          result.isAutoCropped
+            ? `✨ Wykryto i wykadrowano z powierzchni: "${result.matchedCard.name}"`
+            : `Rozpoznano: "${result.matchedCard.name}"`
+        );
         if (soundEnabled) {
           playScannerChime('success');
         }
@@ -475,7 +479,11 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
             if (result.isFoilDetected) {
               setIsFoil(true);
             }
-            setScanStatus(`Rozpoznano: "${result.matchedCard.name}"`);
+            setScanStatus(
+              result.isAutoCropped
+                ? `✨ Wykryto i wykadrowano kartę ze zdjęcia: "${result.matchedCard.name}"`
+                : `Rozpoznano: "${result.matchedCard.name}"`
+            );
             if (soundEnabled) {
               playScannerChime('success');
             }
@@ -808,10 +816,10 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
               <div className="p-2.5 rounded-lg bg-stone-950/80 border border-emerald-500/20 space-y-1">
                 <span className="font-bold text-emerald-300 flex items-center gap-1">
                   <Zap className="w-3.5 h-3.5 text-emerald-400" />
-                  <span>2. Silnik Delver Lens (dHash)</span>
+                  <span>2. Detekcja na białej kartce / stole</span>
                 </span>
                 <p className="text-stone-300">
-                  Skaner identyfikuje karty MTG za pomocą fingerprintu ilustracji (dHash) oraz segmentacji pasków tekstu – dokładnie tak jak Delver Lens i ManaBox, eliminując błędy klasycznego OCR.
+                  Gdy karta leży na białej kartce papieru lub biurku, skaner analizuje całą powierzchnię kadru i <strong>automatycznie wykrywa obrys karty (auto-crop 63×88mm)</strong>, precyzyjnie dzieląc ją na sekcje bez wciągania białego tła.
                 </p>
               </div>
 
@@ -1158,6 +1166,11 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
                     <span className="text-emerald-400 font-extrabold">Potok Delver Lens (dHash + segmentacja):</span>
                   </span>
                   <div className="flex items-center gap-2">
+                    {scanResult.isAutoCropped && (
+                      <span className="text-[9px] uppercase px-1.5 py-0.5 rounded font-bold border bg-emerald-500/20 text-emerald-300 border-emerald-500/40 animate-pulse">
+                        Auto-Crop 63×88
+                      </span>
+                    )}
                     {scanResult.detectedRarity && (
                       <span className={`text-[9px] uppercase px-1.5 py-0.5 rounded font-bold border ${
                         scanResult.detectedRarity === 'mythic' ? 'bg-orange-500/20 text-orange-400 border-orange-500/30' :

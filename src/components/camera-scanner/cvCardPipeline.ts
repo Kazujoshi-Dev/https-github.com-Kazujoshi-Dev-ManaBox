@@ -60,6 +60,12 @@ export interface SegmentedCardFeatures {
 
   // Współrzędne na sensorze wideo
   sourceCrop: CardCropRect;
+
+  // Pełna klatka kamery jako kontekst referencyjny
+  fullFrameDataUrl?: string;
+
+  // Czy wykryto i precyzyjnie wycięto kartę z powierzchni (np. białej kartki)
+  isAutoCropped?: boolean;
 }
 
 /**
@@ -509,9 +515,224 @@ export function calculateVideoSensorCrop(
   };
 }
 
+export interface CardDetectionResult {
+  detected: boolean;
+  crop: CardCropRect;
+  confidence: number;
+  method: 'contour_contrast' | 'viewfinder_fallback';
+  isLandscape?: boolean;
+}
+
+/**
+ * Automatyczne wykrywanie obrysu karty MTG na całej powierzchni widocznej przez kamerę
+ * (ze szczególnym uwzględnieniem karty leżącej na białej kartce / jasnym blacie / kontrastowej macie).
+ * 
+ * Zamiast sztywno zakładać, że użytkownik idealnie wpasował kartę w statyczny wizjer (co przy
+ * skanowaniu z telefonu/kamery na biurku powoduje obcięcie fragmentów karty i wciągnięcie białego tła),
+ * algorytm:
+ * 1. Analizuje całą powierzchnię klatki sensorycznej.
+ * 2. Próbkuje tło obrzeży (np. białą kartkę papieru o wysokiej luminancji > 150).
+ * 3. Wykrywa przejście kontrastowe między tłem (białą kartką) a obramowaniem karty MTG.
+ * 4. Wyznacza dokładny prostokąt ograniczający (bounding box) karty o proporcjach ~63:88.
+ * 5. Zwraca precyzyjny wycinek samej karty (0% białego tła).
+ */
+export function detectCardBoundsInFrame(
+  videoSource: HTMLVideoElement | HTMLImageElement | HTMLCanvasElement,
+  fallbackCrop?: CardCropRect
+): CardDetectionResult {
+  const srcW =
+    (videoSource as HTMLVideoElement).videoWidth ||
+    (videoSource as HTMLImageElement).naturalWidth ||
+    videoSource.width ||
+    1280;
+  const srcH =
+    (videoSource as HTMLVideoElement).videoHeight ||
+    (videoSource as HTMLImageElement).naturalHeight ||
+    videoSource.height ||
+    720;
+
+  if (srcW < 60 || srcH < 60) {
+    return {
+      detected: false,
+      crop: fallbackCrop || { x: 0, y: 0, width: srcW, height: srcH },
+      confidence: 40,
+      method: 'viewfinder_fallback',
+    };
+  }
+
+  try {
+    // 1. Szybkie próbkowanie w zoptymalizowanym Canvas (szerokość 320px)
+    const sampleW = 320;
+    const sampleH = Math.max(180, Math.round(sampleW * (srcH / srcW)));
+
+    const sampleCanvas = document.createElement('canvas');
+    sampleCanvas.width = sampleW;
+    sampleCanvas.height = sampleH;
+    const ctx = sampleCanvas.getContext('2d', { willReadFrequently: true });
+    if (!ctx) throw new Error('Brak kontekstu 2D do analizy krawędzi');
+
+    ctx.drawImage(videoSource, 0, 0, sampleW, sampleH);
+    const imgData = ctx.getImageData(0, 0, sampleW, sampleH);
+    const d = imgData.data;
+
+    // 2. Obliczenie średniej luminancji obrzeży kadru (Background: biała kartka / mata)
+    let edgeLumSum = 0;
+    let edgeCount = 0;
+    const marginY = Math.max(2, Math.round(sampleH * 0.05));
+    const marginX = Math.max(2, Math.round(sampleW * 0.05));
+
+    // Górny i dolny margines
+    for (let y = 0; y < marginY; y++) {
+      for (let x = 0; x < sampleW; x += 2) {
+        const topIdx = (y * sampleW + x) * 4;
+        const botIdx = ((sampleH - 1 - y) * sampleW + x) * 4;
+        edgeLumSum += 0.299 * d[topIdx] + 0.587 * d[topIdx + 1] + 0.114 * d[topIdx + 2];
+        edgeLumSum += 0.299 * d[botIdx] + 0.587 * d[botIdx + 1] + 0.114 * d[botIdx + 2];
+        edgeCount += 2;
+      }
+    }
+    // Lewy i prawy margines
+    for (let x = 0; x < marginX; x++) {
+      for (let y = marginY; y < sampleH - marginY; y += 2) {
+        const leftIdx = (y * sampleW + x) * 4;
+        const rightIdx = (y * sampleW + (sampleW - 1 - x)) * 4;
+        edgeLumSum += 0.299 * d[leftIdx] + 0.587 * d[leftIdx + 1] + 0.114 * d[leftIdx + 2];
+        edgeLumSum += 0.299 * d[rightIdx] + 0.587 * d[rightIdx + 1] + 0.114 * d[rightIdx + 2];
+        edgeCount += 2;
+      }
+    }
+
+    const bgLum = edgeCount > 0 ? edgeLumSum / edgeCount : 210;
+    const isBrightBg = bgLum > 140; // Biała kartka papieru (typowo 180-255)
+
+    // 3. Rzutowanie pikseli karty na profile poziome i pionowe
+    const rowFg = new Array(sampleH).fill(0);
+    const colFg = new Array(sampleW).fill(0);
+
+    for (let y = 0; y < sampleH; y++) {
+      for (let x = 0; x < sampleW; x++) {
+        const idx = (y * sampleW + x) * 4;
+        const r = d[idx];
+        const g = d[idx + 1];
+        const b = d[idx + 2];
+        const lum = 0.299 * r + 0.587 * g + 0.114 * b;
+
+        // Czy piksel różni się od tła (krawędź karty, czarna ramka lub grafika)
+        let isCardPixel = false;
+        if (isBrightBg) {
+          // Na białej kartce: ramka karty jest ciemniejsza lub ma nasycenie barwne
+          const isDarker = lum < bgLum - 35;
+          const isColored = Math.max(r, g, b) - Math.min(r, g, b) > 28;
+          isCardPixel = isDarker || isColored;
+        } else {
+          // Na ciemnej macie: karta jest jaśniejsza lub barwna
+          const isBrighter = lum > bgLum + 35;
+          const isColored = Math.max(r, g, b) - Math.min(r, g, b) > 28;
+          isCardPixel = isBrighter || isColored;
+        }
+
+        if (isCardPixel) {
+          rowFg[y]++;
+          colFg[x]++;
+        }
+      }
+    }
+
+    // 4. Wyznaczenie granic karty (minY, maxY, minX, maxX)
+    const rowThreshold = sampleW * 0.10; // co najmniej 10% szerokości
+    const colThreshold = sampleH * 0.10; // co najmniej 10% wysokości
+
+    let minY = 0;
+    while (minY < sampleH && rowFg[minY] < rowThreshold) minY++;
+
+    let maxY = sampleH - 1;
+    while (maxY > minY && rowFg[maxY] < rowThreshold) maxY--;
+
+    let minX = 0;
+    while (minX < sampleW && colFg[minX] < colThreshold) minX++;
+
+    let maxX = sampleW - 1;
+    while (maxX > minX && colFg[maxX] < colThreshold) maxX--;
+
+    const detW = maxX - minX + 1;
+    const detH = maxY - minY + 1;
+
+    // 5. Weryfikacja geometrii karty MTG
+    const scaleX = srcW / sampleW;
+    const scaleY = srcH / sampleH;
+    const ratio = detW / detH;
+
+    // Standardowe proporcje MTG:
+    // Pionowo (Portrait): 63 / 88 ≈ 0.7159 (akceptujemy 0.55 .. 0.90)
+    // Poziomo (Landscape): 88 / 63 ≈ 1.3968 (akceptujemy 1.10 .. 1.82)
+    const isPortraitCard =
+      ratio >= 0.55 && ratio <= 0.90 && detW >= sampleW * 0.16 && detH >= sampleH * 0.20;
+    const isLandscapeCard =
+      ratio >= 1.10 && ratio <= 1.82 && detW >= sampleW * 0.20 && detH >= sampleH * 0.16;
+
+    if (isPortraitCard || isLandscapeCard) {
+      // Skalowanie z powrotem do pełnej rozdzielczości sensora
+      // Dodajemy mały margines 1.5% na zewnątrz, by zachować pełny obrys
+      const padX = Math.round(detW * 0.015 * scaleX);
+      const padY = Math.round(detH * 0.015 * scaleY);
+
+      const realX = Math.max(0, Math.round(minX * scaleX) - padX);
+      const realY = Math.max(0, Math.round(minY * scaleY) - padY);
+      const realW = Math.min(srcW - realX, Math.round(detW * scaleX) + padX * 2);
+      const realH = Math.min(srcH - realY, Math.round(detH * scaleY) + padY * 2);
+
+      return {
+        detected: true,
+        crop: {
+          x: realX,
+          y: realY,
+          width: realW,
+          height: realH,
+        },
+        confidence: 95,
+        method: 'contour_contrast',
+        isLandscape: isLandscapeCard,
+      };
+    }
+  } catch (err) {
+    console.warn('Błąd detekcji konturu karty:', err);
+  }
+
+  // Fallback: jeśli karta wypełnia cały wizjer lub tło nie ma wyraźnego kontrastu
+  if (fallbackCrop) {
+    return {
+      detected: false,
+      crop: fallbackCrop,
+      confidence: 60,
+      method: 'viewfinder_fallback',
+    };
+  }
+
+  // Domyślne wykadrowanie środka 63x88mm
+  const cardAspectRatio = 63 / 88;
+  let targetWidth = Math.round(srcW * 0.75);
+  let targetHeight = Math.round(targetWidth / cardAspectRatio);
+  if (targetHeight > srcH * 0.88) {
+    targetHeight = Math.round(srcH * 0.88);
+    targetWidth = Math.round(targetHeight * cardAspectRatio);
+  }
+
+  return {
+    detected: false,
+    crop: {
+      x: Math.round((srcW - targetWidth) / 2),
+      y: Math.round((srcH - targetHeight) / 2),
+      width: targetWidth,
+      height: targetHeight,
+    },
+    confidence: 50,
+    method: 'viewfinder_fallback',
+  };
+}
+
 /**
  * GŁÓWNY POTOK DELVER LENS & MANABOX:
- * 1. Kadruje kartę 63x88mm do znormalizowanego rozmiaru.
+ * 1. Kadruje kartę 63x88mm (z automatyczną detekcją krawędzi na białej kartce / stole).
  * 2. Wycina samą ilustrację (Art Crop).
  * 3. Oblicza 64-bitowy fingerprint dHash ilustracji.
  * 4. Wycina symbol setu i określa rzadkość (C/U/R/M) z barwy.
@@ -520,11 +741,28 @@ export function calculateVideoSensorCrop(
  */
 export function extractAndSegmentDelverFeatures(
   videoSource: HTMLVideoElement | HTMLImageElement | HTMLCanvasElement,
-  sensorCrop: CardCropRect
+  sensorCrop: CardCropRect,
+  options?: {
+    autoDetectOnSurface?: boolean;
+  }
 ): SegmentedCardFeatures {
+  // Automatyczna detekcja na powierzchni (białej kartce / biurku):
+  // Jeśli na widoku kamery widoczny jest wyraźny obrys karty MTG na kontrastowym tle,
+  // używamy precyzyjnego bounding boxa samej karty (0% białego tła).
+  let effectiveCrop = sensorCrop;
+  let isAutoCropped = false;
+
+  if (options?.autoDetectOnSurface !== false) {
+    const detection = detectCardBoundsInFrame(videoSource, sensorCrop);
+    if (detection.detected) {
+      effectiveCrop = detection.crop;
+      isAutoCropped = true;
+    }
+  }
+
   // 1. Znormalizowany Canvas karty o stałych proporcjach 63 x 88 mm
-  const cardW = Math.max(120, sensorCrop.width);
-  const cardH = Math.max(167, sensorCrop.height);
+  const cardW = Math.max(160, effectiveCrop.width);
+  const cardH = Math.max(223, effectiveCrop.height);
 
   const cardCanvas = document.createElement('canvas');
   cardCanvas.width = cardW;
@@ -540,10 +778,10 @@ export function extractAndSegmentDelverFeatures(
 
   cardCtx.drawImage(
     videoSource,
-    sensorCrop.x,
-    sensorCrop.y,
-    sensorCrop.width,
-    sensorCrop.height,
+    effectiveCrop.x,
+    effectiveCrop.y,
+    effectiveCrop.width,
+    effectiveCrop.height,
     0,
     0,
     cardW,
@@ -657,6 +895,7 @@ export function extractAndSegmentDelverFeatures(
   let titleDataUrl = '';
   let bottomDataUrl = '';
   let setSymbolDataUrl = '';
+  let fullFrameDataUrl = '';
 
   try {
     cardDataUrl = cardCanvas.toDataURL('image/jpeg', 0.88);
@@ -664,6 +903,18 @@ export function extractAndSegmentDelverFeatures(
     titleDataUrl = titleCanvas.toDataURL('image/png');
     bottomDataUrl = bottomCanvas.toDataURL('image/png');
     setSymbolDataUrl = symbolCanvas.toDataURL('image/png');
+
+    // Klatka pełna (cały kadr kamery)
+    const fullCanvas = document.createElement('canvas');
+    const fullSrcW = (videoSource as any).videoWidth || (videoSource as any).naturalWidth || videoSource.width || 640;
+    const fullSrcH = (videoSource as any).videoHeight || (videoSource as any).naturalHeight || videoSource.height || 480;
+    fullCanvas.width = 640;
+    fullCanvas.height = Math.max(360, Math.round(640 * (fullSrcH / fullSrcW)));
+    const fullCtx = fullCanvas.getContext('2d');
+    if (fullCtx) {
+      fullCtx.drawImage(videoSource, 0, 0, fullCanvas.width, fullCanvas.height);
+      fullFrameDataUrl = fullCanvas.toDataURL('image/jpeg', 0.80);
+    }
   } catch (_) {}
 
   return {
@@ -680,6 +931,8 @@ export function extractAndSegmentDelverFeatures(
     perceptualHash,
     detectedRarity,
     detectedColors,
-    sourceCrop: sensorCrop,
+    sourceCrop: effectiveCrop,
+    fullFrameDataUrl,
+    isAutoCropped,
   };
 }

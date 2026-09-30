@@ -498,12 +498,16 @@ export async function scanCardWithDelverLens(
     };
   }
 
-  onProgress?.(0.15, 'Delver Lens: Kadrowanie karty 63x88mm i segmentacja cech...');
+  onProgress?.(0.15, 'Skanowanie powierzchni: wykrywanie krawędzi karty (auto-crop)...');
 
-  // 1. Ekstrakcja cech Delver Lens: Ilustracja, Tytuł, Symbol Setu, Stopka, dHash
-  const features = extractAndSegmentDelverFeatures(source, cardCrop);
+  // 1. Ekstrakcja cech Delver Lens: Automatyczna detekcja obrysu karty na białej kartce / stole + segmentacja cech
+  const features = extractAndSegmentDelverFeatures(source, cardCrop, { autoDetectOnSurface: true });
 
-  onProgress?.(0.35, `Delver Lens: dHash [${features.perceptualHash.slice(0, 8)}...] | Rzadkość: ${features.detectedRarity.toUpperCase()}`);
+  if (features.isAutoCropped) {
+    onProgress?.(0.30, '✨ Karta precyzyjnie wycięta z białego tła (63×88mm)!');
+  } else {
+    onProgress?.(0.30, `Wycinek karty | dHash [${features.perceptualHash.slice(0, 8)}...] | Rzadkość: ${features.detectedRarity.toUpperCase()}`);
+  }
 
   try {
     onProgress?.(0.55, 'Identyfikacja wizualna ilustracji i edycji (Delver Engine)...');
@@ -515,9 +519,11 @@ export async function scanCardWithDelverLens(
         cardImageBase64: features.cardDataUrl,
         artImageBase64: features.artDataUrl,
         bottomImageBase64: features.bottomDataUrl,
+        fullFrameBase64: features.fullFrameDataUrl,
         perceptualHash: features.perceptualHash,
         detectedRarity: features.detectedRarity,
         detectedColors: features.detectedColors,
+        isAutoCropped: features.isAutoCropped,
       }),
     });
 
@@ -547,6 +553,7 @@ export async function scanCardWithDelverLens(
           detectedColorIdentity: features.detectedColors,
           engineUsed: 'delver_lens',
           isFoilDetected: Boolean(data.isFoil),
+          isAutoCropped: features.isAutoCropped,
         };
       }
     }
@@ -570,6 +577,7 @@ export async function scanCardWithDelverLens(
     detectedRarity: features.detectedRarity,
     detectedColorIdentity: features.detectedColors,
     engineUsed: 'delver_lens',
+    isAutoCropped: features.isAutoCropped,
   };
 }
 

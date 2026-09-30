@@ -22,6 +22,7 @@ export interface ScanResult {
   detectedColorIdentity?: string[];
   engineUsed?: ScannerEngine;
   isFoilDetected?: boolean;
+  isAutoCropped?: boolean;
 }
 
 export interface CameraDeviceOption {
