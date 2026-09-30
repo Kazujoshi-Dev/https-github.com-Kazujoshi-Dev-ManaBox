@@ -6,10 +6,12 @@ import {
   getCardPrice, 
   getRarityColor, 
   getRarityLabel,
-  handleCardImageError
+  handleCardImageError,
+  getCardEdhrecRank
 } from '../utils/formatters';
 import { ManaSymbol } from './ManaSymbol';
-import { Plus, Minus, Trash2, Edit3, ExternalLink, Sparkles, Folder, Check, Eye } from 'lucide-react';
+import { EdhrecBadge } from './EdhrecBadge';
+import { Plus, Minus, Trash2, Edit3, ExternalLink, Sparkles, Folder, Check, Eye, Trophy } from 'lucide-react';
 
 interface CardItemProps {
   item: CollectionItem;
@@ -40,6 +42,7 @@ export const CardItem: React.FC<CardItemProps> = ({
   const totalQuantity = quantity + quantityFoil;
 
   const isFoilOnly = quantityFoil > 0 && quantity === 0;
+  const edhrecRank = getCardEdhrecRank(card);
 
   if (viewMode === 'table') {
     return (
@@ -69,11 +72,14 @@ export const CardItem: React.FC<CardItemProps> = ({
                 {card.name}
                 {isFoilOnly && <Sparkles className="w-3.5 h-3.5 text-amber-400 fill-amber-400/20 inline" />}
               </button>
-              <p className="text-[11px] text-stone-400 flex items-center gap-2 mt-0.5">
+              <p className="text-[11px] text-stone-400 flex items-center gap-2 mt-0.5 flex-wrap">
                 <span>{card.type_line}</span>
                 <span className="text-[10px] text-amber-300/90 bg-amber-500/10 px-1.5 py-0.5 rounded border border-amber-500/20 font-medium">
                   📁 {binder || 'Klaser Główny'}
                 </span>
+                {edhrecRank != null && (
+                  <EdhrecBadge rank={edhrecRank} size="xs" />
+                )}
               </p>
             </div>
           </div>
@@ -208,6 +214,17 @@ export const CardItem: React.FC<CardItemProps> = ({
             <span>Szczegóły Scryfall</span>
           </div>
         </div>
+
+        {/* EDHREC Rank Banner in bottom-left corner (visually styled like the Foil banner) */}
+        {edhrecRank != null && (
+          <div 
+            title={`Ranking EDHREC: #${edhrecRank.toLocaleString()} (popularność w formacie Commander)`}
+            className="absolute bottom-0 left-0 z-10 bg-gradient-to-r from-amber-500 via-purple-500 to-blue-500 text-stone-950 font-extrabold text-[10px] px-2 py-0.5 rounded-tr-lg shadow-sm flex items-center gap-1 uppercase tracking-wider select-none border-t border-r border-white/20"
+          >
+            <Trophy className="w-3 h-3 fill-stone-950 stroke-[1.5] shrink-0" />
+            <span>EDH #{edhrecRank.toLocaleString()}</span>
+          </div>
+        )}
 
         {/* Total Price Tag overlay on bottom right of image */}
         <div className="absolute bottom-2 right-2 bg-stone-950/90 backdrop-blur-md px-2 py-1 rounded-lg border border-stone-800 shadow-md">

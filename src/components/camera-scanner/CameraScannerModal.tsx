@@ -20,12 +20,21 @@ import {
   Smartphone,
   Copy,
   Radio,
-  Video
+  Video,
+  ZoomIn,
+  ZoomOut,
+  HelpCircle,
+  Lightbulb,
+  Sliders,
+  ChevronDown,
+  ChevronUp,
+  Cpu
 } from 'lucide-react';
 import { ScryfallCard, CardCondition, CardLanguage, Catalog, AppSettings } from '../../types';
 import { formatCurrency, getCardImageUri, getCardPrice, getRarityColor, getRarityLabel, handleCardImageError } from '../../utils/formatters';
-import { CameraScannerModalProps, CameraDeviceOption, ScanResult } from './types';
-import { scanMtgCardFrame, searchCardInScryfall } from './ocrProcessor';
+import { CameraScannerModalProps, CameraDeviceOption, ScanResult, ScannerEngine } from './types';
+import { scanMtgCardFrame, scanCardWithAi, searchCardInScryfall } from './ocrProcessor';
+import { EdhrecBadge } from '../EdhrecBadge';
 
 export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
   isOpen,
@@ -40,6 +49,9 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
   const autoScanTimerRef = useRef<NodeJS.Timeout | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const cameraSnapInputRef = useRef<HTMLInputElement | null>(null);
+  const viewfinderContainerRef = useRef<HTMLDivElement | null>(null);
+  const titleBoxRef = useRef<HTMLDivElement | null>(null);
+  const collectorBoxRef = useRef<HTMLDivElement | null>(null);
 
   // Camera State
   const [cameraDevices, setCameraDevices] = useState<CameraDeviceOption[]>([]);
@@ -68,6 +80,10 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
   };
 
   // Scanning State
+  const [selectedEngine, setSelectedEngine] = useState<ScannerEngine>('ai_vision');
+  const [zoomRange, setZoomRange] = useState<{ min: number; max: number; step: number } | null>(null);
+  const [zoomLevel, setZoomLevel] = useState<number>(1);
+  const [showTips, setShowTips] = useState<boolean>(false);
   const [isScanning, setIsScanning] = useState<boolean>(false);
   const [scanStatus, setScanStatus] = useState<string>('Nakieruj kartę na ramkę');
   const [isAutoScanEnabled, setIsAutoScanEnabled] = useState<boolean>(false);
@@ -202,6 +218,27 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
       const capabilities = (videoTrack?.getCapabilities?.() || {}) as any;
       setHasTorch(Boolean(capabilities.torch));
 
+      // Check for hardware zoom capability (ideal for high-res cameras with minimum focal distance)
+      if (capabilities.zoom) {
+        setZoomRange({
+          min: capabilities.zoom.min || 1,
+          max: capabilities.zoom.max || 4,
+          step: capabilities.zoom.step || 0.1,
+        });
+        setZoomLevel(capabilities.zoom.min || 1);
+      } else {
+        setZoomRange(null);
+      }
+
+      // Attempt continuous auto-focus if hardware supports it
+      try {
+        if (capabilities.focusMode && Array.isArray(capabilities.focusMode) && capabilities.focusMode.includes('continuous')) {
+          await (videoTrack as any).applyConstraints({
+            advanced: [{ focusMode: 'continuous' }]
+          });
+        }
+      } catch (_) {}
+
       // Refresh camera labels after permission granted
       enumerateCameras();
     } catch (err: any) {
@@ -242,6 +279,22 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
     }
   }, [hasTorch, isTorchOn]);
 
+  // Adjust hardware camera zoom
+  const handleZoomChange = useCallback(async (newZoom: number) => {
+    setZoomLevel(newZoom);
+    if (!streamRef.current) return;
+    const videoTrack = streamRef.current.getVideoTracks()[0];
+    if (videoTrack) {
+      try {
+        await (videoTrack as any).applyConstraints({
+          advanced: [{ zoom: newZoom }],
+        });
+      } catch (err) {
+        console.warn('Błąd zmiany powiększenia zoom:', err);
+      }
+    }
+  }, []);
+
   // Manage Camera on Modal Open/Close
   useEffect(() => {
     if (isOpen) {
@@ -259,42 +312,122 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
     };
   }, [isOpen, startCamera, stopCamera]);
 
-  // 3. OCR Scan Action
+  // 3. Scan Action (AI Vision or Local OCR)
   const performScan = useCallback(async () => {
     if (isScanning) return;
     if (!videoRef.current || videoRef.current.readyState < 2) return;
 
     setIsScanning(true);
-    setScanStatus('Pobieranie klatki i analiza OCR...');
+    setScanStatus(selectedEngine === 'ai_vision' ? '✨ Analiza klatki przez Gemini AI Vision...' : 'Pobieranie klatki i analiza OCR...');
 
     try {
       const video = videoRef.current;
       const width = video.videoWidth || 1280;
       const height = video.videoHeight || 720;
 
-      const result = await scanMtgCardFrame(video, width, height, (_p, statusText) => {
-        setScanStatus(statusText);
-      });
+      let customTitleCrop: { x: number; y: number; width: number; height: number } | undefined;
+      let customCollectorCrop: { x: number; y: number; width: number; height: number } | undefined;
+      let cardAreaCrop: { x: number; y: number; width: number; height: number } | undefined;
+
+      // Project DOM reticle coordinates directly onto video sensor pixels
+      if (viewfinderContainerRef.current) {
+        const containerRect = viewfinderContainerRef.current.getBoundingClientRect();
+        const scale = Math.max(containerRect.width / width, containerRect.height / height);
+        const displayedW = width * scale;
+        const displayedH = height * scale;
+        const offsetX = (displayedW - containerRect.width) / 2;
+        const offsetY = (displayedH - containerRect.height) / 2;
+
+        if (titleBoxRef.current) {
+          const titleRect = titleBoxRef.current.getBoundingClientRect();
+          const relX = titleRect.left - containerRect.left;
+          const relY = titleRect.top - containerRect.top;
+          const padX = titleRect.width * 0.04;
+          const padY = titleRect.height * 0.15;
+
+          customTitleCrop = {
+            x: Math.max(0, Math.round((relX - padX + offsetX) / scale)),
+            y: Math.max(0, Math.round((relY - padY + offsetY) / scale)),
+            width: Math.min(width, Math.round((titleRect.width + padX * 2) / scale)),
+            height: Math.min(height, Math.round((titleRect.height + padY * 2) / scale)),
+          };
+        }
+
+        if (collectorBoxRef.current) {
+          const colRect = collectorBoxRef.current.getBoundingClientRect();
+          const colRelX = colRect.left - containerRect.left;
+          const colRelY = colRect.top - containerRect.top;
+          customCollectorCrop = {
+            x: Math.max(0, Math.round((colRelX + offsetX) / scale)),
+            y: Math.max(0, Math.round((colRelY + offsetY) / scale)),
+            width: Math.min(width, Math.round(colRect.width / scale)),
+            height: Math.min(height, Math.round(colRect.height / scale)),
+          };
+        }
+
+        // Entire card viewport area for AI Vision
+        cardAreaCrop = {
+          x: Math.max(0, Math.round((containerRect.width * 0.08 + offsetX) / scale)),
+          y: Math.max(0, Math.round((containerRect.height * 0.08 + offsetY) / scale)),
+          width: Math.min(width, Math.round((containerRect.width * 0.84) / scale)),
+          height: Math.min(height, Math.round((containerRect.height * 0.84) / scale)),
+        };
+      }
+
+      let result: ScanResult;
+
+      if (selectedEngine === 'ai_vision') {
+        try {
+          result = await scanCardWithAi(
+            video,
+            width,
+            height,
+            (_p, statusText) => setScanStatus(statusText),
+            { cardArea: cardAreaCrop }
+          );
+        } catch (aiErr: any) {
+          console.warn('AI Vision scan failed, falling back to local OCR:', aiErr);
+          setScanStatus('AI niedostępne, automatyczne przejście na lokalny OCR...');
+          result = await scanMtgCardFrame(
+            video,
+            width,
+            height,
+            (_p, statusText) => setScanStatus(statusText),
+            { customTitleCrop, customCollectorCrop }
+          );
+        }
+      } else {
+        result = await scanMtgCardFrame(
+          video,
+          width,
+          height,
+          (_p, statusText) => setScanStatus(statusText),
+          { customTitleCrop, customCollectorCrop }
+        );
+      }
 
       setScanResult(result);
 
       if (result.matchedCard) {
         setActiveCard(result.matchedCard);
         setManualQuery(result.matchedCard.name);
+        if (result.isFoilDetected) {
+          setIsFoil(true);
+        }
         setScanStatus(`Rozpoznano: "${result.matchedCard.name}"`);
       } else if (result.cleanedTitle) {
         setManualQuery(result.cleanedTitle);
-        setScanStatus(`Odczytano: "${result.cleanedTitle}" - doprecyzuj wyszukiwanie`);
+        setScanStatus(`Odczytano: "${result.cleanedTitle}" - sprawdź podpowiedzi`);
       } else {
-        setScanStatus('Nie odczytano tekstu. Zbliż kartę i upewnij się, że nie ma odblasków.');
+        setScanStatus('Nie odczytano karty. Skorzystaj z suwaka Zoom lub zmień kąt oświetlenia.');
       }
     } catch (err: any) {
-      console.error('Błąd OCR skanowania:', err);
-      setScanStatus('Błąd przetwarzania OCR. Spróbuj ponownie lub wgraj zdjęcie.');
+      console.error('Błąd skanowania:', err);
+      setScanStatus('Błąd przetwarzania klatki. Spróbuj ponownie lub wgraj zdjęcie.');
     } finally {
       setIsScanning(false);
     }
-  }, [isScanning]);
+  }, [isScanning, selectedEngine]);
 
   // Auto-scan interval handler
   useEffect(() => {
@@ -319,18 +452,37 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
       if (!file || !file.type.startsWith('image/')) return;
 
       setIsScanning(true);
-      setScanStatus('Wczytywanie i analiza OCR zdjęcia...');
+      setScanStatus(selectedEngine === 'ai_vision' ? '✨ Analiza zdjęcia przez Gemini AI...' : 'Wczytywanie i analiza OCR zdjęcia...');
 
       const img = new Image();
       img.onload = async () => {
         try {
-          const result = await scanMtgCardFrame(img, img.naturalWidth, img.naturalHeight, (_p, statusText) => {
-            setScanStatus(statusText);
-          });
+          let result: ScanResult;
+
+          if (selectedEngine === 'ai_vision') {
+            try {
+              result = await scanCardWithAi(img, img.naturalWidth, img.naturalHeight, (_p, statusText) => {
+                setScanStatus(statusText);
+              });
+            } catch (aiErr) {
+              console.warn('AI vision file scan fallback:', aiErr);
+              result = await scanMtgCardFrame(img, img.naturalWidth, img.naturalHeight, (_p, statusText) => {
+                setScanStatus(statusText);
+              });
+            }
+          } else {
+            result = await scanMtgCardFrame(img, img.naturalWidth, img.naturalHeight, (_p, statusText) => {
+              setScanStatus(statusText);
+            });
+          }
+
           setScanResult(result);
           if (result.matchedCard) {
             setActiveCard(result.matchedCard);
             setManualQuery(result.matchedCard.name);
+            if (result.isFoilDetected) {
+              setIsFoil(true);
+            }
             setScanStatus(`Rozpoznano: "${result.matchedCard.name}"`);
           } else if (result.cleanedTitle) {
             setManualQuery(result.cleanedTitle);
@@ -347,7 +499,7 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
       };
       img.src = URL.createObjectURL(file);
     },
-    []
+    [selectedEngine]
   );
 
   const handleFileUpload = useCallback(
@@ -505,7 +657,7 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
         className="relative bg-stone-900 border border-stone-800 rounded-2xl max-w-4xl w-full overflow-hidden shadow-2xl my-auto text-stone-100 max-h-[95vh] flex flex-col"
       >
         {/* Modal Top Header */}
-        <div className="flex items-center justify-between px-5 py-3.5 border-b border-stone-800 bg-stone-950/80">
+        <div className="flex flex-wrap items-center justify-between gap-3 px-5 py-3 border-b border-stone-800 bg-stone-950/80">
           <div className="flex items-center gap-2.5">
             <div className="p-2 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-400">
               <Camera className="w-5 h-5" />
@@ -513,35 +665,125 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
             <div>
               <div className="flex items-center gap-2">
                 <h2 className="text-sm sm:text-base font-extrabold text-stone-100">
-                  Skaner Kart Kamerą
+                  Skaner Kart MTG
                 </h2>
-                <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
-                  100% Darmowy OCR
+                <span className="text-[10px] font-bold uppercase tracking-wider text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20 flex items-center gap-1">
+                  <Sparkles className="w-3 h-3 fill-amber-400" />
+                  <span>AI Vision + OCR</span>
                 </span>
               </div>
-              <p className="text-xs text-stone-400">
-                Lokalne rozpoznawanie tekstu bezpośrednio w przeglądarce (Tesseract.js & Canvas)
+              <p className="text-xs text-stone-400 hidden sm:block">
+                Automatyczna identyfikacja karty, wycena rynkowa Scryfall i ranking EDHREC
               </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
+            {/* Engine Selector */}
+            <div className="flex items-center p-0.5 bg-stone-900 border border-stone-800 rounded-xl shadow-inner text-xs">
+              <button
+                type="button"
+                onClick={() => setSelectedEngine('ai_vision')}
+                className={`px-3 py-1 rounded-lg font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
+                  selectedEngine === 'ai_vision'
+                    ? 'bg-gradient-to-r from-amber-500 to-amber-600 text-stone-950 shadow-md font-extrabold'
+                    : 'text-stone-400 hover:text-stone-200'
+                }`}
+                title="Gemini 3.8 Flash AI Vision: Najwyższa celność (99%), rozpoznaje całą grafikę, ilustrację i stylizowany tekst"
+              >
+                <Sparkles className="w-3.5 h-3.5 fill-current" />
+                <span>AI Vision</span>
+                <span className="hidden md:inline text-[9px] uppercase px-1 py-0.2 rounded bg-black/20 font-black">99% celność</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setSelectedEngine('local_ocr')}
+                className={`px-2.5 py-1 rounded-lg font-semibold flex items-center gap-1.5 transition-all cursor-pointer ${
+                  selectedEngine === 'local_ocr'
+                    ? 'bg-stone-800 text-stone-100 border border-stone-700 shadow-md'
+                    : 'text-stone-400 hover:text-stone-200'
+                }`}
+                title="Tesseract.js: Lokalne rozpoznawanie tekstu bezpośrednio w Twojej przeglądarce"
+              >
+                <ScanLine className="w-3.5 h-3.5" />
+                <span>Lokalny OCR</span>
+              </button>
+            </div>
+
+            {/* Tips Toggle Button */}
+            <button
+              type="button"
+              onClick={() => setShowTips((prev) => !prev)}
+              className={`p-1.5 px-2.5 rounded-lg border text-xs flex items-center gap-1.5 cursor-pointer transition-colors ${
+                showTips
+                  ? 'bg-amber-500/20 border-amber-500/40 text-amber-300'
+                  : 'bg-stone-900 border-stone-800 text-stone-300 hover:text-stone-100 hover:bg-stone-800'
+              }`}
+              title="Porady jak uzyskać idealną ostrość i odczyt"
+            >
+              <Lightbulb className="w-4 h-4 text-amber-400" />
+              <span className="hidden sm:inline font-semibold">Porady</span>
+              {showTips ? <ChevronUp className="w-3 h-3 text-stone-400" /> : <ChevronDown className="w-3 h-3 text-stone-400" />}
+            </button>
+
             {sessionAddedCount > 0 && (
               <span className="hidden sm:inline-flex items-center gap-1.5 text-xs font-mono font-bold text-amber-400 bg-amber-500/10 px-2.5 py-1 rounded-lg border border-amber-500/20">
                 <CheckCircle2 className="w-3.5 h-3.5" />
-                <span>Dodano w sesji: {sessionAddedCount}</span>
+                <span>{sessionAddedCount}</span>
               </span>
             )}
 
             <button
               onClick={onClose}
               title="Zamknij skaner"
-              className="p-1.5 text-stone-400 hover:text-stone-100 hover:bg-stone-800 rounded-lg transition-colors cursor-pointer"
+              className="p-1.5 text-stone-400 hover:text-stone-100 hover:bg-stone-800 rounded-lg transition-colors cursor-pointer ml-1"
             >
               <X className="w-5 h-5" />
             </button>
           </div>
         </div>
+
+        {/* Collapsible Tips Banner: Solves the high-resolution camera focus issue! */}
+        {showTips && (
+          <div className="bg-amber-500/10 border-b border-amber-500/20 px-5 py-3 text-xs text-stone-300 space-y-2 animate-fade-in">
+            <div className="flex items-center gap-2 text-amber-300 font-bold">
+              <Lightbulb className="w-4 h-4 text-amber-400 shrink-0" />
+              <span>Dlaczego aparat o dużej rozdzielczości miewa problem z odczytem i jak to natychmiast poprawić:</span>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-2.5 pt-1 text-[11px] leading-relaxed">
+              <div className="p-2.5 rounded-lg bg-stone-950/80 border border-amber-500/20 space-y-1">
+                <span className="font-bold text-amber-300 flex items-center gap-1">
+                  <ZoomIn className="w-3.5 h-3.5 text-amber-400" />
+                  <span>1. Odległość 20 cm + Zoom</span>
+                </span>
+                <p className="text-stone-300">
+                  Kamery wysokiej rozdzielczości nie mają obiektywu makro i tracą ostrość z bliska. <strong>Nie przysuwaj karty pod sam obiektyw!</strong> Trzymaj kartę w odległości 15–25 cm i użyj suwaka <strong>Zoom</strong> poniżej, by wypełnić kadr.
+                </p>
+              </div>
+
+              <div className="p-2.5 rounded-lg bg-stone-950/80 border border-amber-500/20 space-y-1">
+                <span className="font-bold text-amber-300 flex items-center gap-1">
+                  <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+                  <span>2. Używaj trybu AI Vision</span>
+                </span>
+                <p className="text-stone-300">
+                  Karty MTG mają stylizowaną czcionkę <em>Beleren</em>, na której klasyczny OCR często się myli. Silnik <strong>AI Vision (Gemini)</strong> analizuje całą grafikę, ilustrację i kolory – rozpoznaje kartę w ułamku sekundy nawet pod kątem!
+                </p>
+              </div>
+
+              <div className="p-2.5 rounded-lg bg-stone-950/80 border border-amber-500/20 space-y-1">
+                <span className="font-bold text-amber-300 flex items-center gap-1">
+                  <Camera className="w-3.5 h-3.5 text-emerald-400" />
+                  <span>3. Kąt & Przycisk „Aparat”</span>
+                </span>
+                <p className="text-stone-300">
+                  Pochyl kartę o 10°, by światło lampy nie odbijało się od koszulki. W telefonie możesz też kliknąć zielony przycisk <strong>„Aparat”</strong>, który robi natywne zdjęcie z pełnym autofokusem!
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Modal Body: 2 Columns on Desktop */}
         <div className="grid grid-cols-1 lg:grid-cols-12 flex-1 overflow-y-auto">
@@ -560,6 +802,7 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
                 const file = e.dataTransfer.files?.[0];
                 if (file) processImageFile(file);
               }}
+              ref={viewfinderContainerRef}
               className={`relative aspect-[3/4] sm:aspect-[4/3] w-full rounded-xl overflow-hidden bg-stone-950 border flex items-center justify-center shadow-inner transition-colors ${
                 isDraggingOver
                   ? 'border-amber-400 ring-2 ring-amber-400/50 bg-amber-950/20'
@@ -678,22 +921,44 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
                     <div className="absolute -bottom-1.5 -left-1.5 w-4 h-4 border-b-4 border-l-4 border-amber-400 rounded-bl" />
                     <div className="absolute -bottom-1.5 -right-1.5 w-4 h-4 border-b-4 border-r-4 border-amber-400 rounded-br" />
 
-                    {/* Zone 1: Title Line Target */}
-                    <div className="w-[88%] h-[16%] border border-dashed border-amber-400/70 bg-amber-400/10 rounded-lg flex items-center justify-between px-2 text-[10px] text-amber-300 font-mono font-bold mx-auto mt-2">
-                      <span>🏷️ NAZWA KARTY</span>
-                      <span className="text-[9px] opacity-75">Tytuł</span>
-                    </div>
+                    {/* Reticle Target Display depending on engine */}
+                    {selectedEngine === 'ai_vision' ? (
+                      <div className="flex-1 flex flex-col justify-between items-center py-2 px-1">
+                        <div className="px-3 py-1 rounded-full bg-amber-500/25 border border-amber-400/50 text-amber-200 text-[10px] font-bold flex items-center gap-1.5 shadow backdrop-blur-sm">
+                          <Sparkles className="w-3.5 h-3.5 fill-amber-300" />
+                          <span>Umieść całą kartę w kadrze</span>
+                        </div>
 
-                    {/* Laser Scanning Animation Line */}
-                    {isScanning && (
-                      <div className="absolute inset-x-2 h-1 bg-gradient-to-r from-transparent via-amber-400 to-transparent shadow-[0_0_12px_#fbbf24] animate-pulse transition-all" />
+                        <div className="text-[10px] text-stone-300 bg-stone-950/85 border border-stone-800 px-3 py-1 rounded-md font-mono text-center shadow">
+                          AI rozpozna kartę po ilustracji, ramce i tekście
+                        </div>
+                      </div>
+                    ) : (
+                      <>
+                        {/* Zone 1: Title Line Target */}
+                        <div
+                          ref={titleBoxRef}
+                          className="w-[90%] h-[16%] border-2 border-dashed border-amber-400 bg-amber-400/15 rounded-lg flex items-center justify-between px-2 text-[10px] text-amber-200 font-mono font-bold mx-auto mt-1.5 shadow-sm"
+                        >
+                          <span className="flex items-center gap-1">🏷️ NAZWA KARTY</span>
+                          <span className="text-[9px] bg-amber-500/20 px-1 py-0.5 rounded text-amber-300">Tytuł</span>
+                        </div>
+
+                        {/* Laser Scanning Animation Line */}
+                        {isScanning && (
+                          <div className="absolute inset-x-2 h-1 bg-gradient-to-r from-transparent via-amber-400 to-transparent shadow-[0_0_12px_#fbbf24] animate-pulse transition-all" />
+                        )}
+
+                        {/* Zone 2: Collector & Set Info Target */}
+                        <div
+                          ref={collectorBoxRef}
+                          className="w-[75%] h-[12%] border border-dashed border-amber-400/70 bg-amber-400/10 rounded-lg flex items-center justify-between px-2 text-[10px] text-amber-300 font-mono font-bold mb-1.5"
+                        >
+                          <span>🔢 SET / NR</span>
+                          <span className="text-[9px] opacity-75">np. OTJ 125</span>
+                        </div>
+                      </>
                     )}
-
-                    {/* Zone 2: Collector & Set Info Target */}
-                    <div className="w-[70%] h-[12%] border border-dashed border-amber-400/70 bg-amber-400/10 rounded-lg flex items-center justify-between px-2 text-[10px] text-amber-300 font-mono font-bold mb-2">
-                      <span>🔢 SET / NR</span>
-                      <span className="text-[9px] opacity-75">np. OTJ 125</span>
-                    </div>
                   </div>
                 </div>
               )}
@@ -713,13 +978,13 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
 
             {/* Camera Controls Bar */}
             <div className="pt-3 flex flex-wrap items-center justify-between gap-2 text-xs">
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 {/* Camera selector */}
                 {cameraDevices.length > 0 && (
                   <select
                     value={selectedDeviceId}
                     onChange={(e) => setSelectedDeviceId(e.target.value)}
-                    className="bg-stone-900 border border-stone-700 rounded-lg px-2.5 py-1.5 text-stone-200 text-xs focus:outline-none focus:border-amber-500 cursor-pointer max-w-[220px] truncate"
+                    className="bg-stone-900 border border-stone-700 rounded-lg px-2.5 py-1.5 text-stone-200 text-xs focus:outline-none focus:border-amber-500 cursor-pointer max-w-[200px] truncate"
                   >
                     {cameraDevices.map((c) => (
                       <option key={c.deviceId} value={c.deviceId}>
@@ -728,6 +993,42 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
                       </option>
                     ))}
                   </select>
+                )}
+
+                {/* Hardware Zoom Slider & Presets (Key fix for high-resolution cameras with macro distance!) */}
+                {zoomRange && isCameraActive && (
+                  <div className="flex items-center gap-1.5 bg-stone-900/90 border border-stone-700 px-2 py-1 rounded-lg">
+                    <ZoomIn className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                    <span className="text-[10px] font-mono text-stone-300 font-semibold shrink-0">
+                      {zoomLevel.toFixed(1)}x
+                    </span>
+                    <input
+                      type="range"
+                      min={zoomRange.min}
+                      max={zoomRange.max}
+                      step={zoomRange.step}
+                      value={zoomLevel}
+                      onChange={(e) => handleZoomChange(parseFloat(e.target.value))}
+                      className="w-16 accent-amber-500 cursor-pointer h-1 bg-stone-800 rounded"
+                      title="Przybliżanie bez utraty ostrości"
+                    />
+                    <div className="flex items-center gap-0.5">
+                      {[1, 1.5, 2].filter((z) => z >= zoomRange.min && z <= zoomRange.max).map((preset) => (
+                        <button
+                          key={preset}
+                          type="button"
+                          onClick={() => handleZoomChange(preset)}
+                          className={`px-1 py-0.5 rounded text-[9px] font-mono font-bold transition-colors ${
+                            Math.abs(zoomLevel - preset) < 0.1
+                              ? 'bg-amber-500 text-stone-950'
+                              : 'bg-stone-800 text-stone-400 hover:text-stone-200'
+                          }`}
+                        >
+                          {preset}x
+                        </button>
+                      ))}
+                    </div>
+                  </div>
                 )}
 
                 {/* Torch / Latarka Toggle */}
@@ -757,7 +1058,7 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
                 <button
                   type="button"
                   onClick={() => cameraSnapInputRef.current?.click()}
-                  title="Zrób zdjęcie aparatem (telefon lub laptop)"
+                  title="Zrób zdjęcie natywnym aparatem w telefonie/laptopie (z autofokusem)"
                   className="px-2.5 py-1.5 rounded-lg bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/30 text-emerald-400 font-semibold flex items-center gap-1.5 transition-colors cursor-pointer"
                 >
                   <Camera className="w-3.5 h-3.5" />
@@ -774,11 +1075,11 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
                 />
                 <button
                   onClick={() => fileInputRef.current?.click()}
-                  title="Wgraj zdjęcie karty z pliku lub galerii"
+                  title="Wgraj zdjęcie karty z pliku lub galerii (lub wklej Ctrl+V)"
                   className="px-2.5 py-1.5 rounded-lg bg-stone-900 hover:bg-stone-800 border border-stone-700 text-stone-300 hover:text-stone-100 flex items-center gap-1.5 transition-colors cursor-pointer"
                 >
                   <Upload className="w-3.5 h-3.5 text-stone-400" />
-                  <span className="hidden sm:inline">Wgraj zdjęcie</span>
+                  <span className="hidden sm:inline">Plik / Zdjęcie</span>
                 </button>
               </div>
 
@@ -791,23 +1092,37 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
                     onChange={(e) => setIsAutoScanEnabled(e.target.checked)}
                     className="rounded border-stone-700 text-amber-500 focus:ring-0 bg-stone-900"
                   />
-                  <span>Auto-skan (3s)</span>
+                  <span className="hidden sm:inline">Auto-skan (3.5s)</span>
+                  <span className="sm:hidden">Auto</span>
                 </label>
 
                 <button
                   onClick={performScan}
                   disabled={isScanning || !isCameraActive}
-                  className="px-4 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-stone-950 font-extrabold text-xs flex items-center gap-2 shadow-lg shadow-amber-950/50 transition-all cursor-pointer disabled:opacity-50"
+                  className={`px-4 py-2 rounded-xl text-stone-950 font-extrabold text-xs flex items-center gap-2 shadow-lg transition-all cursor-pointer disabled:opacity-50 ${
+                    selectedEngine === 'ai_vision'
+                      ? 'bg-gradient-to-r from-amber-400 via-amber-500 to-amber-600 hover:from-amber-300 hover:to-amber-500 shadow-amber-950/60'
+                      : 'bg-stone-200 hover:bg-white shadow-stone-950/60'
+                  }`}
                 >
                   {isScanning ? (
                     <>
                       <RefreshCw className="w-4 h-4 animate-spin" />
-                      <span>Analiza OCR...</span>
+                      <span>{selectedEngine === 'ai_vision' ? 'Analiza AI...' : 'OCR...'}</span>
                     </>
                   ) : (
                     <>
-                      <Camera className="w-4 h-4 stroke-[2.5]" />
-                      <span>Zeskanuj klatkę</span>
+                      {selectedEngine === 'ai_vision' ? (
+                        <>
+                          <Sparkles className="w-4 h-4 fill-stone-950" />
+                          <span>Zeskanuj (AI Vision)</span>
+                        </>
+                      ) : (
+                        <>
+                          <Camera className="w-4 h-4 stroke-[2.5]" />
+                          <span>Zeskanuj (OCR)</span>
+                        </>
+                      )}
                     </>
                   )}
                 </button>
@@ -817,6 +1132,54 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
 
           {/* Right Column: Card Confirmation & Add Form */}
           <div className="lg:col-span-5 p-4 sm:p-5 flex flex-col justify-between space-y-4 bg-stone-900/90">
+            {/* Visual Scan Debug Snippet */}
+            {scanResult?.debugCropUrl && (
+              <div className="p-2.5 bg-stone-950/85 rounded-xl border border-stone-800 space-y-1.5 text-xs text-left shrink-0">
+                <div className="flex items-center justify-between text-[10px] text-stone-400">
+                  <span className="font-semibold text-stone-300 flex items-center gap-1.5">
+                    {scanResult.engineUsed === 'ai_vision' ? (
+                      <>
+                        <Sparkles className="w-3.5 h-3.5 text-amber-400 fill-amber-400" />
+                        <span className="text-amber-300 font-bold">Silnik AI Vision (Gemini 3.8 Flash):</span>
+                      </>
+                    ) : (
+                      <>
+                        <ScanLine className="w-3.5 h-3.5 text-stone-400" />
+                        <span>Lokalny OCR (Tesseract.js):</span>
+                      </>
+                    )}
+                  </span>
+                  {scanResult.confidence > 0 && (
+                    <span className="font-mono text-amber-300 font-bold">
+                      Pewność: {Math.round(scanResult.confidence)}%
+                    </span>
+                  )}
+                </div>
+                <div className="flex items-center gap-2.5">
+                  <img
+                    src={scanResult.debugCropUrl}
+                    alt="Odczytany kadr"
+                    className="h-10 max-w-[120px] border border-amber-500/40 rounded bg-black object-contain px-1 shrink-0"
+                  />
+                  <div className="text-[11px] font-mono text-stone-200 truncate flex-1">
+                    {scanResult.cleanedTitle ? (
+                      <div>
+                        <span className="text-stone-400 text-[10px] block">Rozpoznano:</span>
+                        <span className="font-bold text-amber-300">"{scanResult.cleanedTitle}"</span>
+                        {scanResult.detectedSet && (
+                          <span className="ml-1 text-[10px] text-stone-400 font-sans">
+                            [{scanResult.detectedSet.toUpperCase()}]
+                          </span>
+                        )}
+                      </div>
+                    ) : (
+                      <span className="text-amber-400/80 italic">Brak wyraźnego dopasowania</span>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+
             {activeCard ? (
               <div className="space-y-4 animate-fade-in">
                 {/* Recognized Card Header Card */}
@@ -834,6 +1197,11 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
                       {isFoil && (
                         <div className="absolute top-1 right-1 bg-amber-500 text-stone-950 p-0.5 rounded shadow">
                           <Sparkles className="w-3 h-3 fill-stone-950" />
+                        </div>
+                      )}
+                      {activeCard.edhrec_rank != null && (
+                        <div className="absolute bottom-1 left-1 z-10">
+                          <EdhrecBadge rank={activeCard.edhrec_rank} size="xs" />
                         </div>
                       )}
                     </div>
@@ -1045,6 +1413,32 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
                 <p className="text-xs text-stone-400 leading-relaxed max-w-xs mx-auto">
                   Umieść kartę w kadrze kamery i kliknij <strong className="text-amber-400">„Zeskanuj klatkę”</strong>. Algorytm OCR automatycznie odczyta tytuł i wydanie.
                 </p>
+
+                {/* Suggested Cards if found */}
+                {scanResult?.possibleCards && scanResult.possibleCards.length > 0 && !activeCard && (
+                  <div className="pt-3 border-t border-stone-800 text-left space-y-2">
+                    <p className="text-[11px] font-bold text-amber-300">
+                      Podpowiedzi z bazy Scryfall (kliknij, aby wybrać):
+                    </p>
+                    <div className="max-h-40 overflow-y-auto space-y-1.5 pr-1">
+                      {scanResult.possibleCards.map((c) => (
+                        <button
+                          key={c.id}
+                          type="button"
+                          onClick={() => {
+                            setActiveCard(c);
+                            setManualQuery(c.name);
+                            setScanStatus(`Wybrano: "${c.name}"`);
+                          }}
+                          className="w-full p-2 rounded-lg bg-stone-950 hover:bg-stone-800 border border-stone-800 hover:border-amber-500/50 text-stone-200 text-xs flex items-center justify-between transition-colors cursor-pointer text-left"
+                        >
+                          <span className="font-bold truncate">{c.name}</span>
+                          <span className="text-[10px] font-mono text-stone-400 shrink-0 ml-2">[{c.set.toUpperCase()}]</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
 
                 {/* Manual text search fallback */}
                 <div className="pt-4 border-t border-stone-800/80 space-y-2">

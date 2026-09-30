@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { ScryfallCard, AppSettings } from '../types';
-import { formatCurrency, getCardImageUri, getCardPrice, getRarityColor, getRarityLabel, handleCardImageError } from '../utils/formatters';
+import { formatCurrency, getCardImageUri, getCardPrice, getRarityColor, getRarityLabel, handleCardImageError, getCardEdhrecRank } from '../utils/formatters';
 import { ManaSymbol } from './ManaSymbol';
+import { EdhrecBadge } from './EdhrecBadge';
 import { 
   Search, 
   Plus, 
@@ -10,7 +11,8 @@ import {
   Info, 
   SlidersHorizontal,
   Eye,
-  Check
+  Check,
+  Trophy
 } from 'lucide-react';
 
 interface CardSearchProps {
@@ -191,6 +193,7 @@ export const CardSearch: React.FC<CardSearchProps> = ({ onSelectCard, settings }
             {searchResults.map((card) => {
               const imageUri = getCardImageUri(card, 'normal');
               const price = getCardPrice(card, false, settings || 'USD');
+              const edhrecRank = getCardEdhrecRank(card);
 
               return (
                 <div
@@ -216,6 +219,17 @@ export const CardSearch: React.FC<CardSearchProps> = ({ onSelectCard, settings }
                         <span>Dodaj / Szczegóły</span>
                       </div>
                     </div>
+
+                    {/* EDHREC Rank Banner on bottom-left corner */}
+                    {edhrecRank != null && (
+                      <div 
+                        title={`Ranking EDHREC: #${edhrecRank.toLocaleString()} (popularność w formacie Commander)`}
+                        className="absolute bottom-0 left-0 z-10 bg-gradient-to-r from-amber-500 via-purple-500 to-blue-500 text-stone-950 font-extrabold text-[10px] px-2 py-0.5 rounded-tr-lg shadow-sm flex items-center gap-1 uppercase tracking-wider select-none border-t border-r border-white/20"
+                      >
+                        <Trophy className="w-3 h-3 fill-stone-950 stroke-[1.5] shrink-0" />
+                        <span>EDH #{edhrecRank.toLocaleString()}</span>
+                      </div>
+                    )}
 
                     <div className="absolute bottom-2 right-2 bg-stone-950/90 backdrop-blur-md px-2 py-0.5 rounded border border-stone-800">
                       <p className="text-xs font-bold font-mono text-emerald-400">

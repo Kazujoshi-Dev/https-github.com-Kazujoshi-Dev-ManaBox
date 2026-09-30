@@ -1,11 +1,14 @@
 import React from 'react';
 import { FloatingCardPreviewProps } from './types';
+import { EdhrecBadge } from '../EdhrecBadge';
+import { getCardEdhrecRank } from '../../utils/formatters';
 
 export const FloatingCardPreview: React.FC<FloatingCardPreviewProps> = ({
   card,
   position,
 }) => {
   if (!card || !position) return null;
+  const rank = getCardEdhrecRank(card);
 
   return (
     <div
@@ -15,12 +18,17 @@ export const FloatingCardPreview: React.FC<FloatingCardPreviewProps> = ({
         top: `${Math.min(window.innerHeight - 380, position.y)}px`,
       }}
     >
-      <div className="w-56 rounded-2xl overflow-hidden shadow-2xl border border-amber-500/50 bg-stone-900 ring-4 ring-black/80">
+      <div className="relative w-56 rounded-2xl overflow-hidden shadow-2xl border border-amber-500/50 bg-stone-900 ring-4 ring-black/80">
         <img
           src={card.image_uris?.normal || card.image_uris?.large}
           alt={card.name}
           className="w-full h-auto object-cover"
         />
+        {rank != null && (
+          <div className="absolute bottom-2 left-2 z-10">
+            <EdhrecBadge rank={rank} size="xs" />
+          </div>
+        )}
       </div>
     </div>
   );

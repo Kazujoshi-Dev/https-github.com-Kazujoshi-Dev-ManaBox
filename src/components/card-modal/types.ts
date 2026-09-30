@@ -51,6 +51,7 @@ export interface CardImagePreviewProps {
   isFoil: boolean;
   hasMultipleFaces: boolean;
   onFlipCard?: () => void;
+  edhrecRank?: number;
 }
 
 export interface CardMarketPricesProps {

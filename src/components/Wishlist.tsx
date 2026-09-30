@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { WishlistItem, ScryfallCard, AppSettings } from '../types';
-import { formatCurrency, getCardImageUri, getCardPrice, handleCardImageError } from '../utils/formatters';
+import { formatCurrency, getCardImageUri, getCardPrice, handleCardImageError, getCardEdhrecRank } from '../utils/formatters';
 import { ManaSymbol } from './ManaSymbol';
+import { EdhrecBadge } from './EdhrecBadge';
 import { 
   FolderHeart, 
   Sparkles, 
@@ -113,6 +114,11 @@ export const Wishlist: React.FC<WishlistProps> = ({
                   <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
                     <Eye className="w-4 h-4 text-amber-300" />
                   </div>
+                  {getCardEdhrecRank(card) != null && (
+                    <div className="absolute bottom-1.5 left-1.5 z-10">
+                      <EdhrecBadge rank={getCardEdhrecRank(card)} size="xs" />
+                    </div>
+                  )}
                 </div>
 
                 <div className="flex-1 flex flex-col justify-between space-y-2">

@@ -2,6 +2,7 @@ import express from 'express';
 import path from 'path';
 import fs from 'fs';
 import { createServer as createViteServer } from 'vite';
+import { GoogleGenAI, Type } from '@google/genai';
 import * as db from './src/server/db';
 import { hashPassword, verifyPassword, generateToken, verifyToken } from './src/server/auth';
 
@@ -278,6 +279,7 @@ const INITIAL_COLLECTION = [
         eur: "1.45",
         eur_foil: "2.80"
       },
+      edhrec_rank: 1,
       legalities: { commander: "legal", vintage: "restricted", legacy: "banned" },
       scryfall_uri: "https://scryfall.com/card/cmm/410/sol-ring"
     }
@@ -307,6 +309,7 @@ const INITIAL_COLLECTION = [
       collector_number: "246",
       rarity: "mythic",
       released_at: "2023-06-23",
+      edhrec_rank: 124,
       image_uris: {
         small: "https://cards.scryfall.io/small/front/d/b/dbe1ed1c-5154-4e78-81d3-433e4de6e43f.jpg",
         normal: "https://cards.scryfall.io/normal/front/d/b/dbe1ed1c-5154-4e78-81d3-433e4de6e43f.jpg",
@@ -348,6 +351,7 @@ const INITIAL_COLLECTION = [
       collector_number: "117",
       rarity: "uncommon",
       released_at: "2022-07-08",
+      edhrec_rank: 64,
       image_uris: {
         small: "https://cards.scryfall.io/small/front/f/5/f50328d5-3e3d-4078-8d7c-300188ef77a6.jpg",
         normal: "https://cards.scryfall.io/normal/front/f/5/f50328d5-3e3d-4078-8d7c-300188ef77a6.jpg",
@@ -389,6 +393,7 @@ const INITIAL_COLLECTION = [
       collector_number: "15",
       rarity: "rare",
       released_at: "2023-09-08",
+      edhrec_rank: 14,
       image_uris: {
         small: "https://cards.scryfall.io/small/front/d/6/d6635e26-3963-4f35-b0d3-3f0f665539a6.jpg",
         normal: "https://cards.scryfall.io/normal/front/d/6/d6635e26-3963-4f35-b0d3-3f0f665539a6.jpg",
@@ -410,6 +415,66 @@ const INITIAL_COLLECTION = [
 if (!fs.existsSync(COLLECTION_FILE)) {
   writeJsonFile(COLLECTION_FILE, INITIAL_COLLECTION);
 }
+
+const KNOWN_EDHREC_RANKS: Record<string, number> = {
+  "sol ring": 1,
+  "arcane signet": 2,
+  "swords to plowshares": 3,
+  "command tower": 4,
+  "beast within": 7,
+  "counterspell": 8,
+  "cyclonic rift": 9,
+  "cultivate": 11,
+  "chaos warp": 12,
+  "rhystic study": 14,
+  "path to exile": 15,
+  "kodama's reach": 18,
+  "demonic tutor": 22,
+  "heroic intervention": 28,
+  "teferi's protection": 31,
+  "esper sentinel": 42,
+  "lightning bolt": 64,
+  "the one ring": 124,
+  "animar, soul of elements": 2371,
+  "pestermite": 10922,
+};
+
+function backfillEdhrecRanks() {
+  try {
+    const filesToMigrate: string[] = [];
+    if (fs.existsSync(COLLECTION_FILE)) filesToMigrate.push(COLLECTION_FILE);
+
+    const usersDir = path.join(DATA_DIR, 'users');
+    if (fs.existsSync(usersDir)) {
+      const userFolders = fs.readdirSync(usersDir);
+      for (const u of userFolders) {
+        const userCol = path.join(usersDir, u, 'collection.json');
+        if (fs.existsSync(userCol)) filesToMigrate.push(userCol);
+      }
+    }
+
+    for (const filePath of filesToMigrate) {
+      const items = readJsonFile<any[]>(filePath, []);
+      let changed = false;
+      items.forEach(item => {
+        if (item.card && (item.card.edhrec_rank === undefined || item.card.edhrec_rank === null)) {
+          const nameKey = (item.card.name || '').toLowerCase().trim();
+          if (KNOWN_EDHREC_RANKS[nameKey]) {
+            item.card.edhrec_rank = KNOWN_EDHREC_RANKS[nameKey];
+            changed = true;
+          }
+        }
+      });
+      if (changed) {
+        writeJsonFile(filePath, items);
+        console.log(`[Migration] Backfilled edhrec_rank in ${filePath}`);
+      }
+    }
+  } catch (err) {
+    console.error('Error during backfillEdhrecRanks:', err);
+  }
+}
+backfillEdhrecRanks();
 
 // Scryfall API Proxy Helper with Rate Limiting (~100ms interval) & In-Memory Cache
 const SCRYFALL_BASE = 'https://api.scryfall.com';
@@ -471,7 +536,168 @@ async function fetchScryfall(endpoint: string) {
   return data;
 }
 
+// --- GEMINI AI VISION SETUP ---
+let aiClient: GoogleGenAI | null = null;
+function getAiClient(): GoogleGenAI | null {
+  if (!aiClient && process.env.GEMINI_API_KEY) {
+    aiClient = new GoogleGenAI({
+      apiKey: process.env.GEMINI_API_KEY,
+      httpOptions: {
+        headers: {
+          'User-Agent': 'aistudio-build',
+        },
+      },
+    });
+  }
+  return aiClient;
+}
+
 // --- API ROUTES ---
+
+// 0. AI Multimodal Card Identifier (Gemini 3.8 Flash)
+app.post('/api/scanner/ai-identify', async (req, res) => {
+  try {
+    const { imageBase64, mimeType = 'image/jpeg' } = req.body;
+    if (!imageBase64) {
+      return res.status(400).json({ error: 'Brak danych obrazu (imageBase64 jest wymagane)' });
+    }
+
+    const ai = getAiClient();
+    if (!ai) {
+      return res.status(503).json({
+        error: 'AI_NOT_CONFIGURED',
+        message: 'Klucz Gemini API nie jest dostępny. Przełącz się na silnik lokalnego OCR.',
+      });
+    }
+
+    // Strip data URI header if provided
+    const cleanBase64 = imageBase64.replace(/^data:[a-zA-Z0-9/+-]+;base64,/, '');
+
+    const response = await ai.models.generateContent({
+      model: 'gemini-3.8-flash',
+      contents: {
+        parts: [
+          {
+            inlineData: {
+              mimeType: mimeType || 'image/jpeg',
+              data: cleanBase64,
+            },
+          },
+          {
+            text: `You are an expert Magic: The Gathering card identification engine.
+Analyze this image of a Magic: The Gathering card (it may be captured via webcam or smartphone, slightly angled, or in a sleeve with glare).
+Determine:
+1. cardName: Exact official English name of the MTG card (e.g. "Sol Ring", "Rhystic Study", "Black Lotus", "Sheoldred, the Apocalypse").
+2. setCode: 3 or 4-letter set code if visible (e.g. from the expansion symbol on the right or the bottom-left text like "OTJ", "MH3", "BLB", "LTR", "CMM"). If not clearly readable, return empty string "".
+3. collectorNumber: Collector number (digits only or alphanumeric) printed in the bottom-left corner. If not clearly readable, return empty string "".
+4. confidence: 0 to 100 estimated confidence of your identification.
+5. isFoil: Boolean, true if foil rainbow sheen, metallic star, or etched finish is visible.
+6. printedLanguage: Language of the card printed on paper (e.g. "EN", "JA", "DE", "FR", "IT", "ES"). Default "EN".
+Return strictly valid JSON conforming to the schema.`,
+          },
+        ],
+      },
+      config: {
+        responseMimeType: 'application/json',
+        responseSchema: {
+          type: Type.OBJECT,
+          properties: {
+            cardName: { type: Type.STRING, description: 'Official English card name' },
+            setCode: { type: Type.STRING, description: '3-4 letter set code or empty string' },
+            collectorNumber: { type: Type.STRING, description: 'Collector number or empty string' },
+            confidence: { type: Type.NUMBER, description: 'Confidence 0-100' },
+            isFoil: { type: Type.BOOLEAN, description: 'True if foil/holographic' },
+            printedLanguage: { type: Type.STRING, description: 'Card language printed' },
+          },
+          required: ['cardName', 'confidence'],
+        },
+      },
+    });
+
+    const rawJson = response.text?.trim() || '{}';
+    let aiParsed: any = {};
+    try {
+      aiParsed = JSON.parse(rawJson);
+    } catch (parseErr) {
+      console.warn('Błąd parsowania JSON z Gemini:', rawJson);
+    }
+
+    if (!aiParsed.cardName || aiParsed.confidence < 20) {
+      return res.status(422).json({
+        error: 'CARD_NOT_FOUND',
+        message: 'Nie udało się jednoznacznie zidentyfikować karty na obrazie.',
+      });
+    }
+
+    let matchedCard: any = null;
+    let possibleCards: any[] = [];
+
+    // Step A: If set code and collector number were found, try exact print lookup
+    if (aiParsed.setCode && aiParsed.collectorNumber) {
+      try {
+        const cleanSet = aiParsed.setCode.toLowerCase().trim();
+        const cleanNum = aiParsed.collectorNumber.trim().replace(/^0+/, '') || '1';
+        const exactPrint = await fetchScryfall(`/cards/${encodeURIComponent(cleanSet)}/${encodeURIComponent(cleanNum)}`);
+        if (exactPrint && exactPrint.name) {
+          matchedCard = exactPrint;
+          possibleCards = [exactPrint];
+        }
+      } catch (_) {}
+    }
+
+    // Step B: Scryfall Fuzzy Named Search
+    if (!matchedCard) {
+      try {
+        const queryUrl = aiParsed.setCode
+          ? `/cards/named?fuzzy=${encodeURIComponent(aiParsed.cardName)}&set=${encodeURIComponent(aiParsed.setCode.toLowerCase())}`
+          : `/cards/named?fuzzy=${encodeURIComponent(aiParsed.cardName)}`;
+        const fuzzyCard = await fetchScryfall(queryUrl);
+        if (fuzzyCard && fuzzyCard.name) {
+          matchedCard = fuzzyCard;
+          possibleCards = [fuzzyCard];
+        }
+      } catch (_) {
+        // Fallback without set
+        try {
+          const fallbackCard = await fetchScryfall(`/cards/named?fuzzy=${encodeURIComponent(aiParsed.cardName)}`);
+          if (fallbackCard && fallbackCard.name) {
+            matchedCard = fallbackCard;
+            possibleCards = [fallbackCard];
+          }
+        } catch (_) {}
+      }
+    }
+
+    // Step C: Fallback to full search if named was not found
+    if (!matchedCard) {
+      try {
+        const searchResult = await fetchScryfall(`/cards/search?q=${encodeURIComponent(aiParsed.cardName)}`);
+        if (searchResult && Array.isArray(searchResult.data) && searchResult.data.length > 0) {
+          matchedCard = searchResult.data[0];
+          possibleCards = searchResult.data.slice(0, 8);
+        }
+      } catch (_) {}
+    }
+
+    res.json({
+      success: true,
+      cardName: aiParsed.cardName,
+      setCode: aiParsed.setCode || null,
+      collectorNumber: aiParsed.collectorNumber || null,
+      confidence: aiParsed.confidence || 90,
+      isFoil: Boolean(aiParsed.isFoil),
+      printedLanguage: aiParsed.printedLanguage || 'EN',
+      matchedCard,
+      possibleCards,
+    });
+  } catch (err: any) {
+    console.error('Błąd w /api/scanner/ai-identify:', err);
+    res.status(500).json({
+      error: 'AI_SCAN_FAILED',
+      message: err.message || 'Wystąpił błąd podczas analizy obrazu przez AI.',
+    });
+  }
+});
 
 // 1. Scryfall Image Proxy (solves referrer / CORS / hotlink blocking)
 app.get('/api/scryfall/image-proxy', async (req, res) => {
@@ -555,6 +781,33 @@ app.get(['/api/scryfall/search', '/api/scryfall/cards/search'], async (req, res)
     res.json(data);
   } catch (err: any) {
     res.status(500).json({ error: err.message });
+  }
+});
+
+// 3b. Scryfall Named Card (Exact or Fuzzy lookup)
+app.get('/api/scryfall/named', async (req, res) => {
+  try {
+    const fuzzy = (req.query.fuzzy as string || '').trim();
+    const exact = (req.query.exact as string || '').trim();
+    const set = (req.query.set as string || '').trim();
+
+    let queryPath = '';
+    if (exact) {
+      queryPath = `/cards/named?exact=${encodeURIComponent(exact)}`;
+    } else if (fuzzy) {
+      queryPath = `/cards/named?fuzzy=${encodeURIComponent(fuzzy)}`;
+    } else {
+      return res.status(400).json({ error: 'Parametr "fuzzy" lub "exact" jest wymagany' });
+    }
+
+    if (set) {
+      queryPath += `&set=${encodeURIComponent(set.toLowerCase())}`;
+    }
+
+    const data = await fetchScryfall(queryPath);
+    res.json(data);
+  } catch (err: any) {
+    res.status(404).json({ error: err.message });
   }
 });
 
@@ -837,9 +1090,10 @@ app.post('/api/collection/refresh-prices', authMiddleware, async (req, res) => {
 
             chunk.forEach(item => {
               const updatedCard = cardMap.get(item.card.id);
-              if (updatedCard && updatedCard.prices) {
-                item.card.prices = updatedCard.prices;
+              if (updatedCard) {
+                if (updatedCard.prices) item.card.prices = updatedCard.prices;
                 if (updatedCard.image_uris) item.card.image_uris = updatedCard.image_uris;
+                if (updatedCard.edhrec_rank !== undefined) item.card.edhrec_rank = updatedCard.edhrec_rank;
                 item.lastUpdatedPriceAt = new Date().toISOString();
                 updatedCount++;
               }

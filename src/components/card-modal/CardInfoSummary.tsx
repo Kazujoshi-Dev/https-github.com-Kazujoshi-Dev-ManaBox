@@ -1,7 +1,8 @@
 import React from 'react';
 import { User, Layers, ShieldCheck } from 'lucide-react';
 import { ScryfallCard } from '../../types';
-import { getRarityColor, getRarityLabel } from '../../utils/formatters';
+import { getRarityColor, getRarityLabel, getCardEdhrecRank } from '../../utils/formatters';
+import { EdhrecBadge } from '../EdhrecBadge';
 import { CardInfoSummaryProps } from './types';
 
 const RECOGNIZED_FORMATS = ['commander', 'modern', 'standard', 'pioneer', 'legacy', 'pauper', 'vintage'];
@@ -23,6 +24,9 @@ export const CardInfoSummary: React.FC<CardInfoSummaryProps> = ({
         <span className={`text-xs px-2 py-0.5 rounded border font-semibold ${getRarityColor(activeCard.rarity)}`}>
           {getRarityLabel(activeCard.rarity)}
         </span>
+        {getCardEdhrecRank(activeCard) != null && (
+          <EdhrecBadge rank={getCardEdhrecRank(activeCard)} size="md" />
+        )}
         {activeCard.artist && (
           <span className="text-xs text-stone-400 flex items-center gap-1 bg-stone-950 px-2 py-0.5 rounded border border-stone-800">
             <User className="w-3 h-3 text-stone-500" />

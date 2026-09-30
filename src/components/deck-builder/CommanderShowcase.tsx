@@ -1,7 +1,8 @@
 import React from 'react';
 import { Crown, X, Coins } from 'lucide-react';
 import { CommanderShowcaseProps } from './types';
-import { formatCurrency, getCardPrice } from '../../utils/formatters';
+import { formatCurrency, getCardPrice, getCardEdhrecRank } from '../../utils/formatters';
+import { EdhrecBadge } from '../EdhrecBadge';
 
 export const CommanderShowcase: React.FC<CommanderShowcaseProps> = ({
   commander,
@@ -39,6 +40,9 @@ export const CommanderShowcase: React.FC<CommanderShowcaseProps> = ({
                 <span className="text-[9px] uppercase font-mono font-bold px-2 py-0.5 rounded-full bg-gradient-to-r from-amber-500/30 to-purple-500/30 text-amber-300 border border-amber-400/50">
                   ✨ FOIL
                 </span>
+              )}
+              {getCardEdhrecRank(commander) != null && (
+                <EdhrecBadge rank={getCardEdhrecRank(commander)} size="xs" />
               )}
               {settings && commanderPrice > 0 && (
                 <span className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded-full border flex items-center gap-1 ${

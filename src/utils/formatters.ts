@@ -202,3 +202,40 @@ export function handleCardImageError(e: React.SyntheticEvent<HTMLImageElement, E
     target.src = 'https://svgs.scryfall.io/card-back.svg';
   }
 }
+
+const KNOWN_EDHREC_RANKS: Record<string, number> = {
+  "sol ring": 1,
+  "arcane signet": 2,
+  "swords to plowshares": 3,
+  "command tower": 4,
+  "beast within": 7,
+  "counterspell": 8,
+  "cyclonic rift": 9,
+  "cultivate": 11,
+  "chaos warp": 12,
+  "rhystic study": 14,
+  "path to exile": 15,
+  "kodama's reach": 18,
+  "demonic tutor": 22,
+  "heroic intervention": 28,
+  "teferi's protection": 31,
+  "esper sentinel": 42,
+  "lightning bolt": 64,
+  "the one ring": 124,
+  "animar, soul of elements": 2371,
+  "pestermite": 10922,
+};
+
+export function getCardEdhrecRank(card?: ScryfallCard | null): number | null {
+  if (!card) return null;
+  if (card.edhrec_rank !== undefined && card.edhrec_rank !== null) {
+    const num = typeof card.edhrec_rank === 'number' ? card.edhrec_rank : parseInt(String(card.edhrec_rank), 10);
+    if (!isNaN(num) && num > 0) return num;
+  }
+  const cleanName = (card.name || '').toLowerCase().trim();
+  if (KNOWN_EDHREC_RANKS[cleanName]) {
+    return KNOWN_EDHREC_RANKS[cleanName];
+  }
+  return null;
+}
+

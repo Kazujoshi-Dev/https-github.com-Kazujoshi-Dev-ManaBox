@@ -1,5 +1,7 @@
 import { ScryfallCard, CardCondition, CardLanguage, Catalog, AppSettings } from '../../types';
 
+export type ScannerEngine = 'ai_vision' | 'local_ocr';
+
 export interface ScanResult {
   rawText: string;
   cleanedTitle: string;
@@ -8,6 +10,9 @@ export interface ScanResult {
   confidence: number;
   matchedCard: ScryfallCard | null;
   possibleCards: ScryfallCard[];
+  debugCropUrl?: string;
+  engineUsed?: ScannerEngine;
+  isFoilDetected?: boolean;
 }
 
 export interface CameraDeviceOption {

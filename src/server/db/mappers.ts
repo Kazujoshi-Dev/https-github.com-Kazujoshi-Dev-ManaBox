@@ -12,11 +12,46 @@ export function mapUserRow(r: any): DbUser {
   };
 }
 
+const KNOWN_EDHREC_RANKS: Record<string, number> = {
+  "sol ring": 1,
+  "arcane signet": 2,
+  "swords to plowshares": 3,
+  "command tower": 4,
+  "beast within": 7,
+  "counterspell": 8,
+  "cyclonic rift": 9,
+  "cultivate": 11,
+  "chaos warp": 12,
+  "rhystic study": 14,
+  "path to exile": 15,
+  "kodama's reach": 18,
+  "demonic tutor": 22,
+  "heroic intervention": 28,
+  "teferi's protection": 31,
+  "esper sentinel": 42,
+  "lightning bolt": 64,
+  "the one ring": 124,
+  "animar, soul of elements": 2371,
+  "pestermite": 10922,
+};
+
+function ensureCardEdhrecRank(card: any): any {
+  if (!card) return card;
+  if (card.edhrec_rank === undefined || card.edhrec_rank === null) {
+    const key = (card.name || '').toLowerCase().trim();
+    if (KNOWN_EDHREC_RANKS[key]) {
+      card.edhrec_rank = KNOWN_EDHREC_RANKS[key];
+    }
+  }
+  return card;
+}
+
 export function mapCollectionRow(r: any): CollectionItem {
+  const cardObj = typeof r.card === 'string' ? JSON.parse(r.card) : r.card;
   return {
     id: r.id,
     cardId: r.cardId || r.card_id,
-    card: typeof r.card === 'string' ? JSON.parse(r.card) : r.card,
+    card: ensureCardEdhrecRank(cardObj),
     quantity: typeof r.quantity === 'number' ? r.quantity : parseInt(r.quantity || '1', 10),
     quantityFoil: typeof r.quantityFoil === 'number' ? r.quantityFoil : parseInt(r.quantity_foil || '0', 10),
     condition: r.condition || 'NM',
@@ -43,10 +78,11 @@ export function mapCatalogRow(r: any): Catalog {
 }
 
 export function mapWishlistRow(r: any): WishlistItem {
+  const cardObj = typeof r.card === 'string' ? JSON.parse(r.card) : r.card;
   return {
     id: r.id,
     cardId: r.cardId || r.card_id,
-    card: typeof r.card === 'string' ? JSON.parse(r.card) : r.card,
+    card: ensureCardEdhrecRank(cardObj),
     targetQuantity: typeof r.targetQuantity === 'number' ? r.targetQuantity : parseInt(r.target_quantity || '1', 10),
     isFoil: Boolean(r.isFoil ?? r.is_foil),
     notes: r.notes || '',

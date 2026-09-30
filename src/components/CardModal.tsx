@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { DEFAULT_SETTINGS, getCardImageUri, getCardPrice } from '../utils/formatters';
+import { DEFAULT_SETTINGS, getCardImageUri, getCardPrice, getCardEdhrecRank } from '../utils/formatters';
 import {
   CardModalProps,
   CardModalTab,
@@ -172,6 +172,7 @@ export const CardModal: React.FC<CardModalProps> = ({
                 isFoil={isFoil}
                 hasMultipleFaces={hasMultipleFaces}
                 onFlipCard={handleFlipCard}
+                edhrecRank={getCardEdhrecRank(activeCard) ?? undefined}
               />
 
               <CardMarketPrices

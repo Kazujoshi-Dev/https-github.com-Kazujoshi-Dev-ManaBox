@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { ScryfallCard, AppSettings, MTGSet, SetTopCardsResponse } from '../types';
-import { formatCurrency, getCardImageUri, handleCardImageError } from '../utils/formatters';
+import { formatCurrency, getCardImageUri, handleCardImageError, getCardEdhrecRank } from '../utils/formatters';
 import { ManaSymbol } from './ManaSymbol';
+import { EdhrecBadge } from './EdhrecBadge';
 import { 
   Trophy, 
   Search, 
@@ -716,6 +717,9 @@ export const SetTopCards: React.FC<SetTopCardsProps> = ({
                                       <span>#{card.collector_number}</span>
                                       <span>•</span>
                                       <span className="capitalize">{card.rarity}</span>
+                                      {getCardEdhrecRank(card) != null && (
+                                        <EdhrecBadge rank={getCardEdhrecRank(card)} size="xs" />
+                                      )}
                                       <span className="hidden sm:inline">•</span>
                                       <span className="hidden sm:inline text-stone-500">{card.set_name}</span>
                                     </div>
