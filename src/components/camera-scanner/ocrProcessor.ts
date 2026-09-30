@@ -2,10 +2,60 @@ import { createWorker, Worker } from 'tesseract.js';
 import { ScryfallCard } from '../../types';
 import { ScanResult } from './types';
 import { 
-  extractAndPreprocessCardStrips, 
+  extractAndSegmentDelverFeatures,
   CardCropRect, 
   binarizeStripCanvas 
 } from './cvCardPipeline';
+
+/**
+ * Native Web Audio synthesizer for scanner audio feedback (like Delver Lens beep / chime)
+ */
+export function playScannerChime(type: 'success' | 'lock' | 'beep' = 'success'): void {
+  try {
+    const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+    if (!AudioContextClass) return;
+    const ctx = new AudioContextClass();
+    const now = ctx.currentTime;
+
+    if (type === 'lock') {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(520, now);
+      gain.gain.setValueAtTime(0.05, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.08);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(now);
+      osc.stop(now + 0.08);
+    } else {
+      // Pleasant double-chime (880Hz -> 1320Hz)
+      const osc1 = ctx.createOscillator();
+      const osc2 = ctx.createOscillator();
+      const gain = ctx.createGain();
+
+      osc1.type = 'sine';
+      osc2.type = 'sine';
+
+      osc1.frequency.setValueAtTime(880, now);
+      osc2.frequency.setValueAtTime(1320, now + 0.07);
+
+      gain.gain.setValueAtTime(0.08, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.22);
+
+      osc1.connect(gain);
+      osc2.connect(gain);
+      gain.connect(ctx.destination);
+
+      osc1.start(now);
+      osc1.stop(now + 0.07);
+      osc2.start(now + 0.07);
+      osc2.stop(now + 0.22);
+    }
+  } catch (_) {
+    // Ignore audio context block if user hasn't interacted
+  }
+}
 
 let tesseractWorkerPromise: Promise<Worker> | null = null;
 
@@ -404,6 +454,126 @@ export interface ScanFrameOptions {
 }
 
 /**
+ * ============================================================================
+ * GŁÓWNY POTOK DELVER LENS & MANABOX (Computer Vision + Feature Matching)
+ * ============================================================================
+ * 
+ * Zastępuje powolny OCR zaawansowanym potokiem:
+ * 1. Kadrowanie karty (63x88mm)
+ * 2. Segmentacja cech: Art Crop (Ilustracja), Pasek Tytułu, Symbol Setu, Stopka
+ * 3. 64-bitowy fingerprint wizualny dHash ilustracji
+ * 4. Wykrywanie rzadkości z barwy symbolu dodatku (C/U/R/M)
+ * 5. Błyskawiczna identyfikacja wizualna i dopasowanie Scryfall
+ * 6. Sygnał dźwiękowy (Audio Chime) potwierdzający pomyślny skan
+ */
+export async function scanCardWithDelverLens(
+  source: HTMLVideoElement | HTMLImageElement | HTMLCanvasElement,
+  frameWidth: number,
+  frameHeight: number,
+  onProgress?: (progress: number, status: string) => void,
+  options?: {
+    cardCrop?: CardCropRect;
+  }
+): Promise<ScanResult> {
+  let cardCrop = options?.cardCrop;
+
+  if (!cardCrop) {
+    const cardAspectRatio = 63 / 88;
+    let targetWidth = Math.round(frameWidth * 0.72);
+    let targetHeight = Math.round(targetWidth / cardAspectRatio);
+
+    if (targetHeight > frameHeight * 0.85) {
+      targetHeight = Math.round(frameHeight * 0.85);
+      targetWidth = Math.round(targetHeight * cardAspectRatio);
+    }
+
+    const cardX = Math.round((frameWidth - targetWidth) / 2);
+    const cardY = Math.round((frameHeight - targetHeight) / 2);
+
+    cardCrop = {
+      x: cardX,
+      y: cardY,
+      width: targetWidth,
+      height: targetHeight,
+    };
+  }
+
+  onProgress?.(0.15, 'Delver Lens: Kadrowanie karty 63x88mm i segmentacja cech...');
+
+  // 1. Ekstrakcja cech Delver Lens: Ilustracja, Tytuł, Symbol Setu, Stopka, dHash
+  const features = extractAndSegmentDelverFeatures(source, cardCrop);
+
+  onProgress?.(0.35, `Delver Lens: dHash [${features.perceptualHash.slice(0, 8)}...] | Rzadkość: ${features.detectedRarity.toUpperCase()}`);
+
+  try {
+    onProgress?.(0.55, 'Identyfikacja wizualna ilustracji i edycji (Delver Engine)...');
+
+    const response = await fetch('/api/scanner/delver-identify', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        cardImageBase64: features.cardDataUrl,
+        artImageBase64: features.artDataUrl,
+        bottomImageBase64: features.bottomDataUrl,
+        perceptualHash: features.perceptualHash,
+        detectedRarity: features.detectedRarity,
+        detectedColors: features.detectedColors,
+      }),
+    });
+
+    if (response.ok) {
+      const data = await response.json();
+      if (data.matchedCard) {
+        // Dźwiękowy sygnał sukcesu jak w Delver Lens / ManaBox
+        playScannerChime('success');
+
+        onProgress?.(1.0, `Zidentyfikowano: "${data.matchedCard.name}"`);
+
+        return {
+          rawText: data.cardName || data.matchedCard.name,
+          cleanedTitle: data.cardName || data.matchedCard.name,
+          detectedSet: data.setCode || data.matchedCard.set,
+          detectedCollectorNumber: data.collectorNumber || data.matchedCard.collector_number,
+          confidence: data.confidence || 95,
+          matchedCard: data.matchedCard,
+          possibleCards: data.possibleCards || [data.matchedCard],
+          debugCropUrl: features.cardDataUrl,
+          debugArtUrl: features.artDataUrl,
+          debugTitleUrl: features.titleDataUrl,
+          debugBottomUrl: features.bottomDataUrl,
+          debugSetSymbolUrl: features.setSymbolDataUrl,
+          perceptualHash: features.perceptualHash,
+          detectedRarity: features.detectedRarity,
+          detectedColorIdentity: features.detectedColors,
+          engineUsed: 'delver_lens',
+          isFoilDetected: Boolean(data.isFoil),
+        };
+      }
+    }
+  } catch (netErr) {
+    console.warn('Delver identify backend error, próbuję lokalny odczyt:', netErr);
+  }
+
+  // Fallback awaryjny (np. offline)
+  onProgress?.(0.70, 'Fallback: lokalne dopasowywanie tytułu...');
+  const ocrFallback = await scanMtgCardFrame(source as any, frameWidth, frameHeight, onProgress, { cardCrop });
+  
+  if (ocrFallback.matchedCard) {
+    playScannerChime('success');
+  }
+
+  return {
+    ...ocrFallback,
+    debugArtUrl: features.artDataUrl,
+    debugSetSymbolUrl: features.setSymbolDataUrl,
+    perceptualHash: features.perceptualHash,
+    detectedRarity: features.detectedRarity,
+    detectedColorIdentity: features.detectedColors,
+    engineUsed: 'delver_lens',
+  };
+}
+
+/**
  * Full Delver Lens Pipeline:
  * 1. Kadrowanie karty (Cropping 63x88mm wewnątrz wizjera)
  * 2. Segmentacja (Targeting: Górne 15% - Nazwa/Koszt, Dolne 10% - Kod Setu/Numer)
@@ -444,7 +614,7 @@ export async function scanMtgCardFrame(
   onProgress?.(0.15, 'Kadrowanie karty i segmentacja pasków (Canvas)...');
 
   // KROK 1 i 2 i 3: Kadrowanie karty, wyodrębnienie górnych 15% i dolnych 10% oraz binarizacja ImageData
-  const strips = extractAndPreprocessCardStrips(source, cardCrop);
+  const strips = extractAndSegmentDelverFeatures(source, cardCrop);
 
   onProgress?.(0.3, 'Inicjalizacja silnika OCR Tesseract...');
   const worker = await getTesseractWorker(onProgress);

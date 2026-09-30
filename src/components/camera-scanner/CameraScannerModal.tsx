@@ -33,8 +33,8 @@ import {
 import { ScryfallCard, CardCondition, CardLanguage, Catalog, AppSettings } from '../../types';
 import { formatCurrency, getCardImageUri, getCardPrice, getRarityColor, getRarityLabel, handleCardImageError } from '../../utils/formatters';
 import { CameraScannerModalProps, CameraDeviceOption, ScanResult, ScannerEngine } from './types';
-import { scanMtgCardFrame, scanCardWithAi, searchCardInScryfall } from './ocrProcessor';
-import { calculateVideoSensorCrop, CardCropRect } from './cvCardPipeline';
+import { scanMtgCardFrame, scanCardWithAi, scanCardWithDelverLens, searchCardInScryfall, playScannerChime } from './ocrProcessor';
+import { calculateVideoSensorCrop, CardCropRect, detectFrameMotion } from './cvCardPipeline';
 import { EdhrecBadge } from '../EdhrecBadge';
 
 export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
@@ -48,12 +48,15 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const autoScanTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const motionTrackerTimerRef = useRef<NodeJS.Timeout | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const cameraSnapInputRef = useRef<HTMLInputElement | null>(null);
   const viewfinderContainerRef = useRef<HTMLDivElement | null>(null);
   const cardReticleRef = useRef<HTMLDivElement | null>(null);
   const titleBoxRef = useRef<HTMLDivElement | null>(null);
   const collectorBoxRef = useRef<HTMLDivElement | null>(null);
+  const prevFrameSampleRef = useRef<Uint8ClampedArray | null>(null);
+  const steadyCountRef = useRef<number>(0);
 
   // Camera State
   const [cameraDevices, setCameraDevices] = useState<CameraDeviceOption[]>([]);
@@ -65,6 +68,10 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
   const [isDraggingOver, setIsDraggingOver] = useState<boolean>(false);
   const [copiedUrl, setCopiedUrl] = useState<boolean>(false);
   const prevDeviceIdRef = useRef<string>('');
+
+  // Delver Lens Live Motion Stability & Lock-on
+  const [isReticleLocked, setIsReticleLocked] = useState<boolean>(false);
+  const [soundEnabled, setSoundEnabled] = useState<boolean>(true);
 
   const isMobile = typeof navigator !== 'undefined' && /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
 
@@ -81,14 +88,14 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
     }
   };
 
-  // Scanning State
-  const [selectedEngine, setSelectedEngine] = useState<ScannerEngine>('ai_vision');
+  // Scanning State (Default to Delver Lens / ManaBox Vision Engine)
+  const [selectedEngine, setSelectedEngine] = useState<ScannerEngine>('delver_lens');
   const [zoomRange, setZoomRange] = useState<{ min: number; max: number; step: number } | null>(null);
   const [zoomLevel, setZoomLevel] = useState<number>(1);
   const [showTips, setShowTips] = useState<boolean>(false);
   const [isScanning, setIsScanning] = useState<boolean>(false);
   const [scanStatus, setScanStatus] = useState<string>('Nakieruj kartę na ramkę');
-  const [isAutoScanEnabled, setIsAutoScanEnabled] = useState<boolean>(false);
+  const [isAutoScanEnabled, setIsAutoScanEnabled] = useState<boolean>(true);
   const [isBatchMode, setIsBatchMode] = useState<boolean>(true);
   const [sessionAddedCount, setSessionAddedCount] = useState<number>(0);
 
@@ -314,13 +321,19 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
     };
   }, [isOpen, startCamera, stopCamera]);
 
-  // 3. Scan Action (AI Vision or Local OCR)
+  // 3. Scan Action (Delver Lens, AI Vision, or Local OCR)
   const performScan = useCallback(async () => {
     if (isScanning) return;
     if (!videoRef.current || videoRef.current.readyState < 2) return;
 
     setIsScanning(true);
-    setScanStatus(selectedEngine === 'ai_vision' ? '✨ Analiza klatki przez Gemini AI Vision...' : 'Pobieranie klatki i analiza OCR...');
+    setScanStatus(
+      selectedEngine === 'delver_lens'
+        ? '⚡ Delver Lens: Wycinanie ilustracji i analiza dHash...'
+        : selectedEngine === 'ai_vision'
+        ? '✨ Analiza klatki przez Gemini AI Vision...'
+        : 'Pobieranie klatki i analiza OCR...'
+    );
 
     try {
       const video = videoRef.current;
@@ -337,7 +350,6 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
           viewfinderContainerRef.current
         );
       } else {
-        // Fallback jeśli refy nie były jeszcze zamontowane
         const cardAspectRatio = 63 / 88;
         const targetW = Math.round(width * 0.72);
         const targetH = Math.round(targetW / cardAspectRatio);
@@ -351,7 +363,16 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
 
       let result: ScanResult;
 
-      if (selectedEngine === 'ai_vision') {
+      if (selectedEngine === 'delver_lens') {
+        // Główny potok Delver Lens & ManaBox: dHash ilustracji + stopka + rzadkość symbolu
+        result = await scanCardWithDelverLens(
+          video,
+          width,
+          height,
+          (_p, statusText) => setScanStatus(statusText),
+          { cardCrop }
+        );
+      } else if (selectedEngine === 'ai_vision') {
         try {
           result = await scanCardWithAi(
             video,
@@ -361,9 +382,9 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
             { cardArea: cardCrop }
           );
         } catch (aiErr: any) {
-          console.warn('AI Vision scan failed, falling back to local OCR:', aiErr);
-          setScanStatus('AI niedostępne, przejście na lokalny potok Delver Lens (OCR)...');
-          result = await scanMtgCardFrame(
+          console.warn('AI Vision scan failed, fallback do Delver Lens:', aiErr);
+          setScanStatus('AI niedostępne, przejście na potok Delver Lens...');
+          result = await scanCardWithDelverLens(
             video,
             width,
             height,
@@ -372,7 +393,6 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
           );
         }
       } else {
-        // Lokalny potok Delver Lens: wycina kartę 63x88mm, segmentuje paski 15% i 10%, binarizuje ImageData i rozpoznaje OCR
         result = await scanMtgCardFrame(
           video,
           width,
@@ -391,6 +411,9 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
           setIsFoil(true);
         }
         setScanStatus(`Rozpoznano: "${result.matchedCard.name}"`);
+        if (soundEnabled) {
+          playScannerChime('success');
+        }
       } else if (result.cleanedTitle) {
         setManualQuery(result.cleanedTitle);
         setScanStatus(`Odczytano: "${result.cleanedTitle}" - sprawdź podpowiedzi`);
@@ -403,24 +426,68 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
     } finally {
       setIsScanning(false);
     }
-  }, [isScanning, selectedEngine]);
+  }, [isScanning, selectedEngine, soundEnabled]);
 
-  // Auto-scan interval handler
+  // Live Frame Stability & Lock-On Tracker (Delver Lens / ManaBox Auto-Trigger)
   useEffect(() => {
-    if (isAutoScanEnabled && isCameraActive && !activeCard && !isScanning) {
-      autoScanTimerRef.current = setInterval(() => {
-        performScan();
-      }, 3500);
-    } else {
-      if (autoScanTimerRef.current) {
-        clearInterval(autoScanTimerRef.current);
-        autoScanTimerRef.current = null;
+    if (!isCameraActive || isScanning || activeCard) {
+      setIsReticleLocked(false);
+      steadyCountRef.current = 0;
+      if (motionTrackerTimerRef.current) {
+        clearInterval(motionTrackerTimerRef.current);
+        motionTrackerTimerRef.current = null;
       }
+      return;
     }
+
+    const sampleCanvas = document.createElement('canvas');
+    sampleCanvas.width = 24;
+    sampleCanvas.height = 24;
+    const sampleCtx = sampleCanvas.getContext('2d', { willReadFrequently: true });
+
+    motionTrackerTimerRef.current = setInterval(() => {
+      if (!videoRef.current || videoRef.current.readyState < 2 || isScanning || activeCard) return;
+
+      try {
+        if (!sampleCtx) return;
+        const v = videoRef.current;
+        // Próbkujemy centralny obszar wideo (obszar ilustracji w wizjerze)
+        const sampleW = Math.round(v.videoWidth * 0.3);
+        const sampleH = Math.round(v.videoHeight * 0.3);
+        const sampleX = Math.round((v.videoWidth - sampleW) / 2);
+        const sampleY = Math.round((v.videoHeight - sampleH) / 2);
+
+        sampleCtx.drawImage(v, sampleX, sampleY, sampleW, sampleH, 0, 0, 24, 24);
+        const imgData = sampleCtx.getImageData(0, 0, 24, 24);
+        const currData = imgData.data;
+
+        if (prevFrameSampleRef.current) {
+          const { isStable } = detectFrameMotion(prevFrameSampleRef.current, currData);
+          if (isStable) {
+            steadyCountRef.current += 1;
+            if (steadyCountRef.current >= 3) {
+              setIsReticleLocked(true);
+              // Automatyczne wyzwolenie skanu w trybie auto-skanowania lub seryjnym!
+              if (isAutoScanEnabled && steadyCountRef.current === 3) {
+                performScan();
+              }
+            }
+          } else {
+            steadyCountRef.current = 0;
+            setIsReticleLocked(false);
+          }
+        }
+        prevFrameSampleRef.current = new Uint8ClampedArray(currData);
+      } catch (_) {}
+    }, 140);
+
     return () => {
-      if (autoScanTimerRef.current) clearInterval(autoScanTimerRef.current);
+      if (motionTrackerTimerRef.current) {
+        clearInterval(motionTrackerTimerRef.current);
+        motionTrackerTimerRef.current = null;
+      }
     };
-  }, [isAutoScanEnabled, isCameraActive, activeCard, isScanning, performScan]);
+  }, [isCameraActive, isScanning, activeCard, isAutoScanEnabled, performScan]);
 
   // 4. File and Image Processing (Upload, Drag-and-Drop, Clipboard Paste)
   const processImageFile = useCallback(
@@ -659,33 +726,61 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
             <div className="flex items-center p-0.5 bg-stone-900 border border-stone-800 rounded-xl shadow-inner text-xs">
               <button
                 type="button"
-                onClick={() => setSelectedEngine('ai_vision')}
+                onClick={() => setSelectedEngine('delver_lens')}
                 className={`px-3 py-1 rounded-lg font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
+                  selectedEngine === 'delver_lens'
+                    ? 'bg-gradient-to-r from-emerald-500 to-emerald-600 text-stone-950 shadow-md font-extrabold'
+                    : 'text-stone-400 hover:text-stone-200'
+                }`}
+                title="Delver Lens & ManaBox: Rozpoznawanie grafiki dHash + detekcja rzadkości symbolu dodatku (ultraszybki)"
+              >
+                <Zap className="w-3.5 h-3.5 fill-current" />
+                <span>Delver Lens</span>
+                <span className="hidden md:inline text-[9px] uppercase px-1 py-0.2 rounded bg-black/20 font-black">dHash</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setSelectedEngine('ai_vision')}
+                className={`px-2.5 py-1 rounded-lg font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
                   selectedEngine === 'ai_vision'
                     ? 'bg-gradient-to-r from-amber-500 to-amber-600 text-stone-950 shadow-md font-extrabold'
                     : 'text-stone-400 hover:text-stone-200'
                 }`}
-                title="Gemini 3.8 Flash AI Vision: Najwyższa celność (99%), rozpoznaje całą grafikę, ilustrację i stylizowany tekst"
+                title="Gemini 3.8 Flash AI Vision: Multimodalna analiza klatki"
               >
                 <Sparkles className="w-3.5 h-3.5 fill-current" />
                 <span>AI Vision</span>
-                <span className="hidden md:inline text-[9px] uppercase px-1 py-0.2 rounded bg-black/20 font-black">99% celność</span>
               </button>
 
               <button
                 type="button"
                 onClick={() => setSelectedEngine('local_ocr')}
-                className={`px-2.5 py-1 rounded-lg font-semibold flex items-center gap-1.5 transition-all cursor-pointer ${
+                className={`px-2 py-1 rounded-lg font-semibold flex items-center gap-1.5 transition-all cursor-pointer ${
                   selectedEngine === 'local_ocr'
                     ? 'bg-stone-800 text-stone-100 border border-stone-700 shadow-md'
                     : 'text-stone-400 hover:text-stone-200'
                 }`}
-                title="Tesseract.js: Lokalne rozpoznawanie tekstu bezpośrednio w Twojej przeglądarce"
+                title="Tesseract.js: Lokalne rozpoznawanie tekstu bezpośrednio w przeglądarce"
               >
                 <ScanLine className="w-3.5 h-3.5" />
-                <span>Lokalny OCR</span>
+                <span className="hidden sm:inline">Lokalny OCR</span>
               </button>
             </div>
+
+            {/* Audio Feedback Toggle */}
+            <button
+              type="button"
+              onClick={() => setSoundEnabled((prev) => !prev)}
+              className={`p-1.5 px-2 rounded-lg border text-xs flex items-center gap-1 cursor-pointer transition-colors ${
+                soundEnabled
+                  ? 'bg-emerald-500/15 border-emerald-500/30 text-emerald-300'
+                  : 'bg-stone-900 border-stone-800 text-stone-500 hover:text-stone-300'
+              }`}
+              title={soundEnabled ? 'Dźwięk skanera włączony (piknięcie jak w Delver Lens)' : 'Dźwięk skanera wyciszony'}
+            >
+              {soundEnabled ? <Zap className="w-3.5 h-3.5 text-emerald-400" /> : <ZapOff className="w-3.5 h-3.5" />}
+            </button>
 
             {/* Tips Toggle Button */}
             <button
@@ -892,16 +987,70 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
                   {/* Card Outline Bounding Box (dokładne proporcje karty MTG 63x88mm) z maską zewnętrzną */}
                   <div
                     ref={cardReticleRef}
-                    className="relative aspect-[63/88] h-[84%] max-w-[85%] border-2 border-amber-400 rounded-2xl shadow-[0_0_0_9999px_rgba(0,0,0,0.60)] flex flex-col justify-between p-2 transition-all"
+                    className={`relative aspect-[63/88] h-[84%] max-w-[85%] rounded-2xl flex flex-col justify-between p-2 transition-all duration-200 ${
+                      isReticleLocked
+                        ? 'border-2 border-emerald-400 ring-4 ring-emerald-500/50 shadow-[0_0_35px_rgba(52,211,153,0.55),0_0_0_9999px_rgba(0,0,0,0.65)]'
+                        : 'border-2 border-amber-400 shadow-[0_0_0_9999px_rgba(0,0,0,0.60)]'
+                    }`}
                   >
                     {/* Corner Guides */}
-                    <div className="absolute -top-1.5 -left-1.5 w-4 h-4 border-t-4 border-l-4 border-amber-400 rounded-tl" />
-                    <div className="absolute -top-1.5 -right-1.5 w-4 h-4 border-t-4 border-r-4 border-amber-400 rounded-tr" />
-                    <div className="absolute -bottom-1.5 -left-1.5 w-4 h-4 border-b-4 border-l-4 border-amber-400 rounded-bl" />
-                    <div className="absolute -bottom-1.5 -right-1.5 w-4 h-4 border-b-4 border-r-4 border-amber-400 rounded-br" />
+                    <div className={`absolute -top-1.5 -left-1.5 w-4 h-4 border-t-4 border-l-4 rounded-tl transition-colors ${isReticleLocked ? 'border-emerald-400' : 'border-amber-400'}`} />
+                    <div className={`absolute -top-1.5 -right-1.5 w-4 h-4 border-t-4 border-r-4 rounded-tr transition-colors ${isReticleLocked ? 'border-emerald-400' : 'border-amber-400'}`} />
+                    <div className={`absolute -bottom-1.5 -left-1.5 w-4 h-4 border-b-4 border-l-4 rounded-bl transition-colors ${isReticleLocked ? 'border-emerald-400' : 'border-amber-400'}`} />
+                    <div className={`absolute -bottom-1.5 -right-1.5 w-4 h-4 border-b-4 border-r-4 rounded-br transition-colors ${isReticleLocked ? 'border-emerald-400' : 'border-amber-400'}`} />
 
                     {/* Reticle Target Display depending on engine */}
-                    {selectedEngine === 'ai_vision' ? (
+                    {selectedEngine === 'delver_lens' ? (
+                      <div className="flex-1 flex flex-col justify-between relative py-0.5">
+                        {/* Zone 1: Pasek nazwy (Górne 15%) */}
+                        <div
+                          ref={titleBoxRef}
+                          className="w-[92%] h-[14%] border border-dashed border-emerald-300/80 bg-emerald-500/10 rounded-lg flex items-center justify-between px-2 text-[9px] text-emerald-200 font-mono font-bold mx-auto shadow-sm backdrop-blur-[1px]"
+                        >
+                          <span>🏷️ NAZWA & KOSZT</span>
+                          <span className="text-[8px] bg-emerald-500/20 px-1 py-0.5 rounded text-emerald-300">15%</span>
+                        </div>
+
+                        {/* Zone 2: Artwork Box (Ilustracja - Serce Delver Lens) */}
+                        <div className="w-[88%] h-[42%] border-2 border-dashed border-emerald-400/70 bg-emerald-500/10 rounded-xl mx-auto flex flex-col items-center justify-center relative p-1 shadow-inner">
+                          <span className="text-[10px] font-extrabold text-emerald-300 uppercase tracking-wider flex items-center gap-1 bg-black/40 px-2 py-0.5 rounded">
+                            <Sparkles className="w-3 h-3 text-emerald-400" />
+                            <span>ILUSTRACJA (dHash)</span>
+                          </span>
+                          <span className="text-[8px] text-emerald-200/80 font-mono mt-0.5">
+                            Odcisk palca karty MTG
+                          </span>
+
+                          {/* Symbol Setu na wysokości linii typu */}
+                          <div className="absolute -bottom-3 right-1 px-1.5 py-0.5 rounded bg-black/70 border border-emerald-400/60 text-[8px] font-mono text-emerald-300 flex items-center gap-1 shadow">
+                            <span>💠 Set & Rzadkość</span>
+                          </div>
+                        </div>
+
+                        {/* Zone 3: Stopka z kodem dodatku i numerem (Dolne 10%) */}
+                        <div
+                          ref={collectorBoxRef}
+                          className="w-[92%] h-[10%] border border-dashed border-emerald-300/80 bg-emerald-500/15 rounded-lg flex items-center justify-between px-2 text-[9px] text-emerald-300 font-mono font-bold mx-auto mb-0.5 shadow-sm backdrop-blur-[1px]"
+                        >
+                          <span>🔢 STOPKA (SET & NR)</span>
+                          <span className="text-[8px] opacity-90">OTJ / MH3 / 125</span>
+                        </div>
+
+                        {/* Status Lock Indicator Badge */}
+                        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none">
+                          {isReticleLocked ? (
+                            <span className="px-3 py-1 rounded-full bg-emerald-500 text-stone-950 font-black text-[10px] uppercase tracking-wider shadow-lg flex items-center gap-1 animate-pulse">
+                              <CheckCircle2 className="w-3.5 h-3.5 stroke-[3]" />
+                              <span>CEL ZABLOKOWANY</span>
+                            </span>
+                          ) : (
+                            <span className="px-2.5 py-0.5 rounded-full bg-black/60 border border-stone-700 text-stone-300 font-mono text-[9px] shadow backdrop-blur-sm">
+                              Dopasuj kartę do ramki
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    ) : selectedEngine === 'ai_vision' ? (
                       <div className="flex-1 flex flex-col justify-between items-center py-2 px-1">
                         <div className="px-3 py-1 rounded-full bg-amber-500/25 border border-amber-400/50 text-amber-200 text-[10px] font-bold flex items-center gap-1.5 shadow backdrop-blur-sm">
                           <Sparkles className="w-3.5 h-3.5 fill-amber-300" />
@@ -923,11 +1072,6 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
                           <span className="text-[9px] bg-amber-500/30 px-1 py-0.5 rounded text-amber-300 font-sans font-bold">OCR</span>
                         </div>
 
-                        {/* Laser Scanning Animation Line */}
-                        {isScanning && (
-                          <div className="absolute inset-x-2 h-1 bg-gradient-to-r from-transparent via-amber-400 to-transparent shadow-[0_0_12px_#fbbf24] animate-pulse transition-all" />
-                        )}
-
                         {/* Zone 2: Collector & Set Info Target (Dolne 10%) */}
                         <div
                           ref={collectorBoxRef}
@@ -937,6 +1081,11 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
                           <span className="text-[9px] opacity-80 font-sans">np. OTJ 125</span>
                         </div>
                       </>
+                    )}
+
+                    {/* Laser Scanning Animation Line */}
+                    {isScanning && (
+                      <div className="absolute inset-x-2 h-1 bg-gradient-to-r from-transparent via-emerald-400 to-transparent shadow-[0_0_12px_#34d399] animate-pulse transition-all" />
                     )}
                   </div>
                 </div>
@@ -1112,11 +1261,16 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
           {/* Right Column: Card Confirmation & Add Form */}
           <div className="lg:col-span-5 p-4 sm:p-5 flex flex-col justify-between space-y-4 bg-stone-900/90">
             {/* Visual Scan Debug Snippet (Delver Lens Preprocessing & Cutouts) */}
-            {scanResult && (scanResult.debugCropUrl || scanResult.debugTitleUrl) && (
+            {scanResult && (scanResult.debugCropUrl || scanResult.debugArtUrl || scanResult.debugTitleUrl) && (
               <div className="p-2.5 bg-stone-950/85 rounded-xl border border-stone-800 space-y-2 text-xs text-left shrink-0">
                 <div className="flex items-center justify-between text-[10px] text-stone-400">
                   <span className="font-semibold text-stone-300 flex items-center gap-1.5">
-                    {scanResult.engineUsed === 'ai_vision' ? (
+                    {scanResult.engineUsed === 'delver_lens' ? (
+                      <>
+                        <Zap className="w-3.5 h-3.5 text-emerald-400 fill-emerald-400" />
+                        <span className="text-emerald-400 font-extrabold">Potok Delver Lens (dHash + Vision):</span>
+                      </>
+                    ) : scanResult.engineUsed === 'ai_vision' ? (
                       <>
                         <Sparkles className="w-3.5 h-3.5 text-amber-400 fill-amber-400" />
                         <span className="text-amber-300 font-bold">Silnik AI Vision (Gemini 3.8 Flash):</span>
@@ -1124,78 +1278,110 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
                     ) : (
                       <>
                         <ScanLine className="w-3.5 h-3.5 text-stone-400" />
-                        <span className="text-emerald-400 font-bold">Potok Delver Lens (Canvas Image Preprocessing + OCR):</span>
+                        <span className="text-stone-300 font-bold">Lokalny OCR (Tesseract):</span>
                       </>
                     )}
                   </span>
-                  {scanResult.confidence > 0 && (
-                    <span className="font-mono text-amber-300 font-bold">
-                      Pewność: {Math.round(scanResult.confidence)}%
-                    </span>
-                  )}
+                  <div className="flex items-center gap-2">
+                    {scanResult.detectedRarity && (
+                      <span className={`text-[9px] uppercase px-1.5 py-0.5 rounded font-bold border ${
+                        scanResult.detectedRarity === 'mythic' ? 'bg-orange-500/20 text-orange-400 border-orange-500/30' :
+                        scanResult.detectedRarity === 'rare' ? 'bg-amber-500/20 text-amber-400 border-amber-500/30' :
+                        scanResult.detectedRarity === 'uncommon' ? 'bg-cyan-500/20 text-cyan-300 border-cyan-500/30' :
+                        'bg-stone-800 text-stone-300 border-stone-700'
+                      }`}>
+                        {scanResult.detectedRarity}
+                      </span>
+                    )}
+                    {scanResult.confidence > 0 && (
+                      <span className="font-mono text-emerald-300 font-bold">
+                        Pewność: {Math.round(scanResult.confidence)}%
+                      </span>
+                    )}
+                  </div>
                 </div>
 
-                {/* Preprocessed Canvas Strips Preview */}
-                {scanResult.debugTitleUrl ? (
-                  <div className="space-y-1.5 pt-0.5">
-                    {/* Top 15% Strip */}
+                {/* Preprocessed Canvas Features (Delver Lens / ManaBox) */}
+                <div className="space-y-1.5 pt-0.5">
+                  {/* Artwork Crop & Set Symbol Grid */}
+                  {scanResult.debugArtUrl && (
+                    <div className="grid grid-cols-12 gap-2">
+                      {/* Art Crop with dHash Fingerprint */}
+                      <div className="col-span-8 p-1.5 rounded-lg bg-stone-900 border border-stone-800 space-y-1">
+                        <div className="flex items-center justify-between text-[9px] text-stone-400">
+                          <span className="font-mono text-emerald-300 font-semibold flex items-center gap-1">
+                            <Sparkles className="w-2.5 h-2.5" />
+                            <span>Ilustracja (Art Crop)</span>
+                          </span>
+                          {scanResult.perceptualHash && (
+                            <span className="text-[8px] font-mono text-emerald-400/90 bg-black/40 px-1 rounded">
+                              dHash: {scanResult.perceptualHash.slice(0, 8)}...
+                            </span>
+                          )}
+                        </div>
+                        <div className="bg-black/60 rounded p-1 flex items-center justify-center overflow-hidden border border-stone-800 max-h-16">
+                          <img
+                            src={scanResult.debugArtUrl}
+                            alt="Wycinek ilustracji"
+                            className="max-h-14 w-full object-contain rounded"
+                          />
+                        </div>
+                      </div>
+
+                      {/* Set Symbol & Rarity Crop */}
+                      <div className="col-span-4 p-1.5 rounded-lg bg-stone-900 border border-stone-800 space-y-1 flex flex-col justify-between">
+                        <div className="text-[9px] text-stone-400 font-mono">
+                          <span>Symbol & Rarity</span>
+                        </div>
+                        <div className="bg-black/60 rounded p-1 flex items-center justify-center overflow-hidden border border-stone-800 flex-1 min-h-[36px]">
+                          {scanResult.debugSetSymbolUrl ? (
+                            <img
+                              src={scanResult.debugSetSymbolUrl}
+                              alt="Symbol setu"
+                              className="max-h-8 object-contain"
+                            />
+                          ) : (
+                            <span className="text-[9px] text-stone-500 italic">Brak</span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Top 15% Strip */}
+                  {scanResult.debugTitleUrl && (
                     <div className="p-1.5 rounded-lg bg-stone-900 border border-stone-800 space-y-1">
                       <div className="flex items-center justify-between text-[9px] text-stone-400">
-                        <span className="font-mono text-amber-300 font-semibold">Górne 15% (Nazwa/Koszt): Filtr binarny Otsu + Contrast</span>
-                        <span className="text-stone-300 text-[8px] uppercase tracking-wider font-bold">Czarny tekst na białym tle</span>
+                        <span className="font-mono text-amber-300 font-semibold">Pasek górny (Nazwa/Koszt) - Binarized</span>
+                        <span className="text-stone-300 text-[8px] uppercase tracking-wider font-bold">15%</span>
                       </div>
                       <div className="bg-white rounded p-1 flex items-center justify-center overflow-hidden border border-stone-300">
                         <img
                           src={scanResult.debugTitleUrl}
                           alt="Górne 15% po binarizacji"
-                          className="max-h-8 w-full object-contain filter contrast-125"
+                          className="max-h-7 w-full object-contain filter contrast-125"
                         />
                       </div>
                     </div>
+                  )}
 
-                    {/* Bottom 10% Strip if available */}
-                    {scanResult.debugBottomUrl && (
-                      <div className="p-1.5 rounded-lg bg-stone-900 border border-stone-800 space-y-1">
-                        <div className="flex items-center justify-between text-[9px] text-stone-400">
-                          <span className="font-mono text-amber-300 font-semibold">Dolne 10% (Set/Numer): Filtr binarny Otsu</span>
-                          <span className="text-stone-300 text-[8px] uppercase tracking-wider font-bold">Czarny tekst na białym tle</span>
-                        </div>
-                        <div className="bg-white rounded p-1 flex items-center justify-center overflow-hidden border border-stone-300">
-                          <img
-                            src={scanResult.debugBottomUrl}
-                            alt="Dolne 10% po binarizacji"
-                            className="max-h-6 w-full object-contain filter contrast-125"
-                          />
-                        </div>
+                  {/* Bottom 10% Strip if available */}
+                  {scanResult.debugBottomUrl && (
+                    <div className="p-1.5 rounded-lg bg-stone-900 border border-stone-800 space-y-1">
+                      <div className="flex items-center justify-between text-[9px] text-stone-400">
+                        <span className="font-mono text-amber-300 font-semibold">Stopka (Set/Numer) - Binarized</span>
+                        <span className="text-stone-300 text-[8px] uppercase tracking-wider font-bold">10%</span>
                       </div>
-                    )}
-                  </div>
-                ) : (
-                  <div className="flex items-center gap-2.5">
-                    {scanResult.debugCropUrl && (
-                      <img
-                        src={scanResult.debugCropUrl}
-                        alt="Odczytany kadr"
-                        className="h-10 max-w-[120px] border border-amber-500/40 rounded bg-black object-contain px-1 shrink-0"
-                      />
-                    )}
-                    <div className="text-[11px] font-mono text-stone-200 truncate flex-1">
-                      {scanResult.cleanedTitle ? (
-                        <div>
-                          <span className="text-stone-400 text-[10px] block">Rozpoznano:</span>
-                          <span className="font-bold text-amber-300">"{scanResult.cleanedTitle}"</span>
-                          {scanResult.detectedSet && (
-                            <span className="ml-1 text-[10px] text-stone-400 font-sans">
-                              [{scanResult.detectedSet.toUpperCase()}]
-                            </span>
-                          )}
-                        </div>
-                      ) : (
-                        <span className="text-amber-400/80 italic">Brak wyraźnego dopasowania</span>
-                      )}
+                      <div className="bg-white rounded p-1 flex items-center justify-center overflow-hidden border border-stone-300">
+                        <img
+                          src={scanResult.debugBottomUrl}
+                          alt="Dolne 10% po binarizacji"
+                          className="max-h-5 w-full object-contain filter contrast-125"
+                        />
+                      </div>
                     </div>
-                  </div>
-                )}
+                  )}
+                </div>
               </div>
             )}
 

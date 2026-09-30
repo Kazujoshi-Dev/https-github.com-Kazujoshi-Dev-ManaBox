@@ -702,6 +702,178 @@ Return strictly valid JSON conforming to the schema.`,
   }
 });
 
+// 0B. Delver Lens & ManaBox High-Speed Visual Identifier
+app.post('/api/scanner/delver-identify', async (req, res) => {
+  try {
+    const { 
+      cardImageBase64, 
+      artImageBase64, 
+      bottomImageBase64, 
+      perceptualHash, 
+      detectedRarity, 
+      detectedColors = [],
+      hintSet, 
+      hintCollector, 
+      hintTitle 
+    } = req.body;
+
+    if (!cardImageBase64 && !artImageBase64) {
+      return res.status(400).json({ error: 'Brak danych wizualnych karty (cardImageBase64 lub artImageBase64 jest wymagane)' });
+    }
+
+    let matchedCard: any = null;
+    let possibleCards: any[] = [];
+    let detectedSet = hintSet ? hintSet.toLowerCase().trim() : '';
+    let detectedNumber = hintCollector ? hintCollector.trim().replace(/^0+/, '') : '';
+    let detectedTitle = hintTitle ? hintTitle.trim() : '';
+    let isFoilDetected = false;
+    let confidence = 85;
+
+    // KROK 1: Jeśli mamy zdekodowany kod setu i numer ze stopki (Bottom Bar), wykonujemy natychmiastowe bezpośrednie dopasowanie Scryfall
+    if (detectedSet && detectedNumber) {
+      try {
+        const exact = await fetchScryfall(`/cards/${encodeURIComponent(detectedSet)}/${encodeURIComponent(detectedNumber)}`);
+        if (exact && exact.name) {
+          matchedCard = exact;
+          detectedTitle = exact.name;
+          confidence = 98;
+        }
+      } catch (_) {}
+    }
+
+    // KROK 2: Jeśli nie mamy jeszcze dopasowania lub potrzebujemy weryfikacji wizualnej ilustracji (Delver Lens / ManaBox Engine)
+    if (!matchedCard) {
+      const ai = getAiClient();
+      if (ai) {
+        try {
+          const imageToAnalyze = cardImageBase64 || artImageBase64;
+          const cleanBase64 = imageToAnalyze.replace(/^data:[a-zA-Z0-9/+-]+;base64,/, '');
+
+          const prompt = `You are the Delver Lens / ManaBox Computer Vision Engine for Magic: The Gathering.
+You are given a rectified, cropped MTG card and its visual features:
+- Perceptual Hash (dHash): "${perceptualHash || 'unknown'}"
+- Detected Rarity from Expansion Symbol: "${detectedRarity || 'unknown'}"
+- Frame Color Identity: ${JSON.stringify(detectedColors)}
+${hintTitle ? `- Partial/OCR title hint: "${hintTitle}"` : ''}
+${hintSet ? `- Set hint: "${hintSet}"` : ''}
+
+Task:
+1. Identify the EXACT official English card name based primarily on the illustration/artwork and frame text.
+2. Determine the set code (e.g. "OTJ", "MH3", "BLB", "LTR", "CMM", "UNF") from the set symbol or bottom-left corner.
+3. Determine collector number if visible in the bottom-left.
+4. Detect if the card is foil (look for rainbow reflection, metallic foil star symbol, etched finish).
+Return strictly valid JSON.`;
+
+          const response = await ai.models.generateContent({
+            model: 'gemini-3.8-flash',
+            contents: {
+              parts: [
+                {
+                  inlineData: {
+                    mimeType: 'image/jpeg',
+                    data: cleanBase64,
+                  },
+                },
+                { text: prompt },
+              ],
+            },
+            config: {
+              responseMimeType: 'application/json',
+              responseSchema: {
+                type: Type.OBJECT,
+                properties: {
+                  cardName: { type: Type.STRING },
+                  setCode: { type: Type.STRING },
+                  collectorNumber: { type: Type.STRING },
+                  confidence: { type: Type.NUMBER },
+                  isFoil: { type: Type.BOOLEAN },
+                },
+                required: ['cardName', 'confidence'],
+              },
+            },
+          });
+
+          const raw = response.text?.trim() || '{}';
+          const parsed = JSON.parse(raw);
+          if (parsed.cardName) {
+            detectedTitle = parsed.cardName;
+            if (parsed.setCode) detectedSet = parsed.setCode.toLowerCase().trim();
+            if (parsed.collectorNumber) detectedNumber = parsed.collectorNumber.trim().replace(/^0+/, '');
+            if (parsed.confidence) confidence = parsed.confidence;
+            if (parsed.isFoil) isFoilDetected = true;
+          }
+        } catch (visionErr) {
+          console.warn('Wizja Delver Lens fallback:', visionErr);
+        }
+      }
+    }
+
+    // KROK 3: Dopasowanie do Scryfall (Named / Exact / Fuzzy)
+    if (!matchedCard && detectedTitle) {
+      // Exact with set
+      if (detectedSet && detectedNumber) {
+        try {
+          const exact = await fetchScryfall(`/cards/${encodeURIComponent(detectedSet)}/${encodeURIComponent(detectedNumber)}`);
+          if (exact && exact.name) matchedCard = exact;
+        } catch (_) {}
+      }
+
+      if (!matchedCard && detectedSet) {
+        try {
+          const fuzzyWithSet = await fetchScryfall(`/cards/named?fuzzy=${encodeURIComponent(detectedTitle)}&set=${encodeURIComponent(detectedSet)}`);
+          if (fuzzyWithSet && fuzzyWithSet.name) matchedCard = fuzzyWithSet;
+        } catch (_) {}
+      }
+
+      if (!matchedCard) {
+        try {
+          const fuzzyOnly = await fetchScryfall(`/cards/named?fuzzy=${encodeURIComponent(detectedTitle)}`);
+          if (fuzzyOnly && fuzzyOnly.name) matchedCard = fuzzyOnly;
+        } catch (_) {}
+      }
+
+      if (!matchedCard) {
+        try {
+          const search = await fetchScryfall(`/cards/search?q=${encodeURIComponent(detectedTitle)}`);
+          if (search && Array.isArray(search.data) && search.data.length > 0) {
+            matchedCard = search.data[0];
+          }
+        } catch (_) {}
+      }
+    }
+
+    // KROK 4: Pobranie wszystkich wydań (Prints Drawer jak w ManaBox)
+    if (matchedCard && matchedCard.name) {
+      try {
+        const printsRes = await fetchScryfall(`/cards/search?q=!"${encodeURIComponent(matchedCard.name)}"+include:extras&order=released&dir=desc`);
+        if (printsRes && Array.isArray(printsRes.data)) {
+          possibleCards = printsRes.data.slice(0, 15);
+        } else {
+          possibleCards = [matchedCard];
+        }
+      } catch (_) {
+        possibleCards = [matchedCard];
+      }
+    }
+
+    return res.json({
+      success: true,
+      cardName: detectedTitle || (matchedCard ? matchedCard.name : ''),
+      setCode: detectedSet || (matchedCard ? matchedCard.set : null),
+      collectorNumber: detectedNumber || (matchedCard ? matchedCard.collector_number : null),
+      confidence,
+      isFoil: isFoilDetected,
+      perceptualHash: perceptualHash || null,
+      detectedRarity: detectedRarity || (matchedCard ? matchedCard.rarity : 'common'),
+      matchedCard,
+      possibleCards,
+    });
+  } catch (err: any) {
+    console.error('Błąd w /api/scanner/delver-identify:', err);
+    res.status(500).json({ error: 'DELVER_SCAN_FAILED', message: err.message });
+  }
+});
+
 // 1. Scryfall Image Proxy (solves referrer / CORS / hotlink blocking)
 app.get('/api/scryfall/image-proxy', async (req, res) => {
   try {

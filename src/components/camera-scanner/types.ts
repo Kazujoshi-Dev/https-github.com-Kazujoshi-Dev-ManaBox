@@ -1,6 +1,8 @@
 import { ScryfallCard, CardCondition, CardLanguage, Catalog, AppSettings } from '../../types';
 
-export type ScannerEngine = 'ai_vision' | 'local_ocr';
+export type ScannerEngine = 'delver_lens' | 'ai_vision' | 'local_ocr';
+
+export type CardRarityDetection = 'common' | 'uncommon' | 'rare' | 'mythic';
 
 export interface ScanResult {
   rawText: string;
@@ -13,6 +15,11 @@ export interface ScanResult {
   debugCropUrl?: string;
   debugTitleUrl?: string;
   debugBottomUrl?: string;
+  debugArtUrl?: string;
+  debugSetSymbolUrl?: string;
+  perceptualHash?: string;
+  detectedRarity?: CardRarityDetection;
+  detectedColorIdentity?: string[];
   engineUsed?: ScannerEngine;
   isFoilDetected?: boolean;
 }
