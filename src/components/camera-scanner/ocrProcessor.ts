@@ -562,6 +562,7 @@ export async function scanCardWithDelverLens(
           engineUsed: 'delver_lens',
           isFoilDetected: Boolean(data.isFoil),
           isAutoCropped: features.isAutoCropped,
+          isBlackBorderDetected: features.isBlackBorderDetected,
         };
       }
     }

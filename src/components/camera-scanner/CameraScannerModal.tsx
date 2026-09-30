@@ -370,7 +370,9 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
           setIsFoil(true);
         }
         setScanStatus(
-          result.isAutoCropped
+          result.isBlackBorderDetected
+            ? `🖤 Wykryto czarną ramkę MTG: "${result.matchedCard.name}"`
+            : result.isAutoCropped
             ? `✨ Wykryto i wykadrowano z powierzchni: "${result.matchedCard.name}"`
             : `Rozpoznano: "${result.matchedCard.name}"`
         );
@@ -1166,11 +1168,15 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
                     <span className="text-emerald-400 font-extrabold">Potok Delver Lens (dHash + segmentacja):</span>
                   </span>
                   <div className="flex items-center gap-2">
-                    {scanResult.isAutoCropped && (
+                    {scanResult.isBlackBorderDetected ? (
+                      <span className="text-[9px] uppercase px-1.5 py-0.5 rounded font-bold border bg-emerald-500/20 text-emerald-300 border-emerald-500/40 flex items-center gap-1 shadow-sm">
+                        <span>🖤 Czarna ramka MTG</span>
+                      </span>
+                    ) : scanResult.isAutoCropped ? (
                       <span className="text-[9px] uppercase px-1.5 py-0.5 rounded font-bold border bg-emerald-500/20 text-emerald-300 border-emerald-500/40 animate-pulse">
                         Auto-Crop 63×88
                       </span>
-                    )}
+                    ) : null}
                     {scanResult.detectedRarity && (
                       <span className={`text-[9px] uppercase px-1.5 py-0.5 rounded font-bold border ${
                         scanResult.detectedRarity === 'mythic' ? 'bg-orange-500/20 text-orange-400 border-orange-500/30' :
@@ -1236,34 +1242,44 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
                     </div>
                   )}
 
-                  {/* Top 15% Strip */}
+                  {/* Top Strip */}
                   {scanResult.debugTitleUrl && (
                     <div className="p-1.5 rounded-lg bg-stone-900 border border-stone-800 space-y-1">
                       <div className="flex items-center justify-between text-[9px] text-stone-400">
-                        <span className="font-mono text-amber-300 font-semibold">Pasek górny (Nazwa/Koszt) - Binarized</span>
-                        <span className="text-stone-300 text-[8px] uppercase tracking-wider font-bold">15%</span>
+                        <span className="font-mono text-amber-300 font-semibold flex items-center gap-1">
+                          <span>Pasek górny (Nazwa/Koszt)</span>
+                          {scanResult.isBlackBorderDetected && (
+                            <span className="text-[8px] text-emerald-400 bg-emerald-950/60 px-1 rounded border border-emerald-500/30">wewnątrz ramki</span>
+                          )}
+                        </span>
+                        <span className="text-stone-300 text-[8px] uppercase tracking-wider font-bold">Tytuł</span>
                       </div>
                       <div className="bg-white rounded p-1 flex items-center justify-center overflow-hidden border border-stone-300">
                         <img
                           src={scanResult.debugTitleUrl}
-                          alt="Górne 15% po binarizacji"
+                          alt="Pasek tytułowy po binarizacji"
                           className="max-h-7 w-full object-contain filter contrast-125"
                         />
                       </div>
                     </div>
                   )}
 
-                  {/* Bottom 10% Strip if available */}
+                  {/* Bottom Strip */}
                   {scanResult.debugBottomUrl && (
                     <div className="p-1.5 rounded-lg bg-stone-900 border border-stone-800 space-y-1">
                       <div className="flex items-center justify-between text-[9px] text-stone-400">
-                        <span className="font-mono text-amber-300 font-semibold">Stopka (Set/Numer) - Binarized</span>
-                        <span className="text-stone-300 text-[8px] uppercase tracking-wider font-bold">10%</span>
+                        <span className="font-mono text-amber-300 font-semibold flex items-center gap-1">
+                          <span>Stopka (Set/Numer)</span>
+                          {scanResult.isBlackBorderDetected && (
+                            <span className="text-[8px] text-emerald-400 bg-emerald-950/60 px-1 rounded border border-emerald-500/30">nad dolną ramką</span>
+                          )}
+                        </span>
+                        <span className="text-stone-300 text-[8px] uppercase tracking-wider font-bold">Stopka</span>
                       </div>
                       <div className="bg-white rounded p-1 flex items-center justify-center overflow-hidden border border-stone-300">
                         <img
                           src={scanResult.debugBottomUrl}
-                          alt="Dolne 10% po binarizacji"
+                          alt="Stopka karty po binarizacji"
                           className="max-h-5 w-full object-contain filter contrast-125"
                         />
                       </div>

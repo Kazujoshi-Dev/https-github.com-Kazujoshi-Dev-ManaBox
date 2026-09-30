@@ -66,6 +66,10 @@ export interface SegmentedCardFeatures {
 
   // Czy wykryto i precyzyjnie wycięto kartę z powierzchni (np. białej kartki)
   isAutoCropped?: boolean;
+
+  // Czy wykryto czarną ramkę MTG
+  isBlackBorderDetected?: boolean;
+  borderThicknessY?: number;
 }
 
 /**
@@ -662,6 +666,246 @@ export function trimCardCanvasMargins(
   return { trimmedCanvas: canvas, isTrimmed: false };
 }
 
+export interface MtgBlackBorderResult {
+  detected: boolean;
+  confidence: number;
+  outerCrop: CardCropRect;
+  borderThicknessX: number;
+  borderThicknessY: number;
+  innerTop: number;
+  innerBottom: number;
+  innerLeft: number;
+  innerRight: number;
+  ratio: number;
+}
+
+/**
+ * Precyzyjna detekcja czarnej ramki karty MTG (Black Border Locator):
+ * Wykorzystuje fakt, że 99% kart Magic: The Gathering posiada ciągłą, jednolicie
+ * czarną ramkę o szerokości ~3mm (luminancja < 65, neutralne nasycenie).
+ * 
+ * Na białej kartce / stole algorytm wystrzeliwuje promienie (ray casting) z krawędzi kadru
+ * do środka, lokalizując z dokładnością do 1 piksela:
+ * 1. Zewnętrzną krawędź czarnej ramki (dokładne granice całej karty 63x88mm).
+ * 2. Wewnętrzną krawędź czarnej ramki:
+ *    - Górna krawędź wewnętrzna = DOKŁADNY początek paska tytułowego (Title Bar)!
+ *    - Dolna krawędź wewnętrzna = DOKŁADNA stopka z kodem dodatku i numerem kolekcjonerskim!
+ */
+export function detectMtgCardByBlackBorder(
+  videoSource: HTMLVideoElement | HTMLImageElement | HTMLCanvasElement,
+  candidateCrop?: CardCropRect
+): MtgBlackBorderResult {
+  const srcW =
+    (videoSource as HTMLVideoElement).videoWidth ||
+    (videoSource as HTMLImageElement).naturalWidth ||
+    videoSource.width ||
+    1280;
+  const srcH =
+    (videoSource as HTMLVideoElement).videoHeight ||
+    (videoSource as HTMLImageElement).naturalHeight ||
+    videoSource.height ||
+    720;
+
+  const fallbackResult: MtgBlackBorderResult = {
+    detected: false,
+    confidence: 0,
+    outerCrop: candidateCrop || { x: 0, y: 0, width: srcW, height: srcH },
+    borderThicknessX: 0,
+    borderThicknessY: 0,
+    innerTop: 0,
+    innerBottom: 0,
+    innerLeft: 0,
+    innerRight: 0,
+    ratio: 0.716,
+  };
+
+  if (srcW < 60 || srcH < 60) return fallbackResult;
+
+  try {
+    let searchX = 0;
+    let searchY = 0;
+    let searchW = srcW;
+    let searchH = srcH;
+
+    if (candidateCrop && candidateCrop.width > 40 && candidateCrop.height > 40) {
+      const padX = Math.round(candidateCrop.width * 0.16);
+      const padY = Math.round(candidateCrop.height * 0.16);
+      searchX = Math.max(0, candidateCrop.x - padX);
+      searchY = Math.max(0, candidateCrop.y - padY);
+      searchW = Math.min(srcW - searchX, candidateCrop.width + padX * 2);
+      searchH = Math.min(srcH - searchY, candidateCrop.height + padY * 2);
+    }
+
+    const sampleW = 360;
+    const sampleH = Math.max(200, Math.round(sampleW * (searchH / searchW)));
+
+    const sampleCanvas = document.createElement('canvas');
+    sampleCanvas.width = sampleW;
+    sampleCanvas.height = sampleH;
+    const ctx = sampleCanvas.getContext('2d', { willReadFrequently: true });
+    if (!ctx) return fallbackResult;
+
+    ctx.drawImage(videoSource, searchX, searchY, searchW, searchH, 0, 0, sampleW, sampleH);
+    const imgData = ctx.getImageData(0, 0, sampleW, sampleH);
+    const d = imgData.data;
+
+    // Próbkowanie tła na obwodzie
+    let bgLumSum = 0;
+    let bgCount = 0;
+    for (let x = 0; x < sampleW; x += 4) {
+      const topIdx = (2 * sampleW + x) * 4;
+      const botIdx = ((sampleH - 3) * sampleW + x) * 4;
+      bgLumSum += 0.299 * d[topIdx] + 0.587 * d[topIdx + 1] + 0.114 * d[topIdx + 2];
+      bgLumSum += 0.299 * d[botIdx] + 0.587 * d[botIdx + 1] + 0.114 * d[botIdx + 2];
+      bgCount += 2;
+    }
+    for (let y = 0; y < sampleH; y += 4) {
+      const leftIdx = (y * sampleW + 2) * 4;
+      const rightIdx = (y * sampleW + (sampleW - 3)) * 4;
+      bgLumSum += 0.299 * d[leftIdx] + 0.587 * d[leftIdx + 1] + 0.114 * d[leftIdx + 2];
+      bgLumSum += 0.299 * d[rightIdx] + 0.587 * d[rightIdx + 1] + 0.114 * d[rightIdx + 2];
+      bgCount += 2;
+    }
+
+    const avgBgLum = bgCount > 0 ? bgLumSum / bgCount : 200;
+    const isLightSurface = avgBgLum > 110;
+
+    const isBlackBorderPixel = (x: number, y: number): boolean => {
+      const idx = (y * sampleW + x) * 4;
+      const r = d[idx];
+      const g = d[idx + 1];
+      const b = d[idx + 2];
+      const lum = 0.299 * r + 0.587 * g + 0.114 * b;
+      const sat = Math.max(r, g, b) - Math.min(r, g, b);
+
+      if (isLightSurface) {
+        return lum < Math.min(85, avgBgLum - 45) && sat < 38;
+      } else {
+        return lum < 58 && sat < 35;
+      }
+    };
+
+    // Wystrzeliwanie promieni z 4 krawędzi
+    const xMin = Math.round(sampleW * 0.22);
+    const xMax = Math.round(sampleW * 0.78);
+    const topHits: number[] = [];
+    const botHits: number[] = [];
+
+    for (let x = xMin; x <= xMax; x += 3) {
+      for (let y = 0; y < sampleH * 0.48; y++) {
+        if (isBlackBorderPixel(x, y) && isBlackBorderPixel(x, y + 2)) {
+          topHits.push(y);
+          break;
+        }
+      }
+      for (let y = sampleH - 1; y > sampleH * 0.52; y--) {
+        if (isBlackBorderPixel(x, y) && isBlackBorderPixel(x, y - 2)) {
+          botHits.push(y);
+          break;
+        }
+      }
+    }
+
+    const yMin = Math.round(sampleH * 0.22);
+    const yMax = Math.round(sampleH * 0.78);
+    const leftHits: number[] = [];
+    const rightHits: number[] = [];
+
+    for (let y = yMin; y <= yMax; y += 3) {
+      for (let x = 0; x < sampleW * 0.48; x++) {
+        if (isBlackBorderPixel(x, y) && isBlackBorderPixel(x + 2, y)) {
+          leftHits.push(x);
+          break;
+        }
+      }
+      for (let x = sampleW - 1; x > sampleW * 0.52; x--) {
+        if (isBlackBorderPixel(x, y) && isBlackBorderPixel(x - 2, y)) {
+          rightHits.push(x);
+          break;
+        }
+      }
+    }
+
+    const median = (arr: number[]): number | null => {
+      if (arr.length < 5) return null;
+      const sorted = [...arr].sort((a, b) => a - b);
+      return sorted[Math.floor(sorted.length / 2)];
+    };
+
+    const cTop = median(topHits);
+    const cBottom = median(botHits);
+    const cLeft = median(leftHits);
+    const cRight = median(rightHits);
+
+    if (cTop === null || cBottom === null || cLeft === null || cRight === null) {
+      return fallbackResult;
+    }
+
+    const detW = cRight - cLeft + 1;
+    const detH = cBottom - cTop + 1;
+    const ratio = detW / detH;
+
+    const isPortrait = ratio >= 0.58 && ratio <= 0.88 && detW >= sampleW * 0.28 && detH >= sampleH * 0.28;
+    const isLandscape = ratio >= 1.14 && ratio <= 1.72 && detW >= sampleW * 0.35 && detH >= sampleH * 0.22;
+
+    if (!isPortrait && !isLandscape) {
+      return fallbackResult;
+    }
+
+    // Pomiar grubości czarnej ramki
+    const midX = Math.round((cLeft + cRight) / 2);
+    const midY = Math.round((cTop + cBottom) / 2);
+    const maxBorderThick = Math.round(detH * 0.08);
+
+    let innerTop = cTop;
+    while (innerTop < cTop + maxBorderThick && isBlackBorderPixel(midX, innerTop)) {
+      innerTop++;
+    }
+
+    let innerBottom = cBottom;
+    while (innerBottom > cBottom - maxBorderThick && isBlackBorderPixel(midX, innerBottom)) {
+      innerBottom--;
+    }
+
+    let innerLeft = cLeft;
+    while (innerLeft < cLeft + maxBorderThick && isBlackBorderPixel(innerLeft, midY)) {
+      innerLeft++;
+    }
+
+    let innerRight = cRight;
+    while (innerRight > cRight - maxBorderThick && isBlackBorderPixel(innerRight, midY)) {
+      innerRight--;
+    }
+
+    const scaleX = searchW / sampleW;
+    const scaleY = searchH / sampleH;
+
+    const realX = Math.max(0, Math.round(searchX + cLeft * scaleX));
+    const realY = Math.max(0, Math.round(searchY + cTop * scaleY));
+    const realW = Math.min(srcW - realX, Math.round(detW * scaleX));
+    const realH = Math.min(srcH - realY, Math.round(detH * scaleY));
+
+    const borderThicknessY = Math.max(4, Math.round((innerTop - cTop) * scaleY));
+    const borderThicknessX = Math.max(4, Math.round((innerLeft - cLeft) * scaleX));
+
+    return {
+      detected: true,
+      confidence: 98,
+      outerCrop: { x: realX, y: realY, width: realW, height: realH },
+      borderThicknessX,
+      borderThicknessY,
+      innerTop: borderThicknessY,
+      innerBottom: realH - Math.max(4, Math.round((cBottom - innerBottom) * scaleY)),
+      innerLeft: borderThicknessX,
+      innerRight: realW - Math.max(4, Math.round((cRight - innerRight) * scaleX)),
+      ratio,
+    };
+  } catch (err) {
+    console.warn('Błąd detekcji czarnej ramki MTG:', err);
+    return fallbackResult;
+  }
+}
+
 /**
  * Automatyczne wykrywanie obrysu karty MTG na całej powierzchni widocznej przez kamerę
  * (ze szczególnym uwzględnieniem karty leżącej na białej kartce / jasnym blacie / kontrastowej macie).
@@ -878,22 +1122,36 @@ export function extractAndSegmentDelverFeatures(
 ): SegmentedCardFeatures {
   let effectiveCrop: CardCropRect;
   let isAutoCropped = false;
+  let isBlackBorderDetected = false;
+  let bThicknessY = 0;
+  let bThicknessX = 0;
 
-  // 1. Próba automatycznego wykrycia konturu karty na powierzchni (np. biała kartka / stół / mata)
-  const surfaceDetection = detectCardBoundsInFrame(videoSource, sensorCrop);
+  // 1. KROK PODSTAWOWY: Precyzyjna detekcja czarnej ramki MTG (Black Border Ray Casting)
+  const blackBorder = detectMtgCardByBlackBorder(videoSource, sensorCrop);
 
-  if (surfaceDetection.detected && surfaceDetection.confidence >= 80) {
-    effectiveCrop = surfaceDetection.crop;
+  if (blackBorder.detected && blackBorder.confidence >= 80) {
+    effectiveCrop = blackBorder.outerCrop;
     isAutoCropped = true;
-  } else if (sensorCrop && sensorCrop.width > 20 && sensorCrop.height > 20) {
-    effectiveCrop = sensorCrop;
-    isAutoCropped = false;
+    isBlackBorderDetected = true;
+    bThicknessY = blackBorder.borderThicknessY;
+    bThicknessX = blackBorder.borderThicknessX;
   } else {
-    effectiveCrop = surfaceDetection.crop;
-    isAutoCropped = surfaceDetection.detected;
+    // 2. KROK AWARYJNY: Detekcja ogólnego konturu lub fallback na wizjer
+    const surfaceDetection = detectCardBoundsInFrame(videoSource, sensorCrop);
+
+    if (surfaceDetection.detected && surfaceDetection.confidence >= 80) {
+      effectiveCrop = surfaceDetection.crop;
+      isAutoCropped = true;
+    } else if (sensorCrop && sensorCrop.width > 20 && sensorCrop.height > 20) {
+      effectiveCrop = sensorCrop;
+      isAutoCropped = false;
+    } else {
+      effectiveCrop = surfaceDetection.crop;
+      isAutoCropped = surfaceDetection.detected;
+    }
   }
 
-  // 2. Wstępny Canvas karty o stałych proporcjach 63 x 88 mm
+  // 3. Znormalizowany Canvas karty o stałych proporcjach 63 x 88 mm
   let cardW = Math.max(260, effectiveCrop.width);
   let cardH = Math.max(363, effectiveCrop.height);
 
@@ -921,27 +1179,52 @@ export function extractAndSegmentDelverFeatures(
     cardH
   );
 
-  // 3. Precyzyjne odcięcie ewentualnych marginesów tła (białej kartki / maty wokół karty)
-  // Gwarantuje, że pasek górny i stopka trafią w 100% w rzeczywisty nadruk karty MTG
-  const trimmed = trimCardCanvasMargins(cardCanvas);
-  if (trimmed.isTrimmed) {
-    cardCanvas = trimmed.trimmedCanvas;
-    cardW = cardCanvas.width;
-    cardH = cardCanvas.height;
-    isAutoCropped = true;
+  // 4. Jeśli nie wykryto czarnej ramki bezpośrednio promieniami, przycinamy marginesy tła
+  if (!isBlackBorderDetected) {
+    const trimmed = trimCardCanvasMargins(cardCanvas);
+    if (trimmed.isTrimmed) {
+      cardCanvas = trimmed.trimmedCanvas;
+      cardW = cardCanvas.width;
+      cardH = cardCanvas.height;
+      isAutoCropped = true;
+    }
   }
 
   // --------------------------------------------------------------------------
-  // 4. SEGMENTACJA: Wycinek ilustracji (Artwork Crop) - serce Delver Lens
+  // 5. SEGMENTACJA: Wycinek paska tytułowego (Title Bar)
+  // Gdy wykryto czarną ramkę: pasek zaczyna się DOKŁADNIE pod górną czarną ramką (bThicknessY)!
   // --------------------------------------------------------------------------
-  // W kartach MTG ilustracja zajmuje:
-  // X: 6.5% do 93.5% szerokości
-  // Y: 12.5% do 54.0% wysokości
+  const titleStartY = isBlackBorderDetected
+    ? Math.max(3, bThicknessY)
+    : Math.round(cardH * 0.035);
+  const titleHeight = Math.round(cardH * 0.096);
+
+  const titleCropArea: CardCropRect = {
+    x: Math.round(cardW * 0.035),
+    y: titleStartY,
+    width: Math.round(cardW * 0.930),
+    height: titleHeight,
+  };
+
+  const titleCanvas = binarizeStripCanvas(cardCanvas, titleCropArea, {
+    targetHeight: 56,
+    contrastBoost: 1.35,
+    invertIfDark: true,
+  });
+
+  // --------------------------------------------------------------------------
+  // 6. SEGMENTACJA: Wycinek ilustracji (Artwork Crop) - serce Delver Lens
+  // --------------------------------------------------------------------------
+  const artStartY = isBlackBorderDetected
+    ? titleStartY + titleHeight
+    : Math.round(cardH * 0.125);
+  const artHeight = Math.round(cardH * 0.418);
+
   const artCropArea: CardCropRect = {
     x: Math.round(cardW * 0.065),
-    y: Math.round(cardH * 0.125),
+    y: artStartY,
     width: Math.round(cardW * 0.870),
-    height: Math.round(cardH * 0.415),
+    height: artHeight,
   };
 
   const artCanvas = document.createElement('canvas');
@@ -968,9 +1251,8 @@ export function extractAndSegmentDelverFeatures(
   const perceptualHash = computeArtworkDHash(artCanvas);
 
   // --------------------------------------------------------------------------
-  // 5. SEGMENTACJA: Symbol dodatku i rzadkość (Set Symbol & Rarity)
+  // 7. SEGMENTACJA: Symbol dodatku i rzadkość (Set Symbol & Rarity)
   // --------------------------------------------------------------------------
-  // Po prawej stronie pod ilustracją: X: 77%..96%, Y: 53.5%..62%
   const symbolCropArea: CardCropRect = {
     x: Math.round(cardW * 0.770),
     y: Math.round(cardH * 0.535),
@@ -999,31 +1281,20 @@ export function extractAndSegmentDelverFeatures(
   const detectedRarity = detectSetSymbolRarity(symbolCanvas);
 
   // --------------------------------------------------------------------------
-  // 6. SEGMENTACJA: Pasek tytułowy (Górne 3.5%..13.2% - Nazwa i Koszt)
+  // 8. SEGMENTACJA: Stopka z kodem dodatku i numerem (Collector Line)
+  // Gdy wykryto czarną ramkę: stopka kończy się DOKŁADNIE nad dolną czarną ramką!
   // --------------------------------------------------------------------------
-  // Czarna ramka u góry to 0%..3.5%. Pasek tytułowy to Y: 3.5%..13.2%
-  const titleCropArea: CardCropRect = {
-    x: Math.round(cardW * 0.040),
-    y: Math.round(cardH * 0.035),
-    width: Math.round(cardW * 0.920),
-    height: Math.round(cardH * 0.098),
-  };
+  const footerHeight = Math.round(cardH * 0.088);
+  const footerEndY = isBlackBorderDetected
+    ? cardH - Math.max(3, bThicknessY) + 2
+    : Math.round(cardH * 0.975);
+  const footerStartY = Math.max(0, footerEndY - footerHeight);
 
-  const titleCanvas = binarizeStripCanvas(cardCanvas, titleCropArea, {
-    targetHeight: 56,
-    contrastBoost: 1.35,
-    invertIfDark: true,
-  });
-
-  // --------------------------------------------------------------------------
-  // 7. SEGMENTACJA: Stopka z kodem dodatku i numerem (Dolne 88.0%..97.5%)
-  // --------------------------------------------------------------------------
-  // Linia kolekcjonerska (numer karty i kod setu) to Y: 88.0%..97.5%
   const bottomCropArea: CardCropRect = {
     x: Math.round(cardW * 0.035),
-    y: Math.round(cardH * 0.880),
+    y: footerStartY,
     width: Math.round(cardW * 0.930),
-    height: Math.round(cardH * 0.095),
+    height: footerHeight,
   };
 
   const bottomCanvas = binarizeStripCanvas(cardCanvas, bottomCropArea, {
@@ -1032,7 +1303,7 @@ export function extractAndSegmentDelverFeatures(
     invertIfDark: true,
   });
 
-  // 8. Tożsamość barwna ramki
+  // 9. Tożsamość barwna ramki
   const detectedColors = detectCardColorIdentity(cardCanvas);
 
   let cardDataUrl = '';
@@ -1079,5 +1350,7 @@ export function extractAndSegmentDelverFeatures(
     sourceCrop: effectiveCrop,
     fullFrameDataUrl,
     isAutoCropped,
+    isBlackBorderDetected,
+    borderThicknessY: bThicknessY,
   };
 }

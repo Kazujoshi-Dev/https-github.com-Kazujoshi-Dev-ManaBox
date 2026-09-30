@@ -23,6 +23,7 @@ export interface ScanResult {
   engineUsed?: ScannerEngine;
   isFoilDetected?: boolean;
   isAutoCropped?: boolean;
+  isBlackBorderDetected?: boolean;
 }
 
 export interface CameraDeviceOption {
