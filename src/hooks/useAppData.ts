@@ -152,6 +152,71 @@ export function useAppData({ userId, onUnauthorized, showToast, onSettingsLoaded
     }
   }, [updateCollectionItemData, showToast]);
 
+  const sellItemQuantity = useCallback(async (
+    item: CollectionItem,
+    quantityToSell: number,
+    isFoil: boolean = false,
+    customPrice?: number | null
+  ) => {
+    const normalQty = item.quantity || 0;
+    const foilQty = item.quantityFoil || 0;
+
+    if (quantityToSell <= 0) return;
+
+    // Case 1: Selling all available copies of this item
+    const isSellingEntireItem =
+      (isFoil && quantityToSell >= foilQty && normalQty === 0) ||
+      (!isFoil && quantityToSell >= normalQty && foilQty === 0) ||
+      (quantityToSell >= (normalQty + foilQty));
+
+    if (isSellingEntireItem) {
+      const updates: Partial<CollectionItem> = {
+        isForSale: true,
+        ...(customPrice !== undefined ? { salePrice: customPrice } : {})
+      };
+      await updateCollectionItemData(item.id, updates);
+      showToast(`Wystawiono "${item.card.name}" (${quantityToSell} szt.) na sprzedaż!`);
+      return;
+    }
+
+    // Case 2: Partial quantity -> split item
+    try {
+      const remainingNormal = isFoil ? normalQty : Math.max(0, normalQty - quantityToSell);
+      const remainingFoil = isFoil ? Math.max(0, foilQty - quantityToSell) : foilQty;
+
+      // 1. Update existing item with reduced count
+      await updateCollectionItemData(item.id, {
+        quantity: remainingNormal,
+        quantityFoil: remainingFoil
+      });
+
+      // 2. Create new item specifically marked for sale
+      const newItemData = {
+        cardId: item.cardId || item.card.id,
+        card: item.card,
+        quantity: isFoil ? 0 : quantityToSell,
+        quantityFoil: isFoil ? quantityToSell : 0,
+        condition: item.condition,
+        language: item.language,
+        purchasePrice: item.purchasePrice,
+        notes: item.notes,
+        binder: item.binder,
+        isForSale: true,
+        salePrice: customPrice !== undefined ? customPrice : item.salePrice
+      };
+
+      const res = await collectionApi.create(newItemData, onUnauthorized);
+      if (res.ok) {
+        const createdItem = await res.json();
+        setCollection((prev) => [createdItem, ...prev]);
+        showToast(`Wystawiono ${quantityToSell} szt. "${item.card.name}" na sprzedaż!`);
+      }
+    } catch (err: any) {
+      console.error('Error splitting item for sale:', err);
+      showToast('Wystąpił błąd podczas wystawiania kart na sprzedaż.');
+    }
+  }, [updateCollectionItemData, onUnauthorized, showToast]);
+
   const saveToCollection = useCallback(async (
     data: {
       card: ScryfallCard;
@@ -487,6 +552,7 @@ export function useAppData({ userId, onUnauthorized, showToast, onSettingsLoaded
     importCollection,
     bulkAddToCollection,
     updateCollectionItemData,
-    toggleForSale
+    toggleForSale,
+    sellItemQuantity
   };
 }

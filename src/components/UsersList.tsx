@@ -489,13 +489,6 @@ export const UsersList: React.FC<UsersListProps> = ({
                   {wishlistBadgeCount} szt.
                 </span>
               </div>
-
-              <div className="bg-stone-950/80 px-4 py-2.5 rounded-2xl border border-stone-800 shadow-inner">
-                <span className="text-[10px] uppercase font-bold text-stone-400 block">Kolekcja ogółem</span>
-                <span className="text-lg font-black text-stone-200 font-mono">
-                  {selectedUser.totalCardsCount} szt.
-                </span>
-              </div>
             </div>
           </div>
 
@@ -1166,46 +1159,36 @@ export const UsersList: React.FC<UsersListProps> = ({
                   </div>
 
                   {/* Badges & Metrics */}
-                  <div className="grid grid-cols-3 gap-2 pt-1">
+                  <div className="grid grid-cols-2 gap-2.5 pt-1">
                     <div
-                      className={`p-2 rounded-xl border flex flex-col justify-center text-center ${
+                      className={`p-2.5 rounded-xl border flex flex-col justify-center text-center ${
                         hasForSale
                           ? 'bg-emerald-950/40 border-emerald-500/40 text-emerald-300'
                           : 'bg-stone-950/60 border-stone-800/80 text-stone-500'
                       }`}
                     >
-                      <span className="text-[9px] uppercase font-bold tracking-wider opacity-80 flex items-center justify-center gap-0.5">
-                        <CircleDollarSign className="w-2.5 h-2.5 text-emerald-400" />
-                        <span>Sprzedaż</span>
+                      <span className="text-[10px] uppercase font-bold tracking-wider opacity-80 flex items-center justify-center gap-1">
+                        <CircleDollarSign className="w-3 h-3 text-emerald-400" />
+                        <span>Karty na sprzedaż</span>
                       </span>
-                      <span className="text-xs font-black font-mono mt-0.5">
-                        {hasForSale ? `${u.forSaleCount} szt.` : '0'}
+                      <span className="text-sm font-black font-mono mt-0.5">
+                        {hasForSale ? `${u.forSaleCount} szt.` : 'Brak'}
                       </span>
                     </div>
 
                     <div
-                      className={`p-2 rounded-xl border flex flex-col justify-center text-center ${
+                      className={`p-2.5 rounded-xl border flex flex-col justify-center text-center ${
                         hasWishlist
                           ? 'bg-rose-950/40 border-rose-500/40 text-rose-300'
                           : 'bg-stone-950/60 border-stone-800/80 text-stone-500'
                       }`}
                     >
-                      <span className="text-[9px] uppercase font-bold tracking-wider opacity-80 flex items-center justify-center gap-0.5">
-                        <FolderHeart className="w-2.5 h-2.5 text-rose-400" />
-                        <span>Życzenia</span>
+                      <span className="text-[10px] uppercase font-bold tracking-wider opacity-80 flex items-center justify-center gap-1">
+                        <FolderHeart className="w-3 h-3 text-rose-400" />
+                        <span>Lista życzeń</span>
                       </span>
-                      <span className="text-xs font-black font-mono mt-0.5">
-                        {hasWishlist ? `${u.wishlistCount} szt.` : '0'}
-                      </span>
-                    </div>
-
-                    <div className="p-2 rounded-xl bg-stone-950/60 border border-stone-800/80 text-stone-300 flex flex-col justify-center text-center">
-                      <span className="text-[9px] uppercase font-bold tracking-wider text-stone-400 flex items-center justify-center gap-0.5">
-                        <Layers className="w-2.5 h-2.5 text-amber-400" />
-                        <span>Kolekcja</span>
-                      </span>
-                      <span className="text-xs font-black font-mono mt-0.5 text-stone-200">
-                        {u.totalCardsCount}
+                      <span className="text-sm font-black font-mono mt-0.5">
+                        {hasWishlist ? `${u.wishlistCount} szt.` : 'Brak'}
                       </span>
                     </div>
                   </div>

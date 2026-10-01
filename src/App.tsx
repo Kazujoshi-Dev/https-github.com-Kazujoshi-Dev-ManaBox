@@ -11,6 +11,7 @@ import { DeckImportExportModal } from './components/DeckImportExportModal';
 import { CameraScannerModal } from './components/camera-scanner/CameraScannerModal';
 import { PublicSaleView } from './components/PublicSaleView';
 import { MailboxModal } from './components/messages/MailboxModal';
+import { SellQuantityModal } from './components/SellQuantityModal';
 import { Toast } from './components/Toast';
 import { CircleDollarSign } from 'lucide-react';
 import { useAuth } from './hooks/useAuth';
@@ -50,7 +51,8 @@ export default function App() {
     importCollection,
     bulkAddToCollection,
     updateCollectionItemData,
-    toggleForSale
+    toggleForSale,
+    sellItemQuantity
   } = useAppData({
     userId: currentUser?.id,
     onUnauthorized: handleUnauthorized,
@@ -59,6 +61,23 @@ export default function App() {
   });
 
   const totals = useCollectionStats(collection, settings);
+
+  // Selling modal state for items with quantity > 1
+  const [sellingItem, setSellingItem] = useState<CollectionItem | null>(null);
+
+  const handleRequestToggleForSale = useCallback((item: CollectionItem, customPrice?: number | null) => {
+    if (item.isForSale) {
+      toggleForSale(item);
+      return;
+    }
+
+    const totalQty = (item.quantity || 0) + (item.quantityFoil || 0);
+    if (totalQty > 1) {
+      setSellingItem(item);
+    } else {
+      toggleForSale(item, customPrice);
+    }
+  }, [toggleForSale]);
 
   const forSaleCount = React.useMemo(() => {
     return collection.filter(c => Boolean(c.isForSale)).length;
@@ -587,7 +606,7 @@ export default function App() {
             onOpenCollectionImportExport={handleOpenCollectionImportExport}
             onUpdateSettings={updateSettings}
             currentUser={currentUser}
-            onToggleForSale={toggleForSale}
+            onToggleForSale={handleRequestToggleForSale}
             onUpdateCollectionItem={updateCollectionItemData}
             showToast={showToast}
           />
@@ -691,6 +710,19 @@ export default function App() {
           availableUsers={registeredUsers}
           onUnreadCountChange={setUnreadMessagesCount}
           showToast={showToast}
+        />
+      )}
+
+      {/* Sell Quantity Modal */}
+      {sellingItem && (
+        <SellQuantityModal
+          isOpen={Boolean(sellingItem)}
+          item={sellingItem}
+          settings={settings}
+          onClose={() => setSellingItem(null)}
+          onConfirm={async (item, qty, isFoil, customPrice) => {
+            await sellItemQuantity(item, qty, isFoil, customPrice);
+          }}
         />
       )}
 
