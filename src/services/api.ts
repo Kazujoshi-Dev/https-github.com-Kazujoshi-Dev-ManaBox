@@ -1,4 +1,4 @@
-import { AppSettings, Catalog, CollectionItem, DeckItem, ScryfallCard, WishlistItem } from '../types';
+import { AppSettings, Catalog, CollectionItem, DeckItem, ScryfallCard, WishlistItem, SpellbookFindCombosResponse, SpellbookVariant } from '../types';
 
 const TOKEN_KEY = 'mtg_auth_token';
 const USER_KEY = 'mtg_auth_user';
@@ -161,5 +161,37 @@ export const nbpApi = {
       eur: eurData?.rates?.[0]?.mid,
       usd: usdData?.rates?.[0]?.mid
     };
+  }
+};
+
+export const spellbookApi = {
+  findDeckCombos: async (
+    commanders: string[],
+    mainCards: string[]
+  ): Promise<SpellbookFindCombosResponse> => {
+    const res = await fetch('/api/spellbook/find-my-combos', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ commanders, main: mainCards })
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ error: 'Błąd pobierania combo' }));
+      throw new Error(err.error || `Błąd serwera (${res.status})`);
+    }
+    return res.json();
+  },
+
+  getCardCombos: async (cardName: string): Promise<{ results: SpellbookVariant[]; count: number }> => {
+    const res = await fetch(`/api/spellbook/card-combos?cardName=${encodeURIComponent(cardName)}`);
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ error: 'Błąd pobierania combosów dla karty' }));
+      throw new Error(err.error || `Błąd serwera (${res.status})`);
+    }
+    return res.json();
+  },
+
+  getStatus: async () => {
+    const res = await fetch('/api/spellbook/status');
+    return res.json();
   }
 };

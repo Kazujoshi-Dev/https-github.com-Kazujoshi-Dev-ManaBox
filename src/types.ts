@@ -162,3 +162,61 @@ export interface AuthUser {
   createdAt?: string;
 }
 
+// Commander Spellbook API Types
+export interface SpellbookCard {
+  id: number;
+  name: string;
+  faces?: number;
+  spoiler?: boolean;
+  oracleId?: string;
+  typeLine?: string;
+  imageUriFrontNormal?: string | null;
+  imageUriFrontArtCrop?: string | null;
+}
+
+export interface SpellbookCardInVariant {
+  card: SpellbookCard;
+  zoneLocations?: string[];
+  battlefieldCardState?: string;
+}
+
+export interface SpellbookTemplateInVariant {
+  template: {
+    id?: number;
+    name: string;
+    scryfallQuery?: string;
+  };
+  zoneLocations?: string[];
+}
+
+export interface SpellbookFeatureProduced {
+  feature: {
+    id?: number;
+    name: string;
+    uncountable?: boolean;
+  };
+}
+
+export interface SpellbookVariant {
+  id: string;
+  uses: SpellbookCardInVariant[];
+  requires?: SpellbookTemplateInVariant[];
+  produces: SpellbookFeatureProduced[];
+  description: string;
+  notes?: string;
+  manaNeeded?: string;
+  easyPrerequisites?: string;
+  notablePrerequisites?: string;
+  popularity?: number;
+  bracketTag?: string;
+  status?: string;
+}
+
+export interface SpellbookFindCombosResponse {
+  results: {
+    identity: string;
+    included: SpellbookVariant[];
+    almostIncluded: SpellbookVariant[];
+  };
+}
+

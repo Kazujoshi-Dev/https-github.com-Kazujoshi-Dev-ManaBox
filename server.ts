@@ -1465,6 +1465,146 @@ app.delete('/api/decks/:id', authMiddleware, async (req, res) => {
   }
 });
 
+// --- COMMANDER SPELLBOOK API PROXY & CACHE ---
+const SPELLBOOK_BASE = 'https://backend.commanderspellbook.com';
+const spellbookCache = new Map<string, { data: any; timestamp: number }>();
+const SPELLBOOK_CACHE_TTL_MS = 1000 * 60 * 60; // 1 hour cache
+let lastSpellbookRequestTime = 0;
+const SPELLBOOK_MIN_INTERVAL_MS = 250; // max ~4 req/s (safely below 80 req/min guidance)
+
+async function fetchSpellbookThrottled(url: string, options: RequestInit = {}) {
+  const now = Date.now();
+  const timeSinceLast = now - lastSpellbookRequestTime;
+  if (timeSinceLast < SPELLBOOK_MIN_INTERVAL_MS) {
+    const waitMs = SPELLBOOK_MIN_INTERVAL_MS - timeSinceLast;
+    await new Promise(resolve => setTimeout(resolve, waitMs));
+  }
+  lastSpellbookRequestTime = Date.now();
+
+  const response = await fetch(url, {
+    ...options,
+    headers: {
+      'User-Agent': 'MTGCollectionApp/1.0 (Contact: collector@mtg-app.local)',
+      'Accept': 'application/json',
+      ...(options.headers || {})
+    }
+  });
+
+  return response;
+}
+
+// 1. Find Combos in a Deck (Commander Spellbook /find-my-combos)
+app.post('/api/spellbook/find-my-combos', async (req, res) => {
+  try {
+    const { commanders = [], main = [] } = req.body;
+
+    const formattedCommanders = (Array.isArray(commanders) ? commanders : [])
+      .map((c: any) => typeof c === 'string' ? { card: c.trim(), quantity: 1 } : { card: (c.card || c.name || '').trim(), quantity: c.quantity || 1 })
+      .filter((c: any) => Boolean(c.card));
+
+    const formattedMain = (Array.isArray(main) ? main : [])
+      .map((c: any) => typeof c === 'string' ? { card: c.trim(), quantity: 1 } : { card: (c.card || c.name || '').trim(), quantity: c.quantity || 1 })
+      .filter((c: any) => Boolean(c.card));
+
+    if (formattedCommanders.length === 0 && formattedMain.length === 0) {
+      return res.json({
+        results: {
+          identity: '',
+          included: [],
+          almostIncluded: []
+        }
+      });
+    }
+
+    // Cache key based on sorted cards
+    const sortedComms = [...formattedCommanders].map(c => c.card).sort().join('|');
+    const sortedMainNames = [...formattedMain].map(c => c.card).sort().join('|');
+    const cacheKey = `deck_combos:${sortedComms}::${sortedMainNames}`;
+
+    const cached = spellbookCache.get(cacheKey);
+    if (cached && (Date.now() - cached.timestamp < SPELLBOOK_CACHE_TTL_MS)) {
+      return res.json(cached.data);
+    }
+
+    const payload = {
+      commanders: formattedCommanders,
+      main: formattedMain
+    };
+
+    const spellbookRes = await fetchSpellbookThrottled(`${SPELLBOOK_BASE}/find-my-combos/`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(payload)
+    });
+
+    if (!spellbookRes.ok) {
+      const errText = await spellbookRes.text();
+      console.error('Commander Spellbook API error:', spellbookRes.status, errText);
+      return res.status(spellbookRes.status).json({
+        error: `Commander Spellbook API error (${spellbookRes.status}): ${errText}`
+      });
+    }
+
+    const data = await spellbookRes.json();
+    spellbookCache.set(cacheKey, { data, timestamp: Date.now() });
+
+    res.json(data);
+  } catch (err: any) {
+    console.error('Error in /api/spellbook/find-my-combos:', err);
+    res.status(500).json({ error: 'Nie udało się pobrać kombinacji: ' + err.message });
+  }
+});
+
+// 2. Find Combos featuring a specific Card (Commander Spellbook /variants/?q=card:"...")
+app.get('/api/spellbook/card-combos', async (req, res) => {
+  try {
+    const cardName = (req.query.cardName as string || '').trim();
+    if (!cardName) {
+      return res.status(400).json({ error: 'Parametr "cardName" jest wymagany' });
+    }
+
+    const cacheKey = `card_combos:${cardName.toLowerCase()}`;
+    const cached = spellbookCache.get(cacheKey);
+    if (cached && (Date.now() - cached.timestamp < SPELLBOOK_CACHE_TTL_MS)) {
+      return res.json(cached.data);
+    }
+
+    const queryUrl = `${SPELLBOOK_BASE}/variants/?q=card:%22${encodeURIComponent(cardName)}%22&limit=20`;
+    const spellbookRes = await fetchSpellbookThrottled(queryUrl);
+
+    if (!spellbookRes.ok) {
+      const errText = await spellbookRes.text();
+      return res.status(spellbookRes.status).json({
+        error: `Commander Spellbook API error (${spellbookRes.status}): ${errText}`
+      });
+    }
+
+    const data = await spellbookRes.json();
+    const resultPayload = {
+      results: Array.isArray(data.results) ? data.results : [],
+      count: data.count || (Array.isArray(data.results) ? data.results.length : 0)
+    };
+
+    spellbookCache.set(cacheKey, { data: resultPayload, timestamp: Date.now() });
+    res.json(resultPayload);
+  } catch (err: any) {
+    console.error('Error in /api/spellbook/card-combos:', err);
+    res.status(500).json({ error: 'Nie udało się pobrać kombinacji dla karty: ' + err.message });
+  }
+});
+
+// 3. Spellbook Status & Stats
+app.get('/api/spellbook/status', (_req, res) => {
+  res.json({
+    status: 'online',
+    endpoint: SPELLBOOK_BASE,
+    cachedEntries: spellbookCache.size,
+    rateLimitIntervalMs: SPELLBOOK_MIN_INTERVAL_MS
+  });
+});
+
 // --- START SERVER ---
 
 async function startServer() {

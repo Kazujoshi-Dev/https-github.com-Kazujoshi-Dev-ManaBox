@@ -24,6 +24,7 @@ export interface DeckHeaderProps {
   onToggleCardSource: () => void;
   onOpenAddModal: () => void;
   onOpenImportExport?: () => void;
+  onOpenCombos?: () => void;
 }
 
 export interface CommanderShowcaseProps {

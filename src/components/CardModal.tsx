@@ -13,6 +13,7 @@ import {
   useCardPrints,
   useCardModalForm,
 } from './card-modal';
+import { CardCombosTab } from './card-modal/CardCombosTab';
 
 export const CardModal: React.FC<CardModalProps> = ({
   card,
@@ -134,7 +135,7 @@ export const CardModal: React.FC<CardModalProps> = ({
           activeTab={activeTab}
           printsCount={prints.length}
           isLoadingPrints={isLoadingPrints}
-          onToggleTab={() => setActiveTab(prev => (prev === 'prints' ? 'details' : 'prints'))}
+          onSelectTab={setActiveTab}
           onClose={onClose}
         />
 
@@ -143,6 +144,11 @@ export const CardModal: React.FC<CardModalProps> = ({
 
         {/* Modal Scrollable Body */}
         <div className="p-6 overflow-y-auto space-y-6 flex-1">
+          {/* Spellbook Combos Tab */}
+          {activeTab === 'combos' && (
+            <CardCombosTab cardName={activeCard.name} />
+          )}
+
           {/* Prints Browser Tab */}
           {activeTab === 'prints' && (
             <CardPrintsTab
@@ -161,7 +167,8 @@ export const CardModal: React.FC<CardModalProps> = ({
           )}
 
           {/* Standard Details & Collection Form View */}
-          <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
+          {activeTab === 'details' && (
+            <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
             {/* Left Column: Image, Market Prices & Wishlist */}
             <div className="md:col-span-5 flex flex-col items-center space-y-4">
               <CardImagePreview
@@ -230,6 +237,7 @@ export const CardModal: React.FC<CardModalProps> = ({
               />
             </div>
           </div>
+          )}
         </div>
       </div>
     </div>

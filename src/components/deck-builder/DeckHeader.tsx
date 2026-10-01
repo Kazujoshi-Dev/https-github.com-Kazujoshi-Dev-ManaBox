@@ -1,5 +1,5 @@
 import React from 'react';
-import { ArrowLeft, Crown, Layers, Globe, Plus, FileText } from 'lucide-react';
+import { ArrowLeft, Crown, Layers, Globe, Plus, FileText, Sparkles } from 'lucide-react';
 import { formatCurrency } from '../../utils/formatters';
 import { DeckHeaderProps } from './types';
 
@@ -15,6 +15,7 @@ export const DeckHeader: React.FC<DeckHeaderProps> = ({
   onToggleCardSource,
   onOpenAddModal,
   onOpenImportExport,
+  onOpenCombos,
 }) => {
   return (
     <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
@@ -93,6 +94,19 @@ export const DeckHeader: React.FC<DeckHeaderProps> = ({
             {formatCurrency(totalDeckValue, currency)}
           </span>
         </div>
+
+        {/* Commander Spellbook Combos Button */}
+        {onOpenCombos && (
+          <button
+            type="button"
+            onClick={onOpenCombos}
+            className="px-3.5 py-2 bg-gradient-to-r from-purple-900/60 to-purple-800/60 hover:from-purple-800/80 hover:to-purple-700/80 text-purple-200 border border-purple-500/40 rounded-xl font-bold text-xs flex items-center gap-2 transition-all cursor-pointer shadow-md shadow-purple-950/30 group"
+            title="Sprawdź kombinacje i nieskończone pętle talii w bazie Commander Spellbook"
+          >
+            <Sparkles className="w-4 h-4 text-purple-300 group-hover:text-amber-300 transition-colors" />
+            <span>Combo (Spellbook)</span>
+          </button>
+        )}
 
         {/* Import / Export TXT Button */}
         {onOpenImportExport && (

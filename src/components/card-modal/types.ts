@@ -26,7 +26,7 @@ export interface CardModalProps {
   initialFoil?: boolean;
 }
 
-export type CardModalTab = 'details' | 'prints';
+export type CardModalTab = 'details' | 'prints' | 'combos';
 
 export interface CardModalHeaderProps {
   cardName: string;
@@ -35,7 +35,7 @@ export interface CardModalHeaderProps {
   activeTab: CardModalTab;
   printsCount: number;
   isLoadingPrints: boolean;
-  onToggleTab: () => void;
+  onSelectTab: (tab: CardModalTab) => void;
   onClose: () => void;
 }
 

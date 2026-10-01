@@ -14,6 +14,8 @@ import {
   useDeckSearch,
 } from './deck-builder';
 import { DeckImportExportModal } from './DeckImportExportModal';
+import { DeckCombosModal } from './deck-builder/DeckCombosModal';
+import { wishlistApi } from '../services/api';
 
 // Re-export constants for external consumers if needed
 export { DECK_CATEGORIES, getCardCategory };
@@ -25,7 +27,7 @@ export const DeckBuilder: React.FC<DeckBuilderProps> = ({
   onUpdateDeck,
   onBack,
   onViewCardDetails,
-  showToast = () => {},
+  showToast = (_msg: string) => {},
 }) => {
   // Hover preview state
   const [hoveredCard, setHoveredCard] = useState<ScryfallCard | null>(null);
@@ -34,6 +36,9 @@ export const DeckBuilder: React.FC<DeckBuilderProps> = ({
   // Deck Import / Export Modal state
   const [isImportExportOpen, setIsImportExportOpen] = useState(false);
   const [importExportTab, setImportExportTab] = useState<'export' | 'import'>('export');
+
+  // Commander Spellbook Combos Modal state
+  const [isCombosModalOpen, setIsCombosModalOpen] = useState(false);
 
   // Deck statistics hook (curve, counts, valuations, categories)
   const {
@@ -148,6 +153,75 @@ export const DeckBuilder: React.FC<DeckBuilderProps> = ({
     setSearchSource(nextSource);
   }, [deck, onUpdateDeck, setSearchSource]);
 
+  // Spellbook combo quick actions
+  const handleAddCardByName = useCallback(async (cardName: string) => {
+    try {
+      const res = await fetch(`/api/scryfall/named?exact=${encodeURIComponent(cardName)}`);
+      if (res.ok) {
+        const card: ScryfallCard = await res.json();
+        handleAddCardToDeck(card);
+        showToast(`Dodano kartę "${card.name}" do talii!`);
+      } else {
+        const fuzzyRes = await fetch(`/api/scryfall/named?fuzzy=${encodeURIComponent(cardName)}`);
+        if (fuzzyRes.ok) {
+          const card: ScryfallCard = await fuzzyRes.json();
+          handleAddCardToDeck(card);
+          showToast(`Dodano kartę "${card.name}" do talii!`);
+        } else {
+          showToast(`Nie znaleziono karty "${cardName}" w bazie Scryfall.`);
+        }
+      }
+    } catch (err: any) {
+      showToast(`Błąd dodawania karty: ${err.message}`);
+    }
+  }, [handleAddCardToDeck, showToast]);
+
+  const handleAddToWishlistByName = useCallback(async (cardName: string) => {
+    try {
+      let card: ScryfallCard | null = null;
+      const res = await fetch(`/api/scryfall/named?exact=${encodeURIComponent(cardName)}`);
+      if (res.ok) {
+        card = await res.json();
+      } else {
+        const fuzzyRes = await fetch(`/api/scryfall/named?fuzzy=${encodeURIComponent(cardName)}`);
+        if (fuzzyRes.ok) {
+          card = await fuzzyRes.json();
+        }
+      }
+
+      if (!card) {
+        showToast(`Nie znaleziono karty "${cardName}".`);
+        return;
+      }
+
+      await wishlistApi.create({
+        cardId: card.id,
+        card,
+        targetQuantity: 1,
+        isFoil: false
+      });
+      showToast(`Dodano "${card.name}" do Twojej Wishlisty!`);
+    } catch (err: any) {
+      showToast(`Błąd dodawania do Wishlisty: ${err.message}`);
+    }
+  }, [showToast]);
+
+  const handleViewCardDetailsByName = useCallback(async (cardName: string) => {
+    try {
+      const res = await fetch(`/api/scryfall/named?exact=${encodeURIComponent(cardName)}`);
+      if (res.ok) {
+        const card: ScryfallCard = await res.json();
+        onViewCardDetails(card);
+      } else {
+        const fuzzy = await fetch(`/api/scryfall/named?fuzzy=${encodeURIComponent(cardName)}`);
+        if (fuzzy.ok) {
+          const card: ScryfallCard = await fuzzy.json();
+          onViewCardDetails(card);
+        }
+      }
+    } catch (_) {}
+  }, [onViewCardDetails]);
+
   const handleUpdateDeckCards = useCallback(
     async (
       newCards: DeckCardEntry[],
@@ -206,6 +280,7 @@ export const DeckBuilder: React.FC<DeckBuilderProps> = ({
             setImportExportTab('export');
             setIsImportExportOpen(true);
           }}
+          onOpenCombos={() => setIsCombosModalOpen(true)}
         />
 
         {/* Commander Featured Showcase / Select Placeholder */}
@@ -267,6 +342,18 @@ export const DeckBuilder: React.FC<DeckBuilderProps> = ({
           onClose={() => setIsImportExportOpen(false)}
           onUpdateDeckCards={handleUpdateDeckCards}
           showToast={showToast}
+        />
+      )}
+
+      {/* 7. Commander Spellbook Combos Modal */}
+      {isCombosModalOpen && (
+        <DeckCombosModal
+          isOpen={isCombosModalOpen}
+          deck={deck}
+          onClose={() => setIsCombosModalOpen(false)}
+          onAddCardToDeck={handleAddCardByName}
+          onAddToWishlist={handleAddToWishlistByName}
+          onViewCardDetails={handleViewCardDetailsByName}
         />
       )}
     </div>

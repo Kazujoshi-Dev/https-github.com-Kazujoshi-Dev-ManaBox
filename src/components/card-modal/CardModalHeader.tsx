@@ -1,5 +1,5 @@
 import React from 'react';
-import { X, Layers } from 'lucide-react';
+import { X, Layers, Sparkles } from 'lucide-react';
 import { ManaSymbol } from '../ManaSymbol';
 import { CardModalHeaderProps } from './types';
 
@@ -10,7 +10,7 @@ export const CardModalHeader: React.FC<CardModalHeaderProps> = ({
   activeTab,
   printsCount,
   isLoadingPrints,
-  onToggleTab,
+  onSelectTab,
   onClose,
 }) => {
   return (
@@ -28,9 +28,23 @@ export const CardModalHeader: React.FC<CardModalHeaderProps> = ({
       </div>
 
       <div className="flex items-center gap-2">
-        {/* Prints Switcher Pill in Top Bar */}
+        {/* Combos Switcher Pill */}
         <button
-          onClick={onToggleTab}
+          onClick={() => onSelectTab(activeTab === 'combos' ? 'details' : 'combos')}
+          className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 border transition-all cursor-pointer ${
+            activeTab === 'combos'
+              ? 'bg-purple-600 text-white border-purple-500 shadow-md'
+              : 'bg-stone-900 hover:bg-stone-800 text-purple-300 border-purple-500/30'
+          }`}
+          title="Przeglądaj kombinacje Commander Spellbook dla tej karty"
+        >
+          <Sparkles className="w-3.5 h-3.5" />
+          <span>Combo Spellbook</span>
+        </button>
+
+        {/* Prints Switcher Pill */}
+        <button
+          onClick={() => onSelectTab(activeTab === 'prints' ? 'details' : 'prints')}
           className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 border transition-all cursor-pointer ${
             activeTab === 'prints'
               ? 'bg-amber-500 text-stone-950 border-amber-400 shadow-md'
@@ -39,7 +53,7 @@ export const CardModalHeader: React.FC<CardModalHeaderProps> = ({
           title="Przełącz widok wydań karty"
         >
           <Layers className="w-3.5 h-3.5" />
-          <span>Wersje / Printy ({isLoadingPrints ? '...' : printsCount})</span>
+          <span>Wersje ({isLoadingPrints ? '...' : printsCount})</span>
         </button>
 
         <button
@@ -53,3 +67,4 @@ export const CardModalHeader: React.FC<CardModalHeaderProps> = ({
     </div>
   );
 };
+
