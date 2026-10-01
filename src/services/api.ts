@@ -1,4 +1,4 @@
-import { AppSettings, Catalog, CollectionItem, DeckItem, ScryfallCard, WishlistItem, SpellbookFindCombosResponse, SpellbookVariant } from '../types';
+import { AppSettings, Catalog, CollectionItem, DeckItem, ScryfallCard, WishlistItem, SpellbookFindCombosResponse, SpellbookVariant, RegisteredUserSummary } from '../types';
 
 const TOKEN_KEY = 'mtg_auth_token';
 const USER_KEY = 'mtg_auth_user';
@@ -206,6 +206,17 @@ export const publicSaleApi = {
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
       throw new Error(err.error || `Błąd pobierania oferty (${res.status})`);
+    }
+    return res.json();
+  }
+};
+
+export const usersApi = {
+  getAll: async (): Promise<RegisteredUserSummary[]> => {
+    const res = await fetch('/api/users');
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || `Błąd pobierania listy użytkowników (${res.status})`);
     }
     return res.json();
   }

@@ -16,8 +16,9 @@ import { SetTopCards } from './SetTopCards';
 import { Analytics } from './Analytics';
 import { Wishlist } from './Wishlist';
 import { ForSaleList } from './ForSaleList';
+import { UsersList } from './UsersList';
 
-export type NavigationTab = 'collection' | 'decks' | 'search' | 'set-top' | 'analytics' | 'wishlist' | 'for-sale';
+export type NavigationTab = 'collection' | 'decks' | 'search' | 'set-top' | 'analytics' | 'wishlist' | 'for-sale' | 'users';
 
 interface TabContentProps {
   activeTab: NavigationTab;
@@ -211,6 +212,16 @@ export const TabContent: React.FC<TabContentProps> = ({
           onUpdateCollectionItem={onUpdateCollectionItem || (() => {})}
           onViewCardDetails={onViewCollectionItemDetails}
           onGoToCollection={() => setActiveTab('collection')}
+          showToast={showToast}
+        />
+      );
+
+    case 'users':
+      return (
+        <UsersList
+          settings={settings}
+          currentUser={currentUser}
+          onViewCardDetails={onViewDeckCardDetails || onSelectCard}
           showToast={showToast}
         />
       );

@@ -165,6 +165,17 @@ export interface AuthUser {
   createdAt?: string;
 }
 
+export interface RegisteredUserSummary {
+  id: string;
+  username: string;
+  email: string;
+  createdAt: string;
+  forSaleCount: number;
+  forSaleItemsCount: number;
+  totalCardsCount: number;
+  currency?: CurrencyCode;
+}
+
 // Commander Spellbook API Types
 export interface SpellbookCard {
   id: number;

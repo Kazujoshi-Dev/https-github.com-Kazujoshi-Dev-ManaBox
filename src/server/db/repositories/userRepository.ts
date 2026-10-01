@@ -126,3 +126,26 @@ export async function createUser(
     }
   );
 }
+
+export async function getAllUsers(): Promise<Array<{ id: string; username: string; email: string; createdAt: string }>> {
+  return withDb(
+    async (p) => {
+      const res = await p.query('SELECT id, username, email, created_at FROM users ORDER BY created_at DESC');
+      return res.rows.map(r => ({
+        id: r.id,
+        username: r.username,
+        email: r.email,
+        createdAt: r.created_at || ''
+      }));
+    },
+    () => {
+      const users = readJsonFile<DbUser[]>(USERS_FILE, []);
+      return users.map(u => ({
+        id: u.id,
+        username: u.username,
+        email: u.email,
+        createdAt: u.created_at || ''
+      }));
+    }
+  );
+}

@@ -1338,6 +1338,51 @@ app.delete('/api/catalogs/:id', authMiddleware, async (req, res) => {
   }
 });
 
+// --- USERS LIST ENDPOINT (PUBLIC / REGISTERED USERS) ---
+
+app.get('/api/users', async (req, res) => {
+  try {
+    const rawUsers = await db.getAllUsers();
+    const result = await Promise.all(
+      rawUsers.map(async (u) => {
+        try {
+          const col = await db.getCollection(u.id);
+          const forSaleItems = col.filter((item) => Boolean(item.isForSale));
+          const forSaleCount = forSaleItems.reduce((sum, item) => sum + (item.quantity || 0) + (item.quantityFoil || 0), 0);
+          const totalCardsCount = col.reduce((sum, item) => sum + (item.quantity || 0) + (item.quantityFoil || 0), 0);
+          const settings = await db.getSettings(u.id);
+
+          return {
+            id: u.id,
+            username: u.username,
+            email: u.email,
+            createdAt: u.createdAt,
+            forSaleCount,
+            forSaleItemsCount: forSaleItems.length,
+            totalCardsCount,
+            currency: settings?.currency || 'PLN'
+          };
+        } catch {
+          return {
+            id: u.id,
+            username: u.username,
+            email: u.email,
+            createdAt: u.createdAt,
+            forSaleCount: 0,
+            forSaleItemsCount: 0,
+            totalCardsCount: 0,
+            currency: 'PLN'
+          };
+        }
+      })
+    );
+    res.json(result);
+  } catch (err: any) {
+    console.error('Error in /api/users:', err);
+    res.status(500).json({ error: 'Błąd pobierania listy użytkowników: ' + err.message });
+  }
+});
+
 // --- PUBLIC SALE ENDPOINT (NO AUTH REQUIRED) ---
 
 app.get('/api/public/sale/:userRef', async (req, res) => {
