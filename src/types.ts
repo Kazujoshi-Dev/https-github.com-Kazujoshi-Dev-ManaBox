@@ -171,6 +171,8 @@ export interface SpellbookCard {
   oracleId?: string;
   typeLine?: string;
   imageUriFrontNormal?: string | null;
+  imageUriFrontSmall?: string | null;
+  imageUriFrontLarge?: string | null;
   imageUriFrontArtCrop?: string | null;
 }
 
