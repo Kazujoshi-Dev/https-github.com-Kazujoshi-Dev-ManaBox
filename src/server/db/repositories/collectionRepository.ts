@@ -9,7 +9,8 @@ export async function getCollection(userId: string): Promise<CollectionItem[]> {
       const res = await p.query(
         `SELECT id, card_id as "cardId", card, quantity, quantity_foil as "quantityFoil",
                 condition, language, purchase_price as "purchasePrice", notes, binder,
-                added_at as "addedAt", last_updated_price_at as "lastUpdatedPriceAt"
+                added_at as "addedAt", last_updated_price_at as "lastUpdatedPriceAt",
+                is_for_sale as "isForSale", sale_price as "salePrice"
          FROM user_collections WHERE user_id = $1 ORDER BY added_at DESC`,
         [userId]
       );
@@ -29,8 +30,8 @@ export async function addCollectionItem(userId: string, item: CollectionItem): P
         `INSERT INTO user_collections (
           id, user_id, card_id, card, quantity, quantity_foil,
           condition, language, purchase_price, notes, binder,
-          added_at, last_updated_price_at
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)`,
+          added_at, last_updated_price_at, is_for_sale, sale_price
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)`,
         [
           item.id,
           userId,
@@ -44,7 +45,9 @@ export async function addCollectionItem(userId: string, item: CollectionItem): P
           item.notes || '',
           item.binder || 'Klaser Główny',
           item.addedAt || new Date().toISOString(),
-          item.lastUpdatedPriceAt || null
+          item.lastUpdatedPriceAt || null,
+          Boolean(item.isForSale),
+          item.salePrice ?? null
         ]
       );
       return item;
@@ -83,16 +86,19 @@ export async function updateCollectionItem(
       const newPrice = updates.purchasePrice !== undefined ? updates.purchasePrice : current.purchase_price;
       const newNotes = updates.notes !== undefined ? updates.notes : current.notes;
       const newBinder = updates.binder !== undefined ? updates.binder : current.binder;
+      const newIsForSale = updates.isForSale !== undefined ? Boolean(updates.isForSale) : Boolean(current.is_for_sale);
+      const newSalePrice = updates.salePrice !== undefined ? updates.salePrice : current.sale_price;
 
       const res = await p.query(
         `UPDATE user_collections
          SET card_id = $1, card = $2, quantity = $3, quantity_foil = $4, condition = $5,
-             language = $6, purchase_price = $7, notes = $8, binder = $9
-         WHERE id = $10 AND user_id = $11
+             language = $6, purchase_price = $7, notes = $8, binder = $9, is_for_sale = $10, sale_price = $11
+         WHERE id = $12 AND user_id = $13
          RETURNING id, card_id as "cardId", card, quantity, quantity_foil as "quantityFoil",
                    condition, language, purchase_price as "purchasePrice", notes, binder,
-                   added_at as "addedAt", last_updated_price_at as "lastUpdatedPriceAt"`,
-        [newCardId, newCard, newQty, newQtyFoil, newCond, newLang, newPrice, newNotes, newBinder, id, userId]
+                   added_at as "addedAt", last_updated_price_at as "lastUpdatedPriceAt",
+                   is_for_sale as "isForSale", sale_price as "salePrice"`,
+        [newCardId, newCard, newQty, newQtyFoil, newCond, newLang, newPrice, newNotes, newBinder, newIsForSale, newSalePrice, id, userId]
       );
 
       return res.rows[0] ? mapCollectionRow(res.rows[0]) : null;
@@ -114,6 +120,7 @@ export async function updateCollectionItem(
     }
   );
 }
+
 
 export async function deleteCollectionItem(userId: string, id: string): Promise<boolean> {
   return withDb(

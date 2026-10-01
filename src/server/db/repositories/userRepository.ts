@@ -31,6 +31,24 @@ export async function getUserById(id: string): Promise<DbUser | null> {
   );
 }
 
+export async function getUserByIdOrUsername(ref: string): Promise<DbUser | null> {
+  const cleanRef = (ref || '').trim();
+  const lowerRef = cleanRef.toLowerCase();
+  return withDb(
+    async (p) => {
+      const res = await p.query(
+        'SELECT * FROM users WHERE id = $1 OR LOWER(username) = $2 LIMIT 1',
+        [cleanRef, lowerRef]
+      );
+      return res.rows[0] ? mapUserRow(res.rows[0]) : null;
+    },
+    () => {
+      const users = readJsonFile<DbUser[]>(USERS_FILE, []);
+      return users.find((u) => u.id === cleanRef || u.username.toLowerCase() === lowerRef) || null;
+    }
+  );
+}
+
 export async function updateUserPassword(
   email: string,
   passwordHash: string,

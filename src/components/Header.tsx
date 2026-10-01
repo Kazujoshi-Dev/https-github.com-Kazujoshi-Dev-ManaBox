@@ -18,19 +18,21 @@ import {
   User,
   Swords,
   Camera,
-  ExternalLink
+  ExternalLink,
+  CircleDollarSign
 } from 'lucide-react';
 import { formatCurrency } from '../utils/formatters';
 import { AppSettings, AuthUser } from '../types';
 
 interface HeaderProps {
-  activeTab: 'collection' | 'search' | 'set-top' | 'analytics' | 'wishlist' | 'decks';
-  setActiveTab: (tab: 'collection' | 'search' | 'set-top' | 'analytics' | 'wishlist' | 'decks') => void;
+  activeTab: 'collection' | 'search' | 'set-top' | 'analytics' | 'wishlist' | 'decks' | 'for-sale';
+  setActiveTab: (tab: 'collection' | 'search' | 'set-top' | 'analytics' | 'wishlist' | 'decks' | 'for-sale') => void;
   totalCards: number;
   totalValue: number;
   totalPurchaseCost: number;
   settings: AppSettings;
   decksCount?: number;
+  forSaleCount?: number;
   onOpenSettings: () => void;
   onRefreshPrices: () => void;
   isRefreshing: boolean;
@@ -51,6 +53,7 @@ export const Header: React.FC<HeaderProps> = ({
   totalPurchaseCost,
   settings,
   decksCount = 0,
+  forSaleCount = 0,
   onOpenSettings,
   onRefreshPrices,
   isRefreshing,
@@ -270,6 +273,23 @@ export const Header: React.FC<HeaderProps> = ({
             >
               <FolderHeart className="w-4 h-4 text-rose-400" />
               <span>Lista Życzeń</span>
+            </button>
+
+            <button
+              onClick={() => setActiveTab('for-sale')}
+              className={`px-3.5 py-2 rounded-lg text-xs font-semibold flex items-center gap-2 transition-all whitespace-nowrap ${
+                activeTab === 'for-sale'
+                  ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-bold shadow-sm'
+                  : 'text-stone-400 hover:text-stone-200 hover:bg-stone-800/60'
+              }`}
+            >
+              <CircleDollarSign className="w-4 h-4 text-emerald-400" />
+              <span>Sprzedam</span>
+              {forSaleCount > 0 && (
+                <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-emerald-950 text-emerald-300 font-mono font-bold border border-emerald-800/50">
+                  {forSaleCount}
+                </span>
+              )}
             </button>
           </div>
 

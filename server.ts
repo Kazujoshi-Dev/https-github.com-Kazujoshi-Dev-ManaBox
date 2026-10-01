@@ -1338,6 +1338,46 @@ app.delete('/api/catalogs/:id', authMiddleware, async (req, res) => {
   }
 });
 
+// --- PUBLIC SALE ENDPOINT (NO AUTH REQUIRED) ---
+
+app.get('/api/public/sale/:userRef', async (req, res) => {
+  try {
+    const { userRef } = req.params;
+    if (!userRef || !userRef.trim()) {
+      return res.status(400).json({ error: 'Identyfikator lub nazwa użytkownika jest wymagana' });
+    }
+
+    const user = await db.getUserByIdOrUsername(userRef.trim());
+    if (!user) {
+      return res.status(404).json({ error: 'Nie znaleziono oferty dla tego użytkownika' });
+    }
+
+    const collection = await db.getCollection(user.id);
+    const forSaleItems = collection.filter((item) => Boolean(item.isForSale));
+    const settings = await db.getSettings(user.id);
+
+    res.json({
+      seller: {
+        id: user.id,
+        username: user.username,
+        email: user.email,
+        createdAt: user.created_at
+      },
+      cards: forSaleItems,
+      settings: settings || {
+        currency: 'PLN',
+        pricingSource: 'CARDMARKET',
+        eurToPlnRate: 4.31,
+        usdToPlnRate: 3.96,
+        autoNbpRate: true,
+      }
+    });
+  } catch (err: any) {
+    console.error('Error in /api/public/sale:', err);
+    res.status(500).json({ error: 'Błąd pobierania oferty: ' + err.message });
+  }
+});
+
 // --- WISHLIST ENDPOINTS (USER-ISOLATED) ---
 
 app.get('/api/wishlist', authMiddleware, async (req, res) => {

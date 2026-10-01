@@ -122,6 +122,36 @@ export function useAppData({ userId, onUnauthorized, showToast, onSettingsLoaded
     }
   }, [collection, deleteCollectionItem, onUnauthorized]);
 
+  const updateCollectionItemData = useCallback(async (id: string, updates: Partial<CollectionItem>) => {
+    try {
+      const res = await collectionApi.update(id, updates, onUnauthorized);
+      if (res.ok) {
+        const updated = await res.json();
+        setCollection(prev => prev.map(c => c.id === id ? { ...c, ...updated } : c));
+        return updated;
+      }
+    } catch (err) {
+      console.error('Failed to update item data:', err);
+    }
+    return null;
+  }, [onUnauthorized]);
+
+  const toggleForSale = useCallback(async (item: CollectionItem, customPrice?: number | null) => {
+    const nextForSale = !item.isForSale;
+    const updates: Partial<CollectionItem> = {
+      isForSale: nextForSale,
+      ...(customPrice !== undefined ? { salePrice: customPrice } : {})
+    };
+    const res = await updateCollectionItemData(item.id, updates);
+    if (res) {
+      if (nextForSale) {
+        showToast(`Wystawiono "${item.card.name}" na sprzedaż! Karta trafiła do zakładki „Sprzedam”.`);
+      } else {
+        showToast(`Wycofano "${item.card.name}" ze sprzedaży.`);
+      }
+    }
+  }, [updateCollectionItemData, showToast]);
+
   const saveToCollection = useCallback(async (
     data: {
       card: ScryfallCard;
@@ -455,6 +485,8 @@ export function useAppData({ userId, onUnauthorized, showToast, onSettingsLoaded
     refreshPrices,
     exportCollection,
     importCollection,
-    bulkAddToCollection
+    bulkAddToCollection,
+    updateCollectionItemData,
+    toggleForSale
   };
 }

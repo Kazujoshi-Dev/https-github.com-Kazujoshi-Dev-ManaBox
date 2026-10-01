@@ -9,6 +9,7 @@ export const CollectionTableView: React.FC<CollectionTableViewProps> = ({
   onDeleteItem,
   onEditItem,
   onViewCardDetails,
+  onToggleForSale,
 }) => {
   return (
     <div className="bg-stone-900 border border-stone-800 rounded-2xl overflow-hidden shadow-lg overflow-x-auto">
@@ -36,6 +37,7 @@ export const CollectionTableView: React.FC<CollectionTableViewProps> = ({
               onDeleteItem={onDeleteItem}
               onEditItem={onEditItem}
               onViewCardDetails={onViewCardDetails}
+              onToggleForSale={onToggleForSale}
             />
           ))}
         </tbody>
@@ -43,3 +45,4 @@ export const CollectionTableView: React.FC<CollectionTableViewProps> = ({
     </div>
   );
 };
+

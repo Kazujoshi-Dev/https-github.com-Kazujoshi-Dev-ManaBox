@@ -4,6 +4,7 @@ import { Crown, Swords, X, Sparkles, Check, Search, Layers, Globe } from 'lucide
 
 interface DeckCreateModalProps {
   isOpen: boolean;
+  deckToEdit?: DeckItem | null;
   collection: CollectionItem[];
   onClose: () => void;
   onCreateDeck: (data: {
@@ -13,13 +14,16 @@ interface DeckCreateModalProps {
     cardSource?: 'all' | 'collection';
     commander?: ScryfallCard | null;
   }) => Promise<void>;
+  onUpdateDeck?: (updated: DeckItem) => Promise<void> | void;
 }
 
 export const DeckCreateModal: React.FC<DeckCreateModalProps> = ({
   isOpen,
+  deckToEdit,
   collection,
   onClose,
-  onCreateDeck
+  onCreateDeck,
+  onUpdateDeck,
 }) => {
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
@@ -31,6 +35,28 @@ export const DeckCreateModal: React.FC<DeckCreateModalProps> = ({
   const [isSearchingScryfall, setIsSearchingScryfall] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Sync state when modal opens for create or edit mode
+  useEffect(() => {
+    if (isOpen) {
+      if (deckToEdit) {
+        setName(deckToEdit.name || '');
+        setDescription(deckToEdit.description || '');
+        setFormat(deckToEdit.format || 'EDH Commander');
+        setCardSource(deckToEdit.cardSource || 'collection');
+        setSelectedCommander(deckToEdit.commander || null);
+        setCommanderSearch('');
+      } else {
+        setName('');
+        setDescription('');
+        setFormat('EDH Commander');
+        setCardSource('collection');
+        setSelectedCommander(null);
+        setCommanderSearch('');
+      }
+      setError(null);
+    }
+  }, [isOpen, deckToEdit]);
 
   // Search commanders from Scryfall when 'all' is selected and search query is >= 3 chars
   useEffect(() => {
@@ -89,16 +115,27 @@ export const DeckCreateModal: React.FC<DeckCreateModalProps> = ({
     setError(null);
 
     try {
-      await onCreateDeck({
-        name: name.trim(),
-        format: format || 'EDH Commander',
-        description: description.trim(),
-        cardSource,
-        commander: selectedCommander
-      });
+      if (deckToEdit && onUpdateDeck) {
+        await onUpdateDeck({
+          ...deckToEdit,
+          name: name.trim(),
+          format: format || 'EDH Commander',
+          description: description.trim(),
+          cardSource,
+          commander: selectedCommander,
+        });
+      } else {
+        await onCreateDeck({
+          name: name.trim(),
+          format: format || 'EDH Commander',
+          description: description.trim(),
+          cardSource,
+          commander: selectedCommander,
+        });
+      }
       onClose();
     } catch (err: any) {
-      setError(err.message || 'Wystąpił błąd podczas tworzenia talii.');
+      setError(err.message || 'Wystąpił błąd podczas zapisywania talii.');
     } finally {
       setIsLoading(false);
     }
@@ -125,8 +162,12 @@ export const DeckCreateModal: React.FC<DeckCreateModalProps> = ({
               <Swords className="w-5 h-5 text-purple-300" />
             </div>
             <div>
-              <h3 className="font-bold text-base text-white">Utwórz nową talię</h3>
-              <p className="text-xs text-stone-400">Domyślny format: EDH Commander (100 kart)</p>
+              <h3 className="font-bold text-base text-white">
+                {deckToEdit ? 'Edytuj talię' : 'Utwórz nową talię'}
+              </h3>
+              <p className="text-xs text-stone-400">
+                {deckToEdit ? 'Zmień nazwę, opis, dowódcę lub źródło kart' : 'Domyślny format: EDH Commander (100 kart)'}
+              </p>
             </div>
           </div>
           <button
@@ -356,7 +397,9 @@ export const DeckCreateModal: React.FC<DeckCreateModalProps> = ({
               disabled={isLoading}
               className="px-4 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-bold text-xs rounded-xl shadow-md transition-all cursor-pointer disabled:opacity-50"
             >
-              {isLoading ? 'Tworzenie...' : 'Utwórz talię'}
+              {isLoading 
+                ? (deckToEdit ? 'Zapisywanie...' : 'Tworzenie...') 
+                : (deckToEdit ? 'Zapisz zmiany' : 'Utwórz talię')}
             </button>
           </div>
 

@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from 'react';
-import { ScryfallCard, CollectionItem, DeckItem, CardCondition, CardLanguage } from './types';
+import { ScryfallCard, CollectionItem, DeckItem, CardCondition, CardLanguage, AppSettings } from './types';
 import { Header } from './components/Header';
 import { AuthView } from './components/AuthView';
 import { TabContent, NavigationTab } from './components/TabContent';
@@ -9,12 +9,15 @@ import { DeckCreateModal } from './components/DeckCreateModal';
 import { ImportExportModal } from './components/ImportExportModal';
 import { DeckImportExportModal } from './components/DeckImportExportModal';
 import { CameraScannerModal } from './components/camera-scanner/CameraScannerModal';
+import { PublicSaleView } from './components/PublicSaleView';
 import { Toast } from './components/Toast';
+import { CircleDollarSign } from 'lucide-react';
 import { useAuth } from './hooks/useAuth';
 import { useToast } from './hooks/useToast';
 import { useSettings } from './hooks/useSettings';
 import { useCollectionStats } from './hooks/useCollectionStats';
 import { useAppData } from './hooks/useAppData';
+import { publicSaleApi } from './services/api';
 
 export default function App() {
   const { toastMessage, showToast } = useToast();
@@ -44,7 +47,9 @@ export default function App() {
     refreshPrices,
     exportCollection,
     importCollection,
-    bulkAddToCollection
+    bulkAddToCollection,
+    updateCollectionItemData,
+    toggleForSale
   } = useAppData({
     userId: currentUser?.id,
     onUnauthorized: handleUnauthorized,
@@ -54,6 +59,50 @@ export default function App() {
 
   const totals = useCollectionStats(collection, settings);
 
+  const forSaleCount = React.useMemo(() => {
+    return collection.filter(c => Boolean(c.isForSale)).length;
+  }, [collection]);
+
+  // Public sale offer state (when accessed via ?sprzedam=... or ?sale=...)
+  const [publicSaleData, setPublicSaleData] = useState<{
+    seller: { id: string; username: string; email?: string; createdAt?: string };
+    cards: CollectionItem[];
+    settings: AppSettings;
+  } | null>(null);
+  const [showLoginModalFromPublic, setShowLoginModalFromPublic] = useState<boolean>(false);
+  const [publicSaleError, setPublicSaleError] = useState<string | null>(null);
+  const [isLoadingPublicSale, setIsLoadingPublicSale] = useState<boolean>(() => {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      return Boolean(params.get('sprzedam') || params.get('sale'));
+    } catch {
+      return false;
+    }
+  });
+
+  // Check if opened via public link (?sprzedam=... or ?sale=...)
+  React.useEffect(() => {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const saleParam = params.get('sprzedam') || params.get('sale');
+      if (saleParam) {
+        setIsLoadingPublicSale(true);
+        publicSaleApi.getOffers(saleParam)
+          .then(data => {
+            setPublicSaleData(data);
+            setPublicSaleError(null);
+          })
+          .catch(err => {
+            console.warn('Public sale fetch error:', err);
+            setPublicSaleError(err.message || 'Nie znaleziono oferty dla tego użytkownika.');
+          })
+          .finally(() => {
+            setIsLoadingPublicSale(false);
+          });
+      }
+    } catch (_) {}
+  }, []);
+
   // Navigation & Active View State
   const [activeTab, setActiveTab] = useState<NavigationTab>('collection');
   const [selectedDeck, setSelectedDeck] = useState<DeckItem | null>(null);
@@ -61,6 +110,7 @@ export default function App() {
   // Modal Visibility States
   const [isSettingsOpen, setIsSettingsOpen] = useState<boolean>(false);
   const [isDeckCreateModalOpen, setIsDeckCreateModalOpen] = useState<boolean>(false);
+  const [deckToEdit, setDeckToEdit] = useState<DeckItem | null>(null);
   const [isScannerModalOpen, setIsScannerModalOpen] = useState<boolean>(false);
   const [isCollectionImportExportOpen, setIsCollectionImportExportOpen] = useState<boolean>(false);
   const [collectionImportExportTab, setCollectionImportExportTab] = useState<'export' | 'import'>('export');
@@ -323,6 +373,19 @@ export default function App() {
     }
   }, [createDeck]);
 
+  const handleOpenEditDeckModal = useCallback((deck: DeckItem) => {
+    setDeckToEdit(deck);
+    setIsDeckCreateModalOpen(true);
+  }, []);
+
+  const handleUpdateDeckMetadata = useCallback(async (updated: DeckItem) => {
+    await updateDeck(updated);
+    if (selectedDeck && selectedDeck.id === updated.id) {
+      setSelectedDeck(updated);
+    }
+    showToast(`Zaktualizowano dane talii „${updated.name}”!`);
+  }, [updateDeck, selectedDeck, showToast]);
+
   const handleDeleteDeckAndReset = useCallback(async (deckId: string) => {
     await deleteDeck(deckId);
     if (selectedDeck?.id === deckId) {
@@ -330,7 +393,96 @@ export default function App() {
     }
   }, [deleteDeck, selectedDeck]);
 
-  // Unauthenticated screen
+  // 1. If currently loading a public sale offer
+  if (isLoadingPublicSale) {
+    return (
+      <div className="min-h-screen bg-stone-950 flex flex-col items-center justify-center p-6 text-stone-100">
+        <div className="w-12 h-12 rounded-full border-4 border-emerald-500/20 border-t-emerald-500 animate-spin mb-4" />
+        <p className="text-sm font-bold text-stone-300">Ładowanie oferty sprzedaży kart MTG...</p>
+        <p className="text-xs text-stone-500 mt-1">Sprawdzanie publicznego klasera</p>
+      </div>
+    );
+  }
+
+  // 2. If opened via public link and returned an error (e.g. user not found)
+  if (publicSaleError && !currentUser) {
+    return (
+      <div className="min-h-screen bg-stone-950 flex flex-col items-center justify-center p-6 text-stone-100">
+        <div className="max-w-md w-full bg-stone-900 border border-stone-800 rounded-3xl p-8 text-center space-y-4 shadow-2xl">
+          <div className="w-12 h-12 rounded-2xl bg-rose-500/10 border border-rose-500/30 text-rose-400 flex items-center justify-center mx-auto">
+            <CircleDollarSign className="w-6 h-6" />
+          </div>
+          <h2 className="text-xl font-black text-white">Nie znaleziono oferty</h2>
+          <p className="text-xs text-stone-400">{publicSaleError}</p>
+          <button
+            onClick={() => {
+              setPublicSaleError(null);
+              window.history.pushState({}, '', window.location.pathname);
+            }}
+            className="w-full py-2.5 bg-stone-800 hover:bg-stone-700 text-stone-200 text-xs font-bold rounded-xl transition-colors cursor-pointer"
+          >
+            Przejdź do strony głównej / Logowanie
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // 3. Login view requested from public sale view
+  if (showLoginModalFromPublic) {
+    return (
+      <div className="relative min-h-screen bg-stone-950">
+        <div className="max-w-md mx-auto pt-6 px-4">
+          <button
+            onClick={() => setShowLoginModalFromPublic(false)}
+            className="mb-4 px-3 py-1.5 bg-stone-800 hover:bg-stone-750 text-stone-300 hover:text-white rounded-lg text-xs font-semibold border border-stone-700 transition-colors cursor-pointer flex items-center gap-1.5"
+          >
+            <span>← Wróć do oferty sprzedaży</span>
+          </button>
+        </div>
+        <AuthView
+          onAuthSuccess={(user, token) => {
+            handleAuthSuccess(user, token);
+            setShowLoginModalFromPublic(false);
+            showToast(`Witaj, ${user.username}!`);
+          }}
+        />
+        <Toast message={toastMessage} />
+      </div>
+    );
+  }
+
+  // 4. Public sale offer view (rendered for anyone with the public link, without requiring an account!)
+  if (publicSaleData) {
+    return (
+      <>
+        <PublicSaleView
+          seller={publicSaleData.seller}
+          cards={publicSaleData.cards}
+          settings={publicSaleData.settings}
+          onOpenLogin={() => setShowLoginModalFromPublic(true)}
+          showToast={showToast}
+        />
+        {/* If user is already logged in, show floating button to switch back to their collection */}
+        {currentUser && (
+          <div className="fixed bottom-6 right-6 z-40">
+            <button
+              onClick={() => {
+                setPublicSaleData(null);
+                window.history.pushState({}, '', window.location.pathname);
+              }}
+              className="px-4 py-2.5 bg-gradient-to-r from-amber-600 to-amber-500 hover:from-amber-500 hover:to-amber-400 text-stone-950 font-black text-xs rounded-xl shadow-xl shadow-amber-950/50 flex items-center gap-2 cursor-pointer transition-all"
+            >
+              <span>← Moja Kolekcja ({currentUser.username})</span>
+            </button>
+          </div>
+        )}
+        <Toast message={toastMessage} />
+      </>
+    );
+  }
+
+  // 5. Unauthenticated screen
   if (!currentUser) {
     return (
       <>
@@ -390,7 +542,11 @@ export default function App() {
               updateDeck(updated);
             }}
             onDeleteDeck={handleDeleteDeckAndReset}
-            onOpenCreateDeckModal={() => setIsDeckCreateModalOpen(true)}
+            onOpenCreateDeckModal={() => {
+              setDeckToEdit(null);
+              setIsDeckCreateModalOpen(true);
+            }}
+            onEditDeck={handleOpenEditDeckModal}
             onCreateCatalog={createCatalog}
             onUpdateCatalog={updateCatalog}
             onDeleteCatalog={deleteCatalog}
@@ -409,6 +565,9 @@ export default function App() {
             onOpenImportDeck={handleOpenDeckImport}
             onOpenCollectionImportExport={handleOpenCollectionImportExport}
             onUpdateSettings={updateSettings}
+            currentUser={currentUser}
+            onToggleForSale={toggleForSale}
+            onUpdateCollectionItem={updateCollectionItemData}
             showToast={showToast}
           />
         )}
@@ -487,13 +646,18 @@ export default function App() {
         />
       )}
 
-      {/* Deck Create Modal */}
+      {/* Deck Create / Edit Modal */}
       {isDeckCreateModalOpen && (
         <DeckCreateModal
           isOpen={isDeckCreateModalOpen}
+          deckToEdit={deckToEdit}
           collection={collection}
-          onClose={() => setIsDeckCreateModalOpen(false)}
+          onClose={() => {
+            setIsDeckCreateModalOpen(false);
+            setDeckToEdit(null);
+          }}
           onCreateDeck={handleCreateDeckSuccess}
+          onUpdateDeck={handleUpdateDeckMetadata}
         />
       )}
 

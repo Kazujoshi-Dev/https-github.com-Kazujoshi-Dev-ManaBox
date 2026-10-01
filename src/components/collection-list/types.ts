@@ -16,6 +16,7 @@ export interface CollectionListProps {
   onDeleteItem: (id: string) => void;
   onEditItem: (item: CollectionItem) => void;
   onViewCardDetails: (item: CollectionItem) => void;
+  onToggleForSale?: (item: CollectionItem) => void;
   onOpenAddModal: () => void;
   onOpenScannerModal?: () => void;
   onOpenImportExport?: (tab: 'export' | 'import') => void;
@@ -74,6 +75,7 @@ export interface CollectionItemHandlers {
   onDeleteItem: (id: string) => void;
   onEditItem: (item: CollectionItem) => void;
   onViewCardDetails: (item: CollectionItem) => void;
+  onToggleForSale?: (item: CollectionItem) => void;
 }
 
 export interface CollectionGridViewProps extends CollectionItemHandlers {

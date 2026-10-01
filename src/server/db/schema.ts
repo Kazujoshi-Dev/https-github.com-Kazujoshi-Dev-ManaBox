@@ -77,7 +77,9 @@ export async function initDb(): Promise<void> {
             notes TEXT,
             binder VARCHAR(150) DEFAULT 'Klaser Główny',
             added_at TIMESTAMPTZ DEFAULT NOW(),
-            last_updated_price_at TIMESTAMPTZ
+            last_updated_price_at TIMESTAMPTZ,
+            is_for_sale BOOLEAN DEFAULT FALSE,
+            sale_price NUMERIC(10, 2)
           );
 
           CREATE TABLE IF NOT EXISTS user_settings (
@@ -119,6 +121,8 @@ export async function initDb(): Promise<void> {
           ALTER TABLE user_decks ADD COLUMN IF NOT EXISTS card_source VARCHAR(30) DEFAULT 'collection';
           ALTER TABLE user_decks ADD COLUMN IF NOT EXISTS commander_is_foil BOOLEAN DEFAULT FALSE;
           ALTER TABLE user_collections ADD COLUMN IF NOT EXISTS last_updated_price_at TIMESTAMPTZ;
+          ALTER TABLE user_collections ADD COLUMN IF NOT EXISTS is_for_sale BOOLEAN DEFAULT FALSE;
+          ALTER TABLE user_collections ADD COLUMN IF NOT EXISTS sale_price NUMERIC(10, 2);
           ALTER TABLE user_settings ADD COLUMN IF NOT EXISTS auto_nbp_rate BOOLEAN DEFAULT TRUE;
         `);
         setPostgresActive(true);

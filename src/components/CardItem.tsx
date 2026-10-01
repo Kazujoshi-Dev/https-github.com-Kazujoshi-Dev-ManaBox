@@ -11,7 +11,7 @@ import {
 } from '../utils/formatters';
 import { ManaSymbol } from './ManaSymbol';
 import { EdhrecBadge } from './EdhrecBadge';
-import { Plus, Minus, Trash2, Edit3, ExternalLink, Sparkles, Folder, Check, Eye, Trophy } from 'lucide-react';
+import { Plus, Minus, Trash2, Edit3, ExternalLink, Sparkles, Folder, Check, Eye, Trophy, CircleDollarSign, DollarSign } from 'lucide-react';
 
 interface CardItemProps {
   item: CollectionItem;
@@ -21,6 +21,7 @@ interface CardItemProps {
   onDeleteItem: (id: string) => void;
   onEditItem: (item: CollectionItem) => void;
   onViewCardDetails: (item: CollectionItem) => void;
+  onToggleForSale?: (item: CollectionItem) => void;
 }
 
 export const CardItem: React.FC<CardItemProps> = ({
@@ -30,7 +31,8 @@ export const CardItem: React.FC<CardItemProps> = ({
   onUpdateQuantity,
   onDeleteItem,
   onEditItem,
-  onViewCardDetails
+  onViewCardDetails,
+  onToggleForSale,
 }) => {
   const { card, quantity, quantityFoil, condition, language, binder } = item;
   const imageUri = getCardImageUri(card, 'normal');
@@ -153,9 +155,30 @@ export const CardItem: React.FC<CardItemProps> = ({
 
         <td className="py-2.5 px-3 text-right">
           <div className="flex items-center justify-end gap-1">
+            {onToggleForSale && (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onToggleForSale(item);
+                }}
+                title={
+                  item.isForSale
+                    ? "Karta oznaczona na sprzedaż (w kategorii Sprzedam). Kliknij, aby wycofać."
+                    : "Wystaw na sprzedaż (oznacz kartę i przenieś do kategorii Sprzedam)"
+                }
+                className={`p-1 rounded transition-colors cursor-pointer ${
+                  item.isForSale
+                    ? 'text-emerald-300 bg-emerald-500/25 border border-emerald-500/50 hover:bg-emerald-500/35 shadow-sm'
+                    : 'text-stone-400 hover:text-emerald-400 hover:bg-emerald-500/10'
+                }`}
+              >
+                <DollarSign className="w-3.5 h-3.5 stroke-[2.5]" />
+              </button>
+            )}
             <button
               onClick={() => onEditItem(item)}
-              title="Edytuj parametry"
+              title="Edytuj pozycję"
               className="p-1 text-stone-400 hover:text-amber-300 hover:bg-stone-800 rounded transition-colors cursor-pointer"
             >
               <Edit3 className="w-3.5 h-3.5" />
@@ -185,8 +208,19 @@ export const CardItem: React.FC<CardItemProps> = ({
         </div>
       )}
 
+      {/* For Sale Banner / Badge */}
+      {item.isForSale && (
+        <div className="absolute top-2 left-2 z-10 bg-emerald-950/95 text-emerald-300 border border-emerald-500/50 text-[10px] font-extrabold px-2 py-0.5 rounded-full shadow-lg flex items-center gap-1 uppercase tracking-wider backdrop-blur-md">
+          <CircleDollarSign className="w-3 h-3 text-emerald-400 stroke-[2.5]" />
+          <span>Sprzedam</span>
+          {item.salePrice ? (
+            <span className="text-[9px] text-emerald-200 font-mono">({formatCurrency(item.salePrice, settings.currency)})</span>
+          ) : null}
+        </div>
+      )}
+
       {/* Binder badge */}
-      {binder && (
+      {binder && !item.isForSale && (
         <div className="absolute top-2 left-2 z-10 bg-stone-950/80 backdrop-blur-md text-stone-300 text-[10px] px-2 py-0.5 rounded-full border border-stone-800 flex items-center gap-1 font-medium">
           <Folder className="w-2.5 h-2.5 text-amber-400" />
           <span className="truncate max-w-[100px]">{binder}</span>
@@ -290,6 +324,27 @@ export const CardItem: React.FC<CardItemProps> = ({
           </div>
 
           <div className="flex items-center gap-1">
+            {onToggleForSale && (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onToggleForSale(item);
+                }}
+                title={
+                  item.isForSale
+                    ? "Karta oznaczona na sprzedaż (w kategorii Sprzedam). Kliknij, aby wycofać ze sprzedaży."
+                    : "Wystaw na sprzedaż (oznacz kartę i przenieś do kategorii Sprzedam)"
+                }
+                className={`p-1.5 rounded-lg transition-all cursor-pointer ${
+                  item.isForSale
+                    ? 'text-emerald-300 bg-emerald-500/25 border border-emerald-500/50 hover:bg-emerald-500/35 shadow-sm shadow-emerald-950/50'
+                    : 'text-stone-400 hover:text-emerald-400 hover:bg-emerald-500/10 hover:border-emerald-500/30 border border-transparent'
+                }`}
+              >
+                <DollarSign className="w-3.5 h-3.5 stroke-[2.5]" />
+              </button>
+            )}
             <button
               onClick={() => onEditItem(item)}
               title="Edytuj pozycję"

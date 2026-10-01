@@ -5,7 +5,8 @@ import {
   Catalog,
   DeckItem,
   ScryfallCard,
-  AppSettings
+  AppSettings,
+  AuthUser
 } from '../types';
 import { CollectionList } from './CollectionList';
 import { DeckBuilder } from './DeckBuilder';
@@ -14,8 +15,9 @@ import { CardSearch } from './CardSearch';
 import { SetTopCards } from './SetTopCards';
 import { Analytics } from './Analytics';
 import { Wishlist } from './Wishlist';
+import { ForSaleList } from './ForSaleList';
 
-export type NavigationTab = 'collection' | 'decks' | 'search' | 'set-top' | 'analytics' | 'wishlist';
+export type NavigationTab = 'collection' | 'decks' | 'search' | 'set-top' | 'analytics' | 'wishlist' | 'for-sale';
 
 interface TabContentProps {
   activeTab: NavigationTab;
@@ -26,6 +28,7 @@ interface TabContentProps {
   decks: DeckItem[];
   selectedDeck: DeckItem | null;
   settings: AppSettings;
+  currentUser?: AuthUser | null;
 
   // Deck interactions
   onSelectDeck: (deck: DeckItem) => void;
@@ -59,6 +62,9 @@ interface TabContentProps {
   onOpenImportDeck?: () => void;
   onOpenCollectionImportExport?: (tab: 'export' | 'import') => void;
   onUpdateSettings?: (newSettings: AppSettings) => Promise<void> | void;
+  onEditDeck?: (deck: DeckItem) => void;
+  onToggleForSale?: (item: CollectionItem, customPrice?: number | null) => Promise<void> | void;
+  onUpdateCollectionItem?: (id: string, updates: Partial<CollectionItem>) => Promise<CollectionItem | null> | void;
   showToast?: (message: string) => void;
 }
 
@@ -71,6 +77,7 @@ export const TabContent: React.FC<TabContentProps> = ({
   decks,
   selectedDeck,
   settings,
+  currentUser,
   onSelectDeck,
   onBackFromDeck,
   onUpdateDeck,
@@ -94,6 +101,9 @@ export const TabContent: React.FC<TabContentProps> = ({
   onOpenImportDeck,
   onOpenCollectionImportExport,
   onUpdateSettings,
+  onEditDeck,
+  onToggleForSale,
+  onUpdateCollectionItem,
   showToast,
 }) => {
   switch (activeTab) {
@@ -117,6 +127,7 @@ export const TabContent: React.FC<TabContentProps> = ({
           onDeleteItem={onDeleteItem}
           onEditItem={onEditCollectionItem}
           onViewCardDetails={onViewCollectionItemDetails}
+          onToggleForSale={onToggleForSale}
           onOpenAddModal={() => setActiveTab('search')}
           onOpenScannerModal={onOpenScannerModal}
           onOpenImportExport={onOpenCollectionImportExport}
@@ -145,6 +156,7 @@ export const TabContent: React.FC<TabContentProps> = ({
           onSelectDeck={onSelectDeck}
           onCreateDeckClick={onOpenCreateDeckModal}
           onDeleteDeck={onDeleteDeck}
+          onEditDeck={onEditDeck}
           onOpenImportDeck={onOpenImportDeck}
           showToast={showToast}
         />
@@ -186,6 +198,20 @@ export const TabContent: React.FC<TabContentProps> = ({
           onMoveToCollection={onMoveWishlistToCollection}
           onOpenSearchTab={() => setActiveTab('search')}
           onViewCardDetails={onSelectCard}
+        />
+      );
+
+    case 'for-sale':
+      return (
+        <ForSaleList
+          collection={collection}
+          settings={settings}
+          currentUser={currentUser || null}
+          onToggleForSale={onToggleForSale || (() => {})}
+          onUpdateCollectionItem={onUpdateCollectionItem || (() => {})}
+          onViewCardDetails={onViewCollectionItemDetails}
+          onGoToCollection={() => setActiveTab('collection')}
+          showToast={showToast}
         />
       );
 

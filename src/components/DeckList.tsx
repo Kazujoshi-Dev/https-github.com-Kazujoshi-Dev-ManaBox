@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { DeckItem, AppSettings } from '../types';
 import { getCardPrice, formatCurrency } from '../utils/formatters';
 import { exportDeckToTxt, downloadTxtFile } from '../utils/textCardList';
-import { Swords, Plus, Crown, Trash2, Download, Copy, Check, Upload, FileText } from 'lucide-react';
+import { Swords, Plus, Crown, Trash2, Download, Copy, Check, Upload, FileText, Pencil } from 'lucide-react';
 
 interface DeckListProps {
   decks: DeckItem[];
@@ -10,6 +10,7 @@ interface DeckListProps {
   onSelectDeck: (deck: DeckItem) => void;
   onCreateDeckClick: () => void;
   onDeleteDeck: (deckId: string) => void;
+  onEditDeck?: (deck: DeckItem) => void;
   onOpenImportDeck?: () => void;
   showToast?: (message: string) => void;
 }
@@ -20,6 +21,7 @@ export const DeckList: React.FC<DeckListProps> = ({
   onSelectDeck,
   onCreateDeckClick,
   onDeleteDeck,
+  onEditDeck,
   onOpenImportDeck,
   showToast,
 }) => {
@@ -182,6 +184,22 @@ export const DeckList: React.FC<DeckListProps> = ({
                         )}
                       </button>
 
+                      {/* Edit Deck details button */}
+                      {onEditDeck && (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onEditDeck(deck);
+                          }}
+                          className="px-2.5 py-1 rounded-lg bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 hover:text-amber-200 border border-amber-500/30 hover:border-amber-500/50 text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-sm"
+                          title="Edytuj dane talii (nazwę, opis, dowódcę, format)"
+                        >
+                          <Pencil className="w-3.5 h-3.5 text-amber-400" />
+                          <span>Edytuj</span>
+                        </button>
+                      )}
+
                       <button
                         type="button"
                         onClick={(e) => {
@@ -244,9 +262,29 @@ export const DeckList: React.FC<DeckListProps> = ({
                     </span>
                   </div>
 
-                  <span className="font-mono font-bold text-amber-300">
-                    {formatCurrency(deckVal, settings.currency)}
-                  </span>
+                  <div className="flex items-center gap-2">
+                    {onEditDeck && (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onEditDeck(deck);
+                        }}
+                        className="text-[11px] font-semibold text-amber-400 hover:text-amber-300 transition-colors flex items-center gap-1 cursor-pointer bg-amber-500/10 hover:bg-amber-500/20 px-2 py-0.5 rounded border border-amber-500/20"
+                        title="Edytuj dane talii (nazwę, opis, dowódcę)"
+                      >
+                        <Pencil className="w-3 h-3 text-amber-400" />
+                        <span>Edytuj talię</span>
+                      </button>
+                    )}
+                    <span className="text-[11px] font-semibold text-purple-400/80 group-hover:text-purple-300 transition-colors hidden sm:inline-flex items-center gap-0.5">
+                      <span>Otwórz talię</span>
+                      <span className="group-hover:translate-x-0.5 transition-transform">→</span>
+                    </span>
+                    <span className="font-mono font-bold text-amber-300">
+                      {formatCurrency(deckVal, settings.currency)}
+                    </span>
+                  </div>
                 </div>
               </div>
             );

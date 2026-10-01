@@ -111,6 +111,8 @@ export interface CollectionItem {
   binder?: string; // name of album / deck
   addedAt: string;
   lastUpdatedPriceAt?: string;
+  isForSale?: boolean;
+  salePrice?: number | null; // Optional custom asking price in user's currency
 }
 
 export interface WishlistItem {

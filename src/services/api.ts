@@ -195,3 +195,19 @@ export const spellbookApi = {
     return res.json();
   }
 };
+
+export const publicSaleApi = {
+  getOffers: async (userRef: string): Promise<{
+    seller: { id: string; username: string; email?: string; createdAt?: string };
+    cards: CollectionItem[];
+    settings: AppSettings;
+  }> => {
+    const res = await fetch(`/api/public/sale/${encodeURIComponent(userRef)}`);
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || `Błąd pobierania oferty (${res.status})`);
+    }
+    return res.json();
+  }
+};
+

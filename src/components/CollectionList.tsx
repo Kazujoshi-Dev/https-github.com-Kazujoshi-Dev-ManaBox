@@ -28,6 +28,7 @@ export const CollectionList: React.FC<CollectionListProps> = ({
   onDeleteItem,
   onEditItem,
   onViewCardDetails,
+  onToggleForSale,
   onOpenAddModal,
   onOpenScannerModal,
   onOpenImportExport,
@@ -131,6 +132,7 @@ export const CollectionList: React.FC<CollectionListProps> = ({
           onDeleteItem={onDeleteItem}
           onEditItem={onEditItem}
           onViewCardDetails={onViewCardDetails}
+          onToggleForSale={onToggleForSale}
         />
       ) : (
         <CollectionTableView
@@ -140,6 +142,7 @@ export const CollectionList: React.FC<CollectionListProps> = ({
           onDeleteItem={onDeleteItem}
           onEditItem={onEditItem}
           onViewCardDetails={onViewCardDetails}
+          onToggleForSale={onToggleForSale}
         />
       )}
 

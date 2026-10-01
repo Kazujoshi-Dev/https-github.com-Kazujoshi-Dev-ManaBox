@@ -62,7 +62,11 @@ export function mapCollectionRow(r: any): CollectionItem {
     notes: r.notes || '',
     binder: r.binder || 'Klaser Główny',
     addedAt: r.addedAt ? new Date(r.addedAt).toISOString() : (r.added_at ? new Date(r.added_at).toISOString() : new Date().toISOString()),
-    lastUpdatedPriceAt: r.lastUpdatedPriceAt || r.last_updated_price_at || undefined
+    lastUpdatedPriceAt: r.lastUpdatedPriceAt || r.last_updated_price_at || undefined,
+    isForSale: Boolean(r.isForSale ?? r.is_for_sale),
+    salePrice: r.salePrice !== undefined && r.salePrice !== null
+      ? parseFloat(r.salePrice)
+      : (r.sale_price !== null && r.sale_price !== undefined ? parseFloat(r.sale_price) : null)
   };
 }
 
