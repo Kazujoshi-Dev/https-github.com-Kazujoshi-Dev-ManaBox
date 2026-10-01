@@ -6,6 +6,7 @@ import { formatCurrency, getCardPrice } from '../../utils/formatters';
 export const DeckCardRow: React.FC<DeckCardRowProps> = ({
   entry,
   settings,
+  previewScale = 100,
   onHover,
   onLeave,
   onUpdateQuantity,
@@ -17,12 +18,16 @@ export const DeckCardRow: React.FC<DeckCardRowProps> = ({
   const singlePrice = settings ? getCardPrice(card, Boolean(entry.isFoil), settings) : 0;
   const totalPrice = singlePrice * entry.quantity;
 
+  // Scale row height smoothly with user scale preference (36px to 54px)
+  const rowHeight = Math.max(36, Math.min(54, Math.round(40 * (previewScale / 100))));
+
   return (
     <div
       onMouseEnter={(e) => onHover(card, e)}
       onMouseLeave={onLeave}
       onClick={() => onViewDetails(card)}
-      className={`group relative h-10 w-full rounded-xl overflow-hidden border transition-all shadow-md cursor-pointer flex items-center justify-between px-2.5 ${
+      style={{ height: `${rowHeight}px` }}
+      className={`group relative w-full rounded-xl overflow-hidden border transition-all shadow-md cursor-pointer flex items-center justify-between px-2.5 ${
         entry.isFoil
           ? 'border-amber-400/60 hover:border-amber-300 shadow-amber-500/10'
           : 'border-stone-700/80 hover:border-amber-400/80 hover:shadow-amber-500/10'

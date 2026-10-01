@@ -9,6 +9,7 @@ export interface DeckBuilderProps {
   onUpdateDeck: (updated: DeckItem) => void;
   onBack: () => void;
   onViewCardDetails: (card: ScryfallCard) => void;
+  onUpdateSettings?: (newSettings: AppSettings) => void;
   showToast?: (message: string) => void;
 }
 
@@ -44,6 +45,7 @@ export interface DeckStatsBarProps {
 export interface DeckCardRowProps {
   entry: DeckCardEntry;
   settings?: AppSettings;
+  previewScale?: number;
   onHover: (card: ScryfallCard, e: MouseEvent) => void;
   onLeave: () => void;
   onUpdateQuantity: (cardId: string, delta: number) => void;
@@ -55,6 +57,7 @@ export interface DeckCategoryColumnProps {
   category: DeckCategoryConfig;
   cards: DeckCardEntry[];
   settings?: AppSettings;
+  previewScale?: number;
   onHoverCard: (card: ScryfallCard, e: MouseEvent) => void;
   onLeaveCard: () => void;
   onUpdateQuantity: (cardId: string, delta: number) => void;
@@ -65,6 +68,7 @@ export interface DeckCategoryColumnProps {
 export interface DeckCategoriesBoardProps {
   categorizedCards: Map<string, DeckCardEntry[]>;
   settings?: AppSettings;
+  previewScale?: number;
   onHoverCard: (card: ScryfallCard, e: MouseEvent) => void;
   onLeaveCard: () => void;
   onUpdateQuantity: (cardId: string, delta: number) => void;
@@ -75,6 +79,7 @@ export interface DeckCategoriesBoardProps {
 export interface FloatingCardPreviewProps {
   card: ScryfallCard | null;
   position: { x: number; y: number } | null;
+  scale?: number;
 }
 
 export interface DeckAddCardModalProps {

@@ -58,6 +58,7 @@ interface TabContentProps {
   onOpenScannerModal?: () => void;
   onOpenImportDeck?: () => void;
   onOpenCollectionImportExport?: (tab: 'export' | 'import') => void;
+  onUpdateSettings?: (newSettings: AppSettings) => Promise<void> | void;
   showToast?: (message: string) => void;
 }
 
@@ -92,6 +93,7 @@ export const TabContent: React.FC<TabContentProps> = ({
   onOpenScannerModal,
   onOpenImportDeck,
   onOpenCollectionImportExport,
+  onUpdateSettings,
   showToast,
 }) => {
   switch (activeTab) {
@@ -131,6 +133,7 @@ export const TabContent: React.FC<TabContentProps> = ({
             onUpdateDeck={onUpdateDeck}
             onBack={onBackFromDeck}
             onViewCardDetails={onViewDeckCardDetails || onSelectCard}
+            onUpdateSettings={onUpdateSettings}
             showToast={showToast}
           />
         );

@@ -1,4 +1,5 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
+import { ZoomIn, ZoomOut, Sliders, ArrowDownWideNarrow } from 'lucide-react';
 import { ScryfallCard, DeckCardEntry, DeckItem } from '../types';
 import {
   DeckBuilderProps,
@@ -27,6 +28,7 @@ export const DeckBuilder: React.FC<DeckBuilderProps> = ({
   onUpdateDeck,
   onBack,
   onViewCardDetails,
+  onUpdateSettings,
   showToast = (_msg: string) => {},
 }) => {
   // Hover preview state
@@ -39,6 +41,33 @@ export const DeckBuilder: React.FC<DeckBuilderProps> = ({
 
   // Commander Spellbook Combos Modal state
   const [isCombosModalOpen, setIsCombosModalOpen] = useState(false);
+
+  // User adjustable card preview scale (persisted in user AppSettings)
+  const [previewScale, setPreviewScale] = useState<number>(settings.deckCardPreviewScale || 100);
+  const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  useEffect(() => {
+    if (settings.deckCardPreviewScale && settings.deckCardPreviewScale !== previewScale) {
+      setPreviewScale(settings.deckCardPreviewScale);
+    }
+  }, [settings.deckCardPreviewScale]);
+
+  const handleScaleChange = useCallback((newScale: number) => {
+    const clamped = Math.max(75, Math.min(160, Math.round(newScale)));
+    setPreviewScale(clamped);
+
+    if (onUpdateSettings) {
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current);
+      }
+      saveTimeoutRef.current = setTimeout(() => {
+        onUpdateSettings({
+          ...settings,
+          deckCardPreviewScale: clamped,
+        });
+      }, 400);
+    }
+  }, [settings, onUpdateSettings]);
 
   // Deck statistics hook (curve, counts, valuations, categories)
   const {
@@ -300,10 +329,78 @@ export const DeckBuilder: React.FC<DeckBuilderProps> = ({
         colorIdentity={colorIdentity}
       />
 
+      {/* 2b. Board Toolbar: Categories Sorting Info & Card Preview Size Slider */}
+      <div className="bg-stone-900/90 border border-stone-800 rounded-2xl px-4 py-3 flex flex-col sm:flex-row items-center justify-between gap-3 shadow-lg backdrop-blur-md">
+        <div className="flex items-center gap-2.5 text-xs text-stone-300">
+          <div className="p-1.5 rounded-lg bg-amber-500/15 border border-amber-500/30 text-amber-400">
+            <ArrowDownWideNarrow className="w-4 h-4" />
+          </div>
+          <div>
+            <span className="font-bold text-stone-100 block">Kategorie posortowane od najliczniejszych</span>
+            <span className="text-[11px] text-stone-400">Typy kart z największą liczbą sztuk wyświetlane są na początku planszy</span>
+          </div>
+        </div>
+
+        {/* Card Preview Scale Slider */}
+        <div className="flex items-center gap-3 w-full sm:w-auto justify-end">
+          <div className="flex items-center gap-2.5 bg-stone-950 px-3.5 py-2 rounded-xl border border-stone-800 shadow-inner w-full sm:w-auto justify-between sm:justify-start">
+            <span className="text-xs text-stone-300 font-semibold flex items-center gap-1.5 shrink-0">
+              <Sliders className="w-3.5 h-3.5 text-amber-400" />
+              <span>Podgląd kart:</span>
+            </span>
+
+            <button
+              type="button"
+              onClick={() => handleScaleChange(previewScale - 10)}
+              className="p-1 text-stone-400 hover:text-amber-300 hover:bg-stone-900 rounded-md transition-colors cursor-pointer"
+              title="Zmniejsz podgląd"
+            >
+              <ZoomOut className="w-4 h-4" />
+            </button>
+
+            <input
+              type="range"
+              min="75"
+              max="160"
+              step="5"
+              value={previewScale}
+              onChange={(e) => handleScaleChange(Number(e.target.value))}
+              className="w-24 sm:w-32 accent-amber-500 cursor-pointer h-1.5 bg-stone-800 rounded-lg"
+              title={`Skala podglądu kart: ${previewScale}%`}
+            />
+
+            <button
+              type="button"
+              onClick={() => handleScaleChange(previewScale + 10)}
+              className="p-1 text-stone-400 hover:text-amber-300 hover:bg-stone-900 rounded-md transition-colors cursor-pointer"
+              title="Powiększ podgląd"
+            >
+              <ZoomIn className="w-4 h-4" />
+            </button>
+
+            <span className="text-xs font-mono font-bold text-amber-300 min-w-[2.8rem] text-right">
+              {previewScale}%
+            </span>
+
+            {previewScale !== 100 && (
+              <button
+                type="button"
+                onClick={() => handleScaleChange(100)}
+                className="text-[11px] font-semibold text-stone-500 hover:text-amber-300 ml-1 underline transition-colors cursor-pointer"
+                title="Przywróć domyślne 100%"
+              >
+                Reset
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+
       {/* 3. Main Stacked Categories Board */}
       <DeckCategoriesBoard
         categorizedCards={categorizedCards}
         settings={settings}
+        previewScale={previewScale}
         onHoverCard={handleHoverCard}
         onLeaveCard={handleLeaveCard}
         onUpdateQuantity={handleUpdateQuantity}
@@ -315,6 +412,7 @@ export const DeckBuilder: React.FC<DeckBuilderProps> = ({
       <FloatingCardPreview
         card={hoveredCard}
         position={hoverPosition}
+        scale={previewScale}
       />
 
       {/* 5. Add Card to Deck Modal */}

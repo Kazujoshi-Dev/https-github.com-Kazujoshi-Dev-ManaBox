@@ -6,6 +6,7 @@ export const DeckCategoryColumn: React.FC<DeckCategoryColumnProps> = ({
   category,
   cards,
   settings,
+  previewScale = 100,
   onHoverCard,
   onLeaveCard,
   onUpdateQuantity,
@@ -38,6 +39,7 @@ export const DeckCategoryColumn: React.FC<DeckCategoryColumnProps> = ({
             key={entry.card.id}
             entry={entry}
             settings={settings}
+            previewScale={previewScale}
             onHover={onHoverCard}
             onLeave={onLeaveCard}
             onUpdateQuantity={onUpdateQuantity}
@@ -49,3 +51,4 @@ export const DeckCategoryColumn: React.FC<DeckCategoryColumnProps> = ({
     </div>
   );
 };
+

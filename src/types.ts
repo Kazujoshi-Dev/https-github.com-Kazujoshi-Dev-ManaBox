@@ -86,6 +86,7 @@ export interface AppSettings {
   usdToPlnRate: number; // e.g. 3.96
   autoNbpRate: boolean;
   lastNbpUpdate?: string;
+  deckCardPreviewScale?: number; // e.g. 100 (for 100%), range 75 - 160
 }
 
 export interface Catalog {

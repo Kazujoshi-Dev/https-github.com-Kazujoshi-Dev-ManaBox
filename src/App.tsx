@@ -408,6 +408,7 @@ export default function App() {
             onOpenScannerModal={() => setIsScannerModalOpen(true)}
             onOpenImportDeck={handleOpenDeckImport}
             onOpenCollectionImportExport={handleOpenCollectionImportExport}
+            onUpdateSettings={updateSettings}
             showToast={showToast}
           />
         )}
