@@ -20,7 +20,8 @@ import {
   Camera,
   ExternalLink,
   CircleDollarSign,
-  Users
+  Users,
+  Mail
 } from 'lucide-react';
 import { formatCurrency } from '../utils/formatters';
 import { AppSettings, AuthUser } from '../types';
@@ -44,6 +45,8 @@ interface HeaderProps {
   onOpenImportExport?: (tab: 'export' | 'import') => void;
   user?: AuthUser | null;
   onLogout?: () => void;
+  unreadMessagesCount?: number;
+  onOpenMailbox?: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -64,7 +67,9 @@ export const Header: React.FC<HeaderProps> = ({
   onImportCollection,
   onOpenImportExport,
   user,
-  onLogout
+  onLogout,
+  unreadMessagesCount = 0,
+  onOpenMailbox
 }) => {
   const profit = totalValue - totalPurchaseCost;
   const isProfitPositive = profit >= 0;
@@ -325,6 +330,24 @@ export const Header: React.FC<HeaderProps> = ({
               <Upload className="w-3.5 h-3.5 text-amber-400" />
               <span className="hidden md:inline">Import</span>
             </button>
+
+            {/* Mailbox Button */}
+            {user && onOpenMailbox && (
+              <button
+                type="button"
+                onClick={onOpenMailbox}
+                title="Otwórz skrzynkę wiadomości"
+                className="p-1.5 px-2.5 text-stone-300 hover:text-blue-300 hover:bg-stone-800 rounded-lg transition-colors text-xs flex items-center gap-1.5 cursor-pointer font-medium border border-transparent hover:border-stone-700 relative"
+              >
+                <Mail className="w-3.5 h-3.5 text-blue-400" />
+                <span className="hidden md:inline">Wiadomości</span>
+                {unreadMessagesCount > 0 && (
+                  <span className="px-1.5 py-0.2 rounded-full text-[10px] font-bold bg-blue-500 text-white font-mono shadow-sm">
+                    {unreadMessagesCount}
+                  </span>
+                )}
+              </button>
+            )}
 
             {/* Logged in User Profile & Logout */}
             {user && (

@@ -1347,6 +1347,7 @@ app.get('/api/users', async (req, res) => {
       rawUsers.map(async (u) => {
         try {
           const col = await db.getCollection(u.id);
+          const wishlist = await db.getWishlist(u.id);
           const forSaleItems = col.filter((item) => Boolean(item.isForSale));
           const forSaleCount = forSaleItems.reduce((sum, item) => sum + (item.quantity || 0) + (item.quantityFoil || 0), 0);
           const totalCardsCount = col.reduce((sum, item) => sum + (item.quantity || 0) + (item.quantityFoil || 0), 0);
@@ -1359,6 +1360,7 @@ app.get('/api/users', async (req, res) => {
             createdAt: u.createdAt,
             forSaleCount,
             forSaleItemsCount: forSaleItems.length,
+            wishlistCount: wishlist.length,
             totalCardsCount,
             currency: settings?.currency || 'PLN'
           };
@@ -1370,6 +1372,7 @@ app.get('/api/users', async (req, res) => {
             createdAt: u.createdAt,
             forSaleCount: 0,
             forSaleItemsCount: 0,
+            wishlistCount: 0,
             totalCardsCount: 0,
             currency: 'PLN'
           };
@@ -1423,6 +1426,45 @@ app.get('/api/public/sale/:userRef', async (req, res) => {
   }
 });
 
+// --- PUBLIC USER WISHLIST ENDPOINT (NO AUTH REQUIRED) ---
+
+app.get('/api/public/wishlist/:userRef', async (req, res) => {
+  try {
+    const { userRef } = req.params;
+    if (!userRef || !userRef.trim()) {
+      return res.status(400).json({ error: 'Identyfikator lub nazwa użytkownika jest wymagana' });
+    }
+
+    const user = await db.getUserByIdOrUsername(userRef.trim());
+    if (!user) {
+      return res.status(404).json({ error: 'Nie znaleziono profilu dla tego użytkownika' });
+    }
+
+    const wishlist = await db.getWishlist(user.id);
+    const settings = await db.getSettings(user.id);
+
+    res.json({
+      user: {
+        id: user.id,
+        username: user.username,
+        email: user.email,
+        createdAt: user.created_at
+      },
+      wishlist,
+      settings: settings || {
+        currency: 'PLN',
+        pricingSource: 'CARDMARKET',
+        eurToPlnRate: 4.31,
+        usdToPlnRate: 3.96,
+        autoNbpRate: true,
+      }
+    });
+  } catch (err: any) {
+    console.error('Error in /api/public/wishlist:', err);
+    res.status(500).json({ error: 'Błąd pobierania listy życzeń użytkownika: ' + err.message });
+  }
+});
+
 // --- WISHLIST ENDPOINTS (USER-ISOLATED) ---
 
 app.get('/api/wishlist', authMiddleware, async (req, res) => {
@@ -1458,6 +1500,121 @@ app.delete('/api/wishlist/:id', authMiddleware, async (req, res) => {
     res.json({ success, id });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
+  }
+});
+
+// --- USER MESSAGES ENDPOINTS (COMMUNICATION / INBOX) ---
+
+app.get('/api/messages/inbox', authMiddleware, async (req, res) => {
+  try {
+    const userId = (req as any).userId;
+    const inbox = await db.getInbox(userId);
+    res.json(inbox);
+  } catch (err: any) {
+    res.status(500).json({ error: 'Błąd pobierania skrzynki odbiorczej: ' + err.message });
+  }
+});
+
+app.get('/api/messages/sent', authMiddleware, async (req, res) => {
+  try {
+    const userId = (req as any).userId;
+    const sent = await db.getSent(userId);
+    res.json(sent);
+  } catch (err: any) {
+    res.status(500).json({ error: 'Błąd pobierania skrzynki nadawczej: ' + err.message });
+  }
+});
+
+app.get('/api/messages/unread-count', authMiddleware, async (req, res) => {
+  try {
+    const userId = (req as any).userId;
+    const count = await db.getUnreadCount(userId);
+    res.json({ unreadCount: count });
+  } catch (err: any) {
+    res.status(500).json({ error: 'Błąd pobierania licznika wiadomości: ' + err.message });
+  }
+});
+
+app.post('/api/messages', authMiddleware, async (req, res) => {
+  try {
+    const senderId = (req as any).userId;
+    const { recipientId, recipientUsername, subject, body } = req.body;
+
+    if (!subject || !subject.trim()) {
+      return res.status(400).json({ error: 'Temat wiadomości jest wymagany' });
+    }
+    if (!body || !body.trim()) {
+      return res.status(400).json({ error: 'Treść wiadomości nie może być pusta' });
+    }
+
+    const sender = await db.getUserById(senderId);
+    if (!sender) {
+      return res.status(401).json({ error: 'Nieprawidłowy nadawca' });
+    }
+
+    let recipient = null;
+    if (recipientId) {
+      recipient = await db.getUserById(recipientId);
+    } else if (recipientUsername) {
+      recipient = await db.getUserByIdOrUsername(recipientUsername);
+    }
+
+    if (!recipient) {
+      return res.status(404).json({ error: 'Nie znaleziono wskazanego odbiorcy wiadomości' });
+    }
+
+    if (recipient.id === senderId) {
+      return res.status(400).json({ error: 'Nie możesz wysłać wiadomości do samego siebie' });
+    }
+
+    const newMsg = {
+      id: `msg-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+      senderId: sender.id,
+      senderUsername: sender.username,
+      recipientId: recipient.id,
+      recipientUsername: recipient.username,
+      subject: subject.trim(),
+      body: body.trim(),
+      isRead: false,
+      createdAt: new Date().toISOString()
+    };
+
+    const saved = await db.sendMessage(newMsg);
+    res.status(201).json(saved);
+  } catch (err: any) {
+    res.status(500).json({ error: 'Błąd podczas wysyłania wiadomości: ' + err.message });
+  }
+});
+
+app.put('/api/messages/mark-all-read', authMiddleware, async (req, res) => {
+  try {
+    const userId = (req as any).userId;
+    const success = await db.markAllAsRead(userId);
+    res.json({ success });
+  } catch (err: any) {
+    res.status(500).json({ error: 'Błąd oznaczania wiadomości: ' + err.message });
+  }
+});
+
+app.put('/api/messages/:id/read', authMiddleware, async (req, res) => {
+  try {
+    const userId = (req as any).userId;
+    const { id } = req.params;
+    const success = await db.markAsRead(userId, id);
+    res.json({ success, id });
+  } catch (err: any) {
+    res.status(500).json({ error: 'Błąd aktualizacji statusu: ' + err.message });
+  }
+});
+
+app.delete('/api/messages/:id', authMiddleware, async (req, res) => {
+  try {
+    const userId = (req as any).userId;
+    const { id } = req.params;
+    const success = await db.deleteMessage(userId, id);
+    res.json({ success, id });
+  } catch (err: any) {
+    res.status(500).json({ error: 'Błąd usuwania wiadomości: ' + err.message });
   }
 });
 

@@ -117,6 +117,20 @@ export async function initDb(): Promise<void> {
             updated_at TIMESTAMPTZ DEFAULT NOW()
           );
 
+          CREATE TABLE IF NOT EXISTS user_messages (
+            id VARCHAR(64) PRIMARY KEY,
+            sender_id VARCHAR(64) NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            sender_username VARCHAR(100) NOT NULL,
+            recipient_id VARCHAR(64) NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            recipient_username VARCHAR(100) NOT NULL,
+            subject VARCHAR(255) NOT NULL,
+            body TEXT NOT NULL,
+            is_read BOOLEAN DEFAULT FALSE,
+            deleted_by_sender BOOLEAN DEFAULT FALSE,
+            deleted_by_recipient BOOLEAN DEFAULT FALSE,
+            created_at TIMESTAMPTZ DEFAULT NOW()
+          );
+
           -- Safe forward-compatible migrations
           ALTER TABLE user_decks ADD COLUMN IF NOT EXISTS card_source VARCHAR(30) DEFAULT 'collection';
           ALTER TABLE user_decks ADD COLUMN IF NOT EXISTS commander_is_foil BOOLEAN DEFAULT FALSE;

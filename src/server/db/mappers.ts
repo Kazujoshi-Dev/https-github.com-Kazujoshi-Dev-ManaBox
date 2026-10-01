@@ -1,4 +1,4 @@
-import { CollectionItem, WishlistItem, Catalog, AppSettings, DeckItem } from '../../types';
+import { CollectionItem, WishlistItem, Catalog, AppSettings, DeckItem, UserMessage } from '../../types';
 import { DbUser } from './types';
 
 export function mapUserRow(r: any): DbUser {
@@ -120,3 +120,18 @@ export function mapDeckRow(r: any): DeckItem {
     updatedAt: r.updatedAt ? new Date(r.updatedAt).toISOString() : (r.updated_at ? new Date(r.updated_at).toISOString() : new Date().toISOString())
   };
 }
+
+export function mapMessageRow(r: any): UserMessage {
+  return {
+    id: r.id,
+    senderId: r.sender_id || r.senderId,
+    senderUsername: r.sender_username || r.senderUsername,
+    recipientId: r.recipient_id || r.recipientId,
+    recipientUsername: r.recipient_username || r.recipientUsername,
+    subject: r.subject || '',
+    body: r.body || '',
+    isRead: Boolean(r.is_read ?? r.isRead),
+    createdAt: r.created_at ? new Date(r.created_at).toISOString() : (r.createdAt ? new Date(r.createdAt).toISOString() : new Date().toISOString())
+  };
+}
+

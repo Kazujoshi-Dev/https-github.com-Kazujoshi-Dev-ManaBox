@@ -1,5 +1,5 @@
-import React, { useState, useCallback } from 'react';
-import { ScryfallCard, CollectionItem, DeckItem, CardCondition, CardLanguage, AppSettings } from './types';
+import React, { useState, useCallback, useEffect } from 'react';
+import { ScryfallCard, CollectionItem, DeckItem, CardCondition, CardLanguage, AppSettings, RegisteredUserSummary } from './types';
 import { Header } from './components/Header';
 import { AuthView } from './components/AuthView';
 import { TabContent, NavigationTab } from './components/TabContent';
@@ -10,6 +10,7 @@ import { ImportExportModal } from './components/ImportExportModal';
 import { DeckImportExportModal } from './components/DeckImportExportModal';
 import { CameraScannerModal } from './components/camera-scanner/CameraScannerModal';
 import { PublicSaleView } from './components/PublicSaleView';
+import { MailboxModal } from './components/messages/MailboxModal';
 import { Toast } from './components/Toast';
 import { CircleDollarSign } from 'lucide-react';
 import { useAuth } from './hooks/useAuth';
@@ -17,7 +18,7 @@ import { useToast } from './hooks/useToast';
 import { useSettings } from './hooks/useSettings';
 import { useCollectionStats } from './hooks/useCollectionStats';
 import { useAppData } from './hooks/useAppData';
-import { publicSaleApi } from './services/api';
+import { publicSaleApi, messagesApi, usersApi } from './services/api';
 
 export default function App() {
   const { toastMessage, showToast } = useToast();
@@ -119,6 +120,24 @@ export default function App() {
   const [selectedCollectionItemForModal, setSelectedCollectionItemForModal] = useState<CollectionItem | null>(null);
   const [deckCardBeingViewed, setDeckCardBeingViewed] = useState<ScryfallCard | null>(null);
   const [deckCardIsFoil, setDeckCardIsFoil] = useState<boolean | undefined>(undefined);
+
+  // Mailbox State
+  const [isMailboxOpen, setIsMailboxOpen] = useState<boolean>(false);
+  const [unreadMessagesCount, setUnreadMessagesCount] = useState<number>(0);
+  const [registeredUsers, setRegisteredUsers] = useState<RegisteredUserSummary[]>([]);
+
+  // Fetch unread messages count & users
+  useEffect(() => {
+    if (currentUser) {
+      messagesApi.getUnreadCount()
+        .then((res) => setUnreadMessagesCount(res.unreadCount))
+        .catch(() => {});
+
+      usersApi.getAll()
+        .then((users) => setRegisteredUsers(users))
+        .catch(() => {});
+    }
+  }, [currentUser]);
 
   const handleOpenCollectionImportExport = useCallback((tab: 'export' | 'import' = 'export') => {
     setCollectionImportExportTab(tab);
@@ -516,6 +535,8 @@ export default function App() {
         onOpenImportExport={handleOpenCollectionImportExport}
         user={currentUser}
         onLogout={handleLogout}
+        unreadMessagesCount={unreadMessagesCount}
+        onOpenMailbox={() => setIsMailboxOpen(true)}
       />
 
       {/* Main View Container */}
@@ -658,6 +679,18 @@ export default function App() {
           }}
           onCreateDeck={handleCreateDeckSuccess}
           onUpdateDeck={handleUpdateDeckMetadata}
+        />
+      )}
+
+      {/* Mailbox Modal */}
+      {isMailboxOpen && (
+        <MailboxModal
+          isOpen={isMailboxOpen}
+          onClose={() => setIsMailboxOpen(false)}
+          currentUser={currentUser}
+          availableUsers={registeredUsers}
+          onUnreadCountChange={setUnreadMessagesCount}
+          showToast={showToast}
         />
       )}
 

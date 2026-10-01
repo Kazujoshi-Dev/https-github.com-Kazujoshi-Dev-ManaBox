@@ -1,4 +1,4 @@
-import { AppSettings, Catalog, CollectionItem, DeckItem, ScryfallCard, WishlistItem, SpellbookFindCombosResponse, SpellbookVariant, RegisteredUserSummary } from '../types';
+import { AppSettings, Catalog, CollectionItem, DeckItem, ScryfallCard, WishlistItem, SpellbookFindCombosResponse, SpellbookVariant, RegisteredUserSummary, UserMessage } from '../types';
 
 const TOKEN_KEY = 'mtg_auth_token';
 const USER_KEY = 'mtg_auth_user';
@@ -219,6 +219,94 @@ export const usersApi = {
       throw new Error(err.error || `Błąd pobierania listy użytkowników (${res.status})`);
     }
     return res.json();
+  },
+
+  getWishlist: async (userRef: string): Promise<{
+    user: { id: string; username: string; email?: string; createdAt?: string };
+    wishlist: WishlistItem[];
+    settings: AppSettings;
+  }> => {
+    const res = await fetch(`/api/public/wishlist/${encodeURIComponent(userRef)}`);
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || `Błąd pobierania listy życzeń (${res.status})`);
+    }
+    return res.json();
   }
 };
+
+export const messagesApi = {
+  getInbox: async (): Promise<UserMessage[]> => {
+    const res = await fetchWithAuth('/api/messages/inbox');
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || `Błąd pobierania skrzynki odbiorczej (${res.status})`);
+    }
+    return res.json();
+  },
+
+  getSent: async (): Promise<UserMessage[]> => {
+    const res = await fetchWithAuth('/api/messages/sent');
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || `Błąd pobierania skrzynki nadawczej (${res.status})`);
+    }
+    return res.json();
+  },
+
+  getUnreadCount: async (): Promise<{ unreadCount: number }> => {
+    const res = await fetchWithAuth('/api/messages/unread-count');
+    if (!res.ok) {
+      return { unreadCount: 0 };
+    }
+    return res.json();
+  },
+
+  sendMessage: async (data: { recipientId?: string; recipientUsername?: string; subject: string; body: string }): Promise<UserMessage> => {
+    const res = await fetchWithAuth('/api/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || `Błąd wysyłania wiadomości (${res.status})`);
+    }
+    return res.json();
+  },
+
+  markAsRead: async (id: string): Promise<{ success: boolean }> => {
+    const res = await fetchWithAuth(`/api/messages/${id}/read`, {
+      method: 'PUT'
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || `Błąd aktualizacji statusu (${res.status})`);
+    }
+    return res.json();
+  },
+
+  markAllAsRead: async (): Promise<{ success: boolean }> => {
+    const res = await fetchWithAuth('/api/messages/mark-all-read', {
+      method: 'PUT'
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || `Błąd aktualizacji wiadomości (${res.status})`);
+    }
+    return res.json();
+  },
+
+  deleteMessage: async (id: string): Promise<{ success: boolean }> => {
+    const res = await fetchWithAuth(`/api/messages/${id}`, {
+      method: 'DELETE'
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || `Błąd usuwania wiadomości (${res.status})`);
+    }
+    return res.json();
+  }
+};
+
 

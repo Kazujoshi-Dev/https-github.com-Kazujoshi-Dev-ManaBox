@@ -172,8 +172,21 @@ export interface RegisteredUserSummary {
   createdAt: string;
   forSaleCount: number;
   forSaleItemsCount: number;
+  wishlistCount?: number;
   totalCardsCount: number;
   currency?: CurrencyCode;
+}
+
+export interface UserMessage {
+  id: string;
+  senderId: string;
+  senderUsername: string;
+  recipientId: string;
+  recipientUsername: string;
+  subject: string;
+  body: string;
+  isRead: boolean;
+  createdAt: string;
 }
 
 // Commander Spellbook API Types
