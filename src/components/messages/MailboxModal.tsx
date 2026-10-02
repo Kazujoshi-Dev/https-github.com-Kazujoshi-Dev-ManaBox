@@ -221,9 +221,9 @@ export const MailboxModal: React.FC<MailboxModalProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-6 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
       <div 
-        className="relative w-full max-w-4xl h-[620px] max-h-[92vh] bg-stone-900 border border-stone-800 rounded-3xl shadow-2xl overflow-hidden flex flex-col"
+        className="relative w-full max-w-4xl h-[620px] max-h-[92vh] bg-stone-900 border border-stone-800 rounded-3xl shadow-2xl overflow-hidden flex flex-col max-sm:w-full max-sm:max-w-none max-sm:rounded-b-none max-sm:rounded-t-3xl max-sm:max-h-[92dvh] max-sm:pb-[env(safe-area-inset-bottom)] max-sm:animate-[slideUp_.2s_ease-out] max-sm:mt-auto max-sm:mb-0 max-sm:h-[92dvh]"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Top Header */}
@@ -266,8 +266,8 @@ export const MailboxModal: React.FC<MailboxModalProps> = ({
         </div>
 
         {/* Navigation Tabs Bar */}
-        <div className="flex items-center justify-between px-6 py-2.5 border-b border-stone-800 bg-stone-950/40 gap-4 flex-wrap">
-          <div className="flex items-center gap-2">
+        <div className="flex items-center justify-between px-3 sm:px-6 py-2.5 border-b border-stone-800 bg-stone-950/40 gap-2 sm:gap-4 flex-wrap">
+          <div className="flex flex-wrap items-center gap-2">
             <button
               type="button"
               onClick={() => {

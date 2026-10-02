@@ -14,8 +14,8 @@ export const CardModalHeader: React.FC<CardModalHeaderProps> = ({
   onClose,
 }) => {
   return (
-    <div className="px-6 py-4 border-b border-stone-800 bg-stone-950/70 flex items-center justify-between shrink-0">
-      <div className="flex items-center gap-3">
+    <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-stone-800 bg-stone-950/70 flex flex-wrap items-center justify-between gap-2 shrink-0">
+      <div className="flex items-center gap-3 min-w-0 flex-1 basis-full sm:basis-auto order-1">
         <h2 className="text-xl sm:text-2xl font-black text-amber-100 tracking-tight flex items-center gap-2">
           <span>{cardName}</span>
           {isPromo && (
@@ -27,7 +27,7 @@ export const CardModalHeader: React.FC<CardModalHeaderProps> = ({
         <ManaSymbol cost={manaCost} size="md" />
       </div>
 
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-2 order-2 ml-auto">
         {/* Combos Switcher Pill */}
         <button
           onClick={() => onSelectTab(activeTab === 'combos' ? 'details' : 'combos')}
@@ -58,7 +58,7 @@ export const CardModalHeader: React.FC<CardModalHeaderProps> = ({
 
         <button
           onClick={onClose}
-          className="p-1.5 rounded-full bg-stone-900 hover:bg-stone-800 text-stone-400 hover:text-stone-100 border border-stone-800 transition-colors cursor-pointer"
+          className="w-10 h-10 sm:w-auto sm:h-auto sm:p-1.5 flex items-center justify-center rounded-full bg-stone-900 hover:bg-stone-800 text-stone-400 hover:text-stone-100 border border-stone-800 transition-colors cursor-pointer"
           aria-label="Zamknij okno"
         >
           <X className="w-5 h-5" />
