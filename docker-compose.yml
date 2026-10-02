@@ -11,6 +11,8 @@ services:
       NODE_ENV: production
       DATABASE_URL: ${DATABASE_URL:?Ustaw DATABASE_URL w pliku .env}
       JWT_SECRET: ${JWT_SECRET:?Ustaw JWT_SECRET w pliku .env}
+      # Adresy e-mail administratorów (oddzielone przecinkami) — dostęp do panelu Admin
+      ADMIN_EMAILS: ${ADMIN_EMAILS:-}
     depends_on:
       db:
         condition: service_healthy

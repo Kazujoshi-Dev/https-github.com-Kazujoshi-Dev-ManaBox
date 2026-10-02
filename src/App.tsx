@@ -11,6 +11,7 @@ import { DeckImportExportModal } from './components/DeckImportExportModal';
 import { CameraScannerModal } from './components/camera-scanner/CameraScannerModal';
 import { PublicSaleView } from './components/PublicSaleView';
 import { PublicWishlistView } from './components/PublicWishlistView';
+import { ForcePasswordChange } from './components/ForcePasswordChange';
 import { MailboxModal } from './components/messages/MailboxModal';
 import { SellQuantityModal } from './components/SellQuantityModal';
 import { Toast } from './components/Toast';
@@ -57,7 +58,8 @@ export default function App() {
     toggleForSale,
     sellItemQuantity
   } = useAppData({
-    userId: currentUser?.id,
+    // Przy wymuszonej zmianie hasła nie ładujemy danych (serwer i tak by odmówił)
+    userId: currentUser?.mustChangePassword ? undefined : currentUser?.id,
     onUnauthorized: handleUnauthorized,
     showToast,
     onSettingsLoaded: applyRemoteSettings
@@ -187,7 +189,7 @@ export default function App() {
 
   // Fetch unread messages count & users
   useEffect(() => {
-    if (currentUser) {
+    if (currentUser && !currentUser.mustChangePassword) {
       messagesApi.getUnreadCount()
         .then((res) => setUnreadMessagesCount(res.unreadCount))
         .catch(() => {});
@@ -600,6 +602,23 @@ export default function App() {
           handleAuthSuccess(user, token);
           showToast(`Witaj w kolekcji, ${user.username}!`);
         }} />
+        <Toast message={toastMessage} />
+      </>
+    );
+  }
+
+  // 6. Hasło nadane przez administratora — najpierw trzeba ustawić własne
+  if (currentUser.mustChangePassword) {
+    return (
+      <>
+        <ForcePasswordChange
+          user={currentUser}
+          onChanged={(user, token) => {
+            handleAuthSuccess(user, token);
+            showToast('Hasło zostało zmienione.');
+          }}
+          onLogout={handleLogout}
+        />
         <Toast message={toastMessage} />
       </>
     );

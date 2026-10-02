@@ -8,7 +8,12 @@ export function mapUserRow(r: any): DbUser {
     username: r.username,
     password_hash: r.password_hash,
     salt: r.salt,
-    created_at: r.created_at ? new Date(r.created_at).toISOString() : new Date().toISOString()
+    created_at: r.created_at ? new Date(r.created_at).toISOString() : new Date().toISOString(),
+    banned_until: r.banned_until ? new Date(r.banned_until).toISOString() : null,
+    ban_permanent: Boolean(r.ban_permanent),
+    ban_reason: r.ban_reason ?? null,
+    must_change_password: Boolean(r.must_change_password),
+    sale_hidden: Boolean(r.sale_hidden)
   };
 }
 

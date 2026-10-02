@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { AuthUser } from '../types';
 import { tokenStorage, authApi } from '../services/api';
 
@@ -15,6 +15,24 @@ export function useAuth(onLogoutSuccess?: (msg: string) => void) {
     tokenStorage.setUser(user);
     setCurrentUser(user);
   }, []);
+
+  // Po starcie odświeżamy dane konta z serwera (np. zmiana nazwy, uprawnienia, wymuszona zmiana hasła)
+  useEffect(() => {
+    if (!tokenStorage.getToken()) return;
+    authApi
+      .verifySession(handleUnauthorized)
+      .then(async (res) => {
+        if (!res.ok) return;
+        const data = await res.json();
+        if (data?.user) {
+          tokenStorage.setUser(data.user);
+          setCurrentUser(data.user);
+        }
+      })
+      .catch(() => {
+        // brak sieci — zostajemy przy zapisanych danych
+      });
+  }, [handleUnauthorized]);
 
   const handleLogout = useCallback(async () => {
     try {

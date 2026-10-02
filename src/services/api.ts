@@ -1,4 +1,4 @@
-import { AppSettings, Catalog, CollectionItem, DeckItem, ScryfallCard, WishlistItem, SpellbookFindCombosResponse, SpellbookVariant, RegisteredUserSummary, UserMessage, UserProfile, CitySuggestion, MapCity, WishlistMatches } from '../types';
+import { AdminUser, AdminStats, AdminAuditEntry, AuthUser, AppSettings, Catalog, CollectionItem, DeckItem, ScryfallCard, WishlistItem, SpellbookFindCombosResponse, SpellbookVariant, RegisteredUserSummary, UserMessage, UserProfile, CitySuggestion, MapCity, WishlistMatches } from '../types';
 
 const TOKEN_KEY = 'mtg_auth_token';
 const USER_KEY = 'mtg_auth_user';
@@ -48,7 +48,42 @@ export const authApi = {
   logout: (onUnauthorized?: () => void) =>
     fetchWithAuth('/api/auth/logout', { method: 'POST' }, onUnauthorized),
   logoutAll: (onUnauthorized?: () => void) =>
-    fetchWithAuth('/api/auth/logout-all', { method: 'POST' }, onUnauthorized)
+    fetchWithAuth('/api/auth/logout-all', { method: 'POST' }, onUnauthorized),
+  changePassword: async (newPassword: string, currentPassword?: string): Promise<{ token: string; user: AuthUser }> => {
+    const res = await fetchWithAuth('/api/auth/change-password', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ newPassword, currentPassword })
+    });
+    return jsonOrThrow(res, 'Nie udało się zmienić hasła.');
+  }
+};
+
+/** Panel administratora — serwer sprawdza uprawnienia przy każdym zapytaniu. */
+const adminPost = async (url: string, body: unknown = {}, method = 'POST') => {
+  const res = await fetchWithAuth(url, {
+    method,
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body)
+  });
+  return jsonOrThrow<any>(res, 'Operacja nie powiodła się.');
+};
+export const adminApi = {
+  stats: async (): Promise<AdminStats> => jsonOrThrow(await fetchWithAuth('/api/admin/stats'), 'Błąd pobierania statystyk.'),
+  users: async (q: string, offset = 0, limit = 50): Promise<{ users: AdminUser[]; total: number }> =>
+    jsonOrThrow(
+      await fetchWithAuth(`/api/admin/users?q=${encodeURIComponent(q)}&offset=${offset}&limit=${limit}`),
+      'Błąd pobierania użytkowników.'
+    ),
+  audit: async (): Promise<AdminAuditEntry[]> => jsonOrThrow(await fetchWithAuth('/api/admin/audit'), 'Błąd pobierania dziennika.'),
+  rename: (id: string, username: string) => adminPost(`/api/admin/users/${encodeURIComponent(id)}/rename`, { username }),
+  resetPassword: (id: string): Promise<{ tempPassword: string }> => adminPost(`/api/admin/users/${encodeURIComponent(id)}/reset-password`),
+  ban: (id: string, body: { days?: number; until?: string; permanent?: boolean; reason?: string }) =>
+    adminPost(`/api/admin/users/${encodeURIComponent(id)}/ban`, body),
+  unban: (id: string) => adminPost(`/api/admin/users/${encodeURIComponent(id)}/unban`),
+  logoutAll: (id: string) => adminPost(`/api/admin/users/${encodeURIComponent(id)}/logout-all`),
+  setSaleHidden: (id: string, hidden: boolean) => adminPost(`/api/admin/users/${encodeURIComponent(id)}/sale-hidden`, { hidden }),
+  remove: (id: string, confirmUsername: string) => adminPost(`/api/admin/users/${encodeURIComponent(id)}`, { confirmUsername }, 'DELETE')
 };
 
 export const collectionApi = {

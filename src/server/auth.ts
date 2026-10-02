@@ -17,6 +17,8 @@ export interface TokenPayload {
   username: string;
   /** Identyfikator sesji w bazie — token jest ważny tylko, dopóki sesja jest aktywna. */
   sid: string;
+  /** Hasło nadane przez administratora — do czasu zmiany token pozwala tylko ustawić nowe hasło. */
+  mcp?: boolean;
   exp: number;
 }
 

@@ -11,6 +11,7 @@ import {
   Coins,
   TrendingUp,
   TrendingDown,
+  ShieldCheck,
   FolderHeart,
   Settings,
   SlidersHorizontal,
@@ -28,8 +29,8 @@ import { formatCurrency } from '../utils/formatters';
 import { AppSettings, AuthUser } from '../types';
 
 interface HeaderProps {
-  activeTab: 'collection' | 'search' | 'set-top' | 'analytics' | 'wishlist' | 'decks' | 'for-sale' | 'users';
-  setActiveTab: (tab: 'collection' | 'search' | 'set-top' | 'analytics' | 'wishlist' | 'decks' | 'for-sale' | 'users') => void;
+  activeTab: 'collection' | 'search' | 'set-top' | 'analytics' | 'wishlist' | 'decks' | 'for-sale' | 'users' | 'admin';
+  setActiveTab: (tab: 'collection' | 'search' | 'set-top' | 'analytics' | 'wishlist' | 'decks' | 'for-sale' | 'users' | 'admin') => void;
   totalCards: number;
   totalValue: number;
   valueChange?: number | null;
@@ -350,6 +351,20 @@ export const Header: React.FC<HeaderProps> = ({
               <Users className="w-4 h-4 text-blue-400" />
               <span>Użytkownicy</span>
             </button>
+
+            {user?.isAdmin && (
+              <button
+                onClick={() => setActiveTab('admin')}
+                className={`px-3.5 py-2 rounded-lg text-xs font-semibold flex items-center gap-2 transition-all whitespace-nowrap ${
+                  activeTab === 'admin'
+                    ? 'bg-rose-500/20 text-rose-300 border border-rose-500/40 font-bold shadow-sm'
+                    : 'text-stone-400 hover:text-stone-200 hover:bg-stone-800/60'
+                }`}
+              >
+                <ShieldCheck className="w-4 h-4 text-rose-400" />
+                <span>Admin</span>
+              </button>
+            )}
           </div>
 
           {/* Backup / Export Actions */}

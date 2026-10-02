@@ -1,4 +1,7 @@
-import React from 'react';
+import React, { Suspense, lazy } from 'react';
+
+// Panel administratora ładowany tylko, gdy ktoś go otworzy
+const AdminPanel = lazy(() => import('./AdminPanel'));
 import {
   CollectionItem,
   WishlistItem,
@@ -18,7 +21,7 @@ import { Wishlist } from './Wishlist';
 import { ForSaleList } from './ForSaleList';
 import { UsersList } from './UsersList';
 
-export type NavigationTab = 'collection' | 'decks' | 'search' | 'set-top' | 'analytics' | 'wishlist' | 'for-sale' | 'users';
+export type NavigationTab = 'collection' | 'decks' | 'search' | 'set-top' | 'analytics' | 'wishlist' | 'for-sale' | 'users' | 'admin';
 
 interface TabContentProps {
   activeTab: NavigationTab;
@@ -225,6 +228,14 @@ export const TabContent: React.FC<TabContentProps> = ({
           showToast={showToast}
           onOpenSellerProfile={onOpenSellerProfile}
         />
+      );
+
+    case 'admin':
+      if (!currentUser?.isAdmin) return null;
+      return (
+        <Suspense fallback={<p className="text-sm text-stone-400 p-4">Ładowanie panelu...</p>}>
+          <AdminPanel currentUser={currentUser} showToast={showToast} />
+        </Suspense>
       );
 
     case 'users':

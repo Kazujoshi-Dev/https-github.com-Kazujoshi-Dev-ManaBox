@@ -167,6 +167,49 @@ export interface AuthUser {
   email: string;
   username: string;
   createdAt?: string;
+  isAdmin?: boolean;
+  /** Hasło nadane przez administratora — trzeba je zmienić przed dalszym korzystaniem. */
+  mustChangePassword?: boolean;
+}
+
+export interface AdminUser {
+  id: string;
+  username: string;
+  email: string;
+  createdAt: string;
+  lastActiveAt: string | null;
+  totalCards: number;
+  forSaleCards: number;
+  wishlistCount: number;
+  city: string | null;
+  bannedUntil: string | null;
+  banPermanent: boolean;
+  banReason: string | null;
+  banned: boolean;
+  mustChangePassword: boolean;
+  saleHidden: boolean;
+  isAdmin: boolean;
+}
+
+export interface AdminStats {
+  users: number;
+  newUsers7d: number;
+  activeUsers7d: number;
+  bannedUsers: number;
+  totalCards: number;
+  forSaleCards: number;
+  wishlistItems: number;
+  cardDb: { ready: boolean; cards: number; syncing: boolean; lastSyncAt: string | null; lastSyncError: string | null };
+}
+
+export interface AdminAuditEntry {
+  id: string;
+  adminUsername: string | null;
+  action: string;
+  targetId: string | null;
+  targetUsername: string | null;
+  details: Record<string, any> | null;
+  createdAt: string;
 }
 
 export interface RegisteredUserSummary {

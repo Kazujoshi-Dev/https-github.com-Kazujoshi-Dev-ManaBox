@@ -74,6 +74,34 @@ function bearerToken(req: express.Request): string | null {
   return authHeader?.startsWith('Bearer ') ? authHeader.substring(7) : null;
 }
 
+const MUST_CHANGE_ALLOWED = new Set(['/api/auth/me', '/api/auth/change-password', '/api/auth/logout-all']);
+
+// Administratorzy: adresy e-mail z ADMIN_EMAILS w .env (oddzielone przecinkami)
+const ADMIN_EMAILS = new Set(
+  (process.env.ADMIN_EMAILS || '').split(',').map((e) => e.trim().toLowerCase()).filter(Boolean)
+);
+const isAdminEmail = (email: string | null | undefined) => Boolean(email && ADMIN_EMAILS.has(email.toLowerCase().trim()));
+
+/** Dane użytkownika wysyłane do przeglądarki. */
+function publicUser(user: { id: string; email: string; username: string; created_at?: string; must_change_password?: boolean }) {
+  return {
+    id: user.id,
+    email: user.email,
+    username: user.username,
+    createdAt: user.created_at,
+    isAdmin: isAdminEmail(user.email),
+    mustChangePassword: Boolean(user.must_change_password)
+  };
+}
+
+/** Komunikat o blokadzie konta. */
+function banMessage(user: { ban_permanent?: boolean; banned_until?: string | null; ban_reason?: string | null }) {
+  const until = user.ban_permanent
+    ? 'na stałe'
+    : `do ${new Date(user.banned_until!).toLocaleString('pl-PL', { timeZone: 'Europe/Warsaw', dateStyle: 'long', timeStyle: 'short' })}`;
+  return `Konto zostało zablokowane ${until}.${user.ban_reason ? ` Powód: ${user.ban_reason}` : ''}`;
+}
+
 // Sprawdza podpis tokenu ORAZ sesję w bazie: token przestaje działać po wylogowaniu,
 // po 7 dniach bezczynności i najpóźniej po 30 dniach od zalogowania.
 async function authMiddleware(req: express.Request, res: express.Response, next: express.NextFunction) {
@@ -82,6 +110,10 @@ async function authMiddleware(req: express.Request, res: express.Response, next:
     const session = payload ? await db.getSession(payload.sid) : null;
     if (!payload || !db.isSessionActive(session) || session.userId !== payload.userId) {
       return res.status(401).json({ error: 'Brak autoryzacji lub sesja wygasła. Zaloguj się ponownie.' });
+    }
+    // Po resecie hasła przez administratora: do czasu ustawienia nowego hasła dostęp tylko do kilku tras
+    if (payload.mcp && !MUST_CHANGE_ALLOWED.has(req.path)) {
+      return res.status(403).json({ error: 'Najpierw ustaw nowe hasło.', code: 'MUST_CHANGE_PASSWORD' });
     }
     db.touchSession(session).catch((err) => console.warn('[Sesje] Nie udało się odświeżyć sesji:', err?.message || err));
     (req as any).user = payload;
@@ -93,10 +125,13 @@ async function authMiddleware(req: express.Request, res: express.Response, next:
   }
 }
 
-async function issueSessionToken(req: express.Request, user: { id: string; email: string; username: string }) {
+async function issueSessionToken(req: express.Request, user: { id: string; email: string; username: string; must_change_password?: boolean }) {
   const session = await db.createSession(user.id, req.get('user-agent') || undefined, req.ip);
   return generateToken(
-    { userId: user.id, email: user.email, username: user.username, sid: session.id },
+    {
+      userId: user.id, email: user.email, username: user.username, sid: session.id,
+      ...(user.must_change_password ? { mcp: true } : {})
+    },
     new Date(session.expiresAt)
   );
 }
@@ -197,15 +232,7 @@ app.post(['/api/auth/register', '/api/auth/register/', '/api/register'], registe
 
     const token = await issueSessionToken(req, user);
 
-    res.status(201).json({
-      token,
-      user: {
-        id: user.id,
-        email: user.email,
-        username: user.username,
-        createdAt: user.created_at
-      }
-    });
+    res.status(201).json({ token, user: publicUser(user) });
   } catch (err: any) {
     console.error('Error during register:', err);
     sendServerError(res, err, '/api/auth/register', 'Błąd rejestracji konta.');
@@ -229,17 +256,14 @@ app.post(['/api/auth/login', '/api/auth/login/', '/api/login'], loginIpLimiter, 
       return res.status(401).json({ error: 'Nieprawidłowy adres e-mail lub hasło.' });
     }
 
+    // Informację o blokadzie pokazujemy dopiero po poprawnym haśle (nie ujawniamy jej obcym)
+    if (db.isBanActive(user)) {
+      return res.status(403).json({ error: banMessage(user), code: 'BANNED' });
+    }
+
     const token = await issueSessionToken(req, user);
 
-    res.json({
-      token,
-      user: {
-        id: user.id,
-        email: user.email,
-        username: user.username,
-        createdAt: user.created_at
-      }
-    });
+    res.json({ token, user: publicUser(user) });
   } catch (err: any) {
     console.error('Error during login:', err);
     sendServerError(res, err, '/api/auth/login', 'Błąd logowania.');
@@ -254,14 +278,12 @@ app.get('/api/auth/me', authMiddleware, async (req, res) => {
       return res.status(404).json({ error: 'Nie znaleziono użytkownika.' });
     }
 
-    res.json({
-      user: {
-        id: user.id,
-        email: user.email,
-        username: user.username,
-        createdAt: user.created_at
-      }
-    });
+    if (db.isBanActive(user)) {
+      await db.revokeAllSessions(user.id).catch(() => 0);
+      return res.status(401).json({ error: banMessage(user), code: 'BANNED' });
+    }
+
+    res.json({ user: publicUser(user) });
   } catch (err: any) {
     sendServerError(res, err, '/api/auth/me');
   }
@@ -276,6 +298,40 @@ app.post('/api/auth/logout', async (req, res) => {
     console.warn('[Sesje] Błąd podczas wylogowania:', (err as any)?.message || err);
   }
   res.json({ success: true });
+});
+
+// Zmiana hasła. Po resecie przez administratora (token z flagą mcp) nie trzeba podawać obecnego hasła.
+const changePasswordLimiter = rateLimit({
+  name: 'change-password', windowMs: 15 * 60_000, max: 10, key: userKey,
+  message: 'Zbyt wiele prób zmiany hasła. Spróbuj ponownie za kilkanaście minut.'
+});
+app.post('/api/auth/change-password', authMiddleware, changePasswordLimiter, async (req, res) => {
+  try {
+    const payload = (req as any).user;
+    const { currentPassword, newPassword } = req.body || {};
+    if (typeof newPassword !== 'string' || newPassword.length < 8 || newPassword.length > 200) {
+      return res.status(400).json({ error: 'Nowe hasło musi mieć co najmniej 8 znaków.' });
+    }
+    const user = await db.getUserById(payload.userId);
+    if (!user) return res.status(404).json({ error: 'Nie znaleziono użytkownika.' });
+    if (!payload.mcp) {
+      if (typeof currentPassword !== 'string' || !verifyPassword(currentPassword, user.password_hash, user.salt)) {
+        return res.status(400).json({ error: 'Obecne hasło jest nieprawidłowe.' });
+      }
+    }
+    if (verifyPassword(newPassword, user.password_hash, user.salt)) {
+      return res.status(400).json({ error: 'Nowe hasło musi się różnić od dotychczasowego.' });
+    }
+    const { hash, salt } = hashPassword(newPassword);
+    const updated = await db.updateUserFields(user.id, { password_hash: hash, salt, must_change_password: false });
+    if (!updated) return res.status(404).json({ error: 'Nie znaleziono użytkownika.' });
+    // Wylogowujemy wszystkie sesje (także te z hasłem tymczasowym) i wydajemy nowy token
+    await db.revokeAllSessions(user.id);
+    const token = await issueSessionToken(req, updated);
+    res.json({ token, user: publicUser(updated) });
+  } catch (err: any) {
+    sendServerError(res, err, '/api/auth/change-password');
+  }
 });
 
 app.post('/api/auth/logout-all', authMiddleware, async (req, res) => {
@@ -1534,7 +1590,8 @@ app.delete('/api/catalogs/:id', authMiddleware, async (req, res) => {
 
 app.get('/api/users', async (req, res) => {
   try {
-    const rawUsers = await db.getAllUsers();
+    const restricted = await restrictedUsers();
+    const rawUsers = (await db.getAllUsers()).filter((u) => !restricted.banned.has(u.id));
     // Miejscowość jest opcjonalna i podawana świadomie przez użytkownika (pokazujemy tylko miasto).
     const locations = new Map<string, db.UserLocation>((await db.getAllLocations().catch(() => [] as db.UserLocation[])).map((l) => [l.userId, l] as const));
     const result = await Promise.all(
@@ -1542,7 +1599,7 @@ app.get('/api/users', async (req, res) => {
         try {
           const col = await db.getCollection(u.id);
           const wishlist = await db.getWishlist(u.id);
-          const forSaleItems = col.filter((item) => Boolean(item.isForSale));
+          const forSaleItems = restricted.saleHidden.has(u.id) ? [] : col.filter((item) => Boolean(item.isForSale));
           const forSaleCount = forSaleItems.reduce((sum, item) => sum + (item.quantity || 0) + (item.quantityFoil || 0), 0);
           const totalCardsCount = col.reduce((sum, item) => sum + (item.quantity || 0) + (item.quantityFoil || 0), 0);
           const settings = await db.getSettings(u.id);
@@ -1640,6 +1697,12 @@ app.put('/api/profile', authMiddleware, async (req, res) => {
 
 /** Karty na sprzedaż per użytkownik (PostgreSQL jednym zapytaniem; tryb plikowy — pętla). */
 async function forSaleCountsAll(): Promise<Map<string, { cards: number; items: number }>> {
+  const out = await forSaleCountsRaw();
+  const restricted = await restrictedUsers();
+  for (const id of [...restricted.banned, ...restricted.saleHidden]) out.delete(id);
+  return out;
+}
+async function forSaleCountsRaw(): Promise<Map<string, { cards: number; items: number }>> {
   if (db.isPostgresActive()) return db.getForSaleCounts();
   const out = new Map<string, { cards: number; items: number }>();
   for (const u of await db.getAllUsers()) {
@@ -1651,6 +1714,15 @@ async function forSaleCountsAll(): Promise<Map<string, { cards: number; items: n
 
 /** Ile różnych kart z mojej listy życzeń ma każdy inny użytkownik (w kolekcji / na sprzedaż). */
 async function wishlistMatchesFor(userId: string): Promise<Record<string, { collection: number; forSale: number }>> {
+  const raw = await wishlistMatchesRaw(userId);
+  const restricted = await restrictedUsers();
+  for (const id of Object.keys(raw)) {
+    if (restricted.banned.has(id)) delete raw[id];
+    else if (restricted.saleHidden.has(id)) raw[id] = { ...raw[id], forSale: 0 };
+  }
+  return raw;
+}
+async function wishlistMatchesRaw(userId: string): Promise<Record<string, { collection: number; forSale: number }>> {
   const names = (await db.getWishlist(userId)).map((w) => w.card?.name).filter(Boolean) as string[];
   if (names.length === 0) return {};
   if (db.isPostgresActive()) return db.getWishlistMatches(userId, names);
@@ -1717,6 +1789,221 @@ app.get('/api/sellers/map', authMiddleware, async (req, res) => {
   }
 });
 
+// --- PANEL ADMINISTRATORA ---
+
+// Lista kont zablokowanych / z ukrytą ofertą — do filtrowania widoków publicznych (pamięć 30 s)
+let restrictedCache: { at: number; data: { banned: Set<string>; saleHidden: Set<string> } } | null = null;
+async function restrictedUsers() {
+  if (restrictedCache && Date.now() - restrictedCache.at < 30_000) return restrictedCache.data;
+  const data = await db.getRestrictedUserIds().catch(() => ({ banned: new Set<string>(), saleHidden: new Set<string>() }));
+  restrictedCache = { at: Date.now(), data };
+  return data;
+}
+const invalidateRestricted = () => { restrictedCache = null; };
+
+// Dostęp tylko dla adresów z ADMIN_EMAILS — sprawdzane w bazie przy każdym zapytaniu
+async function requireAdmin(req: express.Request, res: express.Response, next: express.NextFunction) {
+  try {
+    const me = await db.getUserById((req as any).userId);
+    if (!me || !isAdminEmail(me.email) || (req as any).user?.mcp) {
+      return res.status(403).json({ error: 'Brak uprawnień administratora.' });
+    }
+    (req as any).adminUser = me;
+    next();
+  } catch (err) {
+    sendServerError(res, err, 'requireAdmin');
+  }
+}
+const adminLimiter = rateLimit({ name: 'admin', windowMs: 60_000, max: 120, key: userKey });
+
+/** Wspólna obsługa akcji na koncie: znajduje użytkownika, chroni administratorów i zapisuje dziennik. */
+async function adminTarget(req: express.Request, res: express.Response, opts: { allowAdmins?: boolean } = {}) {
+  const target = await db.getUserById(String(req.params.id || ''));
+  if (!target) {
+    res.status(404).json({ error: 'Nie znaleziono użytkownika.' });
+    return null;
+  }
+  if (!opts.allowAdmins && isAdminEmail(target.email)) {
+    res.status(400).json({ error: 'Tej operacji nie można wykonać na koncie administratora.' });
+    return null;
+  }
+  return target;
+}
+async function audit(req: express.Request, action: string, target: { id: string; username: string } | null, details?: Record<string, unknown>) {
+  const admin = (req as any).adminUser;
+  await db.addAuditEntry({
+    adminId: admin?.id || null,
+    adminUsername: admin?.username || null,
+    action,
+    targetId: target?.id || null,
+    targetUsername: target?.username || null,
+    details: details || null
+  }).catch((err) => console.warn('[Admin] Nie zapisano dziennika:', err?.message || err));
+}
+
+const admin = express.Router();
+admin.use(authMiddleware, requireAdmin, adminLimiter);
+
+admin.get('/stats', async (_req, res) => {
+  try {
+    res.json({ ...(await db.adminStats()), cardDb: cards.cardDbStatus() });
+  } catch (err) {
+    sendServerError(res, err, '/api/admin/stats');
+  }
+});
+
+admin.get('/users', async (req, res) => {
+  try {
+    const q = typeof req.query.q === 'string' ? req.query.q : '';
+    const limit = Math.min(Math.max(parseInt(String(req.query.limit || '50'), 10) || 50, 1), 100);
+    const offset = Math.max(parseInt(String(req.query.offset || '0'), 10) || 0, 0);
+    const result = await db.adminListUsers(q, limit, offset);
+    res.json({ ...result, users: result.users.map((u) => ({ ...u, isAdmin: isAdminEmail(u.email) })) });
+  } catch (err) {
+    sendServerError(res, err, '/api/admin/users');
+  }
+});
+
+admin.get('/audit', async (_req, res) => {
+  try {
+    res.json(await db.getAuditLog(200));
+  } catch (err) {
+    sendServerError(res, err, '/api/admin/audit');
+  }
+});
+
+admin.post('/users/:id/rename', async (req, res) => {
+  try {
+    const target = await adminTarget(req, res, { allowAdmins: true });
+    if (!target) return;
+    const username = typeof req.body?.username === 'string' ? req.body.username.trim() : '';
+    if (username.length < 2 || username.length > 32) {
+      return res.status(400).json({ error: 'Nazwa gracza musi mieć od 2 do 32 znaków.' });
+    }
+    if (username === target.username) return res.status(400).json({ error: 'To jest obecna nazwa.' });
+    const taken = await db.getUserByIdOrUsername(username);
+    if (taken && taken.id !== target.id) return res.status(400).json({ error: 'Ta nazwa gracza jest już zajęta.' });
+    await db.updateUserFields(target.id, { username });
+    await audit(req, 'rename', target, { from: target.username, to: username });
+    res.json({ success: true });
+  } catch (err) {
+    sendServerError(res, err, '/api/admin/users/:id/rename');
+  }
+});
+
+// Hasło tymczasowe: pokazywane administratorowi tylko raz, użytkownik musi je zmienić przy logowaniu
+const TEMP_PASSWORD_ALPHABET = 'abcdefghjkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+function generateTempPassword(length = 12) {
+  let out = '';
+  for (let i = 0; i < length; i++) out += TEMP_PASSWORD_ALPHABET[crypto.randomInt(TEMP_PASSWORD_ALPHABET.length)];
+  return out;
+}
+
+admin.post('/users/:id/reset-password', async (req, res) => {
+  try {
+    const target = await adminTarget(req, res);
+    if (!target) return;
+    const tempPassword = generateTempPassword();
+    const { hash, salt } = hashPassword(tempPassword);
+    await db.updateUserFields(target.id, { password_hash: hash, salt, must_change_password: true });
+    await db.revokeAllSessions(target.id);
+    await audit(req, 'reset_password', target);
+    res.json({ success: true, tempPassword });
+  } catch (err) {
+    sendServerError(res, err, '/api/admin/users/:id/reset-password');
+  }
+});
+
+admin.post('/users/:id/ban', async (req, res) => {
+  try {
+    const target = await adminTarget(req, res);
+    if (!target) return;
+    const permanent = req.body?.permanent === true;
+    const reason = typeof req.body?.reason === 'string' ? req.body.reason.trim().slice(0, 500) : '';
+    let until: Date | null = null;
+    if (!permanent) {
+      if (typeof req.body?.until === 'string') until = new Date(req.body.until);
+      else if (Number.isFinite(Number(req.body?.days))) until = new Date(Date.now() + Number(req.body.days) * 24 * 60 * 60 * 1000);
+      if (!until || isNaN(until.getTime()) || until.getTime() <= Date.now() + 60_000) {
+        return res.status(400).json({ error: 'Podaj datę końca blokady w przyszłości albo wybierz blokadę stałą.' });
+      }
+      if (until.getTime() > Date.now() + 10 * 365 * 24 * 60 * 60 * 1000) {
+        return res.status(400).json({ error: 'Na tak długo wybierz blokadę stałą.' });
+      }
+    }
+    await db.updateUserFields(target.id, {
+      ban_permanent: permanent,
+      banned_until: permanent ? null : until!.toISOString(),
+      ban_reason: reason || null
+    });
+    await db.revokeAllSessions(target.id);
+    invalidateRestricted();
+    await audit(req, 'ban', target, { permanent, until: until?.toISOString() || null, reason: reason || null });
+    res.json({ success: true });
+  } catch (err) {
+    sendServerError(res, err, '/api/admin/users/:id/ban');
+  }
+});
+
+admin.post('/users/:id/unban', async (req, res) => {
+  try {
+    const target = await adminTarget(req, res, { allowAdmins: true });
+    if (!target) return;
+    await db.updateUserFields(target.id, { ban_permanent: false, banned_until: null, ban_reason: null });
+    invalidateRestricted();
+    await audit(req, 'unban', target);
+    res.json({ success: true });
+  } catch (err) {
+    sendServerError(res, err, '/api/admin/users/:id/unban');
+  }
+});
+
+admin.post('/users/:id/logout-all', async (req, res) => {
+  try {
+    const target = await adminTarget(req, res, { allowAdmins: true });
+    if (!target) return;
+    const revoked = await db.revokeAllSessions(target.id);
+    await audit(req, 'logout_all', target, { sessions: revoked });
+    res.json({ success: true, revoked });
+  } catch (err) {
+    sendServerError(res, err, '/api/admin/users/:id/logout-all');
+  }
+});
+
+admin.post('/users/:id/sale-hidden', async (req, res) => {
+  try {
+    const target = await adminTarget(req, res);
+    if (!target) return;
+    const hidden = req.body?.hidden === true;
+    await db.updateUserFields(target.id, { sale_hidden: hidden });
+    invalidateRestricted();
+    await audit(req, hidden ? 'hide_sale' : 'show_sale', target);
+    res.json({ success: true });
+  } catch (err) {
+    sendServerError(res, err, '/api/admin/users/:id/sale-hidden');
+  }
+});
+
+admin.delete('/users/:id', async (req, res) => {
+  try {
+    const target = await adminTarget(req, res);
+    if (!target) return;
+    if (target.id === (req as any).userId) return res.status(400).json({ error: 'Nie możesz usunąć własnego konta z panelu.' });
+    // Potwierdzenie: administrator przepisuje nazwę usuwanego konta
+    if (req.body?.confirmUsername !== target.username) {
+      return res.status(400).json({ error: 'Wpisz dokładną nazwę użytkownika, aby potwierdzić usunięcie.' });
+    }
+    await db.deleteUserAccount(target.id);
+    invalidateRestricted();
+    await audit(req, 'delete', target, { email: target.email });
+    res.json({ success: true });
+  } catch (err) {
+    sendServerError(res, err, '/api/admin/users/:id');
+  }
+});
+
+app.use('/api/admin', admin);
+
 // --- PUBLIC SALE ENDPOINT (NO AUTH REQUIRED) ---
 
 app.get('/api/public/sale/:userRef', async (req, res) => {
@@ -1727,7 +2014,7 @@ app.get('/api/public/sale/:userRef', async (req, res) => {
     }
 
     const user = await db.getUserByIdOrUsername(userRef.trim());
-    if (!user) {
+    if (!user || db.isBanActive(user) || user.sale_hidden) {
       return res.status(404).json({ error: 'Nie znaleziono oferty dla tego użytkownika' });
     }
 
@@ -1766,7 +2053,7 @@ app.get('/api/public/wishlist/:userRef', async (req, res) => {
     }
 
     const user = await db.getUserByIdOrUsername(userRef.trim());
-    if (!user) {
+    if (!user || db.isBanActive(user)) {
       return res.status(404).json({ error: 'Nie znaleziono profilu dla tego użytkownika' });
     }
 

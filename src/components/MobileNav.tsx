@@ -17,7 +17,8 @@ import {
   Settings,
   LogOut,
   X,
-  User
+  User,
+  ShieldCheck
 } from 'lucide-react';
 import type { NavigationTab } from './TabContent';
 import { useBackToClose } from '../hooks/useBackButton';
@@ -177,7 +178,7 @@ export const MobileNav: React.FC<MobileNavProps> = ({
             </div>
 
             <div className="px-4 pt-4 grid grid-cols-3 gap-2.5">
-              {MORE_TABS.map(({ tab, label, icon: Icon }) => (
+              {[...MORE_TABS, ...(user.isAdmin ? [{ tab: 'admin' as NavigationTab, label: 'Admin', icon: ShieldCheck }] : [])].map(({ tab, label, icon: Icon }) => (
                 <button
                   key={tab}
                   type="button"

@@ -163,6 +163,23 @@ export async function initDb(): Promise<void> {
           ALTER TABLE user_collections ADD COLUMN IF NOT EXISTS previous_prices JSONB;
           ALTER TABLE user_collections ADD COLUMN IF NOT EXISTS prices_changed_at TIMESTAMPTZ;
           ALTER TABLE user_settings ADD COLUMN IF NOT EXISTS auto_nbp_rate BOOLEAN DEFAULT TRUE;
+          -- panel administratora: blokady kont, wymuszona zmiana hasła, ukrycie oferty
+          ALTER TABLE users ADD COLUMN IF NOT EXISTS banned_until TIMESTAMPTZ;
+          ALTER TABLE users ADD COLUMN IF NOT EXISTS ban_permanent BOOLEAN NOT NULL DEFAULT FALSE;
+          ALTER TABLE users ADD COLUMN IF NOT EXISTS ban_reason VARCHAR(500);
+          ALTER TABLE users ADD COLUMN IF NOT EXISTS must_change_password BOOLEAN NOT NULL DEFAULT FALSE;
+          ALTER TABLE users ADD COLUMN IF NOT EXISTS sale_hidden BOOLEAN NOT NULL DEFAULT FALSE;
+          CREATE TABLE IF NOT EXISTS admin_audit_log (
+            id BIGSERIAL PRIMARY KEY,
+            admin_id VARCHAR(64),
+            admin_username VARCHAR(100),
+            action VARCHAR(40) NOT NULL,
+            target_id VARCHAR(64),
+            target_username VARCHAR(100),
+            details JSONB,
+            created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+          );
+          CREATE INDEX IF NOT EXISTS idx_admin_audit_created ON admin_audit_log(created_at DESC);
         `);
         setPostgresActive(true);
         console.log('[Storage] PostgreSQL connected & database schema verified successfully');
