@@ -6,7 +6,7 @@ interface AuthViewProps {
   onAuthSuccess: (user: AuthUser, token: string) => void;
 }
 
-type AuthMode = 'login' | 'register' | 'recover';
+type AuthMode = 'login' | 'register';
 
 export const AuthView: React.FC<AuthViewProps> = ({ onAuthSuccess }) => {
   const [mode, setMode] = useState<AuthMode>('login');
@@ -42,7 +42,6 @@ export const AuthView: React.FC<AuthViewProps> = ({ onAuthSuccess }) => {
     try {
       let endpoint = '/api/auth/login';
       if (mode === 'register') endpoint = '/api/auth/register';
-      if (mode === 'recover') endpoint = '/api/auth/reset-password';
 
       const body = {
         email: email.trim().toLowerCase(),
@@ -105,7 +104,7 @@ export const AuthView: React.FC<AuthViewProps> = ({ onAuthSuccess }) => {
         <div className="bg-stone-900/90 border border-stone-800 rounded-2xl p-6 sm:p-8 shadow-2xl backdrop-blur-xl space-y-6">
           
           {/* Mode Switch Tabs */}
-          <div className="grid grid-cols-3 p-1 bg-stone-950 rounded-xl border border-stone-800 text-[11px] font-bold">
+          <div className="grid grid-cols-2 p-1 bg-stone-950 rounded-xl border border-stone-800 text-[11px] font-bold">
             <button
               type="button"
               onClick={() => {
@@ -136,21 +135,6 @@ export const AuthView: React.FC<AuthViewProps> = ({ onAuthSuccess }) => {
             >
               Nowe konto
             </button>
-            <button
-              type="button"
-              onClick={() => {
-                setMode('recover');
-                setError(null);
-                setSuccessMsg(null);
-              }}
-              className={`py-2 rounded-lg transition-all cursor-pointer ${
-                mode === 'recover'
-                  ? 'bg-amber-500 text-stone-950 shadow-md font-black'
-                  : 'text-stone-400 hover:text-stone-200'
-              }`}
-            >
-              Reset hasła
-            </button>
           </div>
 
           {/* Error Banner */}
@@ -159,18 +143,6 @@ export const AuthView: React.FC<AuthViewProps> = ({ onAuthSuccess }) => {
               <AlertCircle className="w-4 h-4 shrink-0 text-rose-400 mt-0.5" />
               <div className="space-y-1">
                 <span>{error}</span>
-                {mode === 'login' && error.includes('hasło') && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setMode('recover');
-                      setError(null);
-                    }}
-                    className="block text-amber-400 hover:text-amber-300 underline font-semibold mt-1 cursor-pointer"
-                  >
-                    Kliknij tutaj, aby zresetować hasło do tego konta
-                  </button>
-                )}
               </div>
             </div>
           )}
@@ -180,16 +152,6 @@ export const AuthView: React.FC<AuthViewProps> = ({ onAuthSuccess }) => {
             <div className="p-3 bg-emerald-500/10 border border-emerald-500/30 rounded-xl flex items-start gap-2.5 text-xs text-emerald-300 animate-fadeIn">
               <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-400 mt-0.5" />
               <span>{successMsg}</span>
-            </div>
-          )}
-
-          {/* Mode description */}
-          {mode === 'recover' && (
-            <div className="p-3 bg-amber-500/10 border border-amber-500/20 rounded-xl text-xs text-amber-300 space-y-1">
-              <p className="font-bold">Resetowanie hasła / Odzyskiwanie dostępu</p>
-              <p className="text-[11px] text-amber-200/80">
-                Wpisz swój email oraz nowe hasło (min. 6 znaków). Zostanie ono natychmiast zaktualizowane i zostaniesz zalogowany do swojej kolekcji.
-              </p>
             </div>
           )}
 
@@ -238,20 +200,8 @@ export const AuthView: React.FC<AuthViewProps> = ({ onAuthSuccess }) => {
             <div>
               <div className="flex items-center justify-between mb-1.5">
                 <label className="block text-[11px] font-bold uppercase tracking-wider text-stone-400">
-                  {mode === 'recover' ? 'Nowe hasło' : 'Hasło'}
+                  Hasło
                 </label>
-                {mode === 'login' && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setMode('recover');
-                      setError(null);
-                    }}
-                    className="text-[11px] text-amber-400 hover:text-amber-300 transition-colors cursor-pointer"
-                  >
-                    Zapomniałeś hasła?
-                  </button>
-                )}
               </div>
               <div className="relative">
                 <Lock className="w-4 h-4 text-stone-500 absolute left-3.5 top-3" />
@@ -265,7 +215,7 @@ export const AuthView: React.FC<AuthViewProps> = ({ onAuthSuccess }) => {
                   className="w-full bg-stone-950 border border-stone-700 focus:border-amber-500 focus:ring-1 focus:ring-amber-500 rounded-xl pl-10 pr-3.5 py-2.5 text-sm text-stone-100 placeholder-stone-600 focus:outline-none transition-colors"
                 />
               </div>
-              {(mode === 'register' || mode === 'recover') && (
+              {mode === 'register' && (
                 <p className="text-[10px] text-stone-500 mt-1">Minimum 6 znaków</p>
               )}
             </div>
@@ -284,11 +234,6 @@ export const AuthView: React.FC<AuthViewProps> = ({ onAuthSuccess }) => {
               ) : mode === 'register' ? (
                 <>
                   <span>Zarejestruj konto i wejdź do kolekcji</span>
-                  <ArrowRight className="w-4 h-4" />
-                </>
-              ) : mode === 'recover' ? (
-                <>
-                  <span>Zapisz nowe hasło i wejdź do kolekcji</span>
                   <ArrowRight className="w-4 h-4" />
                 </>
               ) : (

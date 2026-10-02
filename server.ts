@@ -89,12 +89,12 @@ app.post(['/api/auth/login', '/api/auth/login/', '/api/login'], async (req, res)
 
     const user = await db.getUserByEmail(email);
     if (!user) {
-      return res.status(401).json({ error: 'Nie znaleziono konta z takim adresem e-mail. Zarejestruj się lub zresetuj hasło.' });
+      return res.status(401).json({ error: 'Nieprawidłowy adres e-mail lub hasło.' });
     }
 
     const isValid = verifyPassword(password, user.password_hash, user.salt);
     if (!isValid) {
-      return res.status(401).json({ error: 'Nieprawidłowe hasło do konta. Użyj opcji "Zresetuj hasło", aby nadać nowe.' });
+      return res.status(401).json({ error: 'Nieprawidłowy adres e-mail lub hasło.' });
     }
 
     const token = generateToken({
@@ -115,50 +115,6 @@ app.post(['/api/auth/login', '/api/auth/login/', '/api/login'], async (req, res)
   } catch (err: any) {
     console.error('Error during login:', err);
     res.status(500).json({ error: 'Błąd logowania: ' + err.message });
-  }
-});
-
-app.post(['/api/auth/reset-password', '/api/auth/recover', '/api/reset-password'], async (req, res) => {
-  try {
-    const { email, password, username } = req.body;
-    if (!email || !password) {
-      return res.status(400).json({ error: 'Adres e-mail i nowe hasło są wymagane.' });
-    }
-    if (password.length < 6) {
-      return res.status(400).json({ error: 'Hasło musi mieć co najmniej 6 znaków.' });
-    }
-
-    const { hash, salt } = hashPassword(password);
-    let user = await db.getUserByEmail(email);
-    if (user) {
-      user = await db.updateUserPassword(email, hash, salt);
-    } else {
-      const uname = username?.trim() || email.split('@')[0] || 'Planeswalker';
-      const userId = `usr_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
-      user = await db.createUser(userId, email, uname, hash, salt);
-    }
-
-    if (!user) {
-      return res.status(500).json({ error: 'Nie udało się zaktualizować hasła.' });
-    }
-
-    const token = generateToken({
-      userId: user.id,
-      email: user.email,
-      username: user.username
-    });
-
-    res.json({
-      token,
-      user: {
-        id: user.id,
-        email: user.email,
-        username: user.username,
-        createdAt: user.created_at
-      }
-    });
-  } catch (err: any) {
-    res.status(500).json({ error: 'Błąd resetowania hasła: ' + err.message });
   }
 });
 
