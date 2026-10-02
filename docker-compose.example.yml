@@ -14,7 +14,7 @@ services:
       - NODE_ENV=production
       - PORT=3000
       - DATABASE_URL=postgresql://mtg_user:twoje_bezpieczne_haslo@postgres:5432/mtg_db?sslmode=disable
-      - JWT_SECRET=twoj_bezpieczny_unikalny_klucz_jwt_produkcja
+      - JWT_SECRET=${JWT_SECRET}  # ustaw w pliku .env (openssl rand -base64 48)
     depends_on:
       postgres:
         condition: service_healthy

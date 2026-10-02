@@ -1,6 +1,15 @@
 import crypto from 'crypto';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'mtg_studio_dev_secret_key_2026_change_in_prod';
+const JWT_SECRET = (process.env.JWT_SECRET || '').trim();
+
+// Bez silnego sekretu każdy mógłby podpisać token dowolnego użytkownika.
+// Serwer nie wystartuje, dopóki JWT_SECRET nie zostanie ustawiony.
+if (JWT_SECRET.length < 32) {
+  throw new Error(
+    'JWT_SECRET nie jest ustawiony lub jest za krótki (min. 32 znaki). ' +
+    'Wygeneruj go poleceniem: openssl rand -base64 48'
+  );
+}
 
 export interface TokenPayload {
   userId: string;
