@@ -75,9 +75,27 @@ export const Header: React.FC<HeaderProps> = ({
   const isProfitPositive = profit >= 0;
 
   return (
-    <header className="bg-stone-900 border-b border-stone-800 text-stone-100 sticky top-0 z-30 shadow-md">
-      {/* Top Banner & Stats */}
-      <div className="max-w-[1760px] w-full mx-auto px-4 sm:px-6 lg:px-8 xl:px-10 py-3">
+    <header className="bg-stone-900 border-b border-stone-800 text-stone-100 sticky top-0 z-30 shadow-md pt-[env(safe-area-inset-top)]">
+      {/* Telefon: jeden kompaktowy rząd — reszta funkcji jest w dolnym pasku nawigacji */}
+      <div className="md:hidden flex items-center justify-between gap-3 px-4 py-2.5">
+        <div className="flex items-center gap-2.5 min-w-0">
+          <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-amber-600 via-red-600 to-purple-700 flex items-center justify-center shrink-0">
+            <Sparkles className="w-4.5 h-4.5 text-amber-100" />
+          </div>
+          <h1 className="text-lg font-bold tracking-tight bg-gradient-to-r from-amber-200 via-amber-100 to-stone-200 bg-clip-text text-transparent truncate">
+            Mana Screw
+          </h1>
+        </div>
+        <div className="flex items-center gap-2 shrink-0 text-right">
+          <div className="leading-tight">
+            <p className="text-sm font-bold text-emerald-400">{formatCurrency(totalValue, settings.currency)}</p>
+            <p className="text-xs text-stone-400">{totalCards} kart</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Top Banner & Stats (tablet i komputer) */}
+      <div className="hidden md:block max-w-[1760px] w-full mx-auto px-4 sm:px-6 lg:px-8 xl:px-10 py-3">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           
           {/* Logo & Title */}

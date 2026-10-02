@@ -13,6 +13,7 @@ import { PublicSaleView } from './components/PublicSaleView';
 import { MailboxModal } from './components/messages/MailboxModal';
 import { SellQuantityModal } from './components/SellQuantityModal';
 import { Toast } from './components/Toast';
+import { MobileNav } from './components/MobileNav';
 import { CircleDollarSign } from 'lucide-react';
 import { useAuth } from './hooks/useAuth';
 import { useToast } from './hooks/useToast';
@@ -534,7 +535,7 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen bg-stone-950 text-stone-100 font-sans selection:bg-amber-500 selection:text-stone-950 pb-16">
+    <div className="min-h-dvh bg-stone-950 text-stone-100 font-sans selection:bg-amber-500 selection:text-stone-950 pb-[calc(6rem+env(safe-area-inset-bottom))] md:pb-16">
       {/* App Header */}
       <Header
         activeTab={activeTab}
@@ -559,7 +560,7 @@ export default function App() {
       />
 
       {/* Main View Container */}
-      <main className="max-w-[1760px] w-full mx-auto px-4 sm:px-6 lg:px-8 xl:px-10 pt-6">
+      <main className="max-w-[1760px] w-full mx-auto px-3 sm:px-6 lg:px-8 xl:px-10 pt-4 md:pt-6">
         {isLoading ? (
           <div className="flex flex-col items-center justify-center py-20 space-y-4">
             <div className="w-12 h-12 rounded-full border-4 border-amber-500/20 border-t-amber-500 animate-spin" />
@@ -612,6 +613,21 @@ export default function App() {
           />
         )}
       </main>
+
+      {/* Dolny pasek nawigacji (tylko telefon) */}
+      <MobileNav
+        activeTab={activeTab}
+        setActiveTab={setActiveTab}
+        onOpenScanner={() => setIsScannerModalOpen(true)}
+        onOpenMailbox={() => setIsMailboxOpen(true)}
+        onOpenSettings={() => setIsSettingsOpen(true)}
+        onOpenImportExport={handleOpenCollectionImportExport}
+        onRefreshPrices={refreshPrices}
+        isRefreshing={isRefreshingPrices}
+        onLogout={handleLogout}
+        unreadMessagesCount={unreadMessagesCount}
+        user={currentUser}
+      />
 
       {/* Settings Modal */}
       {isSettingsOpen && (

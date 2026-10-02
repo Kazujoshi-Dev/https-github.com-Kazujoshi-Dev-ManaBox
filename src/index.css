@@ -9,3 +9,9 @@
     scrollbar-width: none;
   }
 }
+
+/* Wysuwanie arkuszy od dołu (telefon) */
+@keyframes slideUp {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}

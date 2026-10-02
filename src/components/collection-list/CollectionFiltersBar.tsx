@@ -36,12 +36,12 @@ export const CollectionFiltersBar: React.FC<CollectionFiltersBarProps> = ({
         </div>
 
         {/* Color Filter Pills */}
-        <div className="flex items-center gap-1 bg-stone-950 p-1 rounded-xl border border-stone-800 shrink-0">
+        <div className="flex items-center gap-1 bg-stone-950 p-1 rounded-xl border border-stone-800 max-w-full overflow-x-auto no-scrollbar md:shrink-0">
           {COLOR_PILLS.map(col => (
             <button
               key={col.id}
               onClick={() => onFilterChange({ color: col.id })}
-              className={`px-2.5 py-1 rounded-lg text-xs transition-all cursor-pointer ${
+              className={`shrink-0 px-2.5 py-1.5 md:py-1 rounded-lg text-xs transition-all cursor-pointer ${
                 filters.color === col.id
                   ? 'bg-amber-500 text-stone-950 font-extrabold shadow-sm'
                   : 'text-stone-400 hover:text-stone-200 hover:bg-stone-800'
