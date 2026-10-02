@@ -1,16 +1,20 @@
 /**
- * Strumieniowy parser tablicy JSON z danymi zbiorczymi Scryfall.
+ * Strumieniowy parser danych zbiorczych Scryfall.
  *
- * Plik "default_cards" ma kilkaset MB, więc nie można go wczytać w całości.
- * Parser przegląda tekst znak po znaku i wydziela kolejne obiekty z tablicy
- * najwyższego poziomu — niezależnie od formatowania (nowe linie, wcięcia).
+ * Plik ma kilkaset MB, więc nie można go wczytać w całości. Obsługujemy oba
+ * formaty publikowane przez Scryfall:
+ *  - tablicę JSON:   [ {...}, {...} ]
+ *  - JSON Lines:     {...}\n{...}\n
+ * Parser przegląda tekst znak po znaku i wydziela kolejne obiekty kart
+ * niezależnie od formatowania (nowe linie, wcięcia, podział na fragmenty).
  */
 export async function* iterateJsonArrayObjects(chunks: AsyncIterable<string>): AsyncGenerator<any> {
   let depth = 0; // głębokość zagnieżdżenia { } i [ ]
   let inString = false;
   let escaped = false;
-  let current: string[] = []; // fragmenty bieżącego obiektu
-  let objStart = -1; // indeks początku obiektu w bieżącym fragmencie
+  let targetDepth = 0; // głębokość, na której zaczynają się obiekty kart (1 = JSONL, 2 = tablica)
+  let current: string[] = []; // fragmenty bieżącego obiektu z poprzednich porcji
+  let objStart = -1; // indeks początku obiektu w bieżącej porcji
 
   for await (const chunk of chunks) {
     for (let i = 0; i < chunk.length; i++) {
@@ -23,15 +27,20 @@ export async function* iterateJsonArrayObjects(chunks: AsyncIterable<string>): A
         continue;
       }
 
+      if (targetDepth === 0) {
+        if (ch === '[') targetDepth = 2;
+        else if (ch === '{') targetDepth = 1;
+        else continue; // białe znaki / BOM przed początkiem danych
+      }
+
       if (ch === '"') {
         inString = true;
       } else if (ch === '{' || ch === '[') {
         depth++;
-        // obiekt karty zaczyna się na głębokości 2 (wewnątrz tablicy najwyższego poziomu)
-        if (ch === '{' && depth === 2) objStart = i;
+        if (ch === '{' && depth === targetDepth) objStart = i;
       } else if (ch === '}' || ch === ']') {
         depth--;
-        if (ch === '}' && depth === 1 && (objStart >= 0 || current.length > 0)) {
+        if (ch === '}' && depth === targetDepth - 1 && (objStart >= 0 || current.length > 0)) {
           current.push(chunk.slice(objStart >= 0 ? objStart : 0, i + 1));
           const text = current.join('');
           current = [];
@@ -41,8 +50,8 @@ export async function* iterateJsonArrayObjects(chunks: AsyncIterable<string>): A
       }
     }
 
-    // obiekt ciągnie się dalej w następnym fragmencie
-    if (depth >= 2) {
+    // obiekt ciągnie się dalej w następnej porcji
+    if (targetDepth > 0 && depth >= targetDepth) {
       current.push(chunk.slice(objStart >= 0 ? objStart : 0));
       objStart = -1;
     }

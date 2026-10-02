@@ -11,6 +11,7 @@ import type pg from 'pg';
 import { getPool, isPostgresActive } from '../db/storage';
 import { iterateJsonArrayObjects } from './bulkParser';
 import { NameIndex, normalizeName } from './nameMatch';
+import { buildMissingHashes, ensureHashSchema, hashIndexStatus, loadHashIndex } from './hashIndex';
 
 const SCRYFALL_HEADERS = {
   'User-Agent': 'ManaScrew/1.0 (https://manascrew.eu)',
@@ -30,6 +31,7 @@ interface IndexEntry {
 
 interface CardIndex {
   entries: IndexEntry[];
+  nameById: Map<string, string>; // id wydania → znormalizowana główna nazwa
   bySetNumber: Map<string, number>;
   byName: Map<string, number[]>; // znormalizowana nazwa → indeksy wydań (najnowsze pierwsze)
   names: NameIndex;
@@ -55,7 +57,8 @@ export function cardDbStatus() {
     names: index?.names.size || 0,
     syncing,
     lastSyncAt,
-    lastSyncError
+    lastSyncError,
+    images: hashIndexStatus()
   };
 }
 
@@ -163,21 +166,66 @@ async function upsertBatch(p: pg.Pool, cards: any[], syncStart: string): Promise
        -- gdy zmienił się obraz karty, odcisk trzeba policzyć od nowa
        art_hash = CASE WHEN scryfall_cards.image_small IS DISTINCT FROM EXCLUDED.image_small THEN NULL ELSE scryfall_cards.art_hash END,
        card_hash = CASE WHEN scryfall_cards.image_small IS DISTINCT FROM EXCLUDED.image_small THEN NULL ELSE scryfall_cards.card_hash END,
+       back_hash = CASE WHEN scryfall_cards.image_small IS DISTINCT FROM EXCLUDED.image_small THEN NULL ELSE scryfall_cards.back_hash END,
+       hash_version = CASE WHEN scryfall_cards.image_small IS DISTINCT FROM EXCLUDED.image_small THEN NULL ELSE scryfall_cards.hash_version END,
        image_small = EXCLUDED.image_small`,
     values
   );
 }
 
+/**
+ * Zamienia strumień bajtów na tekst. Jeśli dane są skompresowane gzipem
+ * (Scryfall publikuje .jsonl.gz), rozpakowuje je w locie — rozpoznaje to
+ * po sygnaturze 1f 8b, więc działa też, gdy serwer sam zdekompresował odpowiedź.
+ */
 async function* decodeStream(body: ReadableStream<Uint8Array>): AsyncGenerator<string> {
-  const decoder = new TextDecoder('utf-8');
   const reader = body.getReader();
+  const first = await reader.read();
+  if (first.done) return;
+  const isGzip = first.value.length >= 2 && first.value[0] === 0x1f && first.value[1] === 0x8b;
+
+  // Odtwarzamy strumień razem z już przeczytaną pierwszą porcją.
+  let raw: ReadableStream<Uint8Array> = new ReadableStream<Uint8Array>({
+    start(controller) {
+      controller.enqueue(first.value);
+    },
+    async pull(controller) {
+      const { done, value } = await reader.read();
+      if (done) controller.close();
+      else controller.enqueue(value);
+    },
+    cancel(reason) {
+      return reader.cancel(reason);
+    }
+  });
+  if (isGzip) raw = raw.pipeThrough(new DecompressionStream('gzip') as any);
+
+  const decoder = new TextDecoder('utf-8');
+  const textReader = raw.getReader();
   while (true) {
-    const { done, value } = await reader.read();
+    const { done, value } = await textReader.read();
     if (done) break;
     yield decoder.decode(value, { stream: true });
   }
   const rest = decoder.decode();
   if (rest) yield rest;
+}
+
+/**
+ * Adres pliku z opisu danych zbiorczych. Scryfall zmienił nazwy pól
+ * (download_uri → jsonl_download_uri), więc sprawdzamy oba, a w ostateczności
+ * pobieramy opis ponownie spod pola "uri".
+ */
+async function resolveDownloadUri(meta: any, allowRefetch = true): Promise<string> {
+  const pick = (m: any) =>
+    [m?.jsonl_download_uri, m?.download_uri].find((u) => typeof u === 'string' && u.trim().length > 0) as string | undefined;
+  const direct = pick(meta);
+  if (direct) return direct;
+  if (allowRefetch && typeof meta?.uri === 'string' && meta.uri.startsWith('https://')) {
+    const res = await fetch(meta.uri, { headers: SCRYFALL_HEADERS });
+    if (res.ok) return resolveDownloadUri(await res.json(), false);
+  }
+  throw new Error(`brak adresu pliku w odpowiedzi Scryfall (pola: ${Object.keys(meta || {}).join(', ')})`);
 }
 
 /**
@@ -203,8 +251,10 @@ export async function syncCardsFromScryfall(force = false): Promise<void> {
       return;
     }
 
-    console.log(`[Karty] Pobieram dane zbiorcze Scryfall (${Math.round((meta.size || 0) / 1e6)} MB)...`);
-    const dataRes = await fetch(meta.download_uri, { headers: { 'User-Agent': SCRYFALL_HEADERS['User-Agent'] } });
+    const downloadUri = await resolveDownloadUri(meta);
+    const sizeMb = Math.round((meta.compressed_size || meta.size || 0) / 1e6);
+    console.log(`[Karty] Pobieram dane zbiorcze Scryfall${sizeMb ? ` (${sizeMb} MB)` : ''}...`);
+    const dataRes = await fetch(downloadUri, { headers: { 'User-Agent': SCRYFALL_HEADERS['User-Agent'] } });
     if (!dataRes.ok || !dataRes.body) throw new Error(`download HTTP ${dataRes.status}`);
 
     const syncStart = new Date().toISOString();
@@ -232,6 +282,8 @@ export async function syncCardsFromScryfall(force = false): Promise<void> {
     await setMeta(p, 'last_check', lastSyncAt);
     console.log(`[Karty] Zaimportowano ${total} kart (usunięto ${removed.rowCount || 0}) w ${Math.round((Date.now() - started) / 1000)} s.`);
     await loadCardIndex();
+    await loadHashIndex();
+    buildMissingHashes().catch(() => {});
   } catch (err: any) {
     lastSyncError = err?.message || String(err);
     console.warn('[Karty] Synchronizacja nieudana:', lastSyncError);
@@ -250,12 +302,14 @@ export async function loadCardIndex(): Promise<void> {
      ORDER BY released_at DESC NULLS LAST`
   );
   const entries: IndexEntry[] = [];
+  const nameById = new Map<string, string>();
   const bySetNumber = new Map<string, number>();
   const byName = new Map<string, number[]>();
   for (const r of res.rows) {
     const idx = entries.length;
     entries.push({ id: r.id, set: r.set_code, cn: r.collector_number, released: r.released });
     bySetNumber.set(`${r.set_code}/${r.collector_number.toLowerCase()}`, idx);
+    nameById.set(r.id, normalizeName((r.face_names as string[])[0] || ''));
     const seen = new Set<string>();
     for (const n of r.face_names as string[]) {
       const norm = normalizeName(n);
@@ -266,7 +320,7 @@ export async function loadCardIndex(): Promise<void> {
       list.push(idx);
     }
   }
-  index = { entries, bySetNumber, byName, names: new NameIndex(byName.keys()) };
+  index = { entries, nameById, bySetNumber, byName, names: new NameIndex(byName.keys()) };
   console.log(`[Karty] Indeks w pamięci: ${entries.length} wydań, ${index.names.size} nazw.`);
 }
 
@@ -278,7 +332,10 @@ export async function startCardDb(): Promise<void> {
     return;
   }
   await ensureCardSchema();
+  await ensureHashSchema();
   await loadCardIndex();
+  await loadHashIndex();
+  buildMissingHashes().catch(() => {});
   lastSyncAt = await getMeta(p, 'last_check');
 
   const maybeSync = () => {
@@ -325,7 +382,12 @@ export function findByName(ocrTitle: string, limit = 3): NameCandidates[] {
   }));
 }
 
-/** Wszystkie wydania danej karty (po identyfikatorze dowolnego z nich). */
+/** Znormalizowana główna nazwa wydania (do grupowania wyników wyszukiwania po obrazie). */
+export function nameOfId(id: string): string | null {
+  return index?.nameById.get(id) ?? null;
+}
+
+/** Wszystkie wydania danej karty (po znormalizowanej nazwie). */
 export function printingsOfName(normName: string): string[] {
   if (!index) return [];
   return (index.byName.get(normName) || []).map((i) => index!.entries[i].id);

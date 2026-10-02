@@ -6,6 +6,8 @@ import * as db from './src/server/db';
 import { hashPassword, verifyPassword, generateToken, verifyToken } from './src/server/auth';
 import { rateLimit } from './src/server/rateLimit';
 import * as cards from './src/server/cards/cardStore';
+import * as hashes from './src/server/cards/hashIndex';
+import { computeCardHash, decodeJpegToGray } from './src/server/cards/imageHash';
 import { normalizeName, nameSimilarity } from './src/server/cards/nameMatch';
 
 const app = express();
@@ -643,12 +645,14 @@ app.post('/api/scanner/delver-identify', authMiddleware, scannerLimiter, async (
     const hintSet = str(req.body?.hintSet, 12).toLowerCase();
     const hintCollector = str(req.body?.hintCollector, 24).replace(/^0+(?=\d)/, '');
 
-    if (!hintTitle && !(hintSet && hintCollector)) {
-      return res.status(400).json({ error: 'Brak odczytanej nazwy ani kodu setu i numeru karty.' });
+    const queryHash = hashCardImage(req.body?.cardImageBase64);
+
+    if (!hintTitle && !(hintSet && hintCollector) && !queryHash) {
+      return res.status(400).json({ error: 'Brak obrazu karty, odczytanej nazwy ani kodu setu i numeru.' });
     }
 
     const result = cards.isCardDbReady()
-      ? await identifyWithLocalDb(hintTitle, hintSet, hintCollector)
+      ? await identifyWithLocalDb(hintTitle, hintSet, hintCollector, queryHash)
       : await identifyWithScryfallApi(hintTitle, hintSet, hintCollector);
 
     const matched = result.matchedCard;
@@ -661,6 +665,8 @@ app.post('/api/scanner/delver-identify', authMiddleware, scannerLimiter, async (
       confidence: result.confidence,
       isFoil: false,
       detectedRarity: matched?.rarity || null,
+      method: result.method,
+      imageDistance: result.imageDistance ?? null,
       matchedCard: matched,
       possibleCards: result.possibleCards
     });
@@ -674,45 +680,108 @@ interface IdentifyResult {
   matchedCard: any | null;
   possibleCards: any[];
   confidence: number;
+  method?: 'set_number' | 'name' | 'name_image' | 'image' | 'none';
+  imageDistance?: number;
 }
 
 const MAX_PRINTINGS = 40;
+// Progi dla odległości odcisków (0..1024). Dobrane na danych testowych:
+// ta sama karta zwykle < 270, różne karty zwykle > 330.
+const IMAGE_ACCEPT_DISTANCE = 300; // rozpoznanie wyłącznie po obrazie
+const IMAGE_MIN_MARGIN = 25; // wymagana przewaga nad najlepszą inną kartą
+const IMAGE_SET_TOLERANCE = 40; // set z OCR wygrywa, jeśli jego obraz jest niewiele gorszy
 
-async function identifyWithLocalDb(title: string, set: string, collector: string): Promise<IdentifyResult> {
+/** Odcisk przesłanego zdjęcia karty (JPEG jako data URL); null, gdy brak lub niepoprawny. */
+function hashCardImage(dataUrl: unknown): Uint8Array | null {
+  if (typeof dataUrl !== 'string' || !dataUrl.startsWith('data:image/jpeg;base64,')) return null;
+  if (dataUrl.length > 2_000_000) return null;
+  try {
+    return computeCardHash(decodeJpegToGray(Buffer.from(dataUrl.slice(23), 'base64')));
+  } catch {
+    return null;
+  }
+}
+
+/** Sortuje wydania wg podobieństwa obrazu (gdy jest odcisk), zachowując resztę na końcu. */
+function rankByImage(ids: string[], queryHash: Uint8Array | null) {
+  if (!queryHash || !hashes.hasHashes()) return { ordered: ids, distances: new Map<string, number>() };
+  const ranked = hashes.searchByHash(queryHash, ids.length, ids);
+  const distances = new Map(ranked.map((r) => [r.id, r.distance]));
+  const withHash = ranked.map((r) => r.id);
+  return { ordered: [...withHash, ...ids.filter((id) => !distances.has(id))], distances };
+}
+
+async function identifyWithLocalDb(title: string, set: string, collector: string, queryHash: Uint8Array | null): Promise<IdentifyResult> {
   const nameHits = title ? cards.findByName(title, 3) : [];
   const exactId = set && collector ? cards.findIdBySetNumber(set, collector) : null;
 
   let matchedId: string | null = null;
   let printings: string[] = [];
   let confidence = 0;
+  let method: IdentifyResult['method'] = 'none';
+  let distances = new Map<string, number>();
 
+  // 1. Kod setu + numer (najdokładniejsze), o ile zgadza się z odczytaną nazwą.
   if (exactId) {
     const [exactCard] = await cards.getCardsByIds([exactId]);
     const exactNames = exactCard ? [exactCard.name, ...(exactCard.card_faces || []).map((f: any) => f.name)] : [];
     const titleAgrees = !title || exactNames.some((n: string) => nameSimilarity(normalizeName(n), normalizeName(title)) >= 0.6);
     if (exactCard && titleAgrees) {
       matchedId = exactId;
-      printings = cards.printingsOfName(normalizeName(exactCard.name));
+      const ranked = rankByImage(cards.printingsOfName(normalizeName(exactCard.name)), queryHash);
+      printings = ranked.ordered;
+      distances = ranked.distances;
       confidence = title ? 99 : 92;
+      method = 'set_number';
     }
   }
 
+  // 2. Nazwa z OCR; wydanie wybiera obraz (a set z OCR, jeśli obraz go nie wyklucza).
   if (!matchedId && nameHits.length > 0 && nameHits[0].score >= 0.7) {
     const best = nameHits[0];
-    printings = best.ids;
-    // Gdy OCR odczytał set (choć numer się nie zgadzał), wybierz wydanie z tego setu.
-    const inSet = set ? (await cards.getCardsByIds(best.ids)).find((c) => c.set === set) : null;
-    matchedId = inSet?.id || best.ids[0];
-    confidence = Math.round(best.score * (inSet ? 95 : 85));
+    const ranked = rankByImage(best.ids, queryHash);
+    printings = ranked.ordered;
+    distances = ranked.distances;
+    matchedId = printings[0];
+    method = distances.size ? 'name_image' : 'name';
+    confidence = Math.round(best.score * 85);
+    if (set) {
+      const inSet = (await cards.getCardsByIds(best.ids)).find((c) => c.set === set);
+      const bestD = distances.get(matchedId);
+      const setD = inSet ? distances.get(inSet.id) : undefined;
+      if (inSet && (bestD === undefined || setD === undefined || setD <= bestD + IMAGE_SET_TOLERANCE)) {
+        matchedId = inSet.id;
+        confidence = Math.round(best.score * 95);
+      }
+    }
+    const d = distances.get(matchedId);
+    if (d !== undefined && d < IMAGE_ACCEPT_DISTANCE) confidence = Math.max(confidence, 90);
+  }
+
+  // 3. Sam obraz (OCR nic nie dał): najbliższy odcisk w całej bazie, jeśli wyraźnie lepszy od innych kart.
+  if (!matchedId && queryHash && hashes.hasHashes()) {
+    const top = hashes.searchByHash(queryHash, 30);
+    const best = top[0];
+    const bestName = best ? cards.nameOfId(best.id) : null;
+    const rival = top.find((m) => cards.nameOfId(m.id) !== bestName);
+    const margin = rival ? rival.distance - best.distance : Infinity;
+    if (best && bestName && best.distance <= IMAGE_ACCEPT_DISTANCE && margin >= IMAGE_MIN_MARGIN) {
+      const ranked = rankByImage(cards.printingsOfName(bestName), queryHash);
+      printings = ranked.ordered;
+      distances = ranked.distances;
+      matchedId = printings[0];
+      method = 'image';
+      confidence = Math.round(Math.min(95, 60 + margin / 2));
+    }
   }
 
   if (!matchedId) {
-    return { matchedCard: null, possibleCards: [], confidence: 0 };
+    return { matchedCard: null, possibleCards: [], confidence: 0, method: 'none' };
   }
 
   const ids = [matchedId, ...printings.filter((id) => id !== matchedId)].slice(0, MAX_PRINTINGS);
   const possibleCards = await cards.getCardsByIds(ids);
-  return { matchedCard: possibleCards[0] || null, possibleCards, confidence };
+  return { matchedCard: possibleCards[0] || null, possibleCards, confidence, method, imageDistance: distances.get(matchedId) };
 }
 
 async function identifyWithScryfallApi(title: string, set: string, collector: string): Promise<IdentifyResult> {
@@ -751,6 +820,7 @@ async function identifyWithScryfallApi(title: string, set: string, collector: st
 
 // Stan lokalnej bazy kart (do diagnostyki).
 app.get('/api/scanner/status', authMiddleware, (_req, res) => {
+  // zawiera też postęp budowania indeksu obrazów (images)
   res.json(cards.cardDbStatus());
 });
 
