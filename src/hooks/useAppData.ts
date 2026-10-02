@@ -464,12 +464,17 @@ export function useAppData({ userId, onUnauthorized, showToast, onSettingsLoaded
         if (data.collection) {
           setCollection(data.collection);
           const changed = data.changedCount ?? 0;
+          const skipped = data.skippedCount ?? 0;
           showToast(
-            changed > 0
+            (changed > 0
               ? `Zaktualizowano ceny: ${data.updatedCount} kart, ${changed} ze zmianą ceny.`
-              : `Zaktualizowano ceny dla ${data.updatedCount} kart — bez zmian od ostatniej aktualizacji.`
+              : `Zaktualizowano ceny dla ${data.updatedCount} kart — bez zmian od ostatniej aktualizacji.`) +
+              (skipped > 0 ? ` ${skipped} kart spoza bazy zaktualizujemy przy kolejnym odświeżeniu (najwcześniej za kilka godzin).` : '')
           );
         }
+      } else {
+        const data = await res.json().catch(() => ({}));
+        showToast(data.error || 'Nie udało się odświeżyć cen. Spróbuj ponownie później.');
       }
     } catch (err) {
       console.error('Failed to refresh prices:', err);

@@ -576,34 +576,71 @@ function backfillEdhrecRanks() {
 }
 backfillEdhrecRanks();
 
-// Scryfall API Proxy Helper with Rate Limiting (~100ms interval) & In-Memory Cache
+// Scryfall API: wspólna kolejka dla całego serwera (Scryfall prosi o 50–100 ms
+// odstępu między zapytaniami, ~10/s) + pamięć podręczna wyników.
+// https://scryfall.com/docs/api — przeciążanie API grozi blokadą adresu IP.
 const SCRYFALL_BASE = 'https://api.scryfall.com';
+const SCRYFALL_USER_AGENT = 'ManaScrew/1.0 (https://manascrew.eu)';
 
+const MIN_REQUEST_INTERVAL_MS = 110; // nieco ponad 100 ms dla zapasu
+const SCRYFALL_MAX_QUEUE = 300; // tyle zapytań może czekać; powyżej odmawiamy (503)
+let scryfallQueue: Promise<unknown> = Promise.resolve();
+let scryfallQueued = 0;
 let lastRequestTime = 0;
-const MIN_REQUEST_INTERVAL_MS = 100; // 100 ms rate-limiting delay between Scryfall API calls
+let scryfallPausedUntil = 0; // po 429 wstrzymujemy całą kolejkę
 
 const scryfallCache = new Map<string, { data: any; timestamp: number }>();
 const CACHE_TTL_MS = 1000 * 60 * 60; // 1 hour cache
+const SCRYFALL_CACHE_MAX = 5000;
 
-async function fetchScryfallThrottled(url: string, options: RequestInit = {}) {
-  const now = Date.now();
-  const timeSinceLast = now - lastRequestTime;
-  if (timeSinceLast < MIN_REQUEST_INTERVAL_MS) {
-    const waitMs = MIN_REQUEST_INTERVAL_MS - timeSinceLast;
-    await new Promise(resolve => setTimeout(resolve, waitMs));
+class ScryfallBusyError extends Error {
+  constructor() {
+    super('Serwis kart jest chwilowo przeciążony. Spróbuj ponownie za chwilę.');
   }
-  lastRequestTime = Date.now();
+}
 
-  const response = await fetch(url, {
-    ...options,
-    headers: {
-      'User-Agent': 'MTGCollectionApp/1.0 (Contact: collector@app.local)',
-      'Accept': 'application/json',
-      ...(options.headers || {})
+const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
+/**
+ * Każde zapytanie do api.scryfall.com przechodzi przez tę funkcję: zapytania idą
+ * po kolei (także przy wielu użytkownikach naraz), z odstępem ≥110 ms.
+ * Na 429 kolejka czeka (Retry-After, domyślnie 5 s) i ponawia zapytanie raz.
+ */
+function fetchScryfallThrottled(url: string, options: RequestInit = {}): Promise<Response> {
+  if (scryfallQueued >= SCRYFALL_MAX_QUEUE) return Promise.reject(new ScryfallBusyError());
+  scryfallQueued++;
+  const doFetch = () =>
+    fetch(url, {
+      ...options,
+      headers: {
+        'User-Agent': SCRYFALL_USER_AGENT,
+        'Accept': 'application/json',
+        ...(options.headers || {})
+      }
+    });
+  const run = scryfallQueue.then(async () => {
+    for (let attempt = 0; ; attempt++) {
+      const wait = Math.max(lastRequestTime + MIN_REQUEST_INTERVAL_MS, scryfallPausedUntil) - Date.now();
+      if (wait > 0) await sleep(wait);
+      lastRequestTime = Date.now();
+      const response = await doFetch();
+      if (response.status !== 429 || attempt >= 1) return response;
+      const retryAfter = Number(response.headers.get('retry-after'));
+      const pauseMs = Number.isFinite(retryAfter) && retryAfter > 0 ? Math.min(retryAfter, 60) * 1000 : 5000;
+      scryfallPausedUntil = Date.now() + pauseMs;
+      console.warn(`[Scryfall] 429 Too Many Requests — wstrzymuję zapytania na ${pauseMs} ms`);
     }
   });
+  scryfallQueue = run.catch(() => undefined).finally(() => { scryfallQueued--; });
+  return run;
+}
 
-  return response;
+function cacheScryfall(key: string, data: any) {
+  if (scryfallCache.size >= SCRYFALL_CACHE_MAX) {
+    const oldest = scryfallCache.keys().next().value;
+    if (oldest !== undefined) scryfallCache.delete(oldest);
+  }
+  scryfallCache.set(key, { data, timestamp: Date.now() });
 }
 
 async function fetchScryfall(endpoint: string) {
@@ -632,7 +669,7 @@ async function fetchScryfall(endpoint: string) {
   }
 
   const data = await response.json();
-  scryfallCache.set(endpoint, { data, timestamp: Date.now() });
+  cacheScryfall(endpoint, data);
   return data;
 }
 
@@ -969,19 +1006,59 @@ app.get('/api/scryfall/named', async (req, res) => {
 });
 
 // 3c. Scryfall Batch Collection Lookup (/cards/collection)
-app.post('/api/scryfall/collection', async (req, res) => {
+const scryfallCollectionLimiter = rateLimit({
+  name: 'scryfall-collection', windowMs: 10 * 60_000, max: 20,
+  message: 'Zbyt wiele importów w krótkim czasie. Spróbuj ponownie za kilka minut.'
+});
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const COLLECTION_LOOKUP_MAX = 5000; // pozycji w jednym imporcie
+const COLLECTION_LOOKUP_API_MAX = 1500; // z tego najwyżej tyle przez API (20 zapytań)
+
+app.post('/api/scryfall/collection', scryfallCollectionLimiter, async (req, res) => {
   try {
     const { identifiers } = req.body;
     if (!Array.isArray(identifiers) || identifiers.length === 0) {
       return res.status(400).json({ error: 'Lista "identifiers" jest wymagana' });
     }
+    if (identifiers.length > COLLECTION_LOOKUP_MAX) {
+      return res.status(413).json({ error: `Za dużo pozycji naraz (najwyżej ${COLLECTION_LOOKUP_MAX}). Podziel listę na mniejsze części.` });
+    }
 
-    const BATCH_SIZE = 75; // Scryfall allows up to 75 identifiers per POST
     const allFound: any[] = [];
     const notFound: any[] = [];
 
-    for (let i = 0; i < identifiers.length; i += BATCH_SIZE) {
-      const chunk = identifiers.slice(i, i + BATCH_SIZE);
+    // 1. Lokalna baza kart: identyfikatory po id albo po secie i numerze kolekcjonerskim
+    const localIds = new Map<number, string>();
+    identifiers.forEach((ident: any, idx: number) => {
+      if (!ident || typeof ident !== 'object') return;
+      if (typeof ident.id === 'string') {
+        if (UUID_RE.test(ident.id)) localIds.set(idx, ident.id.toLowerCase());
+      }
+      else if (typeof ident.set === 'string' && ident.collector_number != null) {
+        const id = cards.findIdBySetNumber(ident.set, String(ident.collector_number));
+        if (id) localIds.set(idx, id);
+      }
+    });
+    const localCards = new Map<string, any>();
+    const uniqueLocal = [...new Set(localIds.values())];
+    for (let i = 0; i < uniqueLocal.length; i += 1000) {
+      const found = await cards.getCardsByIds(uniqueLocal.slice(i, i + 1000)).catch(() => []);
+      for (const c of found) if (c?.id) localCards.set(c.id, c);
+    }
+    const remaining: any[] = [];
+    identifiers.forEach((ident: any, idx: number) => {
+      const id = localIds.get(idx);
+      const card = id ? localCards.get(id) : undefined;
+      if (card) allFound.push(card);
+      else remaining.push(ident);
+    });
+
+    // 2. Reszta (np. same nazwy) przez API Scryfall, ze wspólną kolejką
+    const BATCH_SIZE = 75; // Scryfall allows up to 75 identifiers per POST
+    const viaApi = remaining.slice(0, COLLECTION_LOOKUP_API_MAX);
+    notFound.push(...remaining.slice(COLLECTION_LOOKUP_API_MAX));
+    for (let i = 0; i < viaApi.length; i += BATCH_SIZE) {
+      const chunk = viaApi.slice(i, i + BATCH_SIZE);
       const scryRes = await fetchScryfallThrottled(`${SCRYFALL_BASE}/cards/collection`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -996,13 +1073,16 @@ app.post('/api/scryfall/collection', async (req, res) => {
         if (Array.isArray(result.not_found)) {
           notFound.push(...result.not_found);
         }
+      } else {
+        notFound.push(...viaApi.slice(i));
+        break;
       }
     }
 
     res.json({ object: 'list', data: allFound, not_found: notFound });
   } catch (err: any) {
-    console.error('Error in /api/scryfall/collection:', err);
-    res.status(500).json({ error: err.message });
+    if (err instanceof ScryfallBusyError) return res.status(503).json({ error: err.message });
+    sendServerError(res, err, '/api/scryfall/collection');
   }
 });
 
@@ -1269,12 +1349,23 @@ app.post('/api/collection/bulk-add', authMiddleware, async (req, res) => {
   }
 });
 
-// Batch price refresh from Scryfall using official POST /cards/collection Bulk API
-app.post('/api/collection/refresh-prices', authMiddleware, async (req, res) => {
+// Odświeżanie cen kolekcji.
+// Ceny bierzemy z lokalnej bazy kart (dzienny plik zbiorczy Scryfall, synchronizowany
+// raz na dobę) — zero zapytań do API niezależnie od liczby użytkowników i kart.
+// Do API trafiają tylko karty, których w pliku nie ma (głównie wydania nieangielskie),
+// i to najwyżej raz na kilka godzin na użytkownika — Scryfall i tak zmienia ceny raz na dobę.
+const refreshPricesLimiter = rateLimit({
+  name: 'refresh-prices', windowMs: 10 * 60_000, max: 5, key: userKey,
+  message: 'Ceny odświeżasz zbyt często — Scryfall aktualizuje je raz na dobę. Spróbuj za kilka minut.'
+});
+const PRICE_API_COOLDOWN_MS = 6 * 60 * 60 * 1000;
+const PRICE_API_MAX_CARDS = 1500; // najwyżej 20 zapytań do API na jedno odświeżenie
+const lastPriceApiRefresh = new Map<string, number>();
+
+app.post('/api/collection/refresh-prices', authMiddleware, refreshPricesLimiter, async (req, res) => {
   try {
     const userId = (req as any).userId;
     const collection = await db.getCollection(userId);
-    let updatedCount = 0;
     let changedCount = 0;
     const now = new Date().toISOString();
     const updates: PriceUpdate[] = [];
@@ -1282,55 +1373,88 @@ app.post('/api/collection/refresh-prices', authMiddleware, async (req, res) => {
     const pricesDiffer = (a: any, b: any) =>
       PRICE_KEYS.some(k => String(a?.[k] ?? '') !== String(b?.[k] ?? ''));
 
-    const itemsWithCardId = collection.filter(item => item.card && item.card.id);
-    const BATCH_SIZE = 75;
+    const items = collection.filter(item => item.card && item.card.id);
+    const ids = [...new Set(items.map(item => String(item.card.id)))].filter(id => UUID_RE.test(id));
+    const fresh = new Map<string, any>();
 
-    for (let i = 0; i < itemsWithCardId.length; i += BATCH_SIZE) {
-      const chunk = itemsWithCardId.slice(i, i + BATCH_SIZE);
-      const identifiers = chunk.map(item => ({ id: item.card.id }));
+    // 1. Lokalna baza kart (bez zapytań do Scryfall)
+    const LOCAL_CHUNK = 1000;
+    for (let i = 0; i < ids.length; i += LOCAL_CHUNK) {
+      const found = await cards.getCardsByIds(ids.slice(i, i + LOCAL_CHUNK)).catch(() => []);
+      for (const c of found) if (c?.id) fresh.set(c.id, c);
+    }
+    const fromLocal = fresh.size;
 
+    // 2. Brakujące karty z API — z limitem na użytkownika
+    let missing = ids.filter(id => !fresh.has(id));
+    let skippedCount = 0;
+    let fromApi = 0;
+    if (missing.length > 0) {
+      const last = lastPriceApiRefresh.get(userId) || 0;
+      if (Date.now() - last < PRICE_API_COOLDOWN_MS) {
+        skippedCount = missing.length;
+        missing = [];
+      } else {
+        skippedCount = Math.max(0, missing.length - PRICE_API_MAX_CARDS);
+        missing = missing.slice(0, PRICE_API_MAX_CARDS);
+        lastPriceApiRefresh.set(userId, Date.now());
+      }
+    }
+    const BATCH_SIZE = 75; // limit Scryfall dla /cards/collection
+    for (let i = 0; i < missing.length; i += BATCH_SIZE) {
+      const identifiers = missing.slice(i, i + BATCH_SIZE).map(id => ({ id }));
       try {
         const batchResponse = await fetchScryfallThrottled(`${SCRYFALL_BASE}/cards/collection`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ identifiers })
         });
-
-        if (batchResponse.ok) {
-          const batchData = await batchResponse.json();
-          if (batchData.data && Array.isArray(batchData.data)) {
-            const cardMap = new Map<string, any>(batchData.data.map((c: any) => [c.id, c]));
-
-            chunk.forEach(item => {
-              const updatedCard = cardMap.get(item.card.id);
-              if (updatedCard) {
-                const oldPrices = item.card.prices;
-                let previousPrices = item.previousPrices ?? null;
-                let pricesChangedAt = item.pricesChangedAt ?? null;
-                // Zmiana wartości liczona jest względem cen sprzed ostatniej faktycznej zmiany
-                if (updatedCard.prices && oldPrices && pricesDiffer(oldPrices, updatedCard.prices)) {
-                  previousPrices = oldPrices;
-                  pricesChangedAt = now;
-                  changedCount++;
-                }
-                const card = { ...item.card };
-                if (updatedCard.prices) card.prices = updatedCard.prices;
-                if (updatedCard.image_uris) card.image_uris = updatedCard.image_uris;
-                if (updatedCard.edhrec_rank !== undefined) card.edhrec_rank = updatedCard.edhrec_rank;
-                updates.push({ id: item.id, card, previousPrices, pricesChangedAt, lastUpdatedPriceAt: now });
-                updatedCount++;
-              }
-            });
-          }
+        if (!batchResponse.ok) {
+          skippedCount += missing.length - i;
+          break; // np. 429 mimo ponowienia — nie dokładamy kolejnych zapytań
+        }
+        const batchData = await batchResponse.json();
+        for (const c of Array.isArray(batchData.data) ? batchData.data : []) {
+          if (c?.id) { fresh.set(c.id, c); fromApi++; }
         }
       } catch (chunkErr) {
         console.warn(`Failed to update prices for chunk ${i}:`, chunkErr);
+        skippedCount += missing.length - i;
+        break;
       }
+    }
+    if (missing.length > 0 && fromApi === 0) lastPriceApiRefresh.delete(userId); // nic nie pobrano — pozwól spróbować ponownie
+
+    for (const item of items) {
+      const updatedCard = fresh.get(String(item.card.id));
+      if (!updatedCard) continue;
+      const oldPrices = item.card.prices;
+      let previousPrices = item.previousPrices ?? null;
+      let pricesChangedAt = item.pricesChangedAt ?? null;
+      // Zmiana wartości liczona jest względem cen sprzed ostatniej faktycznej zmiany
+      if (updatedCard.prices && oldPrices && pricesDiffer(oldPrices, updatedCard.prices)) {
+        previousPrices = oldPrices;
+        pricesChangedAt = now;
+        changedCount++;
+      }
+      const card = { ...item.card };
+      if (updatedCard.prices) card.prices = updatedCard.prices;
+      if (updatedCard.image_uris) card.image_uris = updatedCard.image_uris;
+      if (updatedCard.edhrec_rank !== undefined) card.edhrec_rank = updatedCard.edhrec_rank;
+      updates.push({ id: item.id, card, previousPrices, pricesChangedAt, lastUpdatedPriceAt: now });
     }
 
     // Tylko ceny — nie nadpisujemy reszty pozycji (np. oznaczeń „na sprzedaż”)
     await db.updateCollectionPrices(userId, updates);
-    res.json({ success: true, updatedCount, changedCount, collection: await db.getCollection(userId) });
+    res.json({
+      success: true,
+      updatedCount: updates.length,
+      changedCount,
+      skippedCount,
+      fromLocal,
+      fromApi,
+      collection: await db.getCollection(userId)
+    });
   } catch (err: any) {
     sendServerError(res, err, '/api/collection/refresh-prices');
   }
@@ -1931,7 +2055,7 @@ async function fetchSpellbookThrottled(url: string, options: RequestInit = {}) {
   const response = await fetch(url, {
     ...options,
     headers: {
-      'User-Agent': 'MTGCollectionApp/1.0 (Contact: collector@mtg-app.local)',
+      'User-Agent': SCRYFALL_USER_AGENT,
       'Accept': 'application/json',
       ...(options.headers || {})
     }
