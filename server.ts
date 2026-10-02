@@ -764,33 +764,57 @@ Return strictly valid JSON:
   }
 });
 
+// Proxy obrazków przyjmuje wyłącznie HTTPS do domen Scryfall (ochrona przed SSRF).
+const ALLOWED_IMAGE_DOMAINS = ['scryfall.io', 'scryfall.com'];
+function isAllowedScryfallImageUrl(raw: string): boolean {
+  if (!raw || raw.length > 2048) return false;
+  let u: URL;
+  try {
+    u = new URL(raw);
+  } catch {
+    return false;
+  }
+  if (u.protocol !== 'https:' || u.username || u.password || (u.port && u.port !== '443')) return false;
+  const host = u.hostname.toLowerCase();
+  return ALLOWED_IMAGE_DOMAINS.some((d) => host === d || host.endsWith('.' + d));
+}
+
 // 1. Scryfall Image Proxy (solves referrer / CORS / hotlink blocking)
 app.get('/api/scryfall/image-proxy', async (req, res) => {
   try {
-    const imageUrl = req.query.url as string;
-    if (!imageUrl || (!imageUrl.includes('scryfall.io') && !imageUrl.includes('scryfall.com'))) {
+    const imageUrl = typeof req.query.url === 'string' ? req.query.url : '';
+    if (!isAllowedScryfallImageUrl(imageUrl)) {
       return res.status(400).send('Nieprawidłowy adres obrazu');
     }
 
     const imgRes = await fetchScryfallThrottled(imageUrl, {
+      redirect: 'error',
       headers: {
-        'Accept': 'image/jpeg,image/webp,image/png,image/*,*/*'
+        'Accept': 'image/jpeg,image/webp,image/png,image/svg+xml,image/*'
       }
     });
 
     if (!imgRes.ok) {
-      return res.status(imgRes.status).send('Błąd pobierania obrazu');
+      return res.status(502).send('Błąd pobierania obrazu');
+    }
+
+    const contentType = (imgRes.headers.get('content-type') || '').split(';')[0].trim().toLowerCase();
+    if (!contentType.startsWith('image/')) {
+      return res.status(502).send('Nieprawidłowy typ pliku');
     }
 
     const arrayBuffer = await imgRes.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
-    const contentType = imgRes.headers.get('content-type') || 'image/jpeg';
 
     res.setHeader('Content-Type', contentType);
     res.setHeader('Cache-Control', 'public, max-age=86400');
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    // SVG serwowany z naszej domeny nie może wykonać skryptów
+    res.setHeader('Content-Security-Policy', "default-src 'none'; style-src 'unsafe-inline'; sandbox");
     res.send(buffer);
   } catch (err: any) {
-    res.status(500).send(err.message);
+    console.error('Błąd w /api/scryfall/image-proxy:', err?.message);
+    res.status(502).send('Błąd pobierania obrazu');
   }
 });
 
