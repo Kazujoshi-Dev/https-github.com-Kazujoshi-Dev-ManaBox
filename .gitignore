@@ -6,3 +6,6 @@ coverage/
 *.log
 .env*
 !.env.example
+
+# Dane lokalne (fallback JSON) — nigdy nie commitować, mogą zawierać dane użytkowników
+data/
