@@ -334,6 +334,34 @@ app.post('/api/auth/change-password', authMiddleware, changePasswordLimiter, asy
   }
 });
 
+// Usunięcie własnego konta: wymaga hasła i wpisania słowa USUŃ. Dane usuwa ON DELETE CASCADE.
+const deleteAccountLimiter = rateLimit({
+  name: 'delete-account', windowMs: 15 * 60_000, max: 5, key: userKey,
+  message: 'Zbyt wiele prób. Spróbuj ponownie za kilkanaście minut.'
+});
+app.delete('/api/auth/account', authMiddleware, deleteAccountLimiter, async (req, res) => {
+  try {
+    const { password, confirm } = req.body || {};
+    if (confirm !== 'USUŃ') {
+      return res.status(400).json({ error: 'Wpisz słowo USUŃ, aby potwierdzić.' });
+    }
+    const user = await db.getUserById((req as any).userId);
+    if (!user) return res.status(404).json({ error: 'Nie znaleziono użytkownika.' });
+    if (typeof password !== 'string' || !verifyPassword(password, user.password_hash, user.salt)) {
+      return res.status(400).json({ error: 'Hasło jest nieprawidłowe.' });
+    }
+    if (isAdminEmail(user.email)) {
+      return res.status(400).json({ error: 'Konta administratora nie można usunąć. Najpierw usuń ten adres z ADMIN_EMAILS.' });
+    }
+    await db.deleteUserAccount(user.id);
+    restrictedCache = null;
+    console.log(`[Konta] Użytkownik ${user.id} usunął swoje konto.`);
+    res.json({ success: true });
+  } catch (err: any) {
+    sendServerError(res, err, '/api/auth/account');
+  }
+});
+
 app.post('/api/auth/logout-all', authMiddleware, async (req, res) => {
   try {
     const revoked = await db.revokeAllSessions((req as any).userId);

@@ -703,6 +703,11 @@ export default function App() {
               onLogoutAll={handleLogoutAll}
               onPasswordChanged={(user, token) => handleAuthSuccess(user, token)}
               onOpenImportExport={handleOpenCollectionImportExport}
+              onAccountDeleted={() => {
+                handleUnauthorized();
+                setActiveTab('collection');
+                showToast('Twoje konto zostało usunięte. Dziękujemy za korzystanie z Mana Screw.');
+              }}
               showToast={showToast}
             />
           ) : (

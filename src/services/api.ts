@@ -49,6 +49,14 @@ export const authApi = {
     fetchWithAuth('/api/auth/logout', { method: 'POST' }, onUnauthorized),
   logoutAll: (onUnauthorized?: () => void) =>
     fetchWithAuth('/api/auth/logout-all', { method: 'POST' }, onUnauthorized),
+  deleteAccount: async (password: string): Promise<void> => {
+    const res = await fetchWithAuth('/api/auth/account', {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ password, confirm: 'USUŃ' })
+    });
+    await jsonOrThrow(res, 'Nie udało się usunąć konta.');
+  },
   changePassword: async (newPassword: string, currentPassword?: string): Promise<{ token: string; user: AuthUser }> => {
     const res = await fetchWithAuth('/api/auth/change-password', {
       method: 'POST',

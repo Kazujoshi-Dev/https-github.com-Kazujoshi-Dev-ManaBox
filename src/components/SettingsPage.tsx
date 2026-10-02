@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import {
   Settings, User, Coins, ShieldCheck, Share2, Database, Check, RefreshCw, Euro, DollarSign, LogOut, Loader2,
-  KeyRound, Eye, EyeOff, Copy, ExternalLink, Download, Upload, AlertCircle, CheckCircle2
+  KeyRound, Eye, EyeOff, Copy, ExternalLink, Download, Upload, AlertCircle, CheckCircle2, Trash2
 } from 'lucide-react';
 import { AppSettings, AuthUser, CurrencyCode, PricingSource } from '../types';
 import { DEFAULT_SETTINGS, formatCurrency } from '../utils/formatters';
@@ -11,7 +11,7 @@ import { CityPicker } from './CityPicker';
 type Section = 'account' | 'pricing' | 'security' | 'sharing' | 'data';
 
 const SECTIONS: Array<{ id: Section; label: string; hint: string; icon: React.ElementType }> = [
-  { id: 'account', label: 'Konto i profil', hint: 'Dane konta, miejscowość', icon: User },
+  { id: 'account', label: 'Konto i profil', hint: 'Dane konta, miejscowość, usunięcie', icon: User },
   { id: 'pricing', label: 'Wycena i waluta', hint: 'Źródło cen, kursy NBP', icon: Coins },
   { id: 'security', label: 'Bezpieczeństwo', hint: 'Hasło, sesje', icon: ShieldCheck },
   { id: 'sharing', label: 'Udostępnianie', hint: 'Publiczne linki', icon: Share2 },
@@ -27,6 +27,8 @@ interface SettingsPageProps {
   /** Po zmianie hasła serwer wydaje nowy token (pozostałe sesje są wylogowane). */
   onPasswordChanged: (user: AuthUser, token: string) => void;
   onOpenImportExport: (tab: 'export' | 'import') => void;
+  /** Konto zostało usunięte — wyczyść sesję i wróć do ekranu logowania. */
+  onAccountDeleted: () => void;
   showToast: (msg: string) => void;
 }
 
@@ -86,7 +88,9 @@ export const SettingsPage: React.FC<SettingsPageProps> = (props) => {
         </nav>
 
         <div className="min-w-0" aria-label={active.label}>
-          {section === 'account' && <AccountSection user={props.user} />}
+          {section === 'account' && (
+            <AccountSection user={props.user} onOpenImportExport={props.onOpenImportExport} onAccountDeleted={props.onAccountDeleted} />
+          )}
           {section === 'pricing' && <PricingSection settings={props.settings} onSave={props.onSaveSettings} />}
           {section === 'security' && (
             <SecuritySection onLogoutAll={props.onLogoutAll} onPasswordChanged={props.onPasswordChanged} showToast={props.showToast} />
@@ -101,7 +105,11 @@ export const SettingsPage: React.FC<SettingsPageProps> = (props) => {
 
 /* ---------- Konto i profil ---------- */
 
-const AccountSection: React.FC<{ user: AuthUser }> = ({ user }) => (
+const AccountSection: React.FC<{
+  user: AuthUser;
+  onOpenImportExport: (tab: 'export' | 'import') => void;
+  onAccountDeleted: () => void;
+}> = ({ user, onOpenImportExport, onAccountDeleted }) => (
   <div className="space-y-4">
     <div className={card}>
       <SectionHeader title="Dane konta" description="Nazwę gracza może zmienić administrator — napisz do niego, jeśli potrzebujesz." />
@@ -122,8 +130,113 @@ const AccountSection: React.FC<{ user: AuthUser }> = ({ user }) => (
       <SectionHeader title="Profil publiczny" description="Opcjonalne dane widoczne dla innych graczy." />
       <CityPicker />
     </div>
+    <DeleteAccountCard user={user} onOpenImportExport={onOpenImportExport} onAccountDeleted={onAccountDeleted} />
   </div>
 );
+
+const DeleteAccountCard: React.FC<{
+  user: AuthUser;
+  onOpenImportExport: (tab: 'export' | 'import') => void;
+  onAccountDeleted: () => void;
+}> = ({ user, onOpenImportExport, onAccountDeleted }) => {
+  const [open, setOpen] = useState(false);
+  const [password, setPassword] = useState('');
+  const [confirm, setConfirm] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const ready = password.length > 0 && confirm.trim().toUpperCase() === 'USUŃ';
+
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!ready) return;
+    setBusy(true);
+    setError(null);
+    try {
+      await authApi.deleteAccount(password);
+      onAccountDeleted();
+    } catch (err: any) {
+      setError(err.message);
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="bg-rose-950/20 border border-rose-900/60 rounded-2xl p-4 sm:p-6">
+      <div className="flex items-start gap-3">
+        <div className="w-10 h-10 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-300 flex items-center justify-center shrink-0">
+          <Trash2 className="w-5 h-5" />
+        </div>
+        <div className="min-w-0">
+          <h3 className="text-base font-bold text-rose-100">Usuń konto</h3>
+          <p className="text-xs text-stone-400 mt-0.5">
+            Trwale usuwa konto i wszystkie dane: kolekcję, klasery, talie, listę życzeń, ofertę sprzedaży, wiadomości
+            i miejscowość. Tej operacji nie można cofnąć.
+          </p>
+        </div>
+      </div>
+
+      {user.isAdmin ? (
+        <p className="mt-4 text-xs text-amber-200 bg-amber-500/10 border border-amber-500/30 rounded-lg p-2.5">
+          To konto administratora — nie można go usunąć z ustawień.
+        </p>
+      ) : !open ? (
+        <button
+          type="button"
+          onClick={() => setOpen(true)}
+          className="mt-4 h-11 px-4 rounded-xl text-sm font-semibold text-rose-200 bg-rose-950/50 hover:bg-rose-900/50 border border-rose-800/60 flex items-center gap-2 cursor-pointer"
+        >
+          <Trash2 className="w-4 h-4" />
+          Chcę usunąć konto
+        </button>
+      ) : (
+        <form onSubmit={submit} className="mt-4 space-y-3 max-w-md">
+          <p className="text-xs text-stone-300 bg-stone-950/60 border border-stone-800 rounded-lg p-2.5">
+            Chcesz zachować kolekcję?{' '}
+            <button type="button" onClick={() => onOpenImportExport('export')} className="font-semibold text-amber-300 underline cursor-pointer">
+              Najpierw ją wyeksportuj
+            </button>
+            .
+          </p>
+          <PasswordInput label="Twoje hasło" value={password} onChange={setPassword} autoComplete="current-password" />
+          <label className="block">
+            <span className={labelCls}>Wpisz USUŃ, aby potwierdzić</span>
+            <input
+              type="text"
+              value={confirm}
+              onChange={(e) => setConfirm(e.target.value)}
+              autoComplete="off"
+              placeholder="USUŃ"
+              className={inputCls}
+            />
+          </label>
+          {error && (
+            <p className="p-2.5 rounded-lg text-xs flex items-start gap-2 border bg-rose-500/10 border-rose-500/30 text-rose-300">
+              <AlertCircle className="w-4 h-4 shrink-0" />
+              {error}
+            </p>
+          )}
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="submit"
+              disabled={!ready || busy}
+              className="h-11 px-5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-sm font-bold flex items-center gap-2 cursor-pointer disabled:opacity-40 disabled:cursor-default"
+            >
+              {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+              Usuń konto na zawsze
+            </button>
+            <button
+              type="button"
+              onClick={() => { setOpen(false); setPassword(''); setConfirm(''); setError(null); }}
+              className="h-11 px-4 rounded-xl text-sm font-semibold text-stone-300 hover:bg-stone-800 cursor-pointer"
+            >
+              Anuluj
+            </button>
+          </div>
+        </form>
+      )}
+    </div>
+  );
+};
 
 /* ---------- Wycena i waluta ---------- */
 
