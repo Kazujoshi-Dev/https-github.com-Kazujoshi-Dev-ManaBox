@@ -1,6 +1,5 @@
 {
   "name": "Kolekcja Kart MTG",
   "description": "Aplikacja do zarządzania kolekcją kart Magic: The Gathering z integracją API Scryfall i aktualnymi cenami rynkowymi.",
-  "requestFramePermissions": [],
-  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+  "requestFramePermissions": []
 }

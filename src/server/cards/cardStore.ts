@@ -1,0 +1,332 @@
+/**
+ * Lokalna baza kart Magic: The Gathering (dane zbiorcze Scryfall "default_cards").
+ *
+ * - Pełne obiekty kart trzymamy w PostgreSQL (tabela scryfall_cards).
+ * - W pamięci trzymamy lekki indeks: set+numer → karta, nazwa → wydania.
+ * - Synchronizacja z Scryfall raz na dobę, w tle; skaner nie odpytuje API Scryfall.
+ *
+ * Bez PostgreSQL moduł jest nieaktywny, a skaner korzysta z API Scryfall jak dotąd.
+ */
+import type pg from 'pg';
+import { getPool, isPostgresActive } from '../db/storage';
+import { iterateJsonArrayObjects } from './bulkParser';
+import { NameIndex, normalizeName } from './nameMatch';
+
+const SCRYFALL_HEADERS = {
+  'User-Agent': 'ManaScrew/1.0 (https://manascrew.eu)',
+  Accept: 'application/json'
+};
+// Adres można nadpisać (np. w testach), domyślnie oficjalne API Scryfall.
+const BULK_META_URL = process.env.SCRYFALL_BULK_META_URL || 'https://api.scryfall.com/bulk-data/default-cards';
+const SYNC_INTERVAL_MS = 20 * 60 * 60 * 1000; // nie częściej niż co 20 h
+const BATCH_SIZE = 400;
+
+interface IndexEntry {
+  id: string;
+  set: string;
+  cn: string;
+  released: string; // YYYY-MM-DD, do sortowania wydań
+}
+
+interface CardIndex {
+  entries: IndexEntry[];
+  bySetNumber: Map<string, number>;
+  byName: Map<string, number[]>; // znormalizowana nazwa → indeksy wydań (najnowsze pierwsze)
+  names: NameIndex;
+}
+
+let index: CardIndex | null = null;
+let syncing = false;
+let lastSyncAt: string | null = null;
+let lastSyncError: string | null = null;
+
+function pool(): pg.Pool | null {
+  return isPostgresActive() ? getPool() : null;
+}
+
+export function isCardDbReady(): boolean {
+  return index !== null && index.entries.length > 0;
+}
+
+export function cardDbStatus() {
+  return {
+    ready: isCardDbReady(),
+    cards: index?.entries.length || 0,
+    names: index?.names.size || 0,
+    syncing,
+    lastSyncAt,
+    lastSyncError
+  };
+}
+
+export async function ensureCardSchema(): Promise<void> {
+  const p = pool();
+  if (!p) return;
+  await p.query(`
+    CREATE TABLE IF NOT EXISTS scryfall_cards (
+      id UUID PRIMARY KEY,
+      oracle_id UUID,
+      name TEXT NOT NULL,
+      face_names TEXT[] NOT NULL DEFAULT '{}',
+      lang VARCHAR(8) NOT NULL,
+      set_code VARCHAR(12) NOT NULL,
+      collector_number VARCHAR(24) NOT NULL,
+      released_at DATE,
+      layout VARCHAR(32),
+      image_small TEXT,
+      art_hash BYTEA,
+      card_hash BYTEA,
+      hash_version SMALLINT,
+      data JSONB NOT NULL,
+      synced_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+    CREATE INDEX IF NOT EXISTS idx_scryfall_cards_set_cn ON scryfall_cards(set_code, collector_number);
+    CREATE TABLE IF NOT EXISTS scryfall_sync (
+      key VARCHAR(64) PRIMARY KEY,
+      value TEXT,
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+  `);
+}
+
+async function getMeta(p: pg.Pool, key: string): Promise<string | null> {
+  const r = await p.query('SELECT value FROM scryfall_sync WHERE key = $1', [key]);
+  return r.rows[0]?.value ?? null;
+}
+
+async function setMeta(p: pg.Pool, key: string, value: string): Promise<void> {
+  await p.query(
+    `INSERT INTO scryfall_sync (key, value, updated_at) VALUES ($1, $2, NOW())
+     ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = NOW()`,
+    [key, value]
+  );
+}
+
+/** Karta nadaje się do skanowania: fizyczna (nie tylko cyfrowa) i ma obraz. */
+function isScannable(card: any): boolean {
+  if (!card || card.object !== 'card' || card.digital) return false;
+  if (!card.id || !card.set || !card.collector_number || !card.name) return false;
+  if (card.layout === 'art_series') return false;
+  return true;
+}
+
+function faceNames(card: any): string[] {
+  const names = new Set<string>([card.name]);
+  if (Array.isArray(card.card_faces)) {
+    for (const f of card.card_faces) if (f?.name) names.add(f.name);
+  }
+  if (card.printed_name) names.add(card.printed_name);
+  if (card.flavor_name) names.add(card.flavor_name);
+  return [...names];
+}
+
+function smallImage(card: any): string | null {
+  return card.image_uris?.small || card.card_faces?.[0]?.image_uris?.small || null;
+}
+
+async function upsertBatch(p: pg.Pool, cards: any[], syncStart: string): Promise<void> {
+  const values: any[] = [];
+  const rows: string[] = [];
+  cards.forEach((c, i) => {
+    const b = i * 12;
+    rows.push(`($${b + 1},$${b + 2},$${b + 3},$${b + 4},$${b + 5},$${b + 6},$${b + 7},$${b + 8},$${b + 9},$${b + 10},$${b + 11}::jsonb,$${b + 12})`);
+    values.push(
+      c.id,
+      c.oracle_id || null,
+      c.name,
+      faceNames(c),
+      c.lang || 'en',
+      String(c.set).toLowerCase(),
+      String(c.collector_number),
+      c.released_at || null,
+      c.layout || null,
+      smallImage(c),
+      JSON.stringify(c),
+      syncStart
+    );
+  });
+  await p.query(
+    `INSERT INTO scryfall_cards
+       (id, oracle_id, name, face_names, lang, set_code, collector_number, released_at, layout, image_small, data, synced_at)
+     VALUES ${rows.join(',')}
+     ON CONFLICT (id) DO UPDATE SET
+       oracle_id = EXCLUDED.oracle_id,
+       name = EXCLUDED.name,
+       face_names = EXCLUDED.face_names,
+       lang = EXCLUDED.lang,
+       set_code = EXCLUDED.set_code,
+       collector_number = EXCLUDED.collector_number,
+       released_at = EXCLUDED.released_at,
+       layout = EXCLUDED.layout,
+       data = EXCLUDED.data,
+       synced_at = EXCLUDED.synced_at,
+       -- gdy zmienił się obraz karty, odcisk trzeba policzyć od nowa
+       art_hash = CASE WHEN scryfall_cards.image_small IS DISTINCT FROM EXCLUDED.image_small THEN NULL ELSE scryfall_cards.art_hash END,
+       card_hash = CASE WHEN scryfall_cards.image_small IS DISTINCT FROM EXCLUDED.image_small THEN NULL ELSE scryfall_cards.card_hash END,
+       image_small = EXCLUDED.image_small`,
+    values
+  );
+}
+
+async function* decodeStream(body: ReadableStream<Uint8Array>): AsyncGenerator<string> {
+  const decoder = new TextDecoder('utf-8');
+  const reader = body.getReader();
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    yield decoder.decode(value, { stream: true });
+  }
+  const rest = decoder.decode();
+  if (rest) yield rest;
+}
+
+/**
+ * Pobiera dane zbiorcze Scryfall i aktualizuje tabelę scryfall_cards.
+ * Pomija pobieranie, jeśli Scryfall nie opublikował nowej wersji od ostatniego importu.
+ */
+export async function syncCardsFromScryfall(force = false): Promise<void> {
+  const p = pool();
+  if (!p || syncing) return;
+  syncing = true;
+  lastSyncError = null;
+  const started = Date.now();
+  try {
+    const metaRes = await fetch(BULK_META_URL, { headers: SCRYFALL_HEADERS });
+    if (!metaRes.ok) throw new Error(`bulk-data HTTP ${metaRes.status}`);
+    const meta: any = await metaRes.json();
+    const remoteVersion = String(meta.updated_at || '');
+    const localVersion = await getMeta(p, 'default_cards_version');
+    if (!force && localVersion && localVersion === remoteVersion) {
+      lastSyncAt = new Date().toISOString();
+      await setMeta(p, 'last_check', lastSyncAt);
+      console.log('[Karty] Baza kart aktualna, pomijam pobieranie.');
+      return;
+    }
+
+    console.log(`[Karty] Pobieram dane zbiorcze Scryfall (${Math.round((meta.size || 0) / 1e6)} MB)...`);
+    const dataRes = await fetch(meta.download_uri, { headers: { 'User-Agent': SCRYFALL_HEADERS['User-Agent'] } });
+    if (!dataRes.ok || !dataRes.body) throw new Error(`download HTTP ${dataRes.status}`);
+
+    const syncStart = new Date().toISOString();
+    let batch: any[] = [];
+    let total = 0;
+    for await (const card of iterateJsonArrayObjects(decodeStream(dataRes.body as any))) {
+      if (!isScannable(card)) continue;
+      batch.push(card);
+      if (batch.length >= BATCH_SIZE) {
+        await upsertBatch(p, batch, syncStart);
+        total += batch.length;
+        batch = [];
+      }
+    }
+    if (batch.length) {
+      await upsertBatch(p, batch, syncStart);
+      total += batch.length;
+    }
+    if (total < 10000) throw new Error(`podejrzanie mało kart w imporcie (${total}) — nie usuwam starych`);
+
+    // Usuwamy karty, których nie ma już w danych Scryfall.
+    const removed = await p.query('DELETE FROM scryfall_cards WHERE synced_at < $1', [syncStart]);
+    await setMeta(p, 'default_cards_version', remoteVersion);
+    lastSyncAt = new Date().toISOString();
+    await setMeta(p, 'last_check', lastSyncAt);
+    console.log(`[Karty] Zaimportowano ${total} kart (usunięto ${removed.rowCount || 0}) w ${Math.round((Date.now() - started) / 1000)} s.`);
+    await loadCardIndex();
+  } catch (err: any) {
+    lastSyncError = err?.message || String(err);
+    console.warn('[Karty] Synchronizacja nieudana:', lastSyncError);
+  } finally {
+    syncing = false;
+  }
+}
+
+/** Wczytuje lekki indeks kart do pamięci. */
+export async function loadCardIndex(): Promise<void> {
+  const p = pool();
+  if (!p) return;
+  const res = await p.query(
+    `SELECT id, face_names, set_code, collector_number, COALESCE(to_char(released_at, 'YYYY-MM-DD'), '') AS released
+     FROM scryfall_cards
+     ORDER BY released_at DESC NULLS LAST`
+  );
+  const entries: IndexEntry[] = [];
+  const bySetNumber = new Map<string, number>();
+  const byName = new Map<string, number[]>();
+  for (const r of res.rows) {
+    const idx = entries.length;
+    entries.push({ id: r.id, set: r.set_code, cn: r.collector_number, released: r.released });
+    bySetNumber.set(`${r.set_code}/${r.collector_number.toLowerCase()}`, idx);
+    const seen = new Set<string>();
+    for (const n of r.face_names as string[]) {
+      const norm = normalizeName(n);
+      if (!norm || seen.has(norm)) continue;
+      seen.add(norm);
+      let list = byName.get(norm);
+      if (!list) byName.set(norm, (list = []));
+      list.push(idx);
+    }
+  }
+  index = { entries, bySetNumber, byName, names: new NameIndex(byName.keys()) };
+  console.log(`[Karty] Indeks w pamięci: ${entries.length} wydań, ${index.names.size} nazw.`);
+}
+
+/** Uruchamia moduł: schemat, indeks i synchronizacja w tle (przy starcie i co kilka godzin). */
+export async function startCardDb(): Promise<void> {
+  const p = pool();
+  if (!p) {
+    console.log('[Karty] Brak PostgreSQL — lokalna baza kart wyłączona (skaner użyje API Scryfall).');
+    return;
+  }
+  await ensureCardSchema();
+  await loadCardIndex();
+  lastSyncAt = await getMeta(p, 'last_check');
+
+  const maybeSync = () => {
+    const due = !lastSyncAt || Date.now() - new Date(lastSyncAt).getTime() > SYNC_INTERVAL_MS || !isCardDbReady();
+    if (due) syncCardsFromScryfall().catch(() => {});
+  };
+  maybeSync();
+  setInterval(maybeSync, 6 * 60 * 60 * 1000).unref();
+}
+
+// ---------- Wyszukiwanie ----------
+
+/** Pełne obiekty kart (dane Scryfall) w kolejności podanych identyfikatorów. */
+export async function getCardsByIds(ids: string[]): Promise<any[]> {
+  const p = pool();
+  if (!p || ids.length === 0) return [];
+  const res = await p.query('SELECT id, data FROM scryfall_cards WHERE id = ANY($1::uuid[])', [ids]);
+  const byId = new Map(res.rows.map((r) => [r.id, r.data]));
+  return ids.map((id) => byId.get(id)).filter(Boolean);
+}
+
+/** Identyfikator karty po kodzie setu i numerze kolekcjonerskim (np. "mh3", "123"). */
+export function findIdBySetNumber(set: string, collectorNumber: string): string | null {
+  if (!index || !set || !collectorNumber) return null;
+  const s = set.toLowerCase().trim();
+  const cn = collectorNumber.toLowerCase().trim();
+  const hit = index.bySetNumber.get(`${s}/${cn}`) ?? index.bySetNumber.get(`${s}/${cn.replace(/^0+/, '')}`);
+  return hit !== undefined ? index.entries[hit].id : null;
+}
+
+export interface NameCandidates {
+  name: string; // znormalizowana nazwa
+  score: number;
+  ids: string[]; // wydania, najnowsze pierwsze
+}
+
+/** Kandydaci po nazwie odczytanej przez OCR (z tolerancją na błędy). */
+export function findByName(ocrTitle: string, limit = 3): NameCandidates[] {
+  if (!index || !ocrTitle) return [];
+  return index.names.search(ocrTitle, limit).map((m) => ({
+    name: m.name,
+    score: m.score,
+    ids: (index!.byName.get(m.name) || []).map((i) => index!.entries[i].id)
+  }));
+}
+
+/** Wszystkie wydania danej karty (po identyfikatorze dowolnego z nich). */
+export function printingsOfName(normName: string): string[] {
+  if (!index) return [];
+  return (index.byName.get(normName) || []).map((i) => index!.entries[i].id);
+}

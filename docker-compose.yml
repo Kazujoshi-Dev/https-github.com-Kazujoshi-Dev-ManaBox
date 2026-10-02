@@ -11,7 +11,6 @@ services:
       NODE_ENV: production
       DATABASE_URL: ${DATABASE_URL:?Ustaw DATABASE_URL w pliku .env}
       JWT_SECRET: ${JWT_SECRET:?Ustaw JWT_SECRET w pliku .env}
-      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
     depends_on:
       db:
         condition: service_healthy

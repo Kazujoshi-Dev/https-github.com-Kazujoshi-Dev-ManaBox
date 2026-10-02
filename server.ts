@@ -2,10 +2,11 @@ import express from 'express';
 import crypto from 'crypto';
 import path from 'path';
 import fs from 'fs';
-import { GoogleGenAI, Type } from '@google/genai';
 import * as db from './src/server/db';
 import { hashPassword, verifyPassword, generateToken, verifyToken } from './src/server/auth';
 import { rateLimit } from './src/server/rateLimit';
+import * as cards from './src/server/cards/cardStore';
+import { normalizeName, nameSimilarity } from './src/server/cards/nameMatch';
 
 const app = express();
 const PORT = 3000;
@@ -122,13 +123,10 @@ const registerLimiter = rateLimit({
   name: 'register', windowMs: 60 * 60_000, max: 5,
   message: 'Zbyt wiele rejestracji z tego adresu. Spróbuj ponownie później.'
 });
-const scannerMinuteLimiter = rateLimit({
-  name: 'scan-min', windowMs: 60_000, max: 20, key: userKey,
+// Skanowanie nie kosztuje (lokalna baza kart), więc limit tylko chroni przed nadużyciem: ~3 skany/s.
+const scannerLimiter = rateLimit({
+  name: 'scan', windowMs: 60_000, max: 180, key: userKey,
   message: 'Skanujesz zbyt szybko. Odczekaj chwilę.'
-});
-const scannerDayLimiter = rateLimit({
-  name: 'scan-day', windowMs: 24 * 60 * 60_000, max: 500, key: userKey,
-  message: 'Osiągnięto dzienny limit skanowań. Spróbuj jutro.'
 });
 const messageLimiter = rateLimit({
   name: 'msg', windowMs: 10 * 60_000, max: 30, key: userKey,
@@ -633,277 +631,127 @@ async function fetchScryfall(endpoint: string) {
   return data;
 }
 
-// --- GEMINI AI VISION SETUP ---
-let aiClient: GoogleGenAI | null = null;
-function getAiClient(): GoogleGenAI | null {
-  if (!aiClient && process.env.GEMINI_API_KEY) {
-    aiClient = new GoogleGenAI({
-      apiKey: process.env.GEMINI_API_KEY,
-      httpOptions: {
-        headers: {
-          'User-Agent': 'aistudio-build',
-        },
-      },
-    });
-  }
-  return aiClient;
-}
-
 // --- API ROUTES ---
 
-// 0. Delver Lens & ManaBox High-Speed Visual Identifier
-app.post('/api/scanner/delver-identify', authMiddleware, scannerMinuteLimiter, scannerDayLimiter, async (req, res) => {
+// Rozpoznawanie karty ze skanera.
+// Najpierw lokalna baza kart (bez limitów i zapytań do Scryfall), a gdy jeszcze nie jest
+// gotowa (pierwszy import) — awaryjnie API Scryfall.
+app.post('/api/scanner/delver-identify', authMiddleware, scannerLimiter, async (req, res) => {
   try {
-    const { 
-      cardImageBase64, 
-      artImageBase64, 
-      titleImageBase64,
-      bottomImageBase64, 
-      fullFrameBase64,
-      perceptualHash, 
-      detectedRarity, 
-      detectedColors = [],
-      isAutoCropped = false,
-      hintSet, 
-      hintCollector, 
-      hintTitle 
-    } = req.body;
+    const str = (v: unknown, max: number) => (typeof v === 'string' ? v.trim().slice(0, max) : '');
+    const hintTitle = str(req.body?.hintTitle, 200);
+    const hintSet = str(req.body?.hintSet, 12).toLowerCase();
+    const hintCollector = str(req.body?.hintCollector, 24).replace(/^0+(?=\d)/, '');
 
-    if (!cardImageBase64 && !artImageBase64 && !fullFrameBase64 && !titleImageBase64) {
-      return res.status(400).json({ error: 'Brak danych wizualnych karty (cardImageBase64 lub artImageBase64 jest wymagane)' });
+    if (!hintTitle && !(hintSet && hintCollector)) {
+      return res.status(400).json({ error: 'Brak odczytanej nazwy ani kodu setu i numeru karty.' });
     }
 
-    let matchedCard: any = null;
-    let possibleCards: any[] = [];
-    let detectedSet = hintSet ? hintSet.toLowerCase().trim() : '';
-    let detectedNumber = hintCollector ? hintCollector.trim().replace(/^0+/, '') : '';
-    let detectedTitle = hintTitle ? hintTitle.trim() : '';
-    let isFoilDetected = false;
-    let confidence = 85;
+    const result = cards.isCardDbReady()
+      ? await identifyWithLocalDb(hintTitle, hintSet, hintCollector)
+      : await identifyWithScryfallApi(hintTitle, hintSet, hintCollector);
 
-    // KROK 1: Jeśli mamy zdekodowany kod setu i numer ze stopki (Bottom Bar), wykonujemy natychmiastowe bezpośrednie dopasowanie Scryfall
-    if (detectedSet && detectedNumber) {
-      try {
-        const exact = await fetchScryfall(`/cards/${encodeURIComponent(detectedSet)}/${encodeURIComponent(detectedNumber)}`);
-        if (exact && exact.name) {
-          matchedCard = exact;
-          detectedTitle = exact.name;
-          confidence = 98;
-        }
-      } catch (_) {}
-    }
-
-    // KROK 2: Analiza wizualna Delver Lens / ManaBox Engine (z automatycznym przełączaniem modeli w razie obciążenia)
-    if (!matchedCard) {
-      const ai = getAiClient();
-      if (ai) {
-        const imageParts: any[] = [];
-        if (cardImageBase64) {
-          imageParts.push({
-            inlineData: {
-              mimeType: 'image/jpeg',
-              data: cardImageBase64.replace(/^data:[a-zA-Z0-9/+-]+;base64,/, ''),
-            },
-          });
-        }
-        if (titleImageBase64) {
-          imageParts.push({
-            inlineData: {
-              mimeType: 'image/png',
-              data: titleImageBase64.replace(/^data:[a-zA-Z0-9/+-]+;base64,/, ''),
-            },
-          });
-        }
-        if (bottomImageBase64) {
-          imageParts.push({
-            inlineData: {
-              mimeType: 'image/png',
-              data: bottomImageBase64.replace(/^data:[a-zA-Z0-9/+-]+;base64,/, ''),
-            },
-          });
-        }
-        if (fullFrameBase64) {
-          imageParts.push({
-            inlineData: {
-              mimeType: 'image/jpeg',
-              data: fullFrameBase64.replace(/^data:[a-zA-Z0-9/+-]+;base64,/, ''),
-            },
-          });
-        } else if (artImageBase64) {
-          imageParts.push({
-            inlineData: {
-              mimeType: 'image/jpeg',
-              data: artImageBase64.replace(/^data:[a-zA-Z0-9/+-]+;base64,/, ''),
-            },
-          });
-        }
-
-        const prompt = `You are the Delver Lens / ManaBox high-precision Computer Vision Engine for Magic: The Gathering.
-You are given:
-1. The cropped MTG card.
-2. The isolated title strip (card name and mana cost).
-3. The isolated footer strip (collector number and expansion code).
-4. The full-frame camera context.
-
-Visual metadata:
-- dHash perceptual fingerprint: "${perceptualHash || 'unknown'}"
-- Detected rarity from symbol: "${detectedRarity || 'unknown'}"
-- Frame color identity: ${JSON.stringify(detectedColors)}
-${hintTitle ? `- OCR Title Hint: "${hintTitle}"` : ''}
-${hintSet ? `- Set hint: "${hintSet}"` : ''}
-
-Task:
-1. Read the EXACT printed English card name from the card title bar (e.g. "Quicken", "Lightning Bolt", "Dark Ritual", "Counterspell", "Sheoldred, the Apocalypse", etc.).
-2. Read the expansion set code (3-5 uppercase letters like "M14", "BLB", "OTJ", "MH3", "LTR", "CMM", "NEO", "FDN", "WOE", "MKM", "RVR", "DMU", "BRO", etc.) from the bottom footer line or expansion symbol.
-3. Read the collector number (e.g. "68", "123", "045", "1") from the bottom footer line.
-4. Detect if the card is foil (look for holographic rainbow reflection, shooting star, or etched finish).
-Return strictly valid JSON:
-{"cardName": "...", "setCode": "...", "collectorNumber": "...", "confidence": 95, "isFoil": false}`;
-
-        const modelsToTry = ['gemini-flash-latest', 'gemini-3.8-flash', 'gemini-3.1-flash-lite'];
-
-        for (const model of modelsToTry) {
-          try {
-            const response = await ai.models.generateContent({
-              model,
-              contents: {
-                parts: [
-                  ...imageParts,
-                  { text: prompt },
-                ],
-              },
-              config: {
-                responseMimeType: 'application/json',
-                responseSchema: {
-                  type: Type.OBJECT,
-                  properties: {
-                    cardName: { type: Type.STRING },
-                    setCode: { type: Type.STRING },
-                    collectorNumber: { type: Type.STRING },
-                    confidence: { type: Type.NUMBER },
-                    isFoil: { type: Type.BOOLEAN },
-                  },
-                  required: ['cardName', 'confidence'],
-                },
-              },
-            });
-
-            const raw = response.text?.trim() || '{}';
-            const parsed = JSON.parse(raw);
-            if (parsed.cardName) {
-              detectedTitle = parsed.cardName;
-              if (parsed.setCode) detectedSet = parsed.setCode.toLowerCase().trim();
-              if (parsed.collectorNumber) detectedNumber = parsed.collectorNumber.trim().replace(/^0+/, '');
-              if (parsed.confidence) confidence = parsed.confidence;
-              if (parsed.isFoil) isFoilDetected = true;
-              break; // Sukces
-            }
-          } catch (visionErr: any) {
-            console.warn(`Model ${model} próba nieudana (${visionErr.message || visionErr.status}), sprawdzam kolejny model...`);
-          }
-        }
-      }
-    }
-
-    // Jeśli wizja nie zwróciła nazwy, a mieliśmy podpowiedź tekstową z OCR paska tytułowego, używamy jej!
-    if (!detectedTitle && hintTitle) {
-      detectedTitle = hintTitle;
-    }
-
-    // KROK 3: Niezawodne dopasowanie do bazy Scryfall (od najbardziej precyzyjnego do ogólnego)
-    if (!matchedCard && detectedTitle) {
-      // 1. Dokładny set i numer
-      if (detectedSet && detectedNumber) {
-        try {
-          const exact = await fetchScryfall(`/cards/${encodeURIComponent(detectedSet)}/${encodeURIComponent(detectedNumber)}`);
-          if (exact && exact.name) matchedCard = exact;
-        } catch (_) {}
-      }
-
-      // 2. Dokładna nazwa i set
-      if (!matchedCard && detectedSet) {
-        try {
-          const exactWithSet = await fetchScryfall(`/cards/named?exact=${encodeURIComponent(detectedTitle)}&set=${encodeURIComponent(detectedSet)}`);
-          if (exactWithSet && exactWithSet.name) matchedCard = exactWithSet;
-        } catch (_) {}
-      }
-
-      // 3. Rozmyta nazwa (fuzzy) i set
-      if (!matchedCard && detectedSet) {
-        try {
-          const fuzzyWithSet = await fetchScryfall(`/cards/named?fuzzy=${encodeURIComponent(detectedTitle)}&set=${encodeURIComponent(detectedSet)}`);
-          if (fuzzyWithSet && fuzzyWithSet.name) matchedCard = fuzzyWithSet;
-        } catch (_) {}
-      }
-
-      // 4. Dokładna nazwa bez setu
-      if (!matchedCard) {
-        try {
-          const exactOnly = await fetchScryfall(`/cards/named?exact=${encodeURIComponent(detectedTitle)}`);
-          if (exactOnly && exactOnly.name) matchedCard = exactOnly;
-        } catch (_) {}
-      }
-
-      // 5. Rozmyta nazwa bez setu
-      if (!matchedCard) {
-        try {
-          const fuzzyOnly = await fetchScryfall(`/cards/named?fuzzy=${encodeURIComponent(detectedTitle)}`);
-          if (fuzzyOnly && fuzzyOnly.name) matchedCard = fuzzyOnly;
-        } catch (_) {}
-      }
-
-      // 6. Przeszukiwanie ogólne z uwzględnieniem spacji
-      if (!matchedCard) {
-        try {
-          const search = await fetchScryfall(`/cards/search?q=!"${encodeURIComponent(detectedTitle)}"`);
-          if (search && Array.isArray(search.data) && search.data.length > 0) {
-            matchedCard = search.data[0];
-          }
-        } catch (_) {}
-      }
-
-      // 7. Zwykłe zapytanie tekstowe
-      if (!matchedCard) {
-        try {
-          const search = await fetchScryfall(`/cards/search?q=${encodeURIComponent(detectedTitle)}`);
-          if (search && Array.isArray(search.data) && search.data.length > 0) {
-            matchedCard = search.data[0];
-          }
-        } catch (_) {}
-      }
-    }
-
-    // KROK 4: Pobranie wszystkich wydań (Prints Drawer jak w ManaBox)
-    if (matchedCard && matchedCard.name) {
-      try {
-        const printsRes = await fetchScryfall(`/cards/search?q=!"${encodeURIComponent(matchedCard.name)}"+include:extras&order=released&dir=desc`);
-        if (printsRes && Array.isArray(printsRes.data)) {
-          possibleCards = printsRes.data.slice(0, 15);
-        } else {
-          possibleCards = [matchedCard];
-        }
-      } catch (_) {
-        possibleCards = [matchedCard];
-      }
-    }
-
+    const matched = result.matchedCard;
     return res.json({
       success: true,
-      cardName: detectedTitle || (matchedCard ? matchedCard.name : ''),
-      setCode: detectedSet || (matchedCard ? matchedCard.set : null),
-      collectorNumber: detectedNumber || (matchedCard ? matchedCard.collector_number : null),
-      confidence,
-      isFoil: isFoilDetected,
-      perceptualHash: perceptualHash || null,
-      detectedRarity: detectedRarity || (matchedCard ? matchedCard.rarity : 'common'),
-      matchedCard,
-      possibleCards,
+      source: cards.isCardDbReady() ? 'local' : 'scryfall',
+      cardName: matched?.name || hintTitle,
+      setCode: matched?.set || hintSet || null,
+      collectorNumber: matched?.collector_number || hintCollector || null,
+      confidence: result.confidence,
+      isFoil: false,
+      detectedRarity: matched?.rarity || null,
+      matchedCard: matched,
+      possibleCards: result.possibleCards
     });
   } catch (err: any) {
     console.error('Błąd w /api/scanner/delver-identify:', err);
-    console.error('Błąd w /api/scanner/delver-identify:', err);
     res.status(500).json({ error: 'DELVER_SCAN_FAILED', message: 'Nie udało się rozpoznać karty. Spróbuj ponownie.' });
   }
+});
+
+interface IdentifyResult {
+  matchedCard: any | null;
+  possibleCards: any[];
+  confidence: number;
+}
+
+const MAX_PRINTINGS = 40;
+
+async function identifyWithLocalDb(title: string, set: string, collector: string): Promise<IdentifyResult> {
+  const nameHits = title ? cards.findByName(title, 3) : [];
+  const exactId = set && collector ? cards.findIdBySetNumber(set, collector) : null;
+
+  let matchedId: string | null = null;
+  let printings: string[] = [];
+  let confidence = 0;
+
+  if (exactId) {
+    const [exactCard] = await cards.getCardsByIds([exactId]);
+    const exactNames = exactCard ? [exactCard.name, ...(exactCard.card_faces || []).map((f: any) => f.name)] : [];
+    const titleAgrees = !title || exactNames.some((n: string) => nameSimilarity(normalizeName(n), normalizeName(title)) >= 0.6);
+    if (exactCard && titleAgrees) {
+      matchedId = exactId;
+      printings = cards.printingsOfName(normalizeName(exactCard.name));
+      confidence = title ? 99 : 92;
+    }
+  }
+
+  if (!matchedId && nameHits.length > 0 && nameHits[0].score >= 0.7) {
+    const best = nameHits[0];
+    printings = best.ids;
+    // Gdy OCR odczytał set (choć numer się nie zgadzał), wybierz wydanie z tego setu.
+    const inSet = set ? (await cards.getCardsByIds(best.ids)).find((c) => c.set === set) : null;
+    matchedId = inSet?.id || best.ids[0];
+    confidence = Math.round(best.score * (inSet ? 95 : 85));
+  }
+
+  if (!matchedId) {
+    return { matchedCard: null, possibleCards: [], confidence: 0 };
+  }
+
+  const ids = [matchedId, ...printings.filter((id) => id !== matchedId)].slice(0, MAX_PRINTINGS);
+  const possibleCards = await cards.getCardsByIds(ids);
+  return { matchedCard: possibleCards[0] || null, possibleCards, confidence };
+}
+
+async function identifyWithScryfallApi(title: string, set: string, collector: string): Promise<IdentifyResult> {
+  let matchedCard: any = null;
+  let confidence = 0;
+  if (set && collector) {
+    try {
+      matchedCard = await fetchScryfall(`/cards/${encodeURIComponent(set)}/${encodeURIComponent(collector)}`);
+      if (matchedCard?.name) confidence = 95;
+    } catch (_) {}
+  }
+  if (!matchedCard?.name && title) {
+    try {
+      const setParam = set ? `&set=${encodeURIComponent(set)}` : '';
+      matchedCard = await fetchScryfall(`/cards/named?fuzzy=${encodeURIComponent(title)}${setParam}`);
+    } catch (_) {
+      try {
+        matchedCard = await fetchScryfall(`/cards/named?fuzzy=${encodeURIComponent(title)}`);
+      } catch (_) {
+        matchedCard = null;
+      }
+    }
+    if (matchedCard?.name) confidence = 80;
+  }
+  if (!matchedCard?.name) return { matchedCard: null, possibleCards: [], confidence: 0 };
+
+  let possibleCards: any[] = [matchedCard];
+  try {
+    const prints = await fetchScryfall(`/cards/search?q=!"${encodeURIComponent(matchedCard.name)}"&unique=prints&order=released&dir=desc`);
+    if (Array.isArray(prints?.data)) {
+      possibleCards = [matchedCard, ...prints.data.filter((c: any) => c.id !== matchedCard.id)].slice(0, MAX_PRINTINGS);
+    }
+  } catch (_) {}
+  return { matchedCard, possibleCards, confidence };
+}
+
+// Stan lokalnej bazy kart (do diagnostyki).
+app.get('/api/scanner/status', authMiddleware, (_req, res) => {
+  res.json(cards.cardDbStatus());
 });
 
 // Proxy obrazków przyjmuje wyłącznie HTTPS do domen Scryfall (ochrona przed SSRF).
@@ -1972,6 +1820,8 @@ app.get('/api/spellbook/status', (_req, res) => {
 
 async function startServer() {
   await db.initDb();
+  // Lokalna baza kart dla skanera (import w tle, nie blokuje startu).
+  cards.startCardDb().catch((err) => console.warn('[Karty] Start nieudany:', err?.message || err));
   // Porządki w tabeli sesji: przy starcie i raz na dobę.
   const purge = () => db.purgeOldSessions().catch((err) => console.warn('[Sesje] Czyszczenie nieudane:', err?.message || err));
   purge();
