@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
+import { FeatureHand, FeatureTable } from './AuthFeatures';
 import { AuthUser } from '../types';
-import { Sparkles, Lock, Mail, User, ArrowRight, ShieldCheck, Database, Layers, CheckCircle2, AlertCircle, Loader2 } from 'lucide-react';
+import { Lock, Mail, User, ArrowRight, CheckCircle2, AlertCircle, Loader2 } from 'lucide-react';
 
 interface AuthViewProps {
   onAuthSuccess: (user: AuthUser, token: string) => void;
@@ -16,6 +17,24 @@ export const AuthView: React.FC<AuthViewProps> = ({ onAuthSuccess }) => {
   const [error, setError] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const formCardRef = useRef<HTMLDivElement | null>(null);
+  const usernameRef = useRef<HTMLInputElement | null>(null);
+  const [focusUsername, setFocusUsername] = useState(false);
+
+  // „Załóż konto” z opisu funkcji: przełącz na rejestrację i przewiń do formularza
+  const startRegistration = () => {
+    setMode('register');
+    setError(null);
+    setSuccessMsg(null);
+    setFocusUsername(true);
+    formCardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  };
+  useEffect(() => {
+    if (focusUsername && mode === 'register') {
+      usernameRef.current?.focus({ preventScroll: true });
+      setFocusUsername(false);
+    }
+  }, [focusUsername, mode]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -83,25 +102,35 @@ export const AuthView: React.FC<AuthViewProps> = ({ onAuthSuccess }) => {
   };
 
   return (
-    <div className="min-h-screen bg-stone-950 text-stone-100 flex flex-col justify-center items-center px-4 py-12 relative overflow-hidden">
-      {/* Background glow effects */}
-      <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-gradient-to-tr from-amber-600/10 via-purple-600/10 to-blue-600/10 blur-[120px] pointer-events-none rounded-full" />
-      <div className="absolute -bottom-24 -right-24 w-96 h-96 bg-amber-500/5 blur-3xl pointer-events-none rounded-full" />
+    <div className="min-h-dvh bg-stone-950 text-stone-100 relative overflow-x-clip">
+      {/* Poświata w tle */}
+      <div className="absolute top-0 left-1/3 w-[640px] h-[640px] bg-gradient-to-tr from-amber-600/10 via-purple-600/10 to-blue-600/10 blur-[120px] pointer-events-none rounded-full" aria-hidden="true" />
 
-      <div className="w-full max-w-md relative z-10 space-y-6">
-        
-        {/* Brand Header */}
-        <div className="text-center space-y-2">
-          <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-white">
-            Mana Screw
-          </h1>
-          <p className="text-xs sm:text-sm text-stone-400 max-w-sm mx-auto">
-            Zaloguj się, aby zarządzać swoją prywatną kolekcją kart, klaserami i wycenami w PLN.
-          </p>
-        </div>
+      <div className="relative z-10 max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-[calc(1.5rem+env(safe-area-inset-top))] pb-10 lg:py-14 lg:grid lg:grid-cols-12 lg:gap-14 lg:items-start">
 
+        {/* Opis aplikacji (na dużym ekranie z kartami funkcji) */}
+        <section className="lg:col-span-7 space-y-6">
+          <div className="flex items-center gap-3">
+            <img src="/icon-192.png" alt="" className="w-11 h-11 rounded-xl shadow-lg shadow-black/40" />
+            <span className="text-lg font-black tracking-tight text-amber-100">Mana Screw</span>
+          </div>
+          <div className="space-y-3 max-w-xl">
+            <h1 className="text-[28px] sm:text-4xl lg:text-[44px] font-black tracking-tight leading-[1.08] text-white text-balance">
+              Cała kolekcja kart Magic: The Gathering w jednym miejscu
+            </h1>
+            <p className="text-[15px] sm:text-base text-stone-300 leading-relaxed max-w-[60ch]">
+              Skanuj karty telefonem, układaj je w klaserach i sprawdzaj ich wartość w złotówkach. Wystaw karty na
+              sprzedaż jednym linkiem i znajdź graczy w swojej okolicy.
+            </p>
+          </div>
+          <div className="hidden lg:block pt-4 pr-4">
+            <FeatureTable />
+          </div>
+        </section>
+
+        <div className="lg:col-span-5 mt-7 lg:mt-24 lg:sticky lg:top-10 w-full max-w-md mx-auto lg:max-w-none space-y-6">
         {/* Auth Card */}
-        <div className="bg-stone-900/90 border border-stone-800 rounded-2xl p-6 sm:p-8 shadow-2xl backdrop-blur-xl space-y-6">
+        <div ref={formCardRef} className="bg-stone-900/90 border border-stone-800 rounded-2xl p-5 sm:p-8 shadow-2xl backdrop-blur-xl space-y-6 scroll-mt-6">
           
           {/* Mode Switch Tabs */}
           <div className="grid grid-cols-2 p-1 bg-stone-950 rounded-xl border border-stone-800 text-[11px] font-bold">
@@ -169,6 +198,7 @@ export const AuthView: React.FC<AuthViewProps> = ({ onAuthSuccess }) => {
                   <input
                     type="text"
                     required
+                    ref={usernameRef}
                     placeholder="np. Planeswalker"
                     value={username}
                     onChange={(e) => setUsername(e.target.value)}
@@ -245,33 +275,33 @@ export const AuthView: React.FC<AuthViewProps> = ({ onAuthSuccess }) => {
             </button>
           </form>
 
-          {/* Database info badge */}
-          <div className="pt-2 border-t border-stone-800/80 flex items-center justify-between text-[11px] text-stone-400">
-            <span className="flex items-center gap-1.5">
-              <Database className="w-3.5 h-3.5 text-amber-400" />
-              <span>Baza danych:</span>
-            </span>
-            <span className="font-mono text-stone-300 bg-stone-950 px-2 py-0.5 rounded border border-stone-800">
-              PostgreSQL / Dedykowana
-            </span>
-          </div>
         </div>
 
-        {/* Feature Highlights */}
-        <div className="grid grid-cols-3 gap-3 text-center text-[11px] text-stone-400">
-          <div className="bg-stone-900/50 border border-stone-800/60 p-2.5 rounded-xl">
-            <ShieldCheck className="w-4 h-4 text-emerald-400 mx-auto mb-1" />
-            <span>Prywatna baza</span>
-          </div>
-          <div className="bg-stone-900/50 border border-stone-800/60 p-2.5 rounded-xl">
-            <Layers className="w-4 h-4 text-amber-400 mx-auto mb-1" />
-            <span>Własne klasery</span>
-          </div>
-          <div className="bg-stone-900/50 border border-stone-800/60 p-2.5 rounded-xl">
-            <CheckCircle2 className="w-4 h-4 text-blue-400 mx-auto mb-1" />
-            <span>Ceny Cardmarket PLN</span>
-          </div>
+          {/* Duży ekran: zachęta pod formularzem */}
+          {mode === 'login' && (
+            <p className="hidden lg:block text-sm text-stone-400 text-center mt-5">
+              Nie masz konta?{' '}
+              <button type="button" onClick={startRegistration} className="font-bold text-amber-400 hover:text-amber-300 underline underline-offset-4 cursor-pointer">
+                Załóż je w minutę
+              </button>
+            </p>
+          )}
         </div>
+
+        {/* Telefon: funkcje jako karty przewijane palcem */}
+        <section className="lg:hidden mt-10 space-y-4" aria-labelledby="features-heading">
+          <h2 id="features-heading" className="text-lg font-extrabold text-stone-100">Co zyskujesz z kontem</h2>
+          <FeatureHand />
+          {mode === 'login' && (
+            <button
+              type="button"
+              onClick={startRegistration}
+              className="w-full h-12 rounded-xl bg-amber-500 hover:bg-amber-400 text-stone-950 font-extrabold text-sm cursor-pointer"
+            >
+              Załóż konto
+            </button>
+          )}
+        </section>
 
       </div>
     </div>
