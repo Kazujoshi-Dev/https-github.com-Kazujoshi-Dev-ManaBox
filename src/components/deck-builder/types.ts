@@ -51,7 +51,8 @@ export interface DeckCardRowProps {
   previewScale?: number;
   onHover: (card: ScryfallCard, e: MouseEvent) => void;
   onLeave: () => void;
-  onUpdateQuantity: (cardId: string, delta: number) => void;
+  /** Brak = widok tylko do odczytu (np. publiczny link do talii). */
+  onUpdateQuantity?: (cardId: string, delta: number) => void;
   onSetCommander?: (card: ScryfallCard) => void;
   onViewDetails: (card: ScryfallCard) => void;
 }
@@ -63,7 +64,8 @@ export interface DeckCategoryColumnProps {
   previewScale?: number;
   onHoverCard: (card: ScryfallCard, e: MouseEvent) => void;
   onLeaveCard: () => void;
-  onUpdateQuantity: (cardId: string, delta: number) => void;
+  /** Brak = widok tylko do odczytu (np. publiczny link do talii). */
+  onUpdateQuantity?: (cardId: string, delta: number) => void;
   onSetCommander?: (card: ScryfallCard) => void;
   onViewCardDetails: (card: ScryfallCard) => void;
 }
@@ -74,7 +76,8 @@ export interface DeckCategoriesBoardProps {
   previewScale?: number;
   onHoverCard: (card: ScryfallCard, e: MouseEvent) => void;
   onLeaveCard: () => void;
-  onUpdateQuantity: (cardId: string, delta: number) => void;
+  /** Brak = widok tylko do odczytu (np. publiczny link do talii). */
+  onUpdateQuantity?: (cardId: string, delta: number) => void;
   onSetCommander?: (card: ScryfallCard) => void;
   onViewCardDetails: (card: ScryfallCard) => void;
 }

@@ -1,9 +1,9 @@
-import React, { useMemo, useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import { Swords, Share2, Check, FileText, LogIn, X, Crown, Layers, Coins } from 'lucide-react';
 import type { AppSettings, DeckItem, ScryfallCard } from '../types';
 import { formatCurrency, getCardImageUri, getCardPrice, handleCardImageError } from '../utils/formatters';
 import { ManaSymbol } from './ManaSymbol';
-import { DECK_CATEGORIES, DeckStatsBar, useDeckStats } from './deck-builder';
+import { DeckCategoriesBoard, DeckStatsBar, FloatingCardPreview, useDeckStats } from './deck-builder';
 import { DeckAnalysis } from './deck-builder/DeckAnalysis';
 import { deckToText } from './deck-builder/DeckShareModal';
 import { useBackToClose } from '../hooks/useBackButton';
@@ -24,13 +24,15 @@ export const PublicDeckView: React.FC<PublicDeckViewProps> = ({ deck, owner, set
   const [copied, setCopied] = useState<'link' | 'txt' | null>(null);
   useBackToClose(Boolean(preview), () => setPreview(null));
 
-  const categories = useMemo(
-    () =>
-      DECK_CATEGORIES.map((c) => ({ ...c, entries: categorizedCards.get(c.id) || [] }))
-        .filter((c) => c.entries.length > 0)
-        .sort((a, b) => b.entries.reduce((n, e) => n + e.quantity, 0) - a.entries.reduce((n, e) => n + e.quantity, 0)),
-    [categorizedCards]
-  );
+  // Podgląd karty po najechaniu (jak w edytorze; na dotyku stuknięcie otwiera podgląd)
+  const [hovered, setHovered] = useState<ScryfallCard | null>(null);
+  const [hoverPos, setHoverPos] = useState<{ x: number; y: number } | null>(null);
+  const handleHover = useCallback((card: ScryfallCard, e: React.MouseEvent) => {
+    if (window.matchMedia?.('(hover: none)').matches) return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    setHovered(card);
+    setHoverPos({ x: rect.right + 10, y: Math.max(20, rect.top - 60) });
+  }, []);
 
   const copy = async (what: 'link' | 'txt') => {
     try {
@@ -135,35 +137,16 @@ export const PublicDeckView: React.FC<PublicDeckViewProps> = ({ deck, owner, set
 
         <DeckStatsBar manaCurve={manaCurve} colorIdentity={colorIdentity} />
 
-        {/* Lista kart według typów */}
-        <div className="columns-1 sm:columns-2 xl:columns-3 2xl:columns-4 gap-4 [&>*]:break-inside-avoid">
-          {categories.map((cat) => (
-            <section key={cat.id} className={`mb-4 bg-stone-900 border ${cat.border} rounded-2xl p-3.5`}>
-              <h3 className="flex items-center justify-between text-sm font-bold text-stone-100 mb-2">
-                <span>{cat.icon} {cat.name}</span>
-                <span className={`text-xs px-2 py-0.5 rounded-full ${cat.badge}`}>{cat.entries.reduce((n, e) => n + e.quantity, 0)}</span>
-              </h3>
-              <ul className="space-y-0.5">
-                {cat.entries
-                  .slice()
-                  .sort((a, b) => (a.card.cmc || 0) - (b.card.cmc || 0) || a.card.name.localeCompare(b.card.name))
-                  .map((e) => (
-                    <li key={e.card.id}>
-                      <button
-                        type="button"
-                        onClick={() => setPreview(e.card)}
-                        className="w-full flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-stone-800 text-left cursor-pointer"
-                      >
-                        <span className="text-xs font-mono text-stone-400 w-5 shrink-0">{e.quantity}</span>
-                        <span className="text-sm text-stone-200 truncate flex-1">{e.card.name}</span>
-                        <ManaSymbol cost={e.card.mana_cost || e.card.card_faces?.[0]?.mana_cost} size="sm" />
-                      </button>
-                    </li>
-                  ))}
-              </ul>
-            </section>
-          ))}
-        </div>
+        {/* Karty według typów — ten sam wygląd co w edytorze talii (bez edycji) */}
+        <DeckCategoriesBoard
+          categorizedCards={categorizedCards}
+          settings={settings}
+          previewScale={100}
+          onHoverCard={handleHover}
+          onLeaveCard={() => setHovered(null)}
+          onViewCardDetails={setPreview}
+        />
+        <FloatingCardPreview card={hovered} position={hoverPos} scale={100} />
 
         <DeckAnalysis deck={deck} onViewCardDetails={setPreview} />
 

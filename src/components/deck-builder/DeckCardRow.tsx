@@ -80,27 +80,31 @@ export const DeckCardRow: React.FC<DeckCardRowProps> = ({
 
         {/* Action controls (visible on group hover) */}
         <div className="opacity-0 group-hover:opacity-100 pointer-coarse:opacity-100 transition-opacity flex items-center gap-1 pointer-coarse:gap-0 bg-stone-950/90 rounded-lg px-1 py-0.5 pointer-coarse:py-0 border border-stone-700">
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              onUpdateQuantity(card.id, 1);
-            }}
-            className="text-stone-400 hover:text-emerald-400 p-0.5 pointer-coarse:p-2"
-            title="Zwiększ ilość"
-          >
-            <PlusCircle className="w-3.5 h-3.5" />
-          </button>
+          {onUpdateQuantity && (
+            <>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onUpdateQuantity(card.id, 1);
+                }}
+                className="text-stone-400 hover:text-emerald-400 p-0.5 pointer-coarse:p-2"
+                title="Zwiększ ilość"
+              >
+                <PlusCircle className="w-3.5 h-3.5" />
+              </button>
 
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              onUpdateQuantity(card.id, -1);
-            }}
-            className="text-stone-400 hover:text-rose-400 p-0.5 pointer-coarse:p-2"
-            title="Zmniejsz ilość"
-          >
-            <MinusCircle className="w-3.5 h-3.5" />
-          </button>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onUpdateQuantity(card.id, -1);
+                }}
+                className="text-stone-400 hover:text-rose-400 p-0.5 pointer-coarse:p-2"
+                title="Zmniejsz ilość"
+              >
+                <MinusCircle className="w-3.5 h-3.5" />
+              </button>
+            </>
+          )}
 
           {!entry.isCommander && isLegendary && onSetCommander && (
             <button
