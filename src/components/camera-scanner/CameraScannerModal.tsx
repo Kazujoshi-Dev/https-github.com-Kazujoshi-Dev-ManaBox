@@ -1530,7 +1530,7 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
             )}
 
             {/* Bottom Actions Area */}
-            <div className="pt-3 border-t border-stone-800 space-y-2.5 max-sm:sticky max-sm:-bottom-4 max-sm:bg-stone-900 max-sm:pb-1">
+            <div className={`pt-3 border-t border-stone-800 space-y-2.5 max-sm:sticky max-sm:-bottom-4 max-sm:bg-stone-900 max-sm:pb-1 ${activeCard ? '' : 'max-sm:hidden'}`}>
               {lastAddedNotice && (
                 <div className="p-2 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-300 text-xs flex items-center gap-2">
                   <Check className="w-3.5 h-3.5 stroke-[3]" />
