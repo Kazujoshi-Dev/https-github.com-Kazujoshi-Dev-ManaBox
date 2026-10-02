@@ -92,11 +92,11 @@ export async function updateCollectionItem(
 
       const res = await p.query(
         `UPDATE user_collections
-         SET card_id = $1, card = $2, quantity = $3, quantity_foil = $4, condition = $5,
+         SET card_id = $1::varchar, card = $2, quantity = $3, quantity_foil = $4, condition = $5,
              language = $6, purchase_price = $7, notes = $8, binder = $9, is_for_sale = $10, sale_price = $11,
              -- zmiana wydania karty: poprzednie ceny dotyczyły innego druku
-             previous_prices = CASE WHEN card_id IS DISTINCT FROM $1 THEN NULL ELSE previous_prices END,
-             prices_changed_at = CASE WHEN card_id IS DISTINCT FROM $1 THEN NULL ELSE prices_changed_at END
+             previous_prices = CASE WHEN card_id IS DISTINCT FROM $1::varchar THEN NULL ELSE previous_prices END,
+             prices_changed_at = CASE WHEN card_id IS DISTINCT FROM $1::varchar THEN NULL ELSE prices_changed_at END
          WHERE id = $12 AND user_id = $13
          RETURNING id, card_id as "cardId", card, quantity, quantity_foil as "quantityFoil",
                    condition, language, purchase_price as "purchasePrice", notes, binder,

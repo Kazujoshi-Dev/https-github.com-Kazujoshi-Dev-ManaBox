@@ -105,11 +105,9 @@ export async function withDb<T>(
   fallbackOperation: () => Promise<T> | T
 ): Promise<T> {
   if (isPostgresActive() && pool) {
-    try {
-      return await pgOperation(pool);
-    } catch (err: any) {
-      console.warn('[DB] PostgreSQL operation error, degrading to local storage:', err?.message || err);
-    }
+    // Przy działającym PostgreSQL błąd zapytania zgłaszamy dalej (500), zamiast po cichu
+    // zapisywać do plików JSON, których potem nikt nie czyta (zmiany „znikały”).
+    return await pgOperation(pool);
   }
   return fallbackOperation();
 }
