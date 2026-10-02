@@ -6,6 +6,7 @@ import * as db from './src/server/db';
 import type { PriceUpdate } from './src/server/db';
 import { hashPassword, verifyPassword, generateToken, verifyToken } from './src/server/auth';
 import { rateLimit } from './src/server/rateLimit';
+import { getCommanderRecommendations } from './src/server/edhrec';
 import * as cards from './src/server/cards/cardStore';
 import * as hashes from './src/server/cards/hashIndex';
 import { computeCardHash, decodeJpegToGray } from './src/server/cards/imageHash';
@@ -1814,6 +1815,51 @@ app.get('/api/sellers/map', authMiddleware, async (req, res) => {
     res.json({ cities: result, myCity: myProfile.city ? myProfile.cityLabel : null });
   } catch (err: any) {
     sendServerError(res, err, '/api/sellers/map');
+  }
+});
+
+// --- REKOMENDACJE EDHREC DLA DOWÓDCY ---
+
+const edhrecLimiter = rateLimit({
+  name: 'edhrec', windowMs: 10 * 60_000, max: 40, key: userKey,
+  message: 'Zbyt wiele zapytań o rekomendacje. Spróbuj za kilka minut.'
+});
+
+/** Odchudzona karta Scryfall do podpowiedzi (wystarcza do podglądu i dodania do talii). */
+function slimCard(c: any) {
+  if (!c) return null;
+  const face = (f: any) => ({ name: f.name, mana_cost: f.mana_cost, type_line: f.type_line, oracle_text: f.oracle_text, colors: f.colors, image_uris: f.image_uris });
+  return {
+    id: c.id, oracle_id: c.oracle_id, name: c.name, cmc: c.cmc, type_line: c.type_line, oracle_text: c.oracle_text,
+    mana_cost: c.mana_cost, colors: c.colors, color_identity: c.color_identity, produced_mana: c.produced_mana,
+    set: c.set, set_name: c.set_name, collector_number: c.collector_number, rarity: c.rarity, released_at: c.released_at,
+    image_uris: c.image_uris, card_faces: Array.isArray(c.card_faces) ? c.card_faces.map(face) : undefined,
+    prices: c.prices || {}, legalities: c.legalities, edhrec_rank: c.edhrec_rank, scryfall_uri: c.scryfall_uri, finishes: c.finishes
+  };
+}
+
+app.get('/api/edhrec/commander', authMiddleware, edhrecLimiter, async (req, res) => {
+  try {
+    const name = typeof req.query.name === 'string' ? req.query.name.trim().slice(0, 150) : '';
+    if (!name) return res.status(400).json({ error: 'Podaj nazwę dowódcy.' });
+    let data;
+    try {
+      data = await getCommanderRecommendations(name);
+    } catch (err: any) {
+      console.warn('[EDHREC] Błąd pobierania:', err?.message || err);
+      return res.status(502).json({ error: 'EDHREC jest chwilowo niedostępny. Spróbuj później.' });
+    }
+    if (!data) return res.status(404).json({ error: 'EDHREC nie ma jeszcze danych dla tego dowódcy.' });
+    const top = data.cards.slice(0, 220);
+    const found = await cards.getCardsByNames(top.map((c) => c.name)).catch(() => new Map<string, any>());
+    res.json({
+      commander: data.name,
+      url: data.url,
+      numDecks: data.numDecks,
+      cards: top.map((c) => ({ ...c, card: slimCard(found.get(c.name.toLowerCase()) || found.get(c.name.split('//')[0].trim().toLowerCase())) }))
+    });
+  } catch (err) {
+    sendServerError(res, err, '/api/edhrec/commander');
   }
 });
 

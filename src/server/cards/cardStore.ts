@@ -84,6 +84,8 @@ export async function ensureCardSchema(): Promise<void> {
       synced_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );
     CREATE INDEX IF NOT EXISTS idx_scryfall_cards_set_cn ON scryfall_cards(set_code, collector_number);
+    CREATE INDEX IF NOT EXISTS idx_scryfall_cards_lname ON scryfall_cards (LOWER(name));
+    CREATE INDEX IF NOT EXISTS idx_scryfall_cards_lface ON scryfall_cards (LOWER(face_names[1]));
     CREATE TABLE IF NOT EXISTS scryfall_sync (
       key VARCHAR(64) PRIMARY KEY,
       value TEXT,
@@ -355,6 +357,28 @@ export async function getCardsByIds(ids: string[]): Promise<any[]> {
   const res = await p.query('SELECT id, data FROM scryfall_cards WHERE id = ANY($1::uuid[])', [ids]);
   const byId = new Map(res.rows.map((r) => [r.id, r.data]));
   return ids.map((id) => byId.get(id)).filter(Boolean);
+}
+
+/**
+ * Karty po nazwach (dokładna nazwa lub nazwa pierwszej strony), po jednej — najnowsze
+ * angielskie wydanie z obrazkiem. Klucz mapy: nazwa małymi literami (tak jak podana).
+ */
+export async function getCardsByNames(names: string[]): Promise<Map<string, any>> {
+  const out = new Map<string, any>();
+  const p = pool();
+  const wanted = [...new Set(names.map((n) => n.toLowerCase().trim()).filter(Boolean))];
+  if (!p || wanted.length === 0) return out;
+  const res = await p.query(
+    `SELECT DISTINCT ON (key) key, data FROM (
+       SELECT LOWER(name) AS key, data, lang, released_at, image_small FROM scryfall_cards WHERE LOWER(name) = ANY($1)
+       UNION ALL
+       SELECT LOWER(face_names[1]) AS key, data, lang, released_at, image_small FROM scryfall_cards WHERE LOWER(face_names[1]) = ANY($1)
+     ) x
+     ORDER BY key, (lang = 'en') DESC, (image_small IS NOT NULL) DESC, released_at DESC NULLS LAST`,
+    [wanted]
+  );
+  for (const r of res.rows) out.set(r.key, r.data);
+  return out;
 }
 
 /** Identyfikator karty po kodzie setu i numerze kolekcjonerskim (np. "mh3", "123"). */

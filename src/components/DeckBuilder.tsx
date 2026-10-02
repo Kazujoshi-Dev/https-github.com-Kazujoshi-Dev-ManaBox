@@ -17,6 +17,8 @@ import {
 import { DeckImportExportModal } from './DeckImportExportModal';
 import { DeckCombosModal } from './deck-builder/DeckCombosModal';
 import { DeckAnalysis } from './deck-builder/DeckAnalysis';
+import { DeckSuggestions } from './deck-builder/DeckSuggestions';
+import type { EdhrecRecommendation } from '../services/api';
 import { wishlistApi } from '../services/api';
 
 // Re-export constants for external consumers if needed
@@ -158,6 +160,43 @@ export const DeckBuilder: React.FC<DeckBuilderProps> = ({
       cards: updatedCards,
     });
   }, [deck, onUpdateDeck]);
+
+  // Karta z rekomendacji EDHREC: mamy jej dane z lokalnej bazy albo szukamy po nazwie w Scryfall
+  const resolveRecommendedCard = useCallback(async (rec: EdhrecRecommendation): Promise<ScryfallCard | null> => {
+    if (rec.card) return rec.card;
+    try {
+      const res = await fetch(`/api/scryfall/named?exact=${encodeURIComponent(rec.name)}`);
+      return res.ok ? ((await res.json()) as ScryfallCard) : null;
+    } catch {
+      return null;
+    }
+  }, []);
+
+  const handleAddRecommended = useCallback(async (rec: EdhrecRecommendation) => {
+    const card = await resolveRecommendedCard(rec);
+    if (!card) {
+      showToast(`Nie udało się pobrać karty "${rec.name}".`);
+      return;
+    }
+    handleAddCardToDeck(card);
+    showToast(`Dodano "${card.name}" do talii.`);
+  }, [resolveRecommendedCard, handleAddCardToDeck, showToast]);
+
+  const handleReplaceWithRecommended = useCallback(async (oldCard: ScryfallCard, rec: EdhrecRecommendation) => {
+    const card = await resolveRecommendedCard(rec);
+    if (!card) {
+      showToast(`Nie udało się pobrać karty "${rec.name}".`);
+      return;
+    }
+    const cards = deck.cards
+      .map((e) => (e.card.id === oldCard.id ? { ...e, quantity: e.quantity - 1 } : e))
+      .filter((e) => e.quantity > 0);
+    if (!cards.some((e) => e.card.id === card.id || e.card.name === card.name)) {
+      cards.push({ card, quantity: 1, isCommander: false });
+    }
+    onUpdateDeck({ ...deck, cards });
+    showToast(`Zamieniono "${oldCard.name}" na "${card.name}".`);
+  }, [deck, onUpdateDeck, resolveRecommendedCard, showToast]);
 
   const handleSetCommander = useCallback((card: ScryfallCard) => {
     // Remove from the main 99 if it was in the deck
@@ -413,6 +452,17 @@ export const DeckBuilder: React.FC<DeckBuilderProps> = ({
 
       {/* 3b. Statystyki talii: losowa ręka, szanse, wymagania kolorów */}
       <DeckAnalysis deck={deck} onViewCardDetails={onViewCardDetails} />
+
+      {/* 3c. Sugestie z EDHREC (format Commander) */}
+      {(deck.commander || /commander|edh/i.test(deck.format || '')) && (
+      <DeckSuggestions
+        deck={deck}
+        collection={collection}
+        onViewCardDetails={onViewCardDetails}
+        onAddCard={handleAddRecommended}
+        onReplaceCard={handleReplaceWithRecommended}
+      />
+      )}
 
       {/* 4. Floating Card Preview on Hover */}
       <FloatingCardPreview

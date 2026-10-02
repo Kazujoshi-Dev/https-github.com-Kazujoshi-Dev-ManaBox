@@ -294,6 +294,25 @@ async function jsonOrThrow<T>(res: Response, fallback: string): Promise<T> {
   return res.json();
 }
 
+export interface EdhrecRecommendation {
+  name: string;
+  inclusion: number;
+  numDecks: number;
+  synergy: number;
+  list: string;
+  card: ScryfallCard | null;
+}
+export interface EdhrecCommanderData {
+  commander: string;
+  url: string;
+  numDecks: number;
+  cards: EdhrecRecommendation[];
+}
+export const edhrecApi = {
+  commander: async (name: string): Promise<EdhrecCommanderData> =>
+    jsonOrThrow(await fetchWithAuth(`/api/edhrec/commander?name=${encodeURIComponent(name)}`), 'Nie udało się pobrać rekomendacji EDHREC.')
+};
+
 export const profileApi = {
   get: async (): Promise<UserProfile> =>
     jsonOrThrow(await fetchWithAuth('/api/profile'), 'Błąd pobierania profilu'),
