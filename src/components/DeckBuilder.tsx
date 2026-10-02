@@ -16,6 +16,7 @@ import {
 } from './deck-builder';
 import { DeckImportExportModal } from './DeckImportExportModal';
 import { DeckCombosModal } from './deck-builder/DeckCombosModal';
+import { DeckAnalysis } from './deck-builder/DeckAnalysis';
 import { wishlistApi } from '../services/api';
 
 // Re-export constants for external consumers if needed
@@ -409,6 +410,9 @@ export const DeckBuilder: React.FC<DeckBuilderProps> = ({
         onSetCommander={handleSetCommander}
         onViewCardDetails={onViewCardDetails}
       />
+
+      {/* 3b. Statystyki talii: losowa ręka, szanse, wymagania kolorów */}
+      <DeckAnalysis deck={deck} onViewCardDetails={onViewCardDetails} />
 
       {/* 4. Floating Card Preview on Hover */}
       <FloatingCardPreview
