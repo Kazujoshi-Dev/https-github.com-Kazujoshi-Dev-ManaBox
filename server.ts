@@ -1,4 +1,5 @@
 import express from 'express';
+import crypto from 'crypto';
 import path from 'path';
 import fs from 'fs';
 import { createServer as createViteServer } from 'vite';
@@ -18,10 +19,16 @@ app.disable('x-powered-by');
 app.use('/api/auth', express.json({ limit: '20kb' }));
 app.use(express.json({ limit: '10mb' }));
 
-// Allow camera access in headers
+// Nagłówki bezpieczeństwa. Kamera tylko dla własnej domeny (skaner kart), mikrofon wyłączony.
 app.use((req, res, next) => {
-  res.setHeader('Permissions-Policy', 'camera=*, microphone=*');
-  res.setHeader('Feature-Policy', "camera '*'");
+  res.setHeader('Permissions-Policy', 'camera=(self), microphone=(), geolocation=()');
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'DENY');
+  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+  res.setHeader('Cross-Origin-Opener-Policy', 'same-origin');
+  if (req.secure) {
+    res.setHeader('Strict-Transport-Security', 'max-age=15552000; includeSubDomains');
+  }
   next();
 });
 
@@ -36,6 +43,13 @@ function authMiddleware(req: express.Request, res: express.Response, next: expre
   (req as any).user = payload;
   (req as any).userId = payload.userId;
   next();
+}
+
+// Błędy serwera logujemy w całości, ale klient dostaje tylko ogólny komunikat
+// (szczegóły, np. z bazy danych, mogłyby ujawnić strukturę systemu).
+function sendServerError(res: express.Response, err: unknown, where: string, message = 'Wystąpił błąd serwera. Spróbuj ponownie.') {
+  console.error(`Błąd w ${where}:`, err);
+  if (!res.headersSent) res.status(500).json({ error: message });
 }
 
 // --- LIMITY ZAPYTAŃ ---
@@ -111,7 +125,7 @@ app.post(['/api/auth/register', '/api/auth/register/', '/api/register'], registe
     }
 
     const { hash, salt } = hashPassword(password);
-    const userId = `usr_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+    const userId = `usr_${crypto.randomUUID()}`;
     const user = await db.createUser(userId, email, username.trim(), hash, salt);
 
     const token = generateToken({
@@ -131,7 +145,7 @@ app.post(['/api/auth/register', '/api/auth/register/', '/api/register'], registe
     });
   } catch (err: any) {
     console.error('Error during register:', err);
-    res.status(500).json({ error: 'Błąd rejestracji konta: ' + err.message });
+    sendServerError(res, err, '/api/auth/register', 'Błąd rejestracji konta.');
   }
 });
 
@@ -169,7 +183,7 @@ app.post(['/api/auth/login', '/api/auth/login/', '/api/login'], loginIpLimiter, 
     });
   } catch (err: any) {
     console.error('Error during login:', err);
-    res.status(500).json({ error: 'Błąd logowania: ' + err.message });
+    sendServerError(res, err, '/api/auth/login', 'Błąd logowania.');
   }
 });
 
@@ -190,7 +204,7 @@ app.get('/api/auth/me', authMiddleware, async (req, res) => {
       }
     });
   } catch (err: any) {
-    res.status(500).json({ error: err.message });
+    sendServerError(res, err, '/api/auth/me');
   }
 });
 
@@ -815,7 +829,8 @@ Return strictly valid JSON:
     });
   } catch (err: any) {
     console.error('Błąd w /api/scanner/delver-identify:', err);
-    res.status(500).json({ error: 'DELVER_SCAN_FAILED', message: err.message });
+    console.error('Błąd w /api/scanner/delver-identify:', err);
+    res.status(500).json({ error: 'DELVER_SCAN_FAILED', message: 'Nie udało się rozpoznać karty. Spróbuj ponownie.' });
   }
 });
 
@@ -1189,7 +1204,7 @@ app.get('/api/collection', authMiddleware, async (req, res) => {
     const collection = await db.getCollection(userId);
     res.json(collection);
   } catch (err: any) {
-    res.status(500).json({ error: err.message });
+    sendServerError(res, err, '/api/collection');
   }
 });
 
@@ -1197,14 +1212,14 @@ app.post('/api/collection', authMiddleware, async (req, res) => {
   try {
     const userId = (req as any).userId;
     const newItem = {
-      id: `col-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
+      id: `col-${crypto.randomUUID()}`,
       addedAt: new Date().toISOString(),
       ...req.body
     };
     const saved = await db.addCollectionItem(userId, newItem);
     res.status(201).json(saved);
   } catch (err: any) {
-    res.status(500).json({ error: err.message });
+    sendServerError(res, err, '/api/collection');
   }
 });
 
@@ -1218,7 +1233,7 @@ app.put('/api/collection/:id', authMiddleware, async (req, res) => {
     }
     res.json(updated);
   } catch (err: any) {
-    res.status(500).json({ error: err.message });
+    sendServerError(res, err, '/api/collection/:id');
   }
 });
 
@@ -1229,7 +1244,7 @@ app.delete('/api/collection/:id', authMiddleware, async (req, res) => {
     const success = await db.deleteCollectionItem(userId, id);
     res.json({ success, id });
   } catch (err: any) {
-    res.status(500).json({ error: err.message });
+    sendServerError(res, err, '/api/collection/:id');
   }
 });
 
@@ -1240,7 +1255,7 @@ app.post('/api/collection/bulk-import', authMiddleware, async (req, res) => {
     await db.saveFullCollection(userId, items);
     res.json({ success: true, count: items.length });
   } catch (err: any) {
-    res.status(500).json({ error: err.message });
+    sendServerError(res, err, '/api/collection/bulk-import');
   }
 });
 
@@ -1252,7 +1267,7 @@ app.post('/api/collection/bulk-add', authMiddleware, async (req, res) => {
     res.json({ success: true, count: added.length, items: added });
   } catch (err: any) {
     console.error('Error in /api/collection/bulk-add:', err);
-    res.status(500).json({ error: err.message });
+    sendServerError(res, err, '/api/collection/bulk-add');
   }
 });
 
@@ -1302,7 +1317,7 @@ app.post('/api/collection/refresh-prices', authMiddleware, async (req, res) => {
     await db.saveFullCollection(userId, collection);
     res.json({ success: true, updatedCount, collection });
   } catch (err: any) {
-    res.status(500).json({ error: err.message });
+    sendServerError(res, err, '/api/collection/refresh-prices');
   }
 });
 
@@ -1314,7 +1329,7 @@ app.get('/api/catalogs', authMiddleware, async (req, res) => {
     const catalogs = await db.getCatalogs(userId);
     res.json(catalogs);
   } catch (err: any) {
-    res.status(500).json({ error: err.message });
+    sendServerError(res, err, '/api/catalogs');
   }
 });
 
@@ -1332,7 +1347,7 @@ app.post('/api/catalogs', authMiddleware, async (req, res) => {
     }
 
     const newCatalog = {
-      id: `cat-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
+      id: `cat-${crypto.randomUUID()}`,
       name: name.trim(),
       description: description ? description.trim() : '',
       color: color || 'amber',
@@ -1346,7 +1361,7 @@ app.post('/api/catalogs', authMiddleware, async (req, res) => {
     }
     res.status(201).json(saved);
   } catch (err: any) {
-    res.status(500).json({ error: err.message });
+    sendServerError(res, err, '/api/catalogs');
   }
 });
 
@@ -1358,7 +1373,7 @@ app.post('/api/catalogs/:id/set-default', authMiddleware, async (req, res) => {
     const target = catalogs.find(c => c.id === id);
     res.json({ success: true, defaultCatalog: target, catalogs });
   } catch (err: any) {
-    res.status(500).json({ error: err.message });
+    sendServerError(res, err, '/api/catalogs/:id/set-default');
   }
 });
 
@@ -1369,7 +1384,10 @@ app.delete('/api/catalogs/:id', authMiddleware, async (req, res) => {
     const result = await db.deleteCatalog(userId, id);
     res.json({ success: true, id, reassignedTo: result.reassignedTo, catalogs: result.catalogs });
   } catch (err: any) {
-    res.status(500).json({ error: err.message });
+    if (err?.message === 'Nie znaleziono katalogu do usunięcia.') {
+      return res.status(404).json({ error: err.message });
+    }
+    sendServerError(res, err, '/api/catalogs/:id');
   }
 });
 
@@ -1415,7 +1433,7 @@ app.get('/api/users', async (req, res) => {
     res.json(result);
   } catch (err: any) {
     console.error('Error in /api/users:', err);
-    res.status(500).json({ error: 'Błąd pobierania listy użytkowników: ' + err.message });
+    sendServerError(res, err, '/api/users', 'Błąd pobierania listy użytkowników.');
   }
 });
 
@@ -1454,7 +1472,7 @@ app.get('/api/public/sale/:userRef', async (req, res) => {
     });
   } catch (err: any) {
     console.error('Error in /api/public/sale:', err);
-    res.status(500).json({ error: 'Błąd pobierania oferty: ' + err.message });
+    sendServerError(res, err, '/api/public/sale/:userRef', 'Błąd pobierania oferty.');
   }
 });
 
@@ -1492,7 +1510,7 @@ app.get('/api/public/wishlist/:userRef', async (req, res) => {
     });
   } catch (err: any) {
     console.error('Error in /api/public/wishlist:', err);
-    res.status(500).json({ error: 'Błąd pobierania listy życzeń użytkownika: ' + err.message });
+    sendServerError(res, err, '/api/public/wishlist/:userRef', 'Błąd pobierania listy życzeń użytkownika.');
   }
 });
 
@@ -1504,7 +1522,7 @@ app.get('/api/wishlist', authMiddleware, async (req, res) => {
     const wishlist = await db.getWishlist(userId);
     res.json(wishlist);
   } catch (err: any) {
-    res.status(500).json({ error: err.message });
+    sendServerError(res, err, '/api/wishlist');
   }
 });
 
@@ -1512,14 +1530,14 @@ app.post('/api/wishlist', authMiddleware, async (req, res) => {
   try {
     const userId = (req as any).userId;
     const newItem = {
-      id: `wish-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
+      id: `wish-${crypto.randomUUID()}`,
       addedAt: new Date().toISOString(),
       ...req.body
     };
     const saved = await db.addWishlistItem(userId, newItem);
     res.status(201).json(saved);
   } catch (err: any) {
-    res.status(500).json({ error: err.message });
+    sendServerError(res, err, '/api/wishlist');
   }
 });
 
@@ -1530,7 +1548,7 @@ app.delete('/api/wishlist/:id', authMiddleware, async (req, res) => {
     const success = await db.deleteWishlistItem(userId, id);
     res.json({ success, id });
   } catch (err: any) {
-    res.status(500).json({ error: err.message });
+    sendServerError(res, err, '/api/wishlist/:id');
   }
 });
 
@@ -1542,7 +1560,7 @@ app.get('/api/messages/inbox', authMiddleware, async (req, res) => {
     const inbox = await db.getInbox(userId);
     res.json(inbox);
   } catch (err: any) {
-    res.status(500).json({ error: 'Błąd pobierania skrzynki odbiorczej: ' + err.message });
+    sendServerError(res, err, '/api/messages/inbox', 'Błąd pobierania skrzynki odbiorczej.');
   }
 });
 
@@ -1552,7 +1570,7 @@ app.get('/api/messages/sent', authMiddleware, async (req, res) => {
     const sent = await db.getSent(userId);
     res.json(sent);
   } catch (err: any) {
-    res.status(500).json({ error: 'Błąd pobierania skrzynki nadawczej: ' + err.message });
+    sendServerError(res, err, '/api/messages/sent', 'Błąd pobierania skrzynki nadawczej.');
   }
 });
 
@@ -1562,7 +1580,7 @@ app.get('/api/messages/unread-count', authMiddleware, async (req, res) => {
     const count = await db.getUnreadCount(userId);
     res.json({ unreadCount: count });
   } catch (err: any) {
-    res.status(500).json({ error: 'Błąd pobierania licznika wiadomości: ' + err.message });
+    sendServerError(res, err, '/api/messages/unread-count', 'Błąd pobierania licznika wiadomości.');
   }
 });
 
@@ -1599,7 +1617,7 @@ app.post('/api/messages', authMiddleware, messageLimiter, async (req, res) => {
     }
 
     const newMsg = {
-      id: `msg-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+      id: `msg-${crypto.randomUUID()}`,
       senderId: sender.id,
       senderUsername: sender.username,
       recipientId: recipient.id,
@@ -1613,7 +1631,7 @@ app.post('/api/messages', authMiddleware, messageLimiter, async (req, res) => {
     const saved = await db.sendMessage(newMsg);
     res.status(201).json(saved);
   } catch (err: any) {
-    res.status(500).json({ error: 'Błąd podczas wysyłania wiadomości: ' + err.message });
+    sendServerError(res, err, '/api/messages', 'Błąd podczas wysyłania wiadomości.');
   }
 });
 
@@ -1623,7 +1641,7 @@ app.put('/api/messages/mark-all-read', authMiddleware, async (req, res) => {
     const success = await db.markAllAsRead(userId);
     res.json({ success });
   } catch (err: any) {
-    res.status(500).json({ error: 'Błąd oznaczania wiadomości: ' + err.message });
+    sendServerError(res, err, '/api/messages/mark-all-read', 'Błąd oznaczania wiadomości.');
   }
 });
 
@@ -1634,7 +1652,7 @@ app.put('/api/messages/:id/read', authMiddleware, async (req, res) => {
     const success = await db.markAsRead(userId, id);
     res.json({ success, id });
   } catch (err: any) {
-    res.status(500).json({ error: 'Błąd aktualizacji statusu: ' + err.message });
+    sendServerError(res, err, '/api/messages/:id/read', 'Błąd aktualizacji statusu.');
   }
 });
 
@@ -1645,7 +1663,7 @@ app.delete('/api/messages/:id', authMiddleware, async (req, res) => {
     const success = await db.deleteMessage(userId, id);
     res.json({ success, id });
   } catch (err: any) {
-    res.status(500).json({ error: 'Błąd usuwania wiadomości: ' + err.message });
+    sendServerError(res, err, '/api/messages/:id', 'Błąd usuwania wiadomości.');
   }
 });
 
@@ -1657,7 +1675,7 @@ app.get('/api/settings', authMiddleware, async (req, res) => {
     const settings = await db.getSettings(userId);
     res.json(settings || {});
   } catch (err: any) {
-    res.status(500).json({ error: err.message });
+    sendServerError(res, err, '/api/settings');
   }
 });
 
@@ -1667,7 +1685,7 @@ app.post('/api/settings', authMiddleware, async (req, res) => {
     const settings = await db.saveSettings(userId, req.body);
     res.json(settings);
   } catch (err: any) {
-    res.status(500).json({ error: err.message });
+    sendServerError(res, err, '/api/settings');
   }
 });
 
@@ -1679,7 +1697,7 @@ app.get('/api/decks', authMiddleware, async (req, res) => {
     const decks = await db.getDecks(userId);
     res.json(decks);
   } catch (err: any) {
-    res.status(500).json({ error: err.message });
+    sendServerError(res, err, '/api/decks');
   }
 });
 
@@ -1692,7 +1710,7 @@ app.post('/api/decks', authMiddleware, async (req, res) => {
     }
 
     const newDeck = {
-      id: `deck-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
+      id: `deck-${crypto.randomUUID()}`,
       name: name.trim(),
       format: format || 'EDH Commander', // default always EDH Commander
       description: description || '',
@@ -1706,7 +1724,7 @@ app.post('/api/decks', authMiddleware, async (req, res) => {
     const saved = await db.saveDeck(userId, newDeck);
     res.status(201).json(saved);
   } catch (err: any) {
-    res.status(500).json({ error: err.message });
+    sendServerError(res, err, '/api/decks');
   }
 });
 
@@ -1723,7 +1741,7 @@ app.put('/api/decks/:id', authMiddleware, async (req, res) => {
     const saved = await db.saveDeck(userId, deckToSave);
     res.json(saved);
   } catch (err: any) {
-    res.status(500).json({ error: err.message });
+    sendServerError(res, err, '/api/decks/:id');
   }
 });
 
@@ -1734,7 +1752,7 @@ app.delete('/api/decks/:id', authMiddleware, async (req, res) => {
     const success = await db.deleteDeck(userId, id);
     res.json({ success, id });
   } catch (err: any) {
-    res.status(500).json({ error: err.message });
+    sendServerError(res, err, '/api/decks/:id');
   }
 });
 
