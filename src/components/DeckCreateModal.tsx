@@ -332,8 +332,8 @@ export const DeckCreateModal: React.FC<DeckCreateModalProps> = ({
                     type="text"
                     placeholder={
                       cardSource === 'collection'
-                        ? 'Szukaj legendarnego stwora w kolekcji...'
-                        : 'Szukaj legendarnego stwora w kolekcji lub Scryfall...'
+                        ? 'Szukaj Legendary Creature w kolekcji...'
+                        : 'Szukaj Legendary Creature w kolekcji lub Scryfall...'
                     }
                     value={commanderSearch}
                     onChange={(e) => setCommanderSearch(e.target.value)}

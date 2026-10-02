@@ -80,7 +80,7 @@ export const DeckAnalysis: React.FC<DeckAnalysisProps> = ({ deck, onViewCardDeta
 
   /* --- prawdopodobieństwa --- */
   const odds = useMemo(() => categoryOdds(library, 7), [library]);
-  const landOdds = odds.find((o) => o.id === 'Lądy');
+  const landOdds = odds.find((o) => o.id === 'Lands');
   const goodLandHand = useMemo(() => {
     if (!landOdds) return 0;
     const N = library.length;
@@ -133,7 +133,7 @@ export const DeckAnalysis: React.FC<DeckAnalysisProps> = ({ deck, onViewCardDeta
       >
         <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-stone-400 mb-3">
           <span>Ręka nr <strong className="text-stone-200">{handNo}</strong></span>
-          <span>Lądy w ręce: <strong className={handLands >= 2 && handLands <= 4 ? 'text-emerald-400' : 'text-amber-300'}>{handLands}</strong> / {hand.length}</span>
+          <span>Lands w ręce: <strong className={handLands >= 2 && handLands <= 4 ? 'text-emerald-400' : 'text-amber-300'}>{handLands}</strong> / {hand.length}</span>
           {turn > 1 && <span>Dobrano do tury <strong className="text-stone-200">{turn}</strong> (gra na wyjściu)</span>}
         </div>
         <div className="grid grid-cols-4 sm:grid-cols-7 gap-2" role="list">
@@ -171,7 +171,7 @@ export const DeckAnalysis: React.FC<DeckAnalysisProps> = ({ deck, onViewCardDeta
       <Panel title="Szanse w ręce startowej (7 kart)" subtitle="Prawdopodobieństwo wylosowania danej liczby kart każdego typu" icon={Percent}>
         {landOdds && (
           <p className="mb-3 text-sm text-stone-300">
-            Szansa na grywalną liczbę lądów (2–4) w ręce startowej:{' '}
+            Szansa na grywalną liczbę Lands (2–4) w ręce startowej:{' '}
             <strong className={goodLandHand >= 0.7 ? 'text-emerald-400' : goodLandHand >= 0.55 ? 'text-amber-300' : 'text-rose-300'}>{pct(goodLandHand)}</strong>
           </p>
         )}
@@ -211,8 +211,8 @@ export const DeckAnalysis: React.FC<DeckAnalysisProps> = ({ deck, onViewCardDeta
       {/* 3. Kolory many */}
       <Panel
         title="Rozkład i wymagania kolorów"
-        subtitle={`${mana.lands} lądów w ${mana.deckSize} kartach · średni koszt czarów ${mana.avgManaValue.toFixed(2).replace('.', ',')}${
-          mana.recommendedLands !== null ? ` · zalecane ok. ${mana.recommendedLands} lądów` : ''
+        subtitle={`Lands: ${mana.lands} z ${mana.deckSize} kart · średni koszt pozostałych kart ${mana.avgManaValue.toFixed(2).replace('.', ',')}${
+          mana.recommendedLands !== null ? ` · zalecane ok. ${mana.recommendedLands} Lands` : ''
         }`}
         icon={Droplets}
       >
@@ -224,7 +224,7 @@ export const DeckAnalysis: React.FC<DeckAnalysisProps> = ({ deck, onViewCardDeta
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               {[
                 { label: 'Kolory w kosztach kart', key: 'pipShare' as const },
-                { label: 'Kolory produkowane przez lądy', key: 'sourceShare' as const }
+                { label: 'Kolory produkowane przez Lands', key: 'sourceShare' as const }
               ].map((row) => (
                 <div key={row.key}>
                   <p className="text-[11px] uppercase tracking-wider font-bold text-stone-500 mb-1.5">{row.label}</p>
@@ -264,14 +264,14 @@ export const DeckAnalysis: React.FC<DeckAnalysisProps> = ({ deck, onViewCardDeta
                       )}
                     </div>
                     <dl className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1 text-xs">
-                      <dt className="text-stone-500">Źródła (lądy)</dt>
+                      <dt className="text-stone-500">Źródła (Lands)</dt>
                       <dd className={`text-right font-mono font-bold ${ok ? 'text-stone-100' : 'text-rose-300'}`}>{c.landSources}</dd>
                       <dt className="text-stone-500">Potrzebne</dt>
                       <dd className="text-right font-mono font-bold text-stone-100">{c.hardestCard ? c.needed : '—'}</dd>
                       {c.otherSources > 0 && (
                         <>
                           <dt className="text-stone-500">Inne źródła</dt>
-                          <dd className="text-right font-mono text-stone-300" title="Artefakty i stwory dające manę (nie liczone do wymagań)">+{c.otherSources}</dd>
+                          <dd className="text-right font-mono text-stone-300" title="Artifacts i Creatures dające manę (nie liczone do wymagań)">+{c.otherSources}</dd>
                         </>
                       )}
                       {c.hardestCard && (
@@ -311,8 +311,8 @@ export const DeckAnalysis: React.FC<DeckAnalysisProps> = ({ deck, onViewCardDeta
 
             <p className="text-[11px] text-stone-500 flex items-start gap-1.5">
               <Info className="w-3.5 h-3.5 shrink-0 mt-px" />
-              „Potrzebne” to liczba lądów danego koloru, przy której kartę wymagającą najwięcej symboli tego koloru zagrasz w turze równej jej
-              kosztowi z szansą ok. 90% (gra na wyjściu, przy trafianiu lądu co turę) — metoda Franka Karstena. Hybrydy i koszty phyrexian
+              „Potrzebne” to liczba Lands danego koloru, przy której kartę wymagającą najwięcej symboli tego koloru zagrasz w turze równej jej
+              kosztowi z szansą ok. 90% (gra na wyjściu, przy zagrywaniu Land co turę) — metoda Franka Karstena. Hybrydy i koszty phyrexian
               liczą się do rozkładu po 0,5 i nie są wymaganiem.
             </p>
           </div>

@@ -32,13 +32,13 @@ export const COLOR_PILLS = [
 
 export const CARD_TYPES = [
   { value: 'ALL', label: 'Wszystkie typy' },
-  { value: 'Creature', label: 'Stwory (Creature)' },
-  { value: 'Instant', label: 'Zaklęcia (Instant)' },
+  { value: 'Creature', label: 'Creature' },
+  { value: 'Instant', label: 'Instant' },
   { value: 'Sorcery', label: 'Sorcery' },
   { value: 'Enchantment', label: 'Enchantment' },
-  { value: 'Artifact', label: 'Artefakty' },
+  { value: 'Artifact', label: 'Artifact' },
   { value: 'Planeswalker', label: 'Planeswalker' },
-  { value: 'Land', label: 'Lądy (Land)' }
+  { value: 'Land', label: 'Land' }
 ];
 
 export const CARD_RARITIES = [

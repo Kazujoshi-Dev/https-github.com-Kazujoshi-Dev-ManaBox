@@ -18,42 +18,42 @@ interface Feature {
 const FEATURES: Feature[] = [
   {
     name: 'Skaner kart',
-    type: 'Artefakt — Aparat',
+    type: 'Artifact — Scanner',
     text: 'Nakieruj telefon na kartę, a rozpozna nazwę, wydanie i cenę. Bez limitu skanów.',
     icon: Camera,
     frame: 'green'
   },
   {
     name: 'Klasery',
-    type: 'Artefakt — Klaser',
+    type: 'Artifact — Binder',
     text: 'Dziel kolekcję na klasery i filtruj karty po kolorze, secie i rzadkości.',
     icon: FolderOpen,
     frame: 'blue'
   },
   {
     name: 'Wycena w PLN',
-    type: 'Czar natychmiastowy',
+    type: 'Instant',
     text: 'Ceny z Cardmarket i TCGPlayer po kursie NBP. Wiesz, ile warta jest kolekcja.',
     icon: Coins,
     frame: 'white'
   },
   {
     name: 'Link do oferty',
-    type: 'Czarodziejstwo',
+    type: 'Sorcery',
     text: 'Wyślij jeden link, a kupujący zobaczy Twoją ofertę bez zakładania konta.',
     icon: Link2,
     frame: 'red'
   },
   {
     name: 'Mapa sprzedawców',
-    type: 'Kraina',
+    type: 'Land',
     text: 'Gracze z Twojej okolicy, którzy sprzedają karty z Twojej listy życzeń.',
     icon: MapPin,
     frame: 'gold'
   },
   {
     name: 'Talie Commander',
-    type: 'Legendarny stwór',
+    type: 'Legendary Creature',
     text: 'Buduj talie z własnych kart i sprawdzaj kombosy z Commander Spellbook.',
     icon: Swords,
     frame: 'black'

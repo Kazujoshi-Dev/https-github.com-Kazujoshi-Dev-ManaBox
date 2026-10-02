@@ -16,26 +16,26 @@ interface DeckSuggestionsProps {
 }
 
 const LIST_TO_CATEGORY: Record<string, string> = {
-  creatures: 'Stwory',
-  instants: 'Czary natychmiastowe',
-  sorceries: 'Czary',
-  artifacts: 'Artefakty',
-  utilityartifacts: 'Artefakty',
-  manaartifacts: 'Artefakty',
-  enchantments: 'Zaczarowania',
-  planeswalkers: 'Planeswalkerzy',
-  lands: 'Lądy',
-  utilitylands: 'Lądy',
-  battles: 'Inne'
+  creatures: 'Creatures',
+  instants: 'Instants',
+  sorceries: 'Sorceries',
+  artifacts: 'Artifacts',
+  utilityartifacts: 'Artifacts',
+  manaartifacts: 'Artifacts',
+  enchantments: 'Enchantments',
+  planeswalkers: 'Planeswalkers',
+  lands: 'Lands',
+  utilitylands: 'Lands',
+  battles: 'Other'
 };
 
-const CATEGORY_TABS = ['Wszystkie', 'Stwory', 'Czary natychmiastowe', 'Czary', 'Artefakty', 'Zaczarowania', 'Planeswalkerzy', 'Lądy'];
+const CATEGORY_TABS = ['Wszystkie', 'Creatures', 'Instants', 'Sorceries', 'Artifacts', 'Enchantments', 'Planeswalkers', 'Lands', 'Other'];
 
 const frontName = (name: string) => name.split('//')[0].trim().toLowerCase();
 const pct = (v: number) => `${Math.round(v * 100)}%`;
 
 function categoryOf(rec: EdhrecRecommendation): string {
-  return rec.card ? getCardCategory(rec.card) : LIST_TO_CATEGORY[rec.list] || 'Inne';
+  return rec.card ? getCardCategory(rec.card) : LIST_TO_CATEGORY[rec.list] || 'Other';
 }
 
 const isBasicLand = (card: ScryfallCard) => /\bbasic\b/i.test(card.type_line || '') && /\bland\b/i.test(card.type_line || '');

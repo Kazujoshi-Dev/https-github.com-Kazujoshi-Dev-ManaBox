@@ -173,14 +173,14 @@ export function manaSources(card: ScryfallCard, deckColors: Color[]): Set<Color>
 /* ---------- prawdopodobieństwa typów w ręce ---------- */
 
 export const HAND_CATEGORIES = [
-  { id: 'Lądy', label: 'Lądy' },
-  { id: 'Stwory', label: 'Stwory' },
-  { id: 'Czary natychmiastowe', label: 'Czary natychmiastowe' },
-  { id: 'Czary', label: 'Czary' },
-  { id: 'Artefakty', label: 'Artefakty' },
-  { id: 'Zaczarowania', label: 'Zaczarowania' },
-  { id: 'Planeswalkerzy', label: 'Planeswalkerzy' },
-  { id: 'Inne', label: 'Inne' }
+  { id: 'Lands', label: 'Lands' },
+  { id: 'Creatures', label: 'Creatures' },
+  { id: 'Instants', label: 'Instants' },
+  { id: 'Sorceries', label: 'Sorceries' },
+  { id: 'Artifacts', label: 'Artifacts' },
+  { id: 'Enchantments', label: 'Enchantments' },
+  { id: 'Planeswalkers', label: 'Planeswalkers' },
+  { id: 'Other', label: 'Other' }
 ];
 
 export interface CategoryOdds {
@@ -346,10 +346,10 @@ export function analyzeMana(deck: DeckItem, library: LibraryCard[]): ManaReport 
   const recommendedLands = recommendLands(N + (deck.commander ? 1 : 0), avgMv);
   if (recommendedLands !== null && L < recommendedLands - 1) {
     suggestions.push(
-      `Talia ma ${L} lądów — przy średnim koszcie ${avgMv.toFixed(2).replace('.', ',')} zalecane jest ok. ${recommendedLands}. Dodaj ${recommendedLands - L} lądów (mniej, jeśli grasz dużo taniej rampy lub dobierania).`
+      `Lands w talii: ${L} — przy średnim koszcie ${avgMv.toFixed(2).replace('.', ',')} zalecane jest ok. ${recommendedLands}. Dodaj ${recommendedLands - L} × Land (mniej, jeśli grasz dużo taniej rampy lub dobierania).`
     );
   } else if (recommendedLands !== null && L > recommendedLands + 2) {
-    suggestions.push(`Talia ma ${L} lądów — przy tym średnim koszcie wystarczy ok. ${recommendedLands}. Możesz zamienić ${L - recommendedLands} lądów na czary.`);
+    suggestions.push(`Lands w talii: ${L} — przy tym średnim koszcie wystarczy ok. ${recommendedLands}. Możesz zamienić ${L - recommendedLands} × Land na inne karty.`);
   }
   const surplus = colors
     .filter((c) => c.landSources - c.needed > 0 && c.basicsInDeck > 0)
@@ -366,11 +366,11 @@ export function analyzeMana(deck: DeckItem, library: LibraryCard[]): ManaReport 
       const swap = Math.min(deficit, donor.free);
       text += ` — np. zamień ${swap} × ${BASIC_LAND[donor.color]} na ${BASIC_LAND[c.color]}`;
       donor.free -= swap;
-      if (swap < deficit) text += ` i dodaj ${deficit - swap} podwójne lądy z tym kolorem`;
+      if (swap < deficit) text += ` i dodaj ${deficit - swap} × dual Land z tym kolorem`;
     } else {
-      text += ' — najlepiej podwójnymi lądami lub zamieniając lądy bezbarwne';
+      text += ' — najlepiej dual Lands lub zamieniając bezbarwne Lands';
     }
-    if (c.unreachable) text += '. Nawet przy samych lądach w tym kolorze szansa nie dobije do 90% — rozważ więcej lądów.';
+    if (c.unreachable) text += '. Nawet gdyby wszystkie Lands dawały ten kolor, szansa nie dobije do 90% — rozważ więcej Lands.';
     suggestions.push(text + (c.unreachable ? '' : '.'));
   }
   if (!suggestions.length && L > 0) suggestions.push('Baza many wygląda dobrze — liczba źródeł każdego koloru wystarcza do zagrywania kart na czas.');

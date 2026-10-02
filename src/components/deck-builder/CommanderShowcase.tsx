@@ -103,7 +103,7 @@ export const CommanderShowcase: React.FC<CommanderShowcaseProps> = ({
             Wybierz dowódcę dla tej talii EDH
           </h3>
           <p className="text-xs text-stone-400">
-            Wybierz legendarnego stwora, który poprowadzi Twoją talię i wyznaczy tożsamość kolorów.
+            Wybierz Legendary Creature, który poprowadzi Twoją talię i wyznaczy tożsamość kolorów.
           </p>
         </div>
       </div>
