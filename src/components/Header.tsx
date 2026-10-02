@@ -96,7 +96,7 @@ export const Header: React.FC<HeaderProps> = ({
 
       {/* Top Banner & Stats (tablet i komputer) */}
       <div className="hidden md:block max-w-[1760px] w-full mx-auto px-4 sm:px-6 lg:px-8 xl:px-10 py-3">
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        <div className="flex flex-wrap items-center justify-between gap-3 xl:flex-nowrap xl:gap-4">
           
           {/* Logo & Title */}
           <div className="flex items-center gap-3">
@@ -159,7 +159,7 @@ export const Header: React.FC<HeaderProps> = ({
           </div>
 
           {/* Quick Actions */}
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <button
               onClick={onOpenSettings}
               title="Otwórz Ustawienia Wyceny & Waluty"
