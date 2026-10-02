@@ -33,7 +33,10 @@ export const CollectionList: React.FC<CollectionListProps> = ({
   onOpenScannerModal,
   onOpenImportExport,
 }) => {
-  const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid');
+  // Na telefonie domyślnie lista (więcej kart na ekranie), na większych ekranach siatka.
+  const [viewMode, setViewMode] = useState<'grid' | 'table'>(() =>
+    typeof window !== 'undefined' && window.matchMedia?.('(max-width: 767px)').matches ? 'table' : 'grid'
+  );
 
   // Filtering & Sorting custom hook
   const {

@@ -16,9 +16,6 @@ import {
   Minus,
   CheckCircle2,
   ScanLine,
-  ExternalLink,
-  Smartphone,
-  Copy,
   Radio,
   Video,
   ZoomIn,
@@ -70,7 +67,6 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
   const [hasTorch, setHasTorch] = useState<boolean>(false);
   const [isTorchOn, setIsTorchOn] = useState<boolean>(false);
   const [isDraggingOver, setIsDraggingOver] = useState<boolean>(false);
-  const [copiedUrl, setCopiedUrl] = useState<boolean>(false);
   const prevDeviceIdRef = useRef<string>('');
 
   // Delver Lens Live Motion Stability & Lock-on
@@ -78,19 +74,6 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
   const [soundEnabled, setSoundEnabled] = useState<boolean>(true);
 
   const isMobile = typeof navigator !== 'undefined' && /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
-
-  const standaloneUrl = typeof window !== 'undefined'
-    ? `${window.location.origin}${window.location.pathname}?scanner=open`
-    : '';
-
-  const handleCopyStandaloneUrl = () => {
-    if (standaloneUrl) {
-      navigator.clipboard.writeText(standaloneUrl);
-      setCopiedUrl(true);
-      showToast('Skopiowano bezpośredni link URL do schowka!');
-      setTimeout(() => setCopiedUrl(false), 2500);
-    }
-  };
 
   // Scanning State (Delver Lens / ManaBox Vision Engine)
   const [zoomRange, setZoomRange] = useState<{ min: number; max: number; step: number } | null>(null);
@@ -683,14 +666,14 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
-      className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/85 backdrop-blur-md overflow-y-auto animate-fade-in"
+      className="fixed inset-0 z-50 flex items-center justify-center p-0 sm:p-4 bg-black/85 backdrop-blur-md overflow-y-auto animate-fade-in"
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        className="relative bg-stone-900 border border-stone-800 rounded-2xl max-w-4xl w-full overflow-hidden shadow-2xl my-auto text-stone-100 max-h-[95vh] flex flex-col"
+        className="relative bg-stone-900 sm:border border-stone-800 sm:rounded-2xl max-w-4xl w-full overflow-hidden shadow-2xl sm:my-auto text-stone-100 h-dvh sm:h-auto sm:max-h-[95vh] flex flex-col pt-[env(safe-area-inset-top)] sm:pt-0"
       >
         {/* Modal Top Header */}
-        <div className="flex flex-wrap items-center justify-between gap-3 px-5 py-3 border-b border-stone-800 bg-stone-950/80">
+        <div className="flex items-center justify-between gap-3 px-3 sm:px-5 py-2 sm:py-3 border-b border-stone-800 bg-stone-950/80 shrink-0">
           <div className="flex items-center gap-2.5">
             <div className="p-2 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400">
               <Camera className="w-5 h-5" />
@@ -700,7 +683,7 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
                 <h2 className="text-sm sm:text-base font-extrabold text-stone-100">
                   Skaner Kart MTG
                 </h2>
-                <span className="text-[10px] font-extrabold uppercase tracking-wider text-emerald-400 bg-emerald-500/10 px-2.5 py-0.5 rounded border border-emerald-500/20 flex items-center gap-1.5 shadow-sm">
+                <span className="hidden sm:flex text-[10px] font-extrabold uppercase tracking-wider text-emerald-400 bg-emerald-500/10 px-2.5 py-0.5 rounded border border-emerald-500/20 items-center gap-1.5 shadow-sm">
                   <Zap className="w-3 h-3 fill-emerald-400" />
                   <span>Delver Lens Engine</span>
                 </span>
@@ -713,7 +696,7 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
 
           <div className="flex items-center gap-2">
             {/* Active Engine Badge */}
-            <div className="flex items-center gap-1.5 px-3 py-1 bg-emerald-950/70 border border-emerald-500/30 rounded-xl text-emerald-300 text-xs font-bold shadow-inner">
+            <div className="hidden md:flex items-center gap-1.5 px-3 py-1 bg-emerald-950/70 border border-emerald-500/30 rounded-xl text-emerald-300 text-xs font-bold shadow-inner">
               <Zap className="w-3.5 h-3.5 fill-emerald-400" />
               <span>Delver Lens & ManaBox</span>
               <span className="hidden md:inline text-[9px] uppercase px-1 py-0.2 rounded bg-emerald-500/20 font-black text-emerald-200">
@@ -761,7 +744,8 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
             <button
               onClick={onClose}
               title="Zamknij skaner"
-              className="p-1.5 text-stone-400 hover:text-stone-100 hover:bg-stone-800 rounded-lg transition-colors cursor-pointer ml-1"
+              aria-label="Zamknij skaner"
+              className="w-11 h-11 sm:w-auto sm:h-auto sm:p-1.5 flex items-center justify-center text-stone-300 sm:text-stone-400 bg-stone-800 sm:bg-transparent hover:text-stone-100 hover:bg-stone-800 rounded-full sm:rounded-lg transition-colors cursor-pointer ml-1"
             >
               <X className="w-5 h-5" />
             </button>
@@ -812,7 +796,7 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
         {/* Modal Body: 2 Columns on Desktop */}
         <div className="grid grid-cols-1 lg:grid-cols-12 flex-1 overflow-y-auto">
           {/* Left Column: Camera Viewport */}
-          <div className="lg:col-span-7 bg-black p-4 flex flex-col justify-between relative border-b lg:border-b-0 lg:border-r border-stone-800">
+          <div className="lg:col-span-7 bg-black p-0 sm:p-4 flex flex-col justify-between relative border-b lg:border-b-0 lg:border-r border-stone-800">
             {/* Camera Viewfinder Container */}
             <div
               onDragOver={(e) => {
@@ -827,7 +811,7 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
                 if (file) processImageFile(file);
               }}
               ref={viewfinderContainerRef}
-              className={`relative aspect-[3/4] sm:aspect-[4/3] w-full rounded-xl overflow-hidden bg-stone-950 border flex items-center justify-center shadow-inner transition-colors ${
+              className={`relative aspect-[3/4] max-h-[68dvh] sm:max-h-none sm:aspect-[4/3] w-full sm:rounded-xl overflow-hidden bg-stone-950 border flex items-center justify-center shadow-inner transition-colors ${
                 isDraggingOver
                   ? 'border-amber-400 ring-2 ring-amber-400/50 bg-amber-950/20'
                   : 'border-stone-800'
@@ -842,95 +826,76 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
                 className={`w-full h-full object-cover ${!isCameraActive ? 'hidden' : ''}`}
               />
 
-              {/* Camera Offline / Blocked State */}
+              {/* Kamera niedostępna: powód i co zrobić */}
               {!isCameraActive && (
-                <div className="p-5 text-center space-y-3.5 max-w-lg my-auto">
+                <div className="p-5 text-center space-y-4 max-w-md my-auto">
                   <div className="w-14 h-14 rounded-2xl bg-stone-900 border border-stone-800 flex items-center justify-center mx-auto text-amber-400 shadow-lg">
                     <Video className="w-7 h-7" />
                   </div>
 
-                  <div>
-                    <h4 className="text-sm sm:text-base font-extrabold text-stone-100 flex items-center justify-center gap-1.5">
-                      <span>Kamera z OBS / Telefonu</span>
+                  <div className="space-y-1.5">
+                    <h4 className="text-base font-extrabold text-stone-100">
+                      {cameraError === 'PERMISSION_DENIED'
+                        ? 'Brak zgody na użycie kamery'
+                        : cameraError === 'NO_CAMERA_FOUND'
+                        ? 'Nie znaleziono kamery'
+                        : cameraError
+                        ? 'Przeglądarka nie udostępnia kamery'
+                        : 'Uruchamianie kamery...'}
                     </h4>
-                    <p className="text-xs text-stone-300 mt-1 leading-relaxed">
-                      Wbudowana ramka podglądu AI Studio blokuje dostęp do kamer systemowych (w tym wirtualnej kamery OBS).
-                    </p>
-                    <p className="text-xs text-amber-400 font-semibold mt-1">
-                      Otwórz aplikację w pełnym oknie przeglądarki, aby połączyć się z OBS Virtual Camera:
+                    <p className="text-sm text-stone-300 leading-relaxed">
+                      {cameraError === 'PERMISSION_DENIED'
+                        ? 'Zezwól na dostęp do kamery w ustawieniach przeglądarki (ikona kłódki obok adresu strony), a potem spróbuj ponownie.'
+                        : cameraError === 'NO_CAMERA_FOUND'
+                        ? 'To urządzenie nie ma dostępnej kamery. Możesz zrobić zdjęcie karty aparatem albo wybrać zdjęcie z galerii.'
+                        : cameraError
+                        ? 'Otwórz stronę bezpośrednio w przeglądarce (nie w podglądzie ani w ramce). Możesz też zrobić zdjęcie karty.'
+                        : 'Jeśli przeglądarka zapyta o dostęp do kamery — zezwól.'}
                     </p>
                   </div>
 
-                  <div className="flex flex-col gap-2 pt-1">
-                    {/* Primary Button: Direct Native Anchor to bypass popup blocker */}
-                    <a
-                      href={standaloneUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="w-full py-2.5 px-4 rounded-xl bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-400 hover:to-emerald-500 text-stone-950 font-extrabold text-xs flex items-center justify-center gap-2 cursor-pointer shadow-lg shadow-emerald-950/50 transition-all hover:scale-[1.01]"
-                    >
-                      <ExternalLink className="w-4 h-4 stroke-[2.5]" />
-                      <span>↗️ Otwórz w nowej karcie (Dla OBS / Kamery)</span>
-                    </a>
-
-                    {/* Copy Link Button */}
-                    <div className="flex items-center gap-1.5">
-                      <div className="flex-1 bg-stone-950 px-2.5 py-1.5 rounded-lg border border-stone-800 text-[10px] font-mono text-stone-300 truncate text-left select-all">
-                        {standaloneUrl}
-                      </div>
+                  <div className="flex flex-col gap-2">
+                    {cameraError && (
                       <button
                         type="button"
-                        onClick={handleCopyStandaloneUrl}
-                        className="px-3 py-1.5 rounded-lg bg-stone-800 hover:bg-stone-750 text-stone-200 border border-stone-700 text-xs font-semibold flex items-center gap-1.5 cursor-pointer transition-colors shrink-0"
+                        onClick={() => startCamera()}
+                        className="w-full h-12 px-4 rounded-xl bg-gradient-to-r from-emerald-500 to-emerald-600 text-stone-950 font-extrabold text-sm flex items-center justify-center gap-2 cursor-pointer"
                       >
-                        {copiedUrl ? (
-                          <>
-                            <Check className="w-3.5 h-3.5 text-emerald-400" />
-                            <span className="text-emerald-400">Skopiowano</span>
-                          </>
-                        ) : (
-                          <>
-                            <Copy className="w-3.5 h-3.5 text-stone-400" />
-                            <span>Kopiuj link</span>
-                          </>
-                        )}
-                      </button>
-                    </div>
-
-                    {/* OBS Quick Setup Instructions */}
-                    <div className="p-3 rounded-xl bg-stone-950/90 border border-stone-800/90 text-left space-y-1.5 text-xs text-stone-300">
-                      <p className="font-bold text-amber-400 text-[11px] uppercase tracking-wider flex items-center gap-1.5">
-                        <Radio className="w-3 h-3 text-amber-400" />
-                        <span>Połączenie z telefonem przez OBS (3 proste kroki):</span>
-                      </p>
-                      <ol className="list-decimal list-inside space-y-1 text-[11px] text-stone-300 leading-normal pl-0.5">
-                        <li>W programie OBS podłącz obraz z telefonu i kliknij w prawym dolnym rogu: <strong className="text-stone-100">„Uruchom kamerę wirtualną”</strong> (Start Virtual Camera).</li>
-                        <li>Otwórz aplikację w osobnej karcie przeglądarki klikając zielony przycisk powyżej.</li>
-                        <li>Zezwól przeglądarce na dostęp do kamery i wybierz z listy: <strong className="text-emerald-400">„OBS Virtual Camera”</strong>!</li>
-                      </ol>
-                    </div>
-
-                    {/* Secondary Desktop / Mobile Actions */}
-                    {isMobile ? (
-                      <button
-                        type="button"
-                        onClick={() => cameraSnapInputRef.current?.click()}
-                        className="w-full py-2 px-4 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 text-amber-300 font-bold text-xs flex items-center justify-center gap-2 cursor-pointer transition-colors"
-                      >
-                        <Camera className="w-3.5 h-3.5" />
-                        <span>📸 Zrób zdjęcie aparatem w telefonie</span>
-                      </button>
-                    ) : (
-                      <button
-                        type="button"
-                        onClick={() => fileInputRef.current?.click()}
-                        className="w-full py-2 px-4 rounded-xl bg-stone-800 hover:bg-stone-750 border border-stone-700 text-stone-200 font-bold text-xs flex items-center justify-center gap-2 cursor-pointer transition-colors"
-                      >
-                        <Upload className="w-3.5 h-3.5 text-stone-400" />
-                        <span>📁 Wybierz plik ze zdjęciem karty z dysku (lub wklej Ctrl+V)</span>
+                        <RefreshCw className="w-4 h-4" />
+                        <span>Spróbuj ponownie</span>
                       </button>
                     )}
+                    <button
+                      type="button"
+                      onClick={() => cameraSnapInputRef.current?.click()}
+                      className="w-full h-12 px-4 rounded-xl bg-amber-500/20 border border-amber-500/40 text-amber-300 font-bold text-sm flex items-center justify-center gap-2 cursor-pointer"
+                    >
+                      <Camera className="w-4 h-4" />
+                      <span>Zrób zdjęcie karty</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      className="w-full h-12 px-4 rounded-xl bg-stone-800 border border-stone-700 text-stone-200 font-bold text-sm flex items-center justify-center gap-2 cursor-pointer"
+                    >
+                      <Upload className="w-4 h-4 text-stone-400" />
+                      <span>Wybierz zdjęcie z dysku (lub wklej Ctrl+V)</span>
+                    </button>
                   </div>
+
+                  {/* Kamera z telefonu przez OBS — tylko na komputerze */}
+                  {!isMobile && (
+                    <details className="text-left p-3 rounded-xl bg-stone-950/90 border border-stone-800 text-xs text-stone-300">
+                      <summary className="cursor-pointer font-bold text-amber-400 flex items-center gap-1.5">
+                        <Radio className="w-3.5 h-3.5" />
+                        <span>Kamera telefonu na komputerze (OBS)</span>
+                      </summary>
+                      <ol className="list-decimal list-inside space-y-1 mt-2 leading-normal">
+                        <li>W OBS podłącz obraz z telefonu i kliknij <strong className="text-stone-100">„Uruchom kamerę wirtualną”</strong>.</li>
+                        <li>Odśwież tę stronę i wybierz z listy kamer <strong className="text-emerald-400">„OBS Virtual Camera”</strong>.</li>
+                      </ol>
+                    </details>
+                  )}
                 </div>
               )}
 
@@ -997,7 +962,7 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
             </div>
 
             {/* Camera Controls Bar */}
-            <div className="pt-3 flex flex-wrap items-center justify-between gap-2 text-xs">
+            <div className="px-3 pb-3 sm:px-0 sm:pb-0 pt-3 flex flex-wrap items-center justify-between gap-2 text-xs">
               <div className="flex flex-wrap items-center gap-2">
                 {/* Camera selector */}
                 {cameraDevices.length > 0 && (
@@ -1105,7 +1070,7 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
 
               {/* Main Snapshot & Scan Button */}
               <div className="flex items-center gap-2">
-                <label className="flex items-center gap-1.5 text-stone-400 text-xs cursor-pointer select-none">
+                <label className="flex items-center gap-1.5 text-stone-300 sm:text-stone-400 text-sm sm:text-xs cursor-pointer select-none min-h-11 sm:min-h-0 px-1">
                   <input
                     type="checkbox"
                     checked={isAutoScanEnabled}
@@ -1120,7 +1085,7 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
                   onClick={() => performScan(lastQuadRef.current)}
                   disabled={isScanning || !isCameraActive}
                   title="Rozpocznij skanowanie (lub naciśnij Spację)"
-                  className="px-4 py-2 rounded-xl bg-gradient-to-r from-emerald-400 via-emerald-500 to-emerald-600 hover:from-emerald-300 hover:to-emerald-500 text-stone-950 font-extrabold text-xs flex items-center gap-2 shadow-lg shadow-emerald-950/60 transition-all cursor-pointer disabled:opacity-50"
+                  className="h-12 sm:h-auto px-6 sm:px-4 sm:py-2 rounded-full sm:rounded-xl bg-gradient-to-r from-emerald-400 via-emerald-500 to-emerald-600 hover:from-emerald-300 hover:to-emerald-500 text-stone-950 font-extrabold text-sm sm:text-xs flex items-center gap-2 shadow-lg shadow-emerald-950/60 transition-all cursor-pointer disabled:opacity-50 active:scale-95"
                 >
                   {isScanning ? (
                     <>
@@ -1142,10 +1107,15 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
           </div>
 
           {/* Right Column: Card Confirmation & Add Form */}
-          <div className="lg:col-span-5 p-4 sm:p-5 flex flex-col justify-between space-y-4 bg-stone-900/90">
+          <div className={`lg:col-span-5 p-4 sm:p-5 flex flex-col justify-between space-y-4 bg-stone-900/90 ${
+            activeCard
+              ? 'max-sm:fixed max-sm:inset-x-0 max-sm:bottom-0 max-sm:z-[60] max-sm:max-h-[80dvh] max-sm:overflow-y-auto max-sm:bg-stone-900 max-sm:rounded-t-3xl max-sm:border-t max-sm:border-stone-700 max-sm:shadow-[0_-12px_40px_rgba(0,0,0,0.6)] max-sm:pb-[calc(1rem+env(safe-area-inset-bottom))] max-sm:animate-[slideUp_.2s_ease-out]'
+              : ''
+          }`}>
+            {activeCard && <div className="sm:hidden mx-auto w-10 h-1.5 rounded-full bg-stone-700 -mt-1" aria-hidden="true" />}
             {/* Visual Scan Debug Snippet (Delver Lens Preprocessing & Cutouts) */}
             {scanResult && (scanResult.debugCropUrl || scanResult.debugArtUrl || scanResult.debugTitleUrl) && (
-              <div className="p-2.5 bg-stone-950/85 rounded-xl border border-stone-800 space-y-2 text-xs text-left shrink-0">
+              <div className="hidden sm:block p-2.5 bg-stone-950/85 rounded-xl border border-stone-800 space-y-2 text-xs text-left shrink-0">
                 <div className="flex items-center justify-between text-[10px] text-stone-400">
                   <span className="font-semibold text-stone-300 flex items-center gap-1.5">
                     <Zap className="w-3.5 h-3.5 text-emerald-400 fill-emerald-400" />
@@ -1560,7 +1530,7 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
             )}
 
             {/* Bottom Actions Area */}
-            <div className="pt-3 border-t border-stone-800 space-y-2.5">
+            <div className="pt-3 border-t border-stone-800 space-y-2.5 max-sm:sticky max-sm:-bottom-4 max-sm:bg-stone-900 max-sm:pb-1">
               {lastAddedNotice && (
                 <div className="p-2 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-300 text-xs flex items-center gap-2">
                   <Check className="w-3.5 h-3.5 stroke-[3]" />
@@ -1588,7 +1558,7 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
                       setActiveCard(null);
                       setScanResult(null);
                     }}
-                    className="px-3 py-2.5 rounded-xl bg-stone-800 hover:bg-stone-700 text-stone-300 text-xs font-semibold cursor-pointer transition-colors"
+                    className="px-4 sm:px-3 h-12 sm:h-auto sm:py-2.5 rounded-xl bg-stone-800 hover:bg-stone-700 text-stone-300 text-sm sm:text-xs font-semibold cursor-pointer transition-colors"
                   >
                     Odrzuć
                   </button>
@@ -1599,7 +1569,7 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
                   onClick={handleAddCardToCollection}
                   disabled={!activeCard || isAdding}
                   title="Dodaj kartę do klasera (lub naciśnij Enter)"
-                  className="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-500 hover:to-emerald-400 text-stone-950 font-extrabold text-xs tracking-wider uppercase flex items-center justify-center gap-2 shadow-lg shadow-emerald-950/40 transition-all cursor-pointer disabled:opacity-40"
+                  className="flex-1 min-w-0 h-12 sm:h-auto sm:py-2.5 px-3 rounded-xl bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-500 hover:to-emerald-400 text-stone-950 font-extrabold text-sm sm:text-xs tracking-wider uppercase flex items-center justify-center gap-2 shadow-lg shadow-emerald-950/40 transition-all cursor-pointer disabled:opacity-40"
                 >
                   {isAdding ? (
                     <>
@@ -1609,7 +1579,7 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
                   ) : (
                     <>
                       <Plus className="w-4 h-4 stroke-[3]" />
-                      <span>
+                      <span className="truncate">
                         Dodaj do klasera "{selectedBinder}"
                       </span>
                       <kbd className="hidden sm:inline px-1.5 py-0.5 rounded bg-black/20 text-[9px] font-mono font-bold tracking-tight text-stone-900 border border-black/10">

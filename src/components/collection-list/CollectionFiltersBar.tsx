@@ -1,5 +1,5 @@
-import React from 'react';
-import { Search, X, Sparkles, LayoutGrid, List } from 'lucide-react';
+import React, { useState } from 'react';
+import { Search, X, Sparkles, LayoutGrid, List, SlidersHorizontal } from 'lucide-react';
 import { CollectionFiltersBarProps } from './types';
 import { COLOR_PILLS, CARD_TYPES, CARD_RARITIES, SORT_OPTIONS } from './constants';
 
@@ -11,8 +11,18 @@ export const CollectionFiltersBar: React.FC<CollectionFiltersBarProps> = ({
   onFilterChange,
   onViewModeChange,
 }) => {
+  // Na telefonie zaawansowane filtry są schowane pod przyciskiem, żeby karty były widoczne od razu.
+  const [showAdvanced, setShowAdvanced] = useState(false);
+  const activeAdvanced = [
+    filters.type !== 'ALL',
+    filters.rarity !== 'ALL',
+    filters.binder !== 'ALL',
+    filters.set !== 'ALL',
+    filters.onlyFoil
+  ].filter(Boolean).length;
+
   return (
-    <div className="bg-stone-900 border border-stone-800 rounded-2xl p-4 shadow-lg space-y-4">
+    <div className="bg-stone-900 border border-stone-800 rounded-2xl p-3 md:p-4 shadow-lg space-y-3 md:space-y-4">
       {/* Top Controls Row */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
         {/* Main Search Input */}
@@ -53,8 +63,41 @@ export const CollectionFiltersBar: React.FC<CollectionFiltersBarProps> = ({
         </div>
       </div>
 
+      {/* Telefon: przełącznik filtrów i widoku */}
+      <div className="md:hidden flex items-center gap-2">
+        <button
+          type="button"
+          onClick={() => setShowAdvanced((v) => !v)}
+          aria-expanded={showAdvanced}
+          className={`flex-1 h-11 px-3 rounded-xl border text-sm font-semibold flex items-center justify-center gap-2 ${
+            showAdvanced || activeAdvanced ? 'bg-amber-500/15 border-amber-500/40 text-amber-300' : 'bg-stone-950 border-stone-800 text-stone-300'
+          }`}
+        >
+          <SlidersHorizontal className="w-4 h-4" />
+          <span>Filtry i sortowanie{activeAdvanced ? ` (${activeAdvanced})` : ''}</span>
+        </button>
+        <div className="flex items-center gap-1 bg-stone-950 p-1 rounded-xl border border-stone-800 shrink-0">
+          <button
+            type="button"
+            onClick={() => onViewModeChange('table')}
+            aria-label="Widok listy"
+            className={`w-10 h-9 rounded-lg flex items-center justify-center ${viewMode === 'table' ? 'bg-stone-800 text-amber-400' : 'text-stone-500'}`}
+          >
+            <List className="w-5 h-5" />
+          </button>
+          <button
+            type="button"
+            onClick={() => onViewModeChange('grid')}
+            aria-label="Widok kafelków"
+            className={`w-10 h-9 rounded-lg flex items-center justify-center ${viewMode === 'grid' ? 'bg-stone-800 text-amber-400' : 'text-stone-500'}`}
+          >
+            <LayoutGrid className="w-5 h-5" />
+          </button>
+        </div>
+      </div>
+
       {/* Secondary Filter Dropdowns */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 pt-2 border-t border-stone-800/60 text-xs">
+      <div className={`${showAdvanced ? 'grid' : 'hidden'} md:grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 pt-2 border-t border-stone-800/60 text-xs`}>
         {/* Type Filter */}
         <div>
           <label className="block text-[10px] uppercase font-semibold text-stone-400 mb-1">Typ karty</label>
@@ -141,7 +184,7 @@ export const CollectionFiltersBar: React.FC<CollectionFiltersBarProps> = ({
             <span>Tylko Foil</span>
           </button>
 
-          <div className="flex items-center gap-1 bg-stone-950 p-1 rounded-lg border border-stone-800">
+          <div className="hidden md:flex items-center gap-1 bg-stone-950 p-1 rounded-lg border border-stone-800">
             <button
               onClick={() => onViewModeChange('grid')}
               className={`p-1 rounded transition-colors cursor-pointer ${viewMode === 'grid' ? 'bg-stone-800 text-amber-400' : 'text-stone-500 hover:text-stone-300'}`}

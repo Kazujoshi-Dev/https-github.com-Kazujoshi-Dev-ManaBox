@@ -28,7 +28,7 @@ export const CatalogsBar: React.FC<CatalogsBarProps> = ({
   const activeCatalogObj = catalogs.find(c => c.name === activeBinder);
 
   return (
-    <div className="bg-stone-900 border border-stone-800 rounded-2xl p-4 shadow-xl space-y-3">
+    <div className="bg-stone-900 border border-stone-800 rounded-2xl p-3 md:p-4 shadow-xl space-y-3">
       {/* Top Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-stone-800/80 pb-3">
         <div className="flex items-center gap-2">
@@ -42,7 +42,7 @@ export const CatalogsBar: React.FC<CatalogsBarProps> = ({
                 {catalogs.length} katalogów
               </span>
             </h2>
-            <p className="text-[11px] text-stone-400">
+            <p className="hidden md:block text-[11px] text-stone-400">
               Wybierz katalog, aby filtrować karty lub utwórz nowy do organizacji swoich klaserów.
             </p>
           </div>
