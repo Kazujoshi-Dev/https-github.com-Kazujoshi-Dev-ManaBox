@@ -3,6 +3,7 @@ import crypto from 'crypto';
 import path from 'path';
 import fs from 'fs';
 import * as db from './src/server/db';
+import type { PriceUpdate } from './src/server/db';
 import { hashPassword, verifyPassword, generateToken, verifyToken } from './src/server/auth';
 import { rateLimit } from './src/server/rateLimit';
 import * as cards from './src/server/cards/cardStore';
@@ -1274,6 +1275,12 @@ app.post('/api/collection/refresh-prices', authMiddleware, async (req, res) => {
     const userId = (req as any).userId;
     const collection = await db.getCollection(userId);
     let updatedCount = 0;
+    let changedCount = 0;
+    const now = new Date().toISOString();
+    const updates: PriceUpdate[] = [];
+    const PRICE_KEYS = ['eur', 'eur_foil', 'usd', 'usd_foil', 'usd_etched'];
+    const pricesDiffer = (a: any, b: any) =>
+      PRICE_KEYS.some(k => String(a?.[k] ?? '') !== String(b?.[k] ?? ''));
 
     const itemsWithCardId = collection.filter(item => item.card && item.card.id);
     const BATCH_SIZE = 75;
@@ -1297,10 +1304,20 @@ app.post('/api/collection/refresh-prices', authMiddleware, async (req, res) => {
             chunk.forEach(item => {
               const updatedCard = cardMap.get(item.card.id);
               if (updatedCard) {
-                if (updatedCard.prices) item.card.prices = updatedCard.prices;
-                if (updatedCard.image_uris) item.card.image_uris = updatedCard.image_uris;
-                if (updatedCard.edhrec_rank !== undefined) item.card.edhrec_rank = updatedCard.edhrec_rank;
-                item.lastUpdatedPriceAt = new Date().toISOString();
+                const oldPrices = item.card.prices;
+                let previousPrices = item.previousPrices ?? null;
+                let pricesChangedAt = item.pricesChangedAt ?? null;
+                // Zmiana wartości liczona jest względem cen sprzed ostatniej faktycznej zmiany
+                if (updatedCard.prices && oldPrices && pricesDiffer(oldPrices, updatedCard.prices)) {
+                  previousPrices = oldPrices;
+                  pricesChangedAt = now;
+                  changedCount++;
+                }
+                const card = { ...item.card };
+                if (updatedCard.prices) card.prices = updatedCard.prices;
+                if (updatedCard.image_uris) card.image_uris = updatedCard.image_uris;
+                if (updatedCard.edhrec_rank !== undefined) card.edhrec_rank = updatedCard.edhrec_rank;
+                updates.push({ id: item.id, card, previousPrices, pricesChangedAt, lastUpdatedPriceAt: now });
                 updatedCount++;
               }
             });
@@ -1311,8 +1328,9 @@ app.post('/api/collection/refresh-prices', authMiddleware, async (req, res) => {
       }
     }
 
-    await db.saveFullCollection(userId, collection);
-    res.json({ success: true, updatedCount, collection });
+    // Tylko ceny — nie nadpisujemy reszty pozycji (np. oznaczeń „na sprzedaż”)
+    await db.updateCollectionPrices(userId, updates);
+    res.json({ success: true, updatedCount, changedCount, collection: await db.getCollection(userId) });
   } catch (err: any) {
     sendServerError(res, err, '/api/collection/refresh-prices');
   }

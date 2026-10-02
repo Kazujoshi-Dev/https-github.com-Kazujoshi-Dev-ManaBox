@@ -554,7 +554,9 @@ export default function App() {
         setActiveTab={setActiveTab}
         totalCards={totals.totalCards}
         totalValue={totals.totalValue}
-        totalPurchaseCost={totals.totalPurchaseCost}
+        valueChange={totals.valueChange}
+        valueChangePercent={totals.valueChangePercent}
+        lastPriceChangeAt={totals.lastPriceChangeAt}
         settings={settings}
         decksCount={decks.length}
         onOpenSettings={() => setIsSettingsOpen(true)}

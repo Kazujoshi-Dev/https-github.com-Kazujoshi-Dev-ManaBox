@@ -10,6 +10,7 @@ import {
   Upload,
   Coins,
   TrendingUp,
+  TrendingDown,
   FolderHeart,
   Settings,
   SlidersHorizontal,
@@ -31,7 +32,9 @@ interface HeaderProps {
   setActiveTab: (tab: 'collection' | 'search' | 'set-top' | 'analytics' | 'wishlist' | 'decks' | 'for-sale' | 'users') => void;
   totalCards: number;
   totalValue: number;
-  totalPurchaseCost: number;
+  valueChange?: number | null;
+  valueChangePercent?: number | null;
+  lastPriceChangeAt?: string | null;
   settings: AppSettings;
   decksCount?: number;
   forSaleCount?: number;
@@ -54,7 +57,9 @@ export const Header: React.FC<HeaderProps> = ({
   setActiveTab,
   totalCards,
   totalValue,
-  totalPurchaseCost,
+  valueChange = null,
+  valueChangePercent = null,
+  lastPriceChangeAt = null,
   settings,
   decksCount = 0,
   forSaleCount = 0,
@@ -71,8 +76,22 @@ export const Header: React.FC<HeaderProps> = ({
   unreadMessagesCount = 0,
   onOpenMailbox
 }) => {
-  const profit = totalValue - totalPurchaseCost;
-  const isProfitPositive = profit >= 0;
+  const hasChange = valueChange !== null;
+  const changeSign = !hasChange || Math.abs(valueChange!) < 0.005 ? 0 : valueChange! > 0 ? 1 : -1;
+  const changeColor = changeSign > 0 ? 'text-emerald-400' : changeSign < 0 ? 'text-rose-400' : 'text-stone-300';
+  const ChangeIcon = changeSign < 0 ? TrendingDown : TrendingUp;
+  const changeText = hasChange
+    ? `${changeSign > 0 ? '+' : ''}${formatCurrency(valueChange!, settings.currency)}`
+    : '—';
+  const percentText =
+    valueChangePercent !== null && changeSign !== 0
+      ? `${valueChangePercent > 0 ? '+' : ''}${valueChangePercent.toFixed(Math.abs(valueChangePercent) < 10 ? 1 : 0).replace('.', ',')}%`
+      : null;
+  const changeTitle = hasChange
+    ? `Zmiana wartości kolekcji względem cen sprzed ostatniej aktualizacji${
+        lastPriceChangeAt ? ` (ceny zmienione ${new Date(lastPriceChangeAt).toLocaleDateString('pl-PL')})` : ''
+      }`
+    : 'Kliknij „Odśwież ceny”, aby zobaczyć zmianę wartości kolekcji';
 
   return (
     <header className="bg-stone-900 border-b border-stone-800 text-stone-100 sticky top-0 z-30 shadow-md pt-[env(safe-area-inset-top)]">
@@ -89,7 +108,14 @@ export const Header: React.FC<HeaderProps> = ({
         <div className="flex items-center gap-2 shrink-0 text-right">
           <div className="leading-tight">
             <p className="text-sm font-bold text-emerald-400">{formatCurrency(totalValue, settings.currency)}</p>
-            <p className="text-xs text-stone-400">{totalCards} kart</p>
+            <p className="text-xs text-stone-400">
+              {totalCards} kart
+              {hasChange && changeSign !== 0 && (
+                <span className={`ml-1.5 font-semibold ${changeColor}`} title={changeTitle}>
+                  {percentText || changeText}
+                </span>
+              )}
+            </p>
           </div>
         </div>
       </div>
@@ -99,27 +125,27 @@ export const Header: React.FC<HeaderProps> = ({
         <div className="flex flex-wrap items-center justify-between gap-3 xl:flex-nowrap xl:gap-4">
           
           {/* Logo & Title */}
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 shrink-0">
             <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-amber-600 via-red-600 to-purple-700 flex items-center justify-center shadow-lg shadow-amber-900/30 ring-1 ring-amber-400/30">
               <Sparkles className="w-5 h-5 text-amber-100" />
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h1 className="text-xl font-bold tracking-tight bg-gradient-to-r from-amber-200 via-amber-100 to-stone-200 bg-clip-text text-transparent">
+                <h1 className="text-xl font-bold tracking-tight whitespace-nowrap bg-gradient-to-r from-amber-200 via-amber-100 to-stone-200 bg-clip-text text-transparent">
                   Mana Screw
                 </h1>
-                <span className="text-[10px] uppercase font-mono px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20 font-semibold">
+                <span className="text-[10px] uppercase font-mono whitespace-nowrap px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20 font-semibold">
                   {settings.pricingSource === 'CARDMARKET' ? 'Cardmarket Trend' : 'TCGPlayer Market'}
                 </span>
               </div>
-              <p className="text-xs text-stone-400">
+              <p className="text-xs text-stone-400 whitespace-nowrap">
                 Magic: The Gathering • Wycena w walucie: <strong className="text-stone-200">{settings.currency}</strong>
               </p>
             </div>
           </div>
 
           {/* Quick Metrics Bar */}
-          <div className="flex items-center gap-3 sm:gap-6 flex-wrap bg-stone-950/70 p-2.5 rounded-xl border border-stone-800/80">
+          <div className="flex items-center gap-3 sm:gap-5 flex-wrap xl:flex-nowrap xl:shrink-0 bg-stone-950/70 p-2.5 rounded-xl border border-stone-800/80">
             <div className="flex items-center gap-2">
               <Layers className="w-4 h-4 text-amber-400" />
               <div>
@@ -142,20 +168,17 @@ export const Header: React.FC<HeaderProps> = ({
               </div>
             </div>
 
-            {totalPurchaseCost > 0 && (
-              <>
-                <div className="h-7 w-[1px] bg-stone-800 hidden sm:block" />
-                <div className="hidden sm:flex items-center gap-2">
-                  <TrendingUp className={`w-4 h-4 ${isProfitPositive ? 'text-emerald-400' : 'text-rose-400'}`} />
-                  <div>
-                    <p className="text-[10px] uppercase font-semibold text-stone-400">Zysk/Strata</p>
-                    <p className={`text-sm font-bold ${isProfitPositive ? 'text-emerald-400' : 'text-rose-400'}`}>
-                      {isProfitPositive ? '+' : ''}{formatCurrency(profit, settings.currency)}
-                    </p>
-                  </div>
-                </div>
-              </>
-            )}
+            <div className="h-7 w-[1px] bg-stone-800" />
+            <div className="flex items-center gap-2" title={changeTitle}>
+              <ChangeIcon className={`w-4 h-4 ${changeColor}`} />
+              <div>
+                <p className="text-[10px] uppercase font-semibold text-stone-400">Zmiana wartości</p>
+                <p className={`text-sm font-bold ${changeColor} whitespace-nowrap`}>
+                  {changeText}
+                  {percentText && <span className="ml-1 text-xs font-semibold opacity-80">({percentText})</span>}
+                </p>
+              </div>
+            </div>
           </div>
 
           {/* Quick Actions */}

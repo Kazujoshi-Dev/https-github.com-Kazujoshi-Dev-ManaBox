@@ -60,7 +60,6 @@ export interface CardMarketPricesProps {
   plnPriceNorm: number;
   plnPriceFoil: number;
   onToggleFoil: (toFoil: boolean, updatePriceWithMarket?: boolean) => void;
-  onSelectCurrencyPrice: (priceStr: string | undefined, currency: 'EUR' | 'USD') => void;
   onAddToWishlist?: (card: ScryfallCard) => void;
 }
 
@@ -80,7 +79,6 @@ export interface CardCollectionFormProps {
   quantityFoil: number;
   condition: CardCondition;
   language: CardLanguage;
-  purchasePrice: string;
   notes: string;
   isSaved: boolean;
   isCreatingCatalog: boolean;
@@ -91,7 +89,6 @@ export interface CardCollectionFormProps {
   onQuantityFoilChange: (qty: number) => void;
   onConditionChange: (condition: CardCondition) => void;
   onLanguageChange: (language: CardLanguage) => void;
-  onPurchasePriceChange: (price: string) => void;
   onNotesChange: (notes: string) => void;
   onStartCreateCatalog: () => void;
   onCancelCreateCatalog: () => void;

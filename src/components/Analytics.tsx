@@ -1,6 +1,7 @@
 import React, { useMemo } from 'react';
 import { CollectionItem, AppSettings } from '../types';
 import { formatCurrency, getCardImageUri, getCardPrice, handleCardImageError } from '../utils/formatters';
+import { computeValueChange, itemValue } from '../hooks/useCollectionStats';
 import { 
   BarChart, 
   Bar, 
@@ -16,7 +17,8 @@ import {
 import { 
   BarChart3, 
   Coins, 
-  TrendingUp, 
+  TrendingUp,
+  TrendingDown,
   Award, 
   Sparkles, 
   Flame, 
@@ -36,8 +38,6 @@ export const Analytics: React.FC<AnalyticsProps> = ({ collection, settings, onVi
   const stats = useMemo(() => {
     let totalCards = 0;
     let totalValue = 0;
-    let totalPurchaseCost = 0;
-
     const colorCounts: Record<string, number> = { W: 0, U: 0, B: 0, R: 0, G: 0, C: 0, Multi: 0 };
     const cmcCounts: Record<string, number> = { '0': 0, '1': 0, '2': 0, '3': 0, '4': 0, '5': 0, '6+': 0 };
     const rarityCounts: Record<string, number> = { Mythic: 0, Rare: 0, Uncommon: 0, Common: 0, Inne: 0 };
@@ -53,10 +53,6 @@ export const Analytics: React.FC<AnalyticsProps> = ({ collection, settings, onVi
       const priceFoil = getCardPrice(card, true, settings);
 
       totalValue += (item.quantity * priceNorm) + (item.quantityFoil * priceFoil);
-
-      if (item.purchasePrice) {
-        totalPurchaseCost += item.purchasePrice * qty;
-      }
 
       // CMC breakdown
       const cmc = Math.floor(card.cmc || 0);
@@ -90,7 +86,6 @@ export const Analytics: React.FC<AnalyticsProps> = ({ collection, settings, onVi
       totalCards,
       uniqueCards: collection.length,
       totalValue,
-      totalPurchaseCost,
       colorCounts,
       cmcCounts,
       rarityCounts
@@ -139,8 +134,22 @@ export const Analytics: React.FC<AnalyticsProps> = ({ collection, settings, onVi
     { name: 'Common', value: stats.rarityCounts.Common, color: '#78716c' },
   ].filter(d => d.value > 0);
 
-  const profit = stats.totalValue - stats.totalPurchaseCost;
-  const isProfitPositive = profit >= 0;
+  // Zmiana wartości względem cen sprzed ostatniej aktualizacji
+  const change = useMemo(() => computeValueChange(collection, settings), [collection, settings]);
+  const movers = useMemo(() => {
+    const list = collection
+      .filter(item => item.card && item.previousPrices)
+      .map(item => ({ item, delta: itemValue(item, settings) - itemValue(item, settings, item.previousPrices!) }))
+      .filter(m => Math.abs(m.delta) >= 0.005);
+    const up = list.filter(m => m.delta > 0).sort((a, b) => b.delta - a.delta)[0] || null;
+    const down = list.filter(m => m.delta < 0).sort((a, b) => a.delta - b.delta)[0] || null;
+    return { up, down };
+  }, [collection, settings]);
+  const hasChange = change.valueChange !== null;
+  const changeSign = !hasChange || Math.abs(change.valueChange!) < 0.005 ? 0 : change.valueChange! > 0 ? 1 : -1;
+  const changeColor = changeSign > 0 ? 'text-emerald-400' : changeSign < 0 ? 'text-rose-400' : 'text-stone-200';
+  const ChangeIcon = changeSign < 0 ? TrendingDown : TrendingUp;
+  const fmtDelta = (v: number) => `${v > 0 ? '+' : ''}${formatCurrency(v, settings.currency)}`;
 
   return (
     <div className="space-y-6">
@@ -182,26 +191,47 @@ export const Analytics: React.FC<AnalyticsProps> = ({ collection, settings, onVi
 
           <div className="bg-stone-950 p-4 rounded-xl border border-stone-800 space-y-1">
             <p className="text-[10px] uppercase font-bold text-stone-400 flex items-center gap-1">
-              <Coins className="w-3.5 h-3.5 text-stone-400" />
-              <span>Szacowany Koszt Zakupu</span>
+              <ChangeIcon className={`w-3.5 h-3.5 ${changeColor}`} />
+              <span>Zmiana wartości</span>
             </p>
-            <p className="text-2xl font-black text-stone-200">
-              {stats.totalPurchaseCost > 0 ? formatCurrency(stats.totalPurchaseCost, settings.currency) : '—'}
+            <p className={`text-2xl font-black ${changeColor}`}>
+              {hasChange ? fmtDelta(change.valueChange!) : '—'}
+              {change.valueChangePercent !== null && changeSign !== 0 && (
+                <span className="ml-1.5 text-sm font-bold opacity-80">
+                  ({change.valueChangePercent > 0 ? '+' : ''}{change.valueChangePercent.toFixed(1).replace('.', ',')}%)
+                </span>
+              )}
             </p>
-            <p className="text-[11px] text-stone-500">Wyliczane z dodanych kwot zakupu</p>
+            <p className="text-[11px] text-stone-500">
+              {hasChange
+                ? `Względem cen sprzed ostatniej aktualizacji${change.lastPriceChangeAt ? ` (${new Date(change.lastPriceChangeAt).toLocaleDateString('pl-PL')})` : ''}`
+                : 'Pojawi się po odświeżeniu cen, gdy ceny się zmienią'}
+            </p>
           </div>
 
-          <div className="bg-stone-950 p-4 rounded-xl border border-stone-800 space-y-1">
+          <div className="bg-stone-950 p-4 rounded-xl border border-stone-800 space-y-2">
             <p className="text-[10px] uppercase font-bold text-stone-400 flex items-center gap-1">
-              <TrendingUp className={`w-3.5 h-3.5 ${isProfitPositive ? 'text-emerald-400' : 'text-rose-400'}`} />
-              <span>Bilans Zysku / Straty</span>
+              <TrendingUp className="w-3.5 h-3.5 text-amber-400" />
+              <span>Największe zmiany</span>
             </p>
-            <p className={`text-2xl font-black ${isProfitPositive ? 'text-emerald-400' : 'text-rose-400'}`}>
-              {stats.totalPurchaseCost > 0 ? (
-                <>{isProfitPositive ? '+' : ''}{formatCurrency(profit, settings.currency)}</>
-              ) : '—'}
-            </p>
-            <p className="text-[11px] text-stone-500">Różnica wartości aktualnej i zakupu</p>
+            {movers.up || movers.down ? (
+              <div className="space-y-1.5">
+                {[movers.up, movers.down].filter(Boolean).map(m => (
+                  <button
+                    key={m!.item.id}
+                    type="button"
+                    onClick={() => onViewCardDetails(m!.item)}
+                    className="w-full flex items-center justify-between gap-2 text-left text-sm hover:bg-stone-900 rounded-lg -mx-1 px-1 py-0.5 cursor-pointer"
+                  >
+                    <span className="truncate text-stone-200">{m!.item.card.name}</span>
+                    <span className={`shrink-0 font-bold ${m!.delta > 0 ? 'text-emerald-400' : 'text-rose-400'}`}>{fmtDelta(m!.delta)}</span>
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <p className="text-2xl font-black text-stone-200">—</p>
+            )}
+            <p className="text-[11px] text-stone-500">Karty, których wartość zmieniła się najbardziej</p>
           </div>
 
         </div>

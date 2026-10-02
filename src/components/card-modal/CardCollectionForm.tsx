@@ -30,7 +30,6 @@ export const CardCollectionForm: React.FC<CardCollectionFormProps> = ({
   quantityFoil,
   condition,
   language,
-  purchasePrice,
   notes,
   isSaved,
   isCreatingCatalog,
@@ -41,7 +40,6 @@ export const CardCollectionForm: React.FC<CardCollectionFormProps> = ({
   onQuantityFoilChange,
   onConditionChange,
   onLanguageChange,
-  onPurchasePriceChange,
   onNotesChange,
   onStartCreateCatalog,
   onCancelCreateCatalog,
@@ -194,22 +192,8 @@ export const CardCollectionForm: React.FC<CardCollectionFormProps> = ({
         </div>
       </div>
 
-      {/* Purchase Price & Notes */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        <div>
-          <label className="block text-[10px] uppercase font-semibold text-stone-400 mb-1">
-            Cena zakupu (opcjonalnie)
-          </label>
-          <input
-            type="number"
-            step="0.01"
-            placeholder="np. 15.50"
-            value={purchasePrice}
-            onChange={(e) => onPurchasePriceChange(e.target.value)}
-            className="w-full bg-stone-900 border border-stone-700 rounded-lg px-2.5 py-1.5 text-xs font-mono text-stone-100 focus:outline-none focus:border-amber-500"
-          />
-        </div>
-
+      {/* Notes */}
+      <div>
         <div>
           <label className="block text-[10px] uppercase font-semibold text-stone-400 mb-1">
             Notatki / tagi

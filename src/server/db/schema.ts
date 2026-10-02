@@ -159,6 +159,9 @@ export async function initDb(): Promise<void> {
           ALTER TABLE user_collections ADD COLUMN IF NOT EXISTS last_updated_price_at TIMESTAMPTZ;
           ALTER TABLE user_collections ADD COLUMN IF NOT EXISTS is_for_sale BOOLEAN DEFAULT FALSE;
           ALTER TABLE user_collections ADD COLUMN IF NOT EXISTS sale_price NUMERIC(10, 2);
+          -- ceny sprzed ostatniej zmiany rynkowej (do wskaźnika zmiany wartości kolekcji)
+          ALTER TABLE user_collections ADD COLUMN IF NOT EXISTS previous_prices JSONB;
+          ALTER TABLE user_collections ADD COLUMN IF NOT EXISTS prices_changed_at TIMESTAMPTZ;
           ALTER TABLE user_settings ADD COLUMN IF NOT EXISTS auto_nbp_rate BOOLEAN DEFAULT TRUE;
         `);
         setPostgresActive(true);

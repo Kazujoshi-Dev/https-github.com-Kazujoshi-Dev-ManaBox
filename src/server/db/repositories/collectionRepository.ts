@@ -10,7 +10,8 @@ export async function getCollection(userId: string): Promise<CollectionItem[]> {
         `SELECT id, card_id as "cardId", card, quantity, quantity_foil as "quantityFoil",
                 condition, language, purchase_price as "purchasePrice", notes, binder,
                 added_at as "addedAt", last_updated_price_at as "lastUpdatedPriceAt",
-                is_for_sale as "isForSale", sale_price as "salePrice"
+                is_for_sale as "isForSale", sale_price as "salePrice",
+                previous_prices as "previousPrices", prices_changed_at as "pricesChangedAt"
          FROM user_collections WHERE user_id = $1 ORDER BY added_at DESC`,
         [userId]
       );
@@ -92,12 +93,16 @@ export async function updateCollectionItem(
       const res = await p.query(
         `UPDATE user_collections
          SET card_id = $1, card = $2, quantity = $3, quantity_foil = $4, condition = $5,
-             language = $6, purchase_price = $7, notes = $8, binder = $9, is_for_sale = $10, sale_price = $11
+             language = $6, purchase_price = $7, notes = $8, binder = $9, is_for_sale = $10, sale_price = $11,
+             -- zmiana wydania karty: poprzednie ceny dotyczyły innego druku
+             previous_prices = CASE WHEN card_id IS DISTINCT FROM $1 THEN NULL ELSE previous_prices END,
+             prices_changed_at = CASE WHEN card_id IS DISTINCT FROM $1 THEN NULL ELSE prices_changed_at END
          WHERE id = $12 AND user_id = $13
          RETURNING id, card_id as "cardId", card, quantity, quantity_foil as "quantityFoil",
                    condition, language, purchase_price as "purchasePrice", notes, binder,
                    added_at as "addedAt", last_updated_price_at as "lastUpdatedPriceAt",
-                   is_for_sale as "isForSale", sale_price as "salePrice"`,
+                   is_for_sale as "isForSale", sale_price as "salePrice",
+                   previous_prices as "previousPrices", prices_changed_at as "pricesChangedAt"`,
         [newCardId, newCard, newQty, newQtyFoil, newCond, newLang, newPrice, newNotes, newBinder, newIsForSale, newSalePrice, id, userId]
       );
 
@@ -158,9 +163,9 @@ export async function saveFullCollection(userId: string, collection: CollectionI
             const params: any[] = [userId];
 
             chunk.forEach((item, idx) => {
-              const baseIndex = 2 + idx * 12;
+              const baseIndex = 2 + idx * 16;
               valueClauses.push(
-                `($${baseIndex}, $1, $${baseIndex + 1}, $${baseIndex + 2}, $${baseIndex + 3}, $${baseIndex + 4}, $${baseIndex + 5}, $${baseIndex + 6}, $${baseIndex + 7}, $${baseIndex + 8}, $${baseIndex + 9}, $${baseIndex + 10}, $${baseIndex + 11})`
+                `($${baseIndex}, $1, ${Array.from({ length: 15 }, (_, k) => `$${baseIndex + 1 + k}`).join(', ')})`
               );
               params.push(
                 item.id,
@@ -174,7 +179,11 @@ export async function saveFullCollection(userId: string, collection: CollectionI
                 item.notes || '',
                 item.binder || 'Klaser Główny',
                 item.addedAt || new Date().toISOString(),
-                item.lastUpdatedPriceAt || null
+                item.lastUpdatedPriceAt || null,
+                Boolean(item.isForSale),
+                item.salePrice ?? null,
+                item.previousPrices ? JSON.stringify(item.previousPrices) : null,
+                item.pricesChangedAt || null
               );
             });
 
@@ -182,7 +191,8 @@ export async function saveFullCollection(userId: string, collection: CollectionI
               `INSERT INTO user_collections (
                 id, user_id, card_id, card, quantity, quantity_foil,
                 condition, language, purchase_price, notes, binder,
-                added_at, last_updated_price_at
+                added_at, last_updated_price_at, is_for_sale, sale_price,
+                previous_prices, prices_changed_at
               ) VALUES ${valueClauses.join(', ')}`,
               params
             );
@@ -327,6 +337,57 @@ export async function addCollectionItems(
 
       writeJsonAtomic(colFile, items);
       return inserted;
+    }
+  );
+}
+
+export interface PriceUpdate {
+  id: string;
+  card: any;
+  previousPrices: any | null;
+  pricesChangedAt: string | null;
+  lastUpdatedPriceAt: string;
+}
+
+/**
+ * Aktualizuje wyłącznie dane cenowe pozycji kolekcji (karta z nowymi cenami,
+ * poprzednie ceny, daty). Nie dotyka ilości, sprzedaży, notatek itp.
+ */
+export async function updateCollectionPrices(userId: string, updates: PriceUpdate[]): Promise<void> {
+  if (updates.length === 0) return;
+  return withDb(
+    async (p) => {
+      const CHUNK = 200;
+      for (let i = 0; i < updates.length; i += CHUNK) {
+        const chunk = updates.slice(i, i + CHUNK);
+        const params: any[] = [userId];
+        const rows = chunk.map((u, k) => {
+          const b = 2 + k * 5;
+          params.push(u.id, JSON.stringify(u.card), u.previousPrices ? JSON.stringify(u.previousPrices) : null, u.pricesChangedAt, u.lastUpdatedPriceAt);
+          return `($${b}, $${b + 1}::jsonb, $${b + 2}::jsonb, $${b + 3}::timestamptz, $${b + 4}::timestamptz)`;
+        });
+        await p.query(
+          `UPDATE user_collections AS c
+           SET card = v.card, previous_prices = v.prev, prices_changed_at = v.changed_at, last_updated_price_at = v.updated_at
+           FROM (VALUES ${rows.join(', ')}) AS v(id, card, prev, changed_at, updated_at)
+           WHERE c.id = v.id AND c.user_id = $1`,
+          params
+        );
+      }
+    },
+    () => {
+      const file = path.join(getUserDir(userId), 'collection.json');
+      const items = readJsonFile<CollectionItem[]>(file, []);
+      const byId = new Map(updates.map((u) => [u.id, u]));
+      for (const item of items) {
+        const u = byId.get(item.id);
+        if (!u) continue;
+        item.card = u.card;
+        item.previousPrices = u.previousPrices;
+        item.pricesChangedAt = u.pricesChangedAt;
+        item.lastUpdatedPriceAt = u.lastUpdatedPriceAt;
+      }
+      writeJsonAtomic(file, items);
     }
   );
 }

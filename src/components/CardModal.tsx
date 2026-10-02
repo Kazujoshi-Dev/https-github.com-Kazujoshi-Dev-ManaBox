@@ -60,8 +60,6 @@ export const CardModal: React.FC<CardModalProps> = ({
     setCondition,
     language,
     setLanguage,
-    purchasePrice,
-    setPurchasePrice,
     selectedBinder,
     setSelectedBinder,
     notes,
@@ -76,7 +74,6 @@ export const CardModal: React.FC<CardModalProps> = ({
     handleFlipCard,
     handleToggleFoil,
     handleSelectPrint,
-    handleSelectCurrencyPrice,
     handleCreateNewCatalog,
     handleSave,
   } = useCardModalForm({
@@ -194,7 +191,6 @@ export const CardModal: React.FC<CardModalProps> = ({
                 onToggleFoil={(toFoil, updateWithMarket) =>
                   handleToggleFoil(toFoil, updateWithMarket, plnPriceNorm, plnPriceFoil)
                 }
-                onSelectCurrencyPrice={handleSelectCurrencyPrice}
                 onAddToWishlist={onAddToWishlist}
               />
             </div>
@@ -217,7 +213,6 @@ export const CardModal: React.FC<CardModalProps> = ({
                 quantityFoil={quantityFoil}
                 condition={condition}
                 language={language}
-                purchasePrice={purchasePrice}
                 notes={notes}
                 isSaved={isSaved}
                 isCreatingCatalog={isCreatingCatalog}
@@ -228,7 +223,6 @@ export const CardModal: React.FC<CardModalProps> = ({
                 onQuantityFoilChange={setQuantityFoil}
                 onConditionChange={setCondition}
                 onLanguageChange={setLanguage}
-                onPurchasePriceChange={setPurchasePrice}
                 onNotesChange={setNotes}
                 onStartCreateCatalog={() => setIsCreatingCatalog(true)}
                 onCancelCreateCatalog={() => {

@@ -113,6 +113,10 @@ export interface CollectionItem {
   lastUpdatedPriceAt?: string;
   isForSale?: boolean;
   salePrice?: number | null; // Optional custom asking price in user's currency
+  /** Ceny karty sprzed ostatniej zmiany rynkowej (do wskaźnika „zmiana wartości”). */
+  previousPrices?: ScryfallCard['prices'] | null;
+  /** Kiedy ceny ostatnio się zmieniły (względem previousPrices). */
+  pricesChangedAt?: string | null;
 }
 
 export interface WishlistItem {

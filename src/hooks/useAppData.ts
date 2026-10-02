@@ -463,7 +463,12 @@ export function useAppData({ userId, onUnauthorized, showToast, onSettingsLoaded
         const data = await res.json();
         if (data.collection) {
           setCollection(data.collection);
-          showToast(`Zaktualizowano ceny dla ${data.updatedCount} kart z Scryfall API!`);
+          const changed = data.changedCount ?? 0;
+          showToast(
+            changed > 0
+              ? `Zaktualizowano ceny: ${data.updatedCount} kart, ${changed} ze zmianą ceny.`
+              : `Zaktualizowano ceny dla ${data.updatedCount} kart — bez zmian od ostatniej aktualizacji.`
+          );
         }
       }
     } catch (err) {

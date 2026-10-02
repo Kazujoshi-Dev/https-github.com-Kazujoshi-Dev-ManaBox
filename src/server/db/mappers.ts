@@ -66,7 +66,15 @@ export function mapCollectionRow(r: any): CollectionItem {
     isForSale: Boolean(r.isForSale ?? r.is_for_sale),
     salePrice: r.salePrice !== undefined && r.salePrice !== null
       ? parseFloat(r.salePrice)
-      : (r.sale_price !== null && r.sale_price !== undefined ? parseFloat(r.sale_price) : null)
+      : (r.sale_price !== null && r.sale_price !== undefined ? parseFloat(r.sale_price) : null),
+    previousPrices: (() => {
+      const v = r.previousPrices ?? r.previous_prices ?? null;
+      return typeof v === 'string' ? JSON.parse(v) : v;
+    })(),
+    pricesChangedAt: (() => {
+      const v = r.pricesChangedAt ?? r.prices_changed_at ?? null;
+      return v ? new Date(v).toISOString() : null;
+    })()
   };
 }
 

@@ -10,7 +10,6 @@ export const CardMarketPrices: React.FC<CardMarketPricesProps> = ({
   plnPriceNorm,
   plnPriceFoil,
   onToggleFoil,
-  onSelectCurrencyPrice,
   onAddToWishlist,
 }) => {
   return (
@@ -90,30 +89,20 @@ export const CardMarketPrices: React.FC<CardMarketPricesProps> = ({
           </button>
 
           {/* EUR Standard */}
-          <button
-            type="button"
-            onClick={() => onSelectCurrencyPrice(activeCard.prices?.eur || undefined, 'EUR')}
-            title="Kliknij, aby przypisać tę cenę EUR jako cenę karty"
-            className="bg-stone-900 hover:bg-stone-850 p-2 rounded-lg border border-stone-800 hover:border-stone-700 text-left transition-colors cursor-pointer"
-          >
+          <div className="bg-stone-900 p-2 rounded-lg border border-stone-800 text-left">
             <p className="text-[10px] text-stone-400">EUR Standard</p>
             <p className="font-mono font-bold text-blue-300 text-sm mt-0.5">
               {formatCurrency(activeCard.prices?.eur, 'EUR')}
             </p>
-          </button>
+          </div>
 
           {/* USD Standard */}
-          <button
-            type="button"
-            onClick={() => onSelectCurrencyPrice(activeCard.prices?.usd || undefined, 'USD')}
-            title="Kliknij, aby przypisać tę cenę USD jako cenę karty"
-            className="bg-stone-900 hover:bg-stone-850 p-2 rounded-lg border border-stone-800 hover:border-stone-700 text-left transition-colors cursor-pointer"
-          >
+          <div className="bg-stone-900 p-2 rounded-lg border border-stone-800 text-left">
             <p className="text-[10px] text-stone-400">USD Standard</p>
             <p className="font-mono font-bold text-stone-300 text-sm mt-0.5">
               {formatCurrency(activeCard.prices?.usd, 'USD')}
             </p>
-          </button>
+          </div>
         </div>
 
         {activeCard.scryfall_uri && (
