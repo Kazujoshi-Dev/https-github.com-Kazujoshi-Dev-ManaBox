@@ -9,6 +9,7 @@ import * as cards from './src/server/cards/cardStore';
 import * as hashes from './src/server/cards/hashIndex';
 import { computeCardHash, decodeJpegToGray } from './src/server/cards/imageHash';
 import { normalizeName, nameSimilarity } from './src/server/cards/nameMatch';
+import { searchCities, resolveSuggestion } from './src/server/geo';
 
 const app = express();
 const PORT = 3000;
@@ -29,14 +30,15 @@ app.use(express.json({ limit: '10mb' }));
 // Dozwolone źródła wynikają z tego, czego używa frontend:
 //  - cdn.jsdelivr.net: silnik OCR Tesseract.js (worker, WebAssembly, słownik),
 //  - *.scryfall.io / api.scryfall.com: obrazy kart,
-//  - api.nbp.pl: kursy walut.
+//  - api.nbp.pl: kursy walut,
+//  - tile.openstreetmap.org: kafelki mapy sprzedawców.
 // Naruszenia są raportowane do /api/csp-report i trafiają do logów serwera.
 const CSP = [
   "default-src 'self'",
   "script-src 'self' 'wasm-unsafe-eval' https://cdn.jsdelivr.net blob:",
   "worker-src 'self' blob: https://cdn.jsdelivr.net",
   "connect-src 'self' https://api.nbp.pl https://cdn.jsdelivr.net blob: data:",
-  "img-src 'self' data: blob: https://*.scryfall.io https://api.scryfall.com",
+  "img-src 'self' data: blob: https://*.scryfall.io https://api.scryfall.com https://tile.openstreetmap.org",
   "style-src 'self' 'unsafe-inline'",
   "font-src 'self' data:",
   "media-src 'self' blob:",
@@ -1391,6 +1393,8 @@ app.delete('/api/catalogs/:id', authMiddleware, async (req, res) => {
 app.get('/api/users', async (req, res) => {
   try {
     const rawUsers = await db.getAllUsers();
+    // Miejscowość jest opcjonalna i podawana świadomie przez użytkownika (pokazujemy tylko miasto).
+    const locations = new Map<string, db.UserLocation>((await db.getAllLocations().catch(() => [] as db.UserLocation[])).map((l) => [l.userId, l] as const));
     const result = await Promise.all(
       rawUsers.map(async (u) => {
         try {
@@ -1409,7 +1413,8 @@ app.get('/api/users', async (req, res) => {
             forSaleItemsCount: forSaleItems.length,
             wishlistCount: wishlist.length,
             totalCardsCount,
-            currency: settings?.currency || 'PLN'
+            currency: settings?.currency || 'PLN',
+            city: locations.get(u.id)?.city || null
           };
         } catch {
           return {
@@ -1420,7 +1425,8 @@ app.get('/api/users', async (req, res) => {
             forSaleItemsCount: 0,
             wishlistCount: 0,
             totalCardsCount: 0,
-            currency: 'PLN'
+            currency: 'PLN',
+            city: locations.get(u.id)?.city || null
           };
         }
       })
@@ -1429,6 +1435,143 @@ app.get('/api/users', async (req, res) => {
   } catch (err: any) {
     console.error('Error in /api/users:', err);
     sendServerError(res, err, '/api/users', 'Błąd pobierania listy użytkowników.');
+  }
+});
+
+// --- PROFIL: MIEJSCOWOŚĆ, MAPA SPRZEDAWCÓW, DOPASOWANIA DO LISTY ŻYCZEŃ ---
+
+const geoLimiter = rateLimit({
+  name: 'geo', windowMs: 60_000, max: 40, key: userKey,
+  message: 'Zbyt wiele wyszukiwań miejscowości. Odczekaj chwilę.'
+});
+
+// Podpowiedzi miejscowości (Nominatim/OpenStreetMap, z pamięcią podręczną)
+app.get('/api/geo/cities', authMiddleware, geoLimiter, async (req, res) => {
+  try {
+    const q = typeof req.query.q === 'string' ? req.query.q : '';
+    res.json(await searchCities(q));
+  } catch (err: any) {
+    console.warn('[Geo] Wyszukiwanie nieudane:', err?.message || err);
+    res.status(502).json({ error: 'Wyszukiwarka miejscowości jest chwilowo niedostępna. Spróbuj za chwilę.' });
+  }
+});
+
+app.get('/api/profile', authMiddleware, async (req, res) => {
+  try {
+    res.json(await db.getProfile((req as any).userId));
+  } catch (err: any) {
+    sendServerError(res, err, '/api/profile');
+  }
+});
+
+// Zapis miejscowości: przyjmujemy tylko etykietę podpowiedzi z geokodera (współrzędne bierzemy od siebie).
+// { label: null } usuwa miejscowość.
+app.put('/api/profile', authMiddleware, async (req, res) => {
+  try {
+    const userId = (req as any).userId;
+    const label = req.body?.label;
+    if (label === null || label === '') {
+      const cleared = { city: null, cityLabel: null, countryCode: null, lat: null, lon: null };
+      return res.json(await db.saveProfile(userId, cleared));
+    }
+    let place;
+    try {
+      place = await resolveSuggestion(label);
+    } catch (geoErr: any) {
+      console.warn('[Geo] Weryfikacja miejscowości nieudana:', geoErr?.message || geoErr);
+      return res.status(502).json({ error: 'Nie można teraz zweryfikować miejscowości. Spróbuj za chwilę.' });
+    }
+    if (!place) {
+      return res.status(400).json({ error: 'Wybierz miejscowość z listy podpowiedzi.' });
+    }
+    res.json(await db.saveProfile(userId, {
+      city: place.city,
+      cityLabel: place.label,
+      countryCode: place.countryCode,
+      lat: place.lat,
+      lon: place.lon
+    }));
+  } catch (err: any) {
+    sendServerError(res, err, '/api/profile');
+  }
+});
+
+/** Karty na sprzedaż per użytkownik (PostgreSQL jednym zapytaniem; tryb plikowy — pętla). */
+async function forSaleCountsAll(): Promise<Map<string, { cards: number; items: number }>> {
+  if (db.isPostgresActive()) return db.getForSaleCounts();
+  const out = new Map<string, { cards: number; items: number }>();
+  for (const u of await db.getAllUsers()) {
+    const sale = (await db.getCollection(u.id)).filter((i) => i.isForSale);
+    if (sale.length) out.set(u.id, { cards: sale.reduce((s, i) => s + (i.quantity || 0) + (i.quantityFoil || 0), 0), items: sale.length });
+  }
+  return out;
+}
+
+/** Ile różnych kart z mojej listy życzeń ma każdy inny użytkownik (w kolekcji / na sprzedaż). */
+async function wishlistMatchesFor(userId: string): Promise<Record<string, { collection: number; forSale: number }>> {
+  const names = (await db.getWishlist(userId)).map((w) => w.card?.name).filter(Boolean) as string[];
+  if (names.length === 0) return {};
+  if (db.isPostgresActive()) return db.getWishlistMatches(userId, names);
+  const wanted = new Set(names.map((n) => n.toLowerCase().trim()));
+  const out: Record<string, { collection: number; forSale: number }> = {};
+  for (const u of await db.getAllUsers()) {
+    if (u.id === userId) continue;
+    const owned = new Set<string>();
+    const selling = new Set<string>();
+    for (const i of await db.getCollection(u.id)) {
+      const n = (i.card?.name || '').toLowerCase().trim();
+      if (!wanted.has(n) || (i.quantity || 0) + (i.quantityFoil || 0) <= 0) continue;
+      owned.add(n);
+      if (i.isForSale) selling.add(n);
+    }
+    if (owned.size) out[u.id] = { collection: owned.size, forSale: selling.size };
+  }
+  return out;
+}
+
+app.get('/api/users/wishlist-matches', authMiddleware, async (req, res) => {
+  try {
+    res.json(await wishlistMatchesFor((req as any).userId));
+  } catch (err: any) {
+    sendServerError(res, err, '/api/users/wishlist-matches');
+  }
+});
+
+// Mapa sprzedawców: miasta z użytkownikami, którzy mają karty na sprzedaż
+app.get('/api/sellers/map', authMiddleware, async (req, res) => {
+  try {
+    const userId = (req as any).userId;
+    const [locations, saleCounts, users, matches, myProfile] = await Promise.all([
+      db.getAllLocations(),
+      forSaleCountsAll(),
+      db.getAllUsers(),
+      wishlistMatchesFor(userId),
+      db.getProfile(userId)
+    ]);
+    const names = new Map(users.map((u) => [u.id, u.username]));
+    const cities = new Map<string, { label: string; city: string; lat: number; lon: number; sellers: any[] }>();
+    for (const loc of locations) {
+      const sale = saleCounts.get(loc.userId);
+      const username = names.get(loc.userId);
+      if (!sale || sale.cards <= 0 || !username) continue;
+      let group = cities.get(loc.cityLabel);
+      if (!group) cities.set(loc.cityLabel, (group = { label: loc.cityLabel, city: loc.city, lat: loc.lat, lon: loc.lon, sellers: [] }));
+      group.sellers.push({
+        id: loc.userId,
+        username,
+        isMe: loc.userId === userId,
+        forSaleCount: sale.cards,
+        forSaleItemsCount: sale.items,
+        wishlistMatches: matches[loc.userId]?.forSale || 0
+      });
+    }
+    const result = [...cities.values()].map((c) => ({
+      ...c,
+      sellers: c.sellers.sort((a, b) => b.wishlistMatches - a.wishlistMatches || b.forSaleCount - a.forSaleCount)
+    }));
+    res.json({ cities: result, myCity: myProfile.city ? myProfile.cityLabel : null });
+  } catch (err: any) {
+    sendServerError(res, err, '/api/sellers/map');
   }
 });
 

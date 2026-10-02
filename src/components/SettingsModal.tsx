@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { AppSettings, PricingSource, CurrencyCode } from '../types';
 import { DEFAULT_SETTINGS, formatCurrency } from '../utils/formatters';
+import { CityPicker } from './CityPicker';
 import { X, Settings, RefreshCw, Check, ArrowRightLeft, DollarSign, Euro, Coins, ShieldCheck, LogOut, Loader2 } from 'lucide-react';
 
 import { useBackToClose } from '../hooks/useBackButton';
@@ -127,8 +128,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               <Settings className="w-5 h-5" />
             </div>
             <div>
-              <h2 className="text-lg font-bold text-stone-100">Ustawienia Wyceny i Waluty</h2>
-              <p className="text-xs text-stone-400">Konfiguracja wartości rynkowej i przeliczania cen</p>
+              <h2 className="text-lg font-bold text-stone-100">Ustawienia</h2>
+              <p className="text-xs text-stone-400">Wycena, waluta, miejscowość i bezpieczeństwo konta</p>
             </div>
           </div>
           <button
@@ -338,6 +339,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               )}
             </p>
           </div>
+
+          {/* Profil: opcjonalna miejscowość (mapa sprzedawców) */}
+          <CityPicker />
 
           {/* Account security */}
           {onLogoutAll && (

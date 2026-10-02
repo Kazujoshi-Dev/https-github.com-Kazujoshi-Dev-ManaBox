@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, Suspense, lazy } from 'react';
 import { CollectionItem, AppSettings, AuthUser } from '../types';
 import { formatCurrency, getCardPrice, getCardImageUri, getRarityColor, getRarityLabel, getCardEdhrecRank, handleCardImageError } from '../utils/formatters';
 import { ManaSymbol } from './ManaSymbol';
@@ -18,8 +18,13 @@ import {
   Folder, 
   ShoppingBag,
   Share2,
-  DollarSign
+  DollarSign,
+  Map as MapIcon,
+  Loader2
 } from 'lucide-react';
+
+// Mapa (Leaflet) ładowana dopiero po otwarciu — nie spowalnia reszty aplikacji
+const SellersMapModal = lazy(() => import('./SellersMapModal'));
 
 interface ForSaleListProps {
   collection: CollectionItem[];
@@ -30,6 +35,7 @@ interface ForSaleListProps {
   onViewCardDetails: (item: CollectionItem) => void;
   onGoToCollection: () => void;
   showToast?: (message: string) => void;
+  onOpenSellerProfile?: (username: string) => void;
 }
 
 export const ForSaleList: React.FC<ForSaleListProps> = ({
@@ -41,7 +47,9 @@ export const ForSaleList: React.FC<ForSaleListProps> = ({
   onViewCardDetails,
   onGoToCollection,
   showToast,
+  onOpenSellerProfile,
 }) => {
+  const [isMapOpen, setIsMapOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterCondition, setFilterCondition] = useState<string>('all');
   const [filterFoilOnly, setFilterFoilOnly] = useState<boolean>(false);
@@ -198,6 +206,15 @@ export const ForSaleList: React.FC<ForSaleListProps> = ({
                 Waluta bazowa: <strong className="text-stone-200">{settings.currency}</strong>
               </div>
             </div>
+
+            <button
+              type="button"
+              onClick={() => setIsMapOpen(true)}
+              className="mt-1 h-11 px-4 rounded-xl bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/40 text-emerald-300 font-bold text-sm flex items-center gap-2 cursor-pointer"
+            >
+              <MapIcon className="w-4 h-4" />
+              Pokaż mapę sprzedawców
+            </button>
           </div>
 
           {/* Right: Public Share Link Card */}
@@ -513,6 +530,17 @@ export const ForSaleList: React.FC<ForSaleListProps> = ({
         </div>
       )}
 
+      {isMapOpen && (
+        <Suspense
+          fallback={
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70">
+              <Loader2 className="w-8 h-8 text-emerald-400 animate-spin" />
+            </div>
+          }
+        >
+          <SellersMapModal onClose={() => setIsMapOpen(false)} onOpenSeller={(u) => onOpenSellerProfile?.(u)} />
+        </Suspense>
+      )}
     </div>
   );
 };

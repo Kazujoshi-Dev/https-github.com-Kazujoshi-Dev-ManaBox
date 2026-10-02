@@ -50,3 +50,24 @@ summary,
     font-size: 16px;
   }
 }
+
+/* Znacznik miasta na mapie sprzedawców (Leaflet divIcon) */
+.ms-pin {
+  border-radius: 9999px;
+  background: #059669;
+  color: #fff;
+  font: 800 14px/1 system-ui, sans-serif;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 3px solid #ecfdf5;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.45);
+  cursor: pointer;
+}
+.ms-pin--match {
+  background: #e11d48;
+  border-color: #ffe4e6;
+}
+.leaflet-container {
+  font-family: inherit;
+}

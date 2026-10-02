@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { RegisteredUserSummary, AppSettings, AuthUser, CollectionItem, ScryfallCard, WishlistItem } from '../types';
-import { usersApi, publicSaleApi } from '../services/api';
+import { RegisteredUserSummary, AppSettings, AuthUser, CollectionItem, ScryfallCard, WishlistItem, WishlistMatches } from '../types';
+import { usersApi, publicSaleApi, sellersApi } from '../services/api';
+import { useBackToClose } from '../hooks/useBackButton';
 import { formatCurrency, getCardPrice, getCardImageUri, getRarityColor, getRarityLabel, getCardEdhrecRank, handleCardImageError } from '../utils/formatters';
 import { ManaSymbol } from './ManaSymbol';
 import { EdhrecBadge } from './EdhrecBadge';
@@ -15,6 +16,7 @@ import {
   ArrowLeft, 
   RefreshCw, 
   Calendar, 
+  MapPin,
   Layers, 
   Sparkles, 
   Eye, 
@@ -31,6 +33,9 @@ interface UsersListProps {
   currentUser?: AuthUser | null;
   onViewCardDetails?: (card: ScryfallCard) => void;
   showToast?: (message: string) => void;
+  /** Profil do automatycznego otwarcia (np. po kliknięciu sprzedawcy na mapie). */
+  profileRequest?: { username: string; nonce: number } | null;
+  onProfileRequestHandled?: () => void;
 }
 
 export const UsersList: React.FC<UsersListProps> = ({
@@ -38,13 +43,17 @@ export const UsersList: React.FC<UsersListProps> = ({
   currentUser,
   onViewCardDetails,
   showToast,
+  profileRequest,
+  onProfileRequestHandled,
 }) => {
   const [users, setUsers] = useState<RegisteredUserSummary[]>([]);
+  // Ile kart z MOJEJ listy życzeń ma każdy użytkownik (w kolekcji / na sprzedaż)
+  const [matches, setMatches] = useState<WishlistMatches>({});
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [filterForSaleOnly, setFilterForSaleOnly] = useState<boolean>(false);
-  const [sortBy, setSortBy] = useState<'sale-desc' | 'wishlist-desc' | 'created-desc' | 'name' | 'cards-desc'>('sale-desc');
+  const [sortBy, setSortBy] = useState<'matches-desc' | 'sale-desc' | 'wishlist-desc' | 'created-desc' | 'name' | 'cards-desc'>('matches-desc');
 
   // Selected user profile state
   const [selectedUser, setSelectedUser] = useState<RegisteredUserSummary | null>(null);
@@ -106,6 +115,7 @@ export const UsersList: React.FC<UsersListProps> = ({
 
   useEffect(() => {
     loadUsers();
+    sellersApi.getWishlistMatches().then(setMatches).catch(() => setMatches({}));
   }, [loadUsers]);
 
   // Load offers for a selected user
@@ -154,6 +164,15 @@ export const UsersList: React.FC<UsersListProps> = ({
     loadWishlist(user.username || user.id);
   }, [loadOffers, loadWishlist]);
 
+  // Otwarcie profilu na życzenie (np. kliknięcie sprzedawcy na mapie) — gdy lista jest już wczytana
+  useEffect(() => {
+    if (!profileRequest || users.length === 0) return;
+    const ref = profileRequest.username.toLowerCase();
+    const user = users.find((u) => u.username.toLowerCase() === ref);
+    if (user) handleOpenUserProfile(user, 'for-sale');
+    onProfileRequestHandled?.();
+  }, [profileRequest, users, handleOpenUserProfile, onProfileRequestHandled]);
+
   const handleBackToList = () => {
     setSelectedUser(null);
     setSellerOffers(null);
@@ -161,6 +180,9 @@ export const UsersList: React.FC<UsersListProps> = ({
     setOffersError(null);
     setWishlistError(null);
   };
+
+  // „Wstecz” w profilu gracza wraca do listy
+  useBackToClose(Boolean(selectedUser), handleBackToList);
 
   const handleCopyUserLink = (username: string, e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
@@ -181,6 +203,12 @@ export const UsersList: React.FC<UsersListProps> = ({
         return u.username.toLowerCase().includes(q);
       })
       .sort((a, b) => {
+        if (sortBy === 'matches-desc') {
+          // Najpierw karty z mojej listy życzeń wystawione na sprzedaż, potem posiadane w kolekcji
+          const ma = matches[a.id] || { forSale: 0, collection: 0 };
+          const mb = matches[b.id] || { forSale: 0, collection: 0 };
+          return mb.forSale - ma.forSale || mb.collection - ma.collection || b.forSaleCount - a.forSaleCount;
+        }
         if (sortBy === 'sale-desc') {
           return b.forSaleCount - a.forSaleCount;
         }
@@ -198,7 +226,7 @@ export const UsersList: React.FC<UsersListProps> = ({
         }
         return 0;
       });
-  }, [users, searchQuery, filterForSaleOnly, sortBy]);
+  }, [users, searchQuery, filterForSaleOnly, sortBy, matches]);
 
   // Total stats for the community
   const stats = useMemo(() => {
@@ -1076,6 +1104,7 @@ export const UsersList: React.FC<UsersListProps> = ({
               onChange={(e) => setSortBy(e.target.value as any)}
               className="bg-transparent text-xs text-stone-200 focus:outline-none cursor-pointer"
             >
+              <option value="matches-desc">Karty z mojej listy życzeń (najwięcej)</option>
               <option value="sale-desc">Karty na sprzedaż (najwięcej)</option>
               <option value="wishlist-desc">Lista życzeń (najwięcej)</option>
               <option value="created-desc">Data dołączenia (najnowsi)</option>
@@ -1145,6 +1174,21 @@ export const UsersList: React.FC<UsersListProps> = ({
                           <Calendar className="w-3 h-3 text-stone-500" />
                           <span>Dołączył: {formatJoinDate(u.createdAt)}</span>
                         </p>
+                        {u.city && (
+                          <p className="text-[11px] text-stone-400 flex items-center gap-1 mt-0.5">
+                            <MapPin className="w-3 h-3 text-stone-500" />
+                            <span>{u.city}</span>
+                          </p>
+                        )}
+                        {!isSelf && (matches[u.id]?.collection || 0) > 0 && (
+                          <p className="text-[11px] font-semibold text-rose-300 flex items-center gap-1 mt-1">
+                            <Heart className="w-3 h-3 fill-rose-400 text-rose-400" />
+                            <span>
+                              {matches[u.id].collection} z Twojej listy życzeń
+                              {matches[u.id].forSale > 0 ? ` (${matches[u.id].forSale} na sprzedaż)` : ''}
+                            </span>
+                          </p>
+                        )}
                       </div>
                     </div>
 

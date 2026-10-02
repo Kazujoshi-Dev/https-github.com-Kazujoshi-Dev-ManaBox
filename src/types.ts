@@ -174,7 +174,47 @@ export interface RegisteredUserSummary {
   wishlistCount?: number;
   totalCardsCount: number;
   currency?: CurrencyCode;
+  /** Miejscowość podana przez użytkownika (opcjonalnie). */
+  city?: string | null;
 }
+
+/** Profil zalogowanego użytkownika (opcjonalna miejscowość do mapy sprzedawców). */
+export interface UserProfile {
+  city: string | null;
+  cityLabel: string | null;
+  countryCode: string | null;
+  lat: number | null;
+  lon: number | null;
+}
+
+export interface CitySuggestion {
+  city: string;
+  label: string;
+  countryCode: string | null;
+  lat: number;
+  lon: number;
+}
+
+export interface MapSeller {
+  id: string;
+  username: string;
+  isMe: boolean;
+  forSaleCount: number;
+  forSaleItemsCount: number;
+  /** Ile różnych kart z mojej listy życzeń ten sprzedawca ma na sprzedaż. */
+  wishlistMatches: number;
+}
+
+export interface MapCity {
+  label: string;
+  city: string;
+  lat: number;
+  lon: number;
+  sellers: MapSeller[];
+}
+
+/** Ile kart z mojej listy życzeń ma dany użytkownik: w kolekcji i na sprzedaż. */
+export type WishlistMatches = Record<string, { collection: number; forSale: number }>;
 
 export interface UserMessage {
   id: string;

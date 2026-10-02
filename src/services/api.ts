@@ -1,4 +1,4 @@
-import { AppSettings, Catalog, CollectionItem, DeckItem, ScryfallCard, WishlistItem, SpellbookFindCombosResponse, SpellbookVariant, RegisteredUserSummary, UserMessage } from '../types';
+import { AppSettings, Catalog, CollectionItem, DeckItem, ScryfallCard, WishlistItem, SpellbookFindCombosResponse, SpellbookVariant, RegisteredUserSummary, UserMessage, UserProfile, CitySuggestion, MapCity, WishlistMatches } from '../types';
 
 const TOKEN_KEY = 'mtg_auth_token';
 const USER_KEY = 'mtg_auth_user';
@@ -235,6 +235,38 @@ export const usersApi = {
     }
     return res.json();
   }
+};
+
+async function jsonOrThrow<T>(res: Response, fallback: string): Promise<T> {
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || `${fallback} (${res.status})`);
+  }
+  return res.json();
+}
+
+export const profileApi = {
+  get: async (): Promise<UserProfile> =>
+    jsonOrThrow(await fetchWithAuth('/api/profile'), 'Błąd pobierania profilu'),
+  /** Zapis miejscowości wybranej z podpowiedzi; null usuwa miejscowość. */
+  saveCity: async (label: string | null): Promise<UserProfile> =>
+    jsonOrThrow(
+      await fetchWithAuth('/api/profile', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ label })
+      }),
+      'Błąd zapisu miejscowości'
+    ),
+  searchCities: async (q: string): Promise<CitySuggestion[]> =>
+    jsonOrThrow(await fetchWithAuth(`/api/geo/cities?q=${encodeURIComponent(q)}`), 'Błąd wyszukiwania miejscowości')
+};
+
+export const sellersApi = {
+  getMap: async (): Promise<{ cities: MapCity[]; myCity: string | null }> =>
+    jsonOrThrow(await fetchWithAuth('/api/sellers/map'), 'Błąd pobierania mapy sprzedawców'),
+  getWishlistMatches: async (): Promise<WishlistMatches> =>
+    jsonOrThrow(await fetchWithAuth('/api/users/wishlist-matches'), 'Błąd pobierania dopasowań')
 };
 
 export const messagesApi = {

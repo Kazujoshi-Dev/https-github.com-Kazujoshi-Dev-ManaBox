@@ -66,6 +66,11 @@ interface TabContentProps {
   onEditDeck?: (deck: DeckItem) => void;
   onToggleForSale?: (item: CollectionItem, customPrice?: number | null) => Promise<void> | void;
   onUpdateCollectionItem?: (id: string, updates: Partial<CollectionItem>) => Promise<CollectionItem | null> | void;
+  /** Otwiera profil sprzedawcy (z mapy sprzedawców). */
+  onOpenSellerProfile?: (username: string) => void;
+  /** Profil do automatycznego otwarcia w zakładce Użytkownicy. */
+  profileRequest?: { username: string; nonce: number } | null;
+  onProfileRequestHandled?: () => void;
   showToast?: (message: string) => void;
 }
 
@@ -106,6 +111,9 @@ export const TabContent: React.FC<TabContentProps> = ({
   onToggleForSale,
   onUpdateCollectionItem,
   showToast,
+  onOpenSellerProfile,
+  profileRequest,
+  onProfileRequestHandled,
 }) => {
   switch (activeTab) {
     case 'collection':
@@ -213,6 +221,7 @@ export const TabContent: React.FC<TabContentProps> = ({
           onViewCardDetails={onViewCollectionItemDetails}
           onGoToCollection={() => setActiveTab('collection')}
           showToast={showToast}
+          onOpenSellerProfile={onOpenSellerProfile}
         />
       );
 
@@ -223,6 +232,8 @@ export const TabContent: React.FC<TabContentProps> = ({
           currentUser={currentUser}
           onViewCardDetails={onViewDeckCardDetails || onSelectCard}
           showToast={showToast}
+          profileRequest={profileRequest}
+          onProfileRequestHandled={onProfileRequestHandled}
         />
       );
 

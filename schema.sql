@@ -101,3 +101,14 @@ CREATE TABLE IF NOT EXISTS user_sessions (
 );
 
 CREATE INDEX IF NOT EXISTS idx_user_sessions_user_id ON user_sessions(user_id);
+
+-- 8. Profil: opcjonalna miejscowość (centrum miasta, zaokrąglone do ~1 km) do mapy sprzedawców
+CREATE TABLE IF NOT EXISTS user_profiles (
+  user_id VARCHAR(64) PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+  city VARCHAR(80),
+  city_label VARCHAR(160),
+  country_code VARCHAR(4),
+  lat DOUBLE PRECISION,
+  lon DOUBLE PRECISION,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);

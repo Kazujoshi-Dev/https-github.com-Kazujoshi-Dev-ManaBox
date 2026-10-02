@@ -130,6 +130,13 @@ export default function App() {
   const [selectedDeck, setSelectedDeck] = useState<DeckItem | null>(null);
   // Zmiana zakładki trafia do historii przeglądarki — „Wstecz” wraca do poprzedniej zakładki
   const setActiveTab = useHistoryTabs<NavigationTab>(activeTab, setActiveTabState, 'collection');
+  // Profil sprzedawcy do otwarcia w zakładce Użytkownicy (np. z mapy sprzedawców)
+  const [profileRequest, setProfileRequest] = useState<{ username: string; nonce: number } | null>(null);
+  const handleOpenSellerProfile = useCallback((username: string) => {
+    setProfileRequest({ username, nonce: Date.now() });
+    setActiveTab('users');
+  }, [setActiveTab]);
+  const handleProfileRequestHandled = useCallback(() => setProfileRequest(null), []);
   // Otwarta talia: „Wstecz” wraca do listy talii
   useBackToClose(Boolean(selectedDeck), () => setSelectedDeck(null));
 
@@ -615,6 +622,9 @@ export default function App() {
             onToggleForSale={handleRequestToggleForSale}
             onUpdateCollectionItem={updateCollectionItemData}
             showToast={showToast}
+            onOpenSellerProfile={handleOpenSellerProfile}
+            profileRequest={profileRequest}
+            onProfileRequestHandled={handleProfileRequestHandled}
           />
         )}
       </main>
