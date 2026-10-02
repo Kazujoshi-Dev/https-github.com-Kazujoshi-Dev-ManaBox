@@ -32,8 +32,8 @@ export const AuthView: React.FC<AuthViewProps> = ({ onAuthSuccess }) => {
       return;
     }
 
-    if (password.length < 6) {
-      setError('Hasło musi mieć co najmniej 6 znaków.');
+    if (mode === 'register' && password.length < 8) {
+      setError('Hasło musi mieć co najmniej 8 znaków.');
       return;
     }
 
@@ -208,7 +208,7 @@ export const AuthView: React.FC<AuthViewProps> = ({ onAuthSuccess }) => {
                 <input
                   type="password"
                   required
-                  minLength={6}
+                  minLength={mode === 'register' ? 8 : undefined}
                   placeholder="••••••••"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
@@ -216,7 +216,7 @@ export const AuthView: React.FC<AuthViewProps> = ({ onAuthSuccess }) => {
                 />
               </div>
               {mode === 'register' && (
-                <p className="text-[10px] text-stone-500 mt-1">Minimum 6 znaków</p>
+                <p className="text-[10px] text-stone-500 mt-1">Minimum 8 znaków</p>
               )}
             </div>
 

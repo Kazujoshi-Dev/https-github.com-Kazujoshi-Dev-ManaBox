@@ -5,10 +5,17 @@ import { createServer as createViteServer } from 'vite';
 import { GoogleGenAI, Type } from '@google/genai';
 import * as db from './src/server/db';
 import { hashPassword, verifyPassword, generateToken, verifyToken } from './src/server/auth';
+import { rateLimit } from './src/server/rateLimit';
 
 const app = express();
 const PORT = 3000;
 
+// Aplikacja stoi za jednym reverse proxy (Caddy) — dzięki temu req.ip to prawdziwy adres klienta.
+app.set('trust proxy', 1);
+app.disable('x-powered-by');
+
+// Mały limit dla logowania/rejestracji, większy dla reszty (skaner wysyła obrazy w base64).
+app.use('/api/auth', express.json({ limit: '20kb' }));
 app.use(express.json({ limit: '10mb' }));
 
 // Allow camera access in headers
@@ -31,6 +38,39 @@ function authMiddleware(req: express.Request, res: express.Response, next: expre
   next();
 }
 
+// --- LIMITY ZAPYTAŃ ---
+const userKey = (req: express.Request) => (req as any).userId as string | undefined;
+
+// Ogólny limit na API (bez proxy obrazków, które przy siatce kolekcji wysyła wiele zapytań).
+const apiLimiter = rateLimit({ name: 'api', windowMs: 60_000, max: 300 });
+app.use('/api', (req, res, next) => (req.path.startsWith('/scryfall/image-proxy') ? next() : apiLimiter(req, res, next)));
+
+const loginIpLimiter = rateLimit({
+  name: 'login-ip', windowMs: 15 * 60_000, max: 20,
+  message: 'Zbyt wiele prób logowania. Spróbuj ponownie za kilkanaście minut.'
+});
+const loginEmailLimiter = rateLimit({
+  name: 'login-email', windowMs: 15 * 60_000, max: 10,
+  key: (req) => (typeof req.body?.email === 'string' ? req.body.email.toLowerCase().trim() : null),
+  message: 'Zbyt wiele prób logowania na to konto. Spróbuj ponownie za kilkanaście minut.'
+});
+const registerLimiter = rateLimit({
+  name: 'register', windowMs: 60 * 60_000, max: 5,
+  message: 'Zbyt wiele rejestracji z tego adresu. Spróbuj ponownie później.'
+});
+const scannerMinuteLimiter = rateLimit({
+  name: 'scan-min', windowMs: 60_000, max: 20, key: userKey,
+  message: 'Skanujesz zbyt szybko. Odczekaj chwilę.'
+});
+const scannerDayLimiter = rateLimit({
+  name: 'scan-day', windowMs: 24 * 60 * 60_000, max: 500, key: userKey,
+  message: 'Osiągnięto dzienny limit skanowań. Spróbuj jutro.'
+});
+const messageLimiter = rateLimit({
+  name: 'msg', windowMs: 10 * 60_000, max: 30, key: userKey,
+  message: 'Wysyłasz zbyt wiele wiadomości. Spróbuj ponownie później.'
+});
+
 // Ensure data directory exists
 const DATA_DIR = path.join(process.cwd(), 'data');
 if (!fs.existsSync(DATA_DIR)) {
@@ -39,15 +79,24 @@ if (!fs.existsSync(DATA_DIR)) {
 
 // --- AUTHENTICATION ENDPOINTS ---
 
-app.post(['/api/auth/register', '/api/auth/register/', '/api/register'], async (req, res) => {
+app.post(['/api/auth/register', '/api/auth/register/', '/api/register'], registerLimiter, async (req, res) => {
   try {
     const { email, username, password } = req.body;
-    if (!email || !password || !username) {
+    if (typeof email !== 'string' || typeof password !== 'string' || typeof username !== 'string' ||
+        !email.trim() || !password || !username.trim()) {
       return res.status(400).json({ error: 'Email, nazwa gracza oraz hasło są wymagane.' });
     }
 
-    if (password.length < 6) {
-      return res.status(400).json({ error: 'Hasło musi mieć co najmniej 6 znaków.' });
+    if (email.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
+      return res.status(400).json({ error: 'Nieprawidłowy adres e-mail.' });
+    }
+
+    if (username.trim().length < 2 || username.trim().length > 32) {
+      return res.status(400).json({ error: 'Nazwa gracza musi mieć od 2 do 32 znaków.' });
+    }
+
+    if (password.length < 8 || password.length > 200) {
+      return res.status(400).json({ error: 'Hasło musi mieć co najmniej 8 znaków.' });
     }
 
     const existingUser = await db.getUserByEmail(email);
@@ -55,9 +104,15 @@ app.post(['/api/auth/register', '/api/auth/register/', '/api/register'], async (
       return res.status(400).json({ error: 'Użytkownik o takim adresie e-mail już istnieje.' });
     }
 
+    // Nazwa gracza identyfikuje profil publiczny i odbiorcę wiadomości — musi być unikalna.
+    const existingName = await db.getUserByIdOrUsername(username.trim());
+    if (existingName) {
+      return res.status(400).json({ error: 'Ta nazwa gracza jest już zajęta.' });
+    }
+
     const { hash, salt } = hashPassword(password);
     const userId = `usr_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
-    const user = await db.createUser(userId, email, username, hash, salt);
+    const user = await db.createUser(userId, email, username.trim(), hash, salt);
 
     const token = generateToken({
       userId: user.id,
@@ -80,10 +135,10 @@ app.post(['/api/auth/register', '/api/auth/register/', '/api/register'], async (
   }
 });
 
-app.post(['/api/auth/login', '/api/auth/login/', '/api/login'], async (req, res) => {
+app.post(['/api/auth/login', '/api/auth/login/', '/api/login'], loginIpLimiter, loginEmailLimiter, async (req, res) => {
   try {
     const { email, password } = req.body;
-    if (!email || !password) {
+    if (typeof email !== 'string' || typeof password !== 'string' || !email || !password || password.length > 200) {
       return res.status(400).json({ error: 'Email oraz hasło są wymagane.' });
     }
 
@@ -511,7 +566,7 @@ function getAiClient(): GoogleGenAI | null {
 // --- API ROUTES ---
 
 // 0. Delver Lens & ManaBox High-Speed Visual Identifier
-app.post('/api/scanner/delver-identify', async (req, res) => {
+app.post('/api/scanner/delver-identify', authMiddleware, scannerMinuteLimiter, scannerDayLimiter, async (req, res) => {
   try {
     const { 
       cardImageBase64, 
@@ -1511,7 +1566,7 @@ app.get('/api/messages/unread-count', authMiddleware, async (req, res) => {
   }
 });
 
-app.post('/api/messages', authMiddleware, async (req, res) => {
+app.post('/api/messages', authMiddleware, messageLimiter, async (req, res) => {
   try {
     const senderId = (req as any).userId;
     const { recipientId, recipientUsername, subject, body } = req.body;

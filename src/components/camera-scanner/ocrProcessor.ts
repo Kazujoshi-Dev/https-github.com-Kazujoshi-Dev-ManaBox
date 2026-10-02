@@ -1,5 +1,6 @@
 import { createWorker, Worker } from 'tesseract.js';
 import { ScryfallCard } from '../../types';
+import { fetchWithAuth } from '../../services/api';
 import { ScanResult } from './types';
 import { 
   extractAndSegmentDelverFeatures,
@@ -518,7 +519,7 @@ export async function scanCardWithDelverLens(
   try {
     onProgress?.(0.55, 'Identyfikacja wizualna i dopasowanie bazy Scryfall...');
 
-    const response = await fetch('/api/scanner/delver-identify', {
+    const response = await fetchWithAuth('/api/scanner/delver-identify', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
