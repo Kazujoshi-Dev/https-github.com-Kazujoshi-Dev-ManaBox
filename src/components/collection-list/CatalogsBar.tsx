@@ -1,3 +1,4 @@
+import { FOR_SALE_BINDER } from './constants';
 import React from 'react';
 import { 
   Folder, 
@@ -6,7 +7,8 @@ import {
   Star, 
   Edit2, 
   Trash2,
-  FileText
+  FileText,
+  CircleDollarSign
 } from 'lucide-react';
 import { formatCurrency } from '../../utils/formatters';
 import { CatalogsBarProps } from './types';
@@ -17,6 +19,7 @@ export const CatalogsBar: React.FC<CatalogsBarProps> = ({
   activeBinder,
   catalogStats,
   totalCollectionCount,
+  forSaleCount = 0,
   currency,
   onSelectBinder,
   onOpenCreateCatalog,
@@ -87,6 +90,26 @@ export const CatalogsBar: React.FC<CatalogsBarProps> = ({
             activeBinder === 'ALL' ? 'bg-stone-950 text-amber-300' : 'bg-stone-800 text-stone-400'
           }`}>
             {totalCollectionCount}
+          </span>
+        </button>
+
+        {/* Kategoria „Sprzedam” — karty oznaczone na sprzedaż */}
+        <button
+          type="button"
+          onClick={() => onSelectBinder(FOR_SALE_BINDER)}
+          className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer shrink-0 flex items-center gap-2 border ${
+            activeBinder === FOR_SALE_BINDER
+              ? 'bg-emerald-500/20 text-emerald-200 border-emerald-500/50 ring-1 ring-emerald-500/40 shadow-md'
+              : 'bg-stone-950 text-stone-300 border-stone-800 hover:border-stone-700 hover:bg-stone-850'
+          }`}
+          title="Karty oznaczone na sprzedaż — nie ma ich w klaserach, dopóki ich nie wycofasz"
+        >
+          <CircleDollarSign className="w-3.5 h-3.5 text-emerald-400" />
+          <span>Sprzedam</span>
+          <span className={`px-1.5 py-0.2 rounded-full font-mono text-[10px] ${
+            activeBinder === FOR_SALE_BINDER ? 'bg-stone-950/80 text-emerald-300' : 'bg-stone-800 text-stone-400'
+          }`}>
+            {forSaleCount}
           </span>
         </button>
 

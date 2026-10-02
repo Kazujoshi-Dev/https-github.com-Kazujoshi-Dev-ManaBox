@@ -145,9 +145,9 @@ export function useAppData({ userId, onUnauthorized, showToast, onSettingsLoaded
     const res = await updateCollectionItemData(item.id, updates);
     if (res) {
       if (nextForSale) {
-        showToast(`Wystawiono "${item.card.name}" na sprzedaż! Karta trafiła do zakładki „Sprzedam”.`);
+        showToast(`Wystawiono "${item.card.name}" na sprzedaż! Przeniesiono ją z klasera do kategorii „Sprzedam”.`);
       } else {
-        showToast(`Wycofano "${item.card.name}" ze sprzedaży.`);
+        showToast(`Wycofano "${item.card.name}" ze sprzedaży — wróciła do klasera „${item.binder || 'Klaser Główny'}”.`);
       }
     }
   }, [updateCollectionItemData, showToast]);

@@ -1,3 +1,4 @@
+import { FOR_SALE_BINDER } from './constants';
 import { useState, useMemo, useCallback } from 'react';
 import { CollectionItem, FilterOptions, AppSettings } from '../../types';
 import { getCardPrice } from '../../utils/formatters';
@@ -61,9 +62,11 @@ export function useCollectionFilters({ collection, settings }: UseCollectionFilt
         if (card.set.toLowerCase() !== filters.set.toLowerCase()) return false;
       }
 
-      // Binder filter
-      if (filters.binder !== 'ALL') {
-        if (item.binder !== filters.binder) return false;
+      // Klaser: karty na sprzedaż są tylko w kategorii „Sprzedam” (i w „Wszystkie karty”)
+      if (filters.binder === FOR_SALE_BINDER) {
+        if (!item.isForSale) return false;
+      } else if (filters.binder !== 'ALL') {
+        if (item.isForSale || (item.binder || 'Klaser Główny') !== filters.binder) return false;
       }
 
       // Only Foil filter

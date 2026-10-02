@@ -68,3 +68,6 @@ export const DEFAULT_FILTERS: FilterOptions = {
   sortBy: 'price_desc',
   onlyFoil: false
 };
+
+/** Wirtualna kategoria „Sprzedam”: karty oznaczone na sprzedaż (znikają z klaserów). */
+export const FOR_SALE_BINDER = '__FOR_SALE__';

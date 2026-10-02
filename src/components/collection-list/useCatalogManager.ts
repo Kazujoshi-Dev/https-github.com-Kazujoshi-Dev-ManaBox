@@ -44,7 +44,7 @@ export function useCatalogManager({
 
     collection.forEach(item => {
       const card = item.card;
-      if (!card) return;
+      if (!card || item.isForSale) return; // karty na sprzedaż są w kategorii „Sprzedam”
       const b = item.binder || 'Klaser Główny';
       const existing = stats.get(b) || { count: 0, totalCards: 0, totalValue: 0 };
 

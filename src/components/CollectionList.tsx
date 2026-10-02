@@ -90,6 +90,7 @@ export const CollectionList: React.FC<CollectionListProps> = ({
         activeBinder={filters.binder}
         catalogStats={catalogStats}
         totalCollectionCount={collection.length}
+        forSaleCount={collection.filter((i) => i.isForSale).length}
         currency={settings.currency}
         onSelectBinder={(binder) => updateFilters({ binder })}
         onOpenCreateCatalog={openCreateCatalogModal}

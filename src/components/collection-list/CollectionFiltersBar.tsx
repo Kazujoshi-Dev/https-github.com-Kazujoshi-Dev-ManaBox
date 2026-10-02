@@ -1,3 +1,4 @@
+import { FOR_SALE_BINDER } from './constants';
 import React, { useState } from 'react';
 import { Search, X, Sparkles, LayoutGrid, List, SlidersHorizontal } from 'lucide-react';
 import { CollectionFiltersBarProps } from './types';
@@ -135,6 +136,7 @@ export const CollectionFiltersBar: React.FC<CollectionFiltersBarProps> = ({
             className="w-full bg-stone-950 border border-stone-800 rounded-lg px-2.5 py-1.5 text-stone-200 focus:outline-none focus:border-amber-500 cursor-pointer"
           >
             <option value="ALL">Wszystkie katalogi</option>
+            <option value={FOR_SALE_BINDER}>Sprzedam (na sprzedaż)</option>
             {catalogs.map(b => (
               <option key={b.id} value={b.name}>{b.name}</option>
             ))}

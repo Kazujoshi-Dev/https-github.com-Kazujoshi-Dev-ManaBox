@@ -33,6 +33,8 @@ export interface CatalogsBarProps {
   activeBinder: string;
   catalogStats: Map<string, CatalogStatItem>;
   totalCollectionCount: number;
+  /** Liczba pozycji oznaczonych na sprzedaż (kategoria „Sprzedam”). */
+  forSaleCount?: number;
   currency: AppSettings['currency'];
   onSelectBinder: (binder: string) => void;
   onOpenCreateCatalog: () => void;
