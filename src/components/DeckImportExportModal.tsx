@@ -15,6 +15,7 @@ import {
   Layers
 } from 'lucide-react';
 import { DeckItem, DeckCardEntry, ScryfallCard } from '../types';
+import { useBackToClose } from '../hooks/useBackButton';
 import { 
   parseTxtDeckOrCollection, 
   resolveCardsFromScryfall, 
@@ -45,6 +46,9 @@ export const DeckImportExportModal: React.FC<DeckImportExportModalProps> = ({
   showToast,
   initialTab,
 }) => {
+  // „Wstecz” na telefonie zamyka to okno zamiast opuszczać stronę
+  useBackToClose(isOpen, onClose);
+
   // Determine default tab: if deck is present, default to export unless specified
   const [activeTab, setActiveTab] = useState<'export' | 'import'>(
     initialTab || (deck ? 'export' : 'import')

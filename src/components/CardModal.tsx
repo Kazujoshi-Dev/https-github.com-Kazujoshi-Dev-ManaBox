@@ -15,6 +15,7 @@ import {
 } from './card-modal';
 import { CardCombosTab } from './card-modal/CardCombosTab';
 
+import { useBackToClose } from '../hooks/useBackButton';
 export const CardModal: React.FC<CardModalProps> = ({
   card,
   existingItem,
@@ -28,6 +29,9 @@ export const CardModal: React.FC<CardModalProps> = ({
   onToggleFoil,
   initialFoil,
 }) => {
+  // „Wstecz” na telefonie zamyka to okno zamiast opuszczać stronę
+  useBackToClose(true, onClose);
+
   if (!card) return null;
 
   // Active view tab in modal

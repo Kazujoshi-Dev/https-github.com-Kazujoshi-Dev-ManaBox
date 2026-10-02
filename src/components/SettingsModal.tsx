@@ -3,6 +3,7 @@ import { AppSettings, PricingSource, CurrencyCode } from '../types';
 import { DEFAULT_SETTINGS, formatCurrency } from '../utils/formatters';
 import { X, Settings, RefreshCw, Check, ArrowRightLeft, DollarSign, Euro, Coins, ShieldCheck, LogOut, Loader2 } from 'lucide-react';
 
+import { useBackToClose } from '../hooks/useBackButton';
 interface SettingsModalProps {
   settings: AppSettings;
   onSaveSettings: (newSettings: AppSettings) => void;
@@ -17,6 +18,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   onClose,
   onLogoutAll
 }) => {
+  // „Wstecz” na telefonie zamyka to okno zamiast opuszczać stronę
+  useBackToClose(true, onClose);
+
   const [confirmLogoutAll, setConfirmLogoutAll] = useState(false);
   const [isLoggingOutAll, setIsLoggingOutAll] = useState(false);
   const [logoutAllError, setLogoutAllError] = useState<string | null>(null);

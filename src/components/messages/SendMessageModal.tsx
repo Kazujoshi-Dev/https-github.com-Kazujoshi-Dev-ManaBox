@@ -3,6 +3,7 @@ import { RegisteredUserSummary } from '../../types';
 import { messagesApi } from '../../services/api';
 import { X, Send, Mail, User, AlertCircle } from 'lucide-react';
 
+import { useBackToClose } from '../../hooks/useBackButton';
 interface SendMessageModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -22,6 +23,9 @@ export const SendMessageModal: React.FC<SendMessageModalProps> = ({
   onSuccess,
   showToast,
 }) => {
+  // „Wstecz” na telefonie zamyka to okno zamiast opuszczać stronę
+  useBackToClose(isOpen, onClose);
+
   const [recipientUsername, setRecipientUsername] = useState<string>('');
   const [subject, setSubject] = useState<string>('');
   const [body, setBody] = useState<string>('');

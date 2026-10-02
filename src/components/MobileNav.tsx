@@ -20,6 +20,7 @@ import {
   User
 } from 'lucide-react';
 import type { NavigationTab } from './TabContent';
+import { useBackToClose } from '../hooks/useBackButton';
 import type { AuthUser } from '../types';
 
 interface MobileNavProps {
@@ -64,6 +65,7 @@ export const MobileNav: React.FC<MobileNavProps> = ({
   user
 }) => {
   const [isMoreOpen, setIsMoreOpen] = useState(false);
+  useBackToClose(isMoreOpen, () => setIsMoreOpen(false));
   const moreActive = MORE_TABS.some((t) => t.tab === activeTab);
 
   // Zamknięcie arkusza klawiszem Escape i blokada przewijania strony pod spodem

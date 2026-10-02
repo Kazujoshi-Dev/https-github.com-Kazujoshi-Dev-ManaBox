@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { ScryfallCard, DeckItem, CollectionItem } from '../types';
 import { Crown, Swords, X, Sparkles, Check, Search, Layers, Globe } from 'lucide-react';
 
+import { useBackToClose } from '../hooks/useBackButton';
 interface DeckCreateModalProps {
   isOpen: boolean;
   deckToEdit?: DeckItem | null;
@@ -25,6 +26,9 @@ export const DeckCreateModal: React.FC<DeckCreateModalProps> = ({
   onCreateDeck,
   onUpdateDeck,
 }) => {
+  // „Wstecz” na telefonie zamyka to okno zamiast opuszczać stronę
+  useBackToClose(isOpen, onClose);
+
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [format, setFormat] = useState('EDH Commander'); // Domyślnie zawsze EDH Commander

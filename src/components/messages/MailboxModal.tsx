@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { UserMessage, RegisteredUserSummary, AuthUser } from '../../types';
 import { messagesApi } from '../../services/api';
+import { useBackToClose } from '../../hooks/useBackButton';
 import { 
   Inbox, 
   Send, 
@@ -36,6 +37,9 @@ export const MailboxModal: React.FC<MailboxModalProps> = ({
   onUnreadCountChange,
   showToast,
 }) => {
+  // „Wstecz” na telefonie zamyka to okno zamiast opuszczać stronę
+  useBackToClose(isOpen, onClose);
+
   const [activeTab, setActiveTab] = useState<'inbox' | 'sent' | 'compose'>('inbox');
   const [inbox, setInbox] = useState<UserMessage[]>([]);
   const [sent, setSent] = useState<UserMessage[]>([]);

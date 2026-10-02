@@ -2,6 +2,7 @@ import React from 'react';
 import { Plus, X, Layers, Globe, Search, Crown } from 'lucide-react';
 import { DeckAddCardModalProps } from './types';
 
+import { useBackToClose } from '../../hooks/useBackButton';
 export const DeckAddCardModal: React.FC<DeckAddCardModalProps> = ({
   isOpen,
   deckName,
@@ -16,6 +17,9 @@ export const DeckAddCardModal: React.FC<DeckAddCardModalProps> = ({
   onSourceChange,
   onAddCard,
 }) => {
+  // „Wstecz” na telefonie zamyka to okno zamiast opuszczać stronę
+  useBackToClose(isOpen, onClose);
+
   if (!isOpen) return null;
 
   return (

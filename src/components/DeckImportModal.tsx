@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { X, Upload, Swords, Crown, Sparkles, RefreshCw, Check } from 'lucide-react';
 import { DeckItem, ScryfallCard } from '../types';
+import { useBackToClose } from '../hooks/useBackButton';
 import { 
   parseTxtDeckOrCollection, 
   resolveCardsFromScryfall, 
@@ -20,6 +21,9 @@ export const DeckImportModal: React.FC<DeckImportModalProps> = ({
   onCreateDeck,
   showToast,
 }) => {
+  // „Wstecz” na telefonie zamyka to okno zamiast opuszczać stronę
+  useBackToClose(isOpen, onClose);
+
   const [deckName, setDeckName] = useState<string>('');
   const [importText, setImportText] = useState<string>('');
   const [isResolving, setIsResolving] = useState<boolean>(false);

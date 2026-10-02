@@ -3,6 +3,7 @@ import { CollectionItem, AppSettings } from '../types';
 import { formatCurrency, getCardPrice, getCardImageUri, getRarityColor, getRarityLabel, handleCardImageError } from '../utils/formatters';
 import { CircleDollarSign, X, Plus, Minus, Sparkles, Tag, Layers } from 'lucide-react';
 
+import { useBackToClose } from '../hooks/useBackButton';
 interface SellQuantityModalProps {
   isOpen: boolean;
   item: CollectionItem | null;
@@ -23,6 +24,9 @@ export const SellQuantityModal: React.FC<SellQuantityModalProps> = ({
   onClose,
   onConfirm,
 }) => {
+  // „Wstecz” na telefonie zamyka to okno zamiast opuszczać stronę
+  useBackToClose(isOpen, onClose);
+
   const [selectedFinish, setSelectedFinish] = useState<'normal' | 'foil'>('normal');
   const [quantityToSell, setQuantityToSell] = useState<number>(1);
   const [customPriceInput, setCustomPriceInput] = useState<string>('');

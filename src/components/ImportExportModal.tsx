@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { X, Download, Upload, FileText, Check, Copy, AlertCircle, RefreshCw, Layers, Sparkles } from 'lucide-react';
 import { CollectionItem, Catalog } from '../types';
+import { useBackToClose } from '../hooks/useBackButton';
 import { 
   exportCollectionToTxt, 
   parseTxtDeckOrCollection, 
@@ -28,6 +29,9 @@ export const ImportExportModal: React.FC<ImportExportModalProps> = ({
   showToast,
   initialTab = 'export',
 }) => {
+  // „Wstecz” na telefonie zamyka to okno zamiast opuszczać stronę
+  useBackToClose(isOpen, onClose);
+
   const [activeTab, setActiveTab] = useState<'export' | 'import'>(initialTab);
   const [copied, setCopied] = useState<boolean>(false);
 

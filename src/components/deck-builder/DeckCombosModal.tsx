@@ -26,6 +26,7 @@ import {
 import { DeckItem, SpellbookCard, SpellbookVariant } from '../../types';
 import { spellbookApi } from '../../services/api';
 
+import { useBackToClose } from '../../hooks/useBackButton';
 interface DeckCombosModalProps {
   isOpen: boolean;
   deck: DeckItem;
@@ -145,6 +146,9 @@ export const DeckCombosModal: React.FC<DeckCombosModalProps> = ({
   onAddToWishlist,
   onViewCardDetails,
 }) => {
+  // „Wstecz” na telefonie zamyka to okno zamiast opuszczać stronę
+  useBackToClose(isOpen, onClose);
+
   const [activeTab, setActiveTab] = useState<'included' | 'almost'>('included');
   const [searchFilter, setSearchFilter] = useState('');
   const [selectedEffectFilter, setSelectedEffectFilter] = useState<string>('ALL');

@@ -36,6 +36,7 @@ import { detectCardInSource, recognizeCard } from './scanEngine';
 import { Quad, quadMovement } from './cardDetector';
 import { EdhrecBadge } from '../EdhrecBadge';
 
+import { useBackToClose } from '../../hooks/useBackButton';
 export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
   isOpen,
   onClose,
@@ -44,6 +45,9 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
   onSaveToCollection,
   showToast,
 }) => {
+  // „Wstecz” na telefonie zamyka to okno zamiast opuszczać stronę
+  useBackToClose(isOpen, onClose);
+
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const autoScanTimerRef = useRef<NodeJS.Timeout | null>(null);

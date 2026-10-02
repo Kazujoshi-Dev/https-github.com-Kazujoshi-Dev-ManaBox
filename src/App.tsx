@@ -16,6 +16,7 @@ import { Toast } from './components/Toast';
 import { MobileNav } from './components/MobileNav';
 import { CircleDollarSign } from 'lucide-react';
 import { useAuth } from './hooks/useAuth';
+import { useBackToClose, useHistoryTabs } from './hooks/useBackButton';
 import { useToast } from './hooks/useToast';
 import { useSettings } from './hooks/useSettings';
 import { useCollectionStats } from './hooks/useCollectionStats';
@@ -125,8 +126,12 @@ export default function App() {
   }, []);
 
   // Navigation & Active View State
-  const [activeTab, setActiveTab] = useState<NavigationTab>('collection');
+  const [activeTab, setActiveTabState] = useState<NavigationTab>('collection');
   const [selectedDeck, setSelectedDeck] = useState<DeckItem | null>(null);
+  // Zmiana zakładki trafia do historii przeglądarki — „Wstecz” wraca do poprzedniej zakładki
+  const setActiveTab = useHistoryTabs<NavigationTab>(activeTab, setActiveTabState, 'collection');
+  // Otwarta talia: „Wstecz” wraca do listy talii
+  useBackToClose(Boolean(selectedDeck), () => setSelectedDeck(null));
 
   // Modal Visibility States
   const [isSettingsOpen, setIsSettingsOpen] = useState<boolean>(false);

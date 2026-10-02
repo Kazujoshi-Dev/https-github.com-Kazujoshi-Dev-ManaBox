@@ -3,6 +3,7 @@ import { FolderPlus, X, Star, Trash2 } from 'lucide-react';
 import { CatalogFormModalProps } from './types';
 import { COLOR_MAP } from './constants';
 
+import { useBackToClose } from '../../hooks/useBackButton';
 export const CatalogFormModal: React.FC<CatalogFormModalProps> = ({
   isOpen,
   editingCatalog,
@@ -21,6 +22,9 @@ export const CatalogFormModal: React.FC<CatalogFormModalProps> = ({
   onSubmit,
   onRequestDelete,
 }) => {
+  // „Wstecz” na telefonie zamyka to okno zamiast opuszczać stronę
+  useBackToClose(isOpen, onClose);
+
   if (!isOpen) return null;
 
   return (
