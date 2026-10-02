@@ -2,7 +2,6 @@ import express from 'express';
 import crypto from 'crypto';
 import path from 'path';
 import fs from 'fs';
-import { createServer as createViteServer } from 'vite';
 import { GoogleGenAI, Type } from '@google/genai';
 import * as db from './src/server/db';
 import { hashPassword, verifyPassword, generateToken, verifyToken } from './src/server/auth';
@@ -1901,6 +1900,8 @@ app.get('/api/spellbook/status', (_req, res) => {
 async function startServer() {
   await db.initDb();
   if (process.env.NODE_ENV !== 'production') {
+    // Vite ładowany tylko w trybie deweloperskim — w produkcji nie jest potrzebny.
+    const { createServer: createViteServer } = await import('vite');
     const vite = await createViteServer({
       server: { middlewareMode: true, allowedHosts: true },
       appType: 'spa'
@@ -1908,8 +1909,15 @@ async function startServer() {
     app.use(vite.middlewares);
   } else {
     const distPath = path.join(process.cwd(), 'dist');
-    app.use(express.static(distPath));
-    app.get('*', (req: express.Request, res: express.Response) => {
+    // Pliki z hashem w nazwie (dist/assets) można cache'ować długo; index.html zawsze świeży.
+    app.use('/assets', express.static(path.join(distPath, 'assets'), { maxAge: '1y', immutable: true, fallthrough: false }));
+    app.use(express.static(distPath, { index: false, maxAge: '1h' }));
+    // Nieznane ścieżki API zwracają 404 zamiast strony aplikacji.
+    app.use('/api', (_req: express.Request, res: express.Response) => {
+      res.status(404).json({ error: 'Nie znaleziono.' });
+    });
+    app.get('*', (_req: express.Request, res: express.Response) => {
+      res.setHeader('Cache-Control', 'no-cache');
       res.sendFile(path.join(distPath, 'index.html'));
     });
   }

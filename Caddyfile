@@ -1,0 +1,4 @@
+manascrew.eu, www.manascrew.eu {
+	encode zstd gzip
+	reverse_proxy app:3000
+}

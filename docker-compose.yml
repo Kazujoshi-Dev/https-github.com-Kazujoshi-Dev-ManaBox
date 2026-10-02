@@ -1,0 +1,55 @@
+# Wdrożenie produkcyjne: aplikacja + PostgreSQL + Caddy (HTTPS).
+# Sekrety NIE są w tym pliku — trzymaj je w pliku .env obok (wzór: .env.example).
+#   docker compose up -d --build
+
+services:
+  app:
+    build: .
+    container_name: mtg_manager_app
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: ${DATABASE_URL:?Ustaw DATABASE_URL w pliku .env}
+      JWT_SECRET: ${JWT_SECRET:?Ustaw JWT_SECRET w pliku .env}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+    depends_on:
+      db:
+        condition: service_healthy
+    # Brak sekcji ports — aplikacja jest dostępna tylko przez Caddy.
+
+  db:
+    image: postgres:16-alpine
+    container_name: postgres_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Ustaw POSTGRES_PASSWORD w pliku .env}
+      POSTGRES_DB: ${POSTGRES_DB:-mtg_db}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-mtg_db}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    # Brak sekcji ports — baza dostępna tylko w sieci Dockera.
+
+  caddy:
+    image: caddy:2-alpine
+    container_name: caddy_proxy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - app
+
+volumes:
+  pgdata:
+  caddy_data:
+  caddy_config:
