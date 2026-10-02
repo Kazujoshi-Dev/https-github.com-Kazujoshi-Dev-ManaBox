@@ -56,6 +56,7 @@ interface TabContentProps {
 
   // Wishlist interactions
   onAddToWishlist: (card: ScryfallCard) => Promise<void>;
+  onViewWishlistItem?: (item: WishlistItem) => void;
   onRemoveFromWishlist: (id: string) => Promise<void>;
   onMoveWishlistToCollection: (item: WishlistItem) => void;
 
@@ -102,6 +103,7 @@ export const TabContent: React.FC<TabContentProps> = ({
   onViewCollectionItemDetails,
   onQuickAddToCollection,
   onAddToWishlist,
+  onViewWishlistItem,
   onRemoveFromWishlist,
   onMoveWishlistToCollection,
   onSelectCard,
@@ -210,6 +212,7 @@ export const TabContent: React.FC<TabContentProps> = ({
           onMoveToCollection={onMoveWishlistToCollection}
           onOpenSearchTab={() => setActiveTab('search')}
           onViewCardDetails={onSelectCard}
+          onViewWishlistItem={onViewWishlistItem}
           currentUser={currentUser || null}
           showToast={showToast}
         />

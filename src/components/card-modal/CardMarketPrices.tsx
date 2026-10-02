@@ -11,6 +11,7 @@ export const CardMarketPrices: React.FC<CardMarketPricesProps> = ({
   plnPriceFoil,
   onToggleFoil,
   onAddToWishlist,
+  isOnWishlist = false,
 }) => {
   return (
     <>
@@ -118,10 +119,15 @@ export const CardMarketPrices: React.FC<CardMarketPricesProps> = ({
         )}
       </div>
 
-      {onAddToWishlist && (
+      {isOnWishlist ? (
+        <p className="w-full py-2 px-3 bg-rose-950/30 text-rose-200 rounded-xl text-xs font-semibold flex items-center justify-center gap-2 border border-rose-800/40">
+          <FolderHeart className="w-4 h-4 text-rose-400" />
+          <span>Na liście życzeń — zmiany wersji i foil zapisują się automatycznie</span>
+        </p>
+      ) : onAddToWishlist && (
         <button
           type="button"
-          onClick={() => onAddToWishlist(activeCard)}
+          onClick={() => onAddToWishlist(activeCard, isFoil)}
           className="w-full py-2 px-3 bg-rose-950/40 hover:bg-rose-900/60 text-rose-300 rounded-xl text-xs font-semibold flex items-center justify-center gap-2 border border-rose-800/50 transition-colors cursor-pointer"
         >
           <FolderHeart className="w-4 h-4 text-rose-400" />

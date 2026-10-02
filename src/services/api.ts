@@ -128,6 +128,12 @@ export const wishlistApi = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data)
     }, onUnauthorized),
+  update: (id: string, data: { card?: ScryfallCard; isFoil?: boolean; targetQuantity?: number; notes?: string }, onUnauthorized?: () => void) =>
+    fetchWithAuth(`/api/wishlist/${encodeURIComponent(id)}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    }, onUnauthorized),
   delete: (id: string, onUnauthorized?: () => void) =>
     fetchWithAuth(`/api/wishlist/${id}`, { method: 'DELETE' }, onUnauthorized)
 };

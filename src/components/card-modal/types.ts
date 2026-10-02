@@ -1,5 +1,5 @@
 import type { FormEvent } from 'react';
-import { ScryfallCard, CollectionItem, AppSettings, Catalog, CardCondition, CardLanguage } from '../../types';
+import { ScryfallCard, CollectionItem, AppSettings, Catalog, CardCondition, CardLanguage, WishlistItem } from '../../types';
 
 export interface CardSaveData {
   card: ScryfallCard;
@@ -20,10 +20,13 @@ export interface CardModalProps {
   onCreateCatalog?: (name: string, description?: string, color?: string) => Promise<Catalog | null>;
   onClose: () => void;
   onSaveToCollection: (itemData: CardSaveData) => void;
-  onAddToWishlist?: (card: ScryfallCard) => void;
+  onAddToWishlist?: (card: ScryfallCard, isFoil?: boolean) => void;
   onSelectPrint?: (newCard: ScryfallCard, oldCard: ScryfallCard) => void;
   onToggleFoil?: (isFoil: boolean) => void;
   initialFoil?: boolean;
+  /** Okno otwarte z listy życzeń — zmiana foil / wersji zapisuje się w tej pozycji. */
+  wishlistItem?: WishlistItem | null;
+  onUpdateWishlistItem?: (patch: { card?: ScryfallCard; isFoil?: boolean }) => Promise<unknown> | void;
 }
 
 export type CardModalTab = 'details' | 'prints' | 'combos';
@@ -60,7 +63,9 @@ export interface CardMarketPricesProps {
   plnPriceNorm: number;
   plnPriceFoil: number;
   onToggleFoil: (toFoil: boolean, updatePriceWithMarket?: boolean) => void;
-  onAddToWishlist?: (card: ScryfallCard) => void;
+  onAddToWishlist?: (card: ScryfallCard, isFoil?: boolean) => void;
+  /** Karta jest już na liście życzeń (okno otwarte z listy). */
+  isOnWishlist?: boolean;
 }
 
 export interface CardInfoSummaryProps {

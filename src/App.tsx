@@ -41,6 +41,7 @@ export default function App() {
     updateQuantity,
     saveToCollection,
     quickAddToCollection,
+    updateWishlistItem,
     addToWishlist,
     removeFromWishlist,
     createCatalog,
@@ -179,6 +180,8 @@ export default function App() {
   const [isDeckImportModalOpen, setIsDeckImportModalOpen] = useState<boolean>(false);
   const [selectedCardForModal, setSelectedCardForModal] = useState<ScryfallCard | null>(null);
   const [selectedCollectionItemForModal, setSelectedCollectionItemForModal] = useState<CollectionItem | null>(null);
+  // Okno szczegółów otwarte z listy życzeń (zmiany foil / wersji trafiają na listę)
+  const [selectedWishlistItemForModal, setSelectedWishlistItemForModal] = useState<WishlistItem | null>(null);
   const [deckCardBeingViewed, setDeckCardBeingViewed] = useState<ScryfallCard | null>(null);
   const [deckCardIsFoil, setDeckCardIsFoil] = useState<boolean | undefined>(undefined);
 
@@ -225,11 +228,29 @@ export default function App() {
 
   // Modal Handlers
   const handleOpenCardModal = useCallback((card: ScryfallCard, item: CollectionItem | null = null) => {
-    setSelectedCardForModal(card);
-    setSelectedCollectionItemForModal(item);
+    // Karta otwarta z wyszukiwarki / Top z dodatku, którą już masz (ten sam print):
+    // pokazujemy i zapisujemy posiadaną pozycję zamiast pustego formularza
+    const owned = item || collection.find((c) => c.card?.id === card.id || c.cardId === card.id) || null;
+    setSelectedCardForModal(owned ? owned.card : card);
+    setSelectedCollectionItemForModal(owned);
+    setSelectedWishlistItemForModal(null);
     setDeckCardBeingViewed(null);
-    setDeckCardIsFoil(item ? item.quantityFoil > 0 : undefined);
+    setDeckCardIsFoil(owned ? owned.quantityFoil > 0 : undefined);
+  }, [collection]);
+
+  const handleOpenWishlistCardModal = useCallback((item: WishlistItem) => {
+    setSelectedCardForModal(item.card);
+    setSelectedCollectionItemForModal(null);
+    setSelectedWishlistItemForModal(item);
+    setDeckCardBeingViewed(null);
+    setDeckCardIsFoil(Boolean(item.isFoil));
   }, []);
+
+  const handleUpdateWishlistItemFromModal = useCallback(async (patch: { card?: ScryfallCard; isFoil?: boolean }) => {
+    if (!selectedWishlistItemForModal) return;
+    const updated = await updateWishlistItem(selectedWishlistItemForModal.id, patch);
+    if (updated) setSelectedWishlistItemForModal(updated);
+  }, [selectedWishlistItemForModal, updateWishlistItem]);
 
   const handleOpenDeckCardModal = useCallback((card: ScryfallCard) => {
     setDeckCardBeingViewed(card);
@@ -246,11 +267,15 @@ export default function App() {
     const existing = collection.find(c => c.card.id === card.id || c.card.name.toLowerCase() === card.name.toLowerCase()) || null;
     setSelectedCardForModal(card);
     setSelectedCollectionItemForModal(existing);
+    setSelectedWishlistItemForModal(null);
   }, [collection, selectedDeck]);
 
   const handleCardPrintSelectedInModal = useCallback((newCard: ScryfallCard) => {
     const targetCard = deckCardBeingViewed || selectedCardForModal;
     if (!targetCard) return;
+    // Talie aktualizujemy tylko dla karty z talii lub z kolekcji — nie przy przeglądaniu
+    // wyszukiwarki czy listy życzeń (tam zmiana dotyczy tylko tego okna / listy)
+    if (!deckCardBeingViewed && !selectedCollectionItemForModal) return;
 
     const targetId = targetCard.id;
     const targetName = targetCard.name.toLowerCase();
@@ -308,11 +333,12 @@ export default function App() {
     });
 
     showToast(`Zaktualizowano wersję [${newCard.set.toUpperCase()}] #${newCard.collector_number} dla "${newCard.name}"!`);
-  }, [deckCardBeingViewed, selectedCardForModal, selectedDeck, decks, updateDeck, showToast]);
+  }, [deckCardBeingViewed, selectedCardForModal, selectedCollectionItemForModal, selectedDeck, decks, updateDeck, showToast]);
 
   const handleCardFoilToggledInModal = useCallback((isFoil: boolean) => {
     const targetCard = deckCardBeingViewed || selectedCardForModal;
     if (!targetCard) return;
+    if (!deckCardBeingViewed && !selectedCollectionItemForModal) return;
 
     const targetId = targetCard.id;
     const targetName = targetCard.name.toLowerCase();
@@ -367,12 +393,15 @@ export default function App() {
     });
 
     setDeckCardIsFoil(isFoil);
-    showToast(isFoil ? `Ustawiono wersję Foil ✨ dla "${targetCard.name}"!` : `Ustawiono wersję Standard dla "${targetCard.name}"!`);
-  }, [deckCardBeingViewed, selectedCardForModal, selectedDeck, decks, updateDeck, showToast]);
+    if (deckCardBeingViewed) {
+      showToast(isFoil ? `Ustawiono wersję Foil ✨ dla "${targetCard.name}"!` : `Ustawiono wersję Standard dla "${targetCard.name}"!`);
+    }
+  }, [deckCardBeingViewed, selectedCardForModal, selectedCollectionItemForModal, selectedDeck, decks, updateDeck, showToast]);
 
   const handleCloseCardModal = useCallback(() => {
     setSelectedCardForModal(null);
     setSelectedCollectionItemForModal(null);
+    setSelectedWishlistItemForModal(null);
     setDeckCardBeingViewed(null);
     setDeckCardIsFoil(undefined);
   }, []);
@@ -434,10 +463,15 @@ export default function App() {
     }
   }, [saveToCollection, selectedCollectionItemForModal, selectedDeck, deckCardBeingViewed, selectedCardForModal, updateDeck]);
 
-  const handleMoveWishlistToCollection = useCallback((wishlistItem: { id: string; card: ScryfallCard }) => {
-    handleOpenCardModal(wishlistItem.card, null);
+  const handleMoveWishlistToCollection = useCallback((wishlistItem: { id: string; card: ScryfallCard; isFoil?: boolean }) => {
+    // „Kupiono”: formularz dodawania (jeśli karta już jest w kolekcji, sztuki się dodadzą)
+    setSelectedCardForModal(wishlistItem.card);
+    setSelectedCollectionItemForModal(null);
+    setSelectedWishlistItemForModal(null);
+    setDeckCardBeingViewed(null);
+    setDeckCardIsFoil(Boolean(wishlistItem.isFoil));
     removeFromWishlist(wishlistItem.id);
-  }, [handleOpenCardModal, removeFromWishlist]);
+  }, [removeFromWishlist]);
 
   const handleCreateDeckSuccess = useCallback(async (data: {
     name: string;
@@ -690,6 +724,7 @@ export default function App() {
             onViewCollectionItemDetails={(item) => handleOpenCardModal(item.card, item)}
             onQuickAddToCollection={quickAddToCollection}
             onAddToWishlist={addToWishlist}
+            onViewWishlistItem={handleOpenWishlistCardModal}
             onRemoveFromWishlist={removeFromWishlist}
             onMoveWishlistToCollection={handleMoveWishlistToCollection}
             onSelectCard={(card) => handleOpenCardModal(card, null)}
@@ -799,6 +834,8 @@ export default function App() {
           onSelectPrint={handleCardPrintSelectedInModal}
           onToggleFoil={handleCardFoilToggledInModal}
           initialFoil={deckCardIsFoil}
+          wishlistItem={selectedWishlistItemForModal}
+          onUpdateWishlistItem={handleUpdateWishlistItemFromModal}
         />
       )}
 

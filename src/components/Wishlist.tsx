@@ -25,6 +25,8 @@ interface WishlistProps {
   onMoveToCollection: (wishlistItem: WishlistItem) => void;
   onOpenSearchTab: () => void;
   onViewCardDetails: (card: ScryfallCard) => void;
+  /** Szczegóły pozycji listy — zmiany foil / wersji zapisują się na liście. */
+  onViewWishlistItem?: (item: WishlistItem) => void;
   currentUser?: AuthUser | null;
   showToast?: (message: string) => void;
 }
@@ -36,6 +38,7 @@ export const Wishlist: React.FC<WishlistProps> = ({
   onMoveToCollection,
   onOpenSearchTab,
   onViewCardDetails,
+  onViewWishlistItem,
   currentUser,
   showToast
 }) => {
@@ -193,6 +196,7 @@ export const Wishlist: React.FC<WishlistProps> = ({
             const price = getCardPrice(card, item.isFoil, settings);
             const itemTotal = price * item.targetQuantity;
             const img = getCardImageUri(card, 'normal');
+            const openDetails = () => (onViewWishlistItem ? onViewWishlistItem(item) : onViewCardDetails(card));
 
             return (
               <div
@@ -200,7 +204,7 @@ export const Wishlist: React.FC<WishlistProps> = ({
                 className="bg-stone-900 rounded-xl border border-stone-800 hover:border-amber-500/40 p-4 transition-all flex gap-4 shadow-md"
               >
                 <div 
-                  onClick={() => onViewCardDetails(card)}
+                  onClick={openDetails}
                   className="w-20 h-28 shrink-0 rounded-lg overflow-hidden bg-stone-950 border border-stone-800 relative group cursor-pointer"
                 >
                   <img 
@@ -224,7 +228,7 @@ export const Wishlist: React.FC<WishlistProps> = ({
                   <div>
                     <div className="flex items-start justify-between gap-1">
                       <h4 
-                        onClick={() => onViewCardDetails(card)}
+                        onClick={openDetails}
                         className="font-bold text-sm text-stone-100 hover:text-amber-300 transition-colors line-clamp-1 cursor-pointer"
                       >
                         {card.name}

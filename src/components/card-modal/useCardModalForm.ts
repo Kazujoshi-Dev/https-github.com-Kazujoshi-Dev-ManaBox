@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback, FormEvent } from 'react';
-import { CollectionItem, ScryfallCard, CardCondition, CardLanguage, Catalog } from '../../types';
+import { CollectionItem, ScryfallCard, CardCondition, CardLanguage, Catalog, WishlistItem } from '../../types';
 import { CardSaveData } from './types';
 
 interface UseCardModalFormProps {
@@ -12,6 +12,8 @@ interface UseCardModalFormProps {
   onSelectPrint?: (newCard: ScryfallCard, oldCard: ScryfallCard) => void;
   onToggleFoil?: (isFoil: boolean) => void;
   initialFoil?: boolean;
+  wishlistItem?: WishlistItem | null;
+  onUpdateWishlistItem?: (patch: { card?: ScryfallCard; isFoil?: boolean }) => Promise<unknown> | void;
 }
 
 export function useCardModalForm({
@@ -24,6 +26,8 @@ export function useCardModalForm({
   onSelectPrint,
   onToggleFoil,
   initialFoil,
+  wishlistItem,
+  onUpdateWishlistItem,
 }: UseCardModalFormProps) {
   // Current active card version (can be switched between prints)
   const [activeCard, setActiveCard] = useState<ScryfallCard>(card);
@@ -134,6 +138,7 @@ export function useCardModalForm({
       onToggleFoil(toFoil);
     }
 
+    const label = toFoil ? 'Foil (Błyszcząca) ✨' : 'Standard (Zwykła)';
     if (existingItem) {
       onSaveToCollection({
         card: activeCard,
@@ -145,19 +150,15 @@ export function useCardModalForm({
         notes,
         binder: selectedBinder,
       });
-      showNotice(
-        toFoil
-          ? `Zapisano wersję Foil (Błyszcząca) ✨${updatePriceWithMarket && newPrice ? ` (cena: ${newPrice} zł)` : ''}`
-          : `Zapisano wersję Standard (Zwykła)${updatePriceWithMarket && newPrice ? ` (cena: ${newPrice} zł)` : ''}`
-      );
+      showNotice(`Zapisano w kolekcji wersję ${label}`);
+    } else if (wishlistItem && onUpdateWishlistItem) {
+      onUpdateWishlistItem({ isFoil: toFoil });
+      showNotice(`Zapisano na liście życzeń: wersja ${label}`);
     } else {
-      showNotice(
-        toFoil
-          ? `Zapisano wersję Foil (Błyszcząca) ✨${updatePriceWithMarket && newPrice ? ` (cena: ${newPrice} zł)` : ''}`
-          : `Zapisano wersję Standard (Zwykła)${updatePriceWithMarket && newPrice ? ` (cena: ${newPrice} zł)` : ''}`
-      );
+      // Karty nie ma w kolekcji — zmiana dotyczy formularza, zapis po kliknięciu „Dodaj”
+      showNotice(`Wybrano wersję ${label} — kliknij „Dodaj”, aby zapisać kartę w kolekcji`);
     }
-  }, [quantity, quantityFoil, purchasePrice, onToggleFoil, existingItem, onSaveToCollection, activeCard, condition, language, notes, selectedBinder, showNotice]);
+  }, [quantity, quantityFoil, purchasePrice, onToggleFoil, existingItem, onSaveToCollection, activeCard, condition, language, notes, selectedBinder, showNotice, wishlistItem, onUpdateWishlistItem]);
 
   const handleSelectPrint = useCallback((print: ScryfallCard) => {
     const oldCard = activeCard;
@@ -180,10 +181,13 @@ export function useCardModalForm({
         binder: selectedBinder,
       });
       showNotice(`Zapisano nową wersję printu: [${print.set.toUpperCase()}] #${print.collector_number} (${print.set_name})`);
+    } else if (wishlistItem && onUpdateWishlistItem) {
+      onUpdateWishlistItem({ card: print });
+      showNotice(`Zapisano na liście życzeń wersję: [${print.set.toUpperCase()}] #${print.collector_number} (${print.set_name})`);
     } else {
-      showNotice(`Wybrano wersję: [${print.set.toUpperCase()}] #${print.collector_number} (${print.set_name})`);
+      showNotice(`Wybrano wersję: [${print.set.toUpperCase()}] #${print.collector_number} (${print.set_name}) — kliknij „Dodaj”, aby zapisać`);
     }
-  }, [activeCard, onSelectPrint, existingItem, onSaveToCollection, quantity, quantityFoil, condition, language, purchasePrice, notes, selectedBinder, showNotice]);
+  }, [activeCard, onSelectPrint, existingItem, onSaveToCollection, quantity, quantityFoil, condition, language, purchasePrice, notes, selectedBinder, showNotice, wishlistItem, onUpdateWishlistItem]);
 
   const handleSelectCurrencyPrice = useCallback((priceStr: string | undefined, currency: 'EUR' | 'USD') => {
     if (!priceStr) return;

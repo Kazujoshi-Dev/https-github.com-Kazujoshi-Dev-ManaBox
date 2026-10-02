@@ -242,15 +242,33 @@ export function useAppData({ userId, onUnauthorized, showToast, onSettingsLoaded
       );
 
       if (targetExisting) {
+        // Bez wskazanej pozycji (np. „Dodaj” z wyszukiwarki) karta, którą już masz, dostaje
+        // dodatkowe sztuki — nie nadpisujemy posiadanej liczby.
+        const isAddition = !existingItem;
+        const payload = isAddition
+          ? {
+              ...data,
+              quantity: (targetExisting.quantity || 0) + (data.quantity || 0),
+              quantityFoil: (targetExisting.quantityFoil || 0) + (data.quantityFoil || 0),
+              condition: targetExisting.condition,
+              language: targetExisting.language,
+              binder: targetExisting.binder,
+              notes: targetExisting.notes || data.notes
+            }
+          : data;
         const res = await collectionApi.update(targetExisting.id, {
           cardId: data.card.id,
-          ...data
+          ...payload
         }, onUnauthorized);
 
         if (res.ok) {
           const updated: CollectionItem = await res.json();
           setCollection(prev => prev.map(c => c.id === updated.id ? updated : c));
-          showToast(`Zapisano wersję "${data.card.name}" [${data.card.set.toUpperCase()}] #${data.card.collector_number}`);
+          showToast(
+            isAddition
+              ? `Dodano "${data.card.name}" — masz teraz ${updated.quantity + updated.quantityFoil} szt.`
+              : `Zapisano wersję "${data.card.name}" [${data.card.set.toUpperCase()}] #${data.card.collector_number}`
+          );
           return updated;
         }
       } else {
@@ -289,23 +307,43 @@ export function useAppData({ userId, onUnauthorized, showToast, onSettingsLoaded
   }, [catalogs, saveToCollection]);
 
   // Wishlist CRUD
-  const addToWishlist = useCallback(async (card: ScryfallCard) => {
+  const addToWishlist = useCallback(async (card: ScryfallCard, isFoil = false) => {
     try {
       const res = await wishlistApi.create({
         cardId: card.id,
         card,
         targetQuantity: 1,
-        isFoil: false
+        isFoil
       }, onUnauthorized);
 
       if (res.ok) {
         const newItem = await res.json();
         setWishlist(prev => [newItem, ...prev]);
-        showToast(`Dodano "${card.name}" do Listy Życzeń!`);
+        showToast(`Dodano "${card.name}"${isFoil ? ' (Foil)' : ''} do Listy Życzeń!`);
       }
     } catch (err) {
       console.error('Failed to add to wishlist:', err);
     }
+  }, [onUnauthorized, showToast]);
+
+  const updateWishlistItem = useCallback(async (
+    id: string,
+    patch: { card?: ScryfallCard; isFoil?: boolean; targetQuantity?: number; notes?: string }
+  ): Promise<WishlistItem | null> => {
+    try {
+      const res = await wishlistApi.update(id, patch, onUnauthorized);
+      if (res.ok) {
+        const updated: WishlistItem = await res.json();
+        setWishlist(prev => prev.map(w => (w.id === updated.id ? updated : w)));
+        return updated;
+      }
+      const err = await res.json().catch(() => ({}));
+      showToast(err.error || 'Nie udało się zapisać zmiany na liście życzeń.');
+    } catch (err) {
+      console.error('Failed to update wishlist item:', err);
+      showToast('Nie udało się zapisać zmiany na liście życzeń.');
+    }
+    return null;
   }, [onUnauthorized, showToast]);
 
   const removeFromWishlist = useCallback(async (id: string) => {
@@ -548,6 +586,7 @@ export function useAppData({ userId, onUnauthorized, showToast, onSettingsLoaded
     updateQuantity,
     saveToCollection,
     quickAddToCollection,
+    updateWishlistItem,
     addToWishlist,
     removeFromWishlist,
     createCatalog,

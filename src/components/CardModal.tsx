@@ -28,6 +28,8 @@ export const CardModal: React.FC<CardModalProps> = ({
   onSelectPrint,
   onToggleFoil,
   initialFoil,
+  wishlistItem,
+  onUpdateWishlistItem,
 }) => {
   // „Wstecz” na telefonie zamyka to okno zamiast opuszczać stronę
   useBackToClose(true, onClose);
@@ -86,6 +88,8 @@ export const CardModal: React.FC<CardModalProps> = ({
     onSelectPrint,
     onToggleFoil,
     initialFoil,
+    wishlistItem,
+    onUpdateWishlistItem,
   });
 
   // Prints fetching and filtering hook
@@ -192,6 +196,7 @@ export const CardModal: React.FC<CardModalProps> = ({
                   handleToggleFoil(toFoil, updateWithMarket, plnPriceNorm, plnPriceFoil)
                 }
                 onAddToWishlist={onAddToWishlist}
+                isOnWishlist={Boolean(wishlistItem)}
               />
             </div>
 

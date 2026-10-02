@@ -2096,15 +2096,42 @@ app.get('/api/wishlist', authMiddleware, async (req, res) => {
 app.post('/api/wishlist', authMiddleware, async (req, res) => {
   try {
     const userId = (req as any).userId;
+    // id i data dodania nadaje serwer (klient nie może ich narzucić)
     const newItem = {
+      ...req.body,
       id: `wish-${crypto.randomUUID()}`,
-      addedAt: new Date().toISOString(),
-      ...req.body
+      addedAt: new Date().toISOString()
     };
     const saved = await db.addWishlistItem(userId, newItem);
     res.status(201).json(saved);
   } catch (err: any) {
     sendServerError(res, err, '/api/wishlist');
+  }
+});
+
+app.put('/api/wishlist/:id', authMiddleware, async (req, res) => {
+  try {
+    const userId = (req as any).userId;
+    const b = req.body || {};
+    const patch: db.WishlistItemPatch = {};
+    if (b.card !== undefined) {
+      if (!b.card || typeof b.card !== 'object' || typeof b.card.id !== 'string' || typeof b.card.name !== 'string') {
+        return res.status(400).json({ error: 'Nieprawidłowe dane karty.' });
+      }
+      patch.card = b.card;
+    }
+    if (b.isFoil !== undefined) patch.isFoil = Boolean(b.isFoil);
+    if (b.targetQuantity !== undefined) {
+      const q = Number(b.targetQuantity);
+      if (!Number.isInteger(q) || q < 1 || q > 999) return res.status(400).json({ error: 'Nieprawidłowa liczba sztuk.' });
+      patch.targetQuantity = q;
+    }
+    if (b.notes !== undefined) patch.notes = String(b.notes).slice(0, 500);
+    const updated = await db.updateWishlistItem(userId, String(req.params.id), patch);
+    if (!updated) return res.status(404).json({ error: 'Nie znaleziono pozycji na liście życzeń.' });
+    res.json(updated);
+  } catch (err: any) {
+    sendServerError(res, err, '/api/wishlist/:id');
   }
 });
 
