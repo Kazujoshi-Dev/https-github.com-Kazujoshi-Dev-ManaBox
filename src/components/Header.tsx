@@ -29,8 +29,8 @@ import { formatCurrency } from '../utils/formatters';
 import { AppSettings, AuthUser } from '../types';
 
 interface HeaderProps {
-  activeTab: 'collection' | 'search' | 'set-top' | 'analytics' | 'wishlist' | 'decks' | 'for-sale' | 'users' | 'admin';
-  setActiveTab: (tab: 'collection' | 'search' | 'set-top' | 'analytics' | 'wishlist' | 'decks' | 'for-sale' | 'users' | 'admin') => void;
+  activeTab: 'collection' | 'search' | 'set-top' | 'analytics' | 'wishlist' | 'decks' | 'for-sale' | 'users' | 'admin' | 'settings';
+  setActiveTab: (tab: 'collection' | 'search' | 'set-top' | 'analytics' | 'wishlist' | 'decks' | 'for-sale' | 'users' | 'admin' | 'settings') => void;
   totalCards: number;
   totalValue: number;
   valueChange?: number | null;
@@ -186,8 +186,13 @@ export const Header: React.FC<HeaderProps> = ({
           <div className="flex flex-wrap items-center gap-2">
             <button
               onClick={onOpenSettings}
-              title="Otwórz Ustawienia Wyceny & Waluty"
-              className="px-3 py-2 text-xs font-semibold rounded-lg bg-stone-800 hover:bg-stone-700 text-amber-400 border border-stone-700 flex items-center gap-1.5 transition-colors"
+              title="Ustawienia konta, wyceny i bezpieczeństwa"
+              aria-current={activeTab === 'settings' ? 'page' : undefined}
+              className={`px-3 py-2 text-xs font-semibold rounded-lg border flex items-center gap-1.5 transition-colors ${
+                activeTab === 'settings'
+                  ? 'bg-amber-500/20 text-amber-300 border-amber-500/50'
+                  : 'bg-stone-800 hover:bg-stone-700 text-amber-400 border-stone-700'
+              }`}
             >
               <Settings className="w-4 h-4" />
               <span className="hidden sm:inline">Ustawienia</span>

@@ -21,7 +21,7 @@ import { Wishlist } from './Wishlist';
 import { ForSaleList } from './ForSaleList';
 import { UsersList } from './UsersList';
 
-export type NavigationTab = 'collection' | 'decks' | 'search' | 'set-top' | 'analytics' | 'wishlist' | 'for-sale' | 'users' | 'admin';
+export type NavigationTab = 'collection' | 'decks' | 'search' | 'set-top' | 'analytics' | 'wishlist' | 'for-sale' | 'users' | 'admin' | 'settings';
 
 interface TabContentProps {
   activeTab: NavigationTab;

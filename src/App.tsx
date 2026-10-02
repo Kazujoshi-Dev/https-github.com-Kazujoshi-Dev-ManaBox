@@ -3,7 +3,7 @@ import { ScryfallCard, CollectionItem, DeckItem, CardCondition, CardLanguage, Ap
 import { Header } from './components/Header';
 import { AuthView } from './components/AuthView';
 import { TabContent, NavigationTab } from './components/TabContent';
-import { SettingsModal } from './components/SettingsModal';
+import { SettingsPage } from './components/SettingsPage';
 import { CardModal } from './components/CardModal';
 import { DeckCreateModal } from './components/DeckCreateModal';
 import { ImportExportModal } from './components/ImportExportModal';
@@ -171,7 +171,6 @@ export default function App() {
   useBackToClose(Boolean(selectedDeck), () => setSelectedDeck(null));
 
   // Modal Visibility States
-  const [isSettingsOpen, setIsSettingsOpen] = useState<boolean>(false);
   const [isDeckCreateModalOpen, setIsDeckCreateModalOpen] = useState<boolean>(false);
   const [deckToEdit, setDeckToEdit] = useState<DeckItem | null>(null);
   const [isScannerModalOpen, setIsScannerModalOpen] = useState<boolean>(false);
@@ -671,7 +670,7 @@ export default function App() {
         lastPriceChangeAt={totals.lastPriceChangeAt}
         settings={settings}
         decksCount={decks.length}
-        onOpenSettings={() => setIsSettingsOpen(true)}
+        onOpenSettings={() => setActiveTab('settings')}
         onRefreshPrices={refreshPrices}
         isRefreshing={isRefreshingPrices}
         onOpenAddModal={() => setActiveTab('search')}
@@ -693,6 +692,20 @@ export default function App() {
             <p className="text-sm font-bold text-stone-400">Ładowanie Twojej kolekcji i wycen rynkowych...</p>
           </div>
         ) : (
+          activeTab === 'settings' ? (
+            <SettingsPage
+              user={currentUser}
+              settings={settings}
+              onSaveSettings={async (newSettings) => {
+                await updateSettings(newSettings);
+                showToast('Zapisano ustawienia wyceny i waluty.');
+              }}
+              onLogoutAll={handleLogoutAll}
+              onPasswordChanged={(user, token) => handleAuthSuccess(user, token)}
+              onOpenImportExport={handleOpenCollectionImportExport}
+              showToast={showToast}
+            />
+          ) : (
           <TabContent
             activeTab={activeTab}
             setActiveTab={setActiveTab}
@@ -741,6 +754,7 @@ export default function App() {
             profileRequest={profileRequest}
             onProfileRequestHandled={handleProfileRequestHandled}
           />
+          )
         )}
       </main>
 
@@ -750,7 +764,7 @@ export default function App() {
         setActiveTab={setActiveTab}
         onOpenScanner={() => setIsScannerModalOpen(true)}
         onOpenMailbox={() => setIsMailboxOpen(true)}
-        onOpenSettings={() => setIsSettingsOpen(true)}
+        onOpenSettings={() => setActiveTab('settings')}
         onOpenImportExport={handleOpenCollectionImportExport}
         onRefreshPrices={refreshPrices}
         isRefreshing={isRefreshingPrices}
@@ -760,21 +774,6 @@ export default function App() {
       />
 
       {/* Settings Modal */}
-      {isSettingsOpen && (
-        <SettingsModal
-          settings={settings}
-          onClose={() => setIsSettingsOpen(false)}
-          onLogoutAll={async () => {
-            const ok = await handleLogoutAll();
-            if (ok) setIsSettingsOpen(false);
-            return ok;
-          }}
-          onSaveSettings={async (newSettings) => {
-            await updateSettings(newSettings);
-            showToast('Zapisano nowe ustawienia wyceny i waluty!');
-          }}
-        />
-      )}
 
       {/* Camera OCR Card Scanner Modal */}
       {isScannerModalOpen && (

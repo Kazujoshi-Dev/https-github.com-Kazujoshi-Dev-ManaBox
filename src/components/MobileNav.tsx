@@ -67,7 +67,7 @@ export const MobileNav: React.FC<MobileNavProps> = ({
 }) => {
   const [isMoreOpen, setIsMoreOpen] = useState(false);
   useBackToClose(isMoreOpen, () => setIsMoreOpen(false));
-  const moreActive = MORE_TABS.some((t) => t.tab === activeTab);
+  const moreActive = MORE_TABS.some((t) => t.tab === activeTab) || activeTab === 'admin' || activeTab === 'settings';
 
   // Zamknięcie arkusza klawiszem Escape i blokada przewijania strony pod spodem
   useEffect(() => {
