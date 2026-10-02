@@ -687,27 +687,14 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
                 <h2 className="text-sm sm:text-base font-extrabold text-stone-100">
                   Skaner Kart MTG
                 </h2>
-                <span className="hidden sm:flex text-[10px] font-extrabold uppercase tracking-wider text-emerald-400 bg-emerald-500/10 px-2.5 py-0.5 rounded border border-emerald-500/20 items-center gap-1.5 shadow-sm">
-                  <Zap className="w-3 h-3 fill-emerald-400" />
-                  <span>Delver Lens Engine</span>
-                </span>
               </div>
               <p className="text-xs text-stone-400 hidden sm:block">
-                Szybkie rozpoznawanie grafiki dHash, edycji i wyceny rynkowej Scryfall
+                Rozpoznawanie karty, wydania i wyceny rynkowej
               </p>
             </div>
           </div>
 
           <div className="flex items-center gap-2">
-            {/* Active Engine Badge */}
-            <div className="hidden md:flex items-center gap-1.5 px-3 py-1 bg-emerald-950/70 border border-emerald-500/30 rounded-xl text-emerald-300 text-xs font-bold shadow-inner">
-              <Zap className="w-3.5 h-3.5 fill-emerald-400" />
-              <span>Delver Lens & ManaBox</span>
-              <span className="hidden md:inline text-[9px] uppercase px-1 py-0.2 rounded bg-emerald-500/20 font-black text-emerald-200">
-                dHash
-              </span>
-            </div>
-
             {/* Audio Feedback Toggle */}
             <button
               type="button"
@@ -717,7 +704,7 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
                   ? 'bg-emerald-500/15 border-emerald-500/30 text-emerald-300'
                   : 'bg-stone-900 border-stone-800 text-stone-500 hover:text-stone-300'
               }`}
-              title={soundEnabled ? 'Dźwięk skanera włączony (piknięcie jak w Delver Lens)' : 'Dźwięk skanera wyciszony'}
+              title={soundEnabled ? 'Dźwięk skanera włączony' : 'Dźwięk skanera wyciszony'}
             >
               {soundEnabled ? <Zap className="w-3.5 h-3.5 text-emerald-400" /> : <ZapOff className="w-3.5 h-3.5" />}
             </button>
@@ -1123,7 +1110,7 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
                 <div className="flex items-center justify-between text-[10px] text-stone-400">
                   <span className="font-semibold text-stone-300 flex items-center gap-1.5">
                     <Zap className="w-3.5 h-3.5 text-emerald-400 fill-emerald-400" />
-                    <span className="text-emerald-400 font-extrabold">Potok Delver Lens (dHash + segmentacja):</span>
+                    <span className="text-emerald-400 font-extrabold">Podgląd skanu:</span>
                   </span>
                   <div className="flex items-center gap-2">
                     {scanResult.isBlackBorderDetected ? (
@@ -1478,7 +1465,7 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
                   Brak aktywnego skanu
                 </h3>
                 <p className="text-xs text-stone-400 leading-relaxed max-w-xs mx-auto">
-                  Umieść kartę w kadrze kamery i kliknij <strong className="text-emerald-400">„Zeskanuj (Delver Lens)”</strong>. Algorytm dHash błyskawicznie dopasuje grafikę i dane karty.
+                  Umieść kartę w kadrze kamery i kliknij <strong className="text-emerald-400">„Zeskanuj”</strong>. Karta zostanie rozpoznana po nazwie, numerze i ilustracji.
                 </p>
 
                 {/* Suggested Cards if found */}
