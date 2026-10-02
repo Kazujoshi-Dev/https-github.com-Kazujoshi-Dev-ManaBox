@@ -98,7 +98,7 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
   const [showTips, setShowTips] = useState<boolean>(false);
   const [isScanning, setIsScanning] = useState<boolean>(false);
   const [scanStatus, setScanStatus] = useState<string>('Nakieruj kartę na ramkę');
-  const [isAutoScanEnabled, setIsAutoScanEnabled] = useState<boolean>(true);
+  const [isAutoScanEnabled, setIsAutoScanEnabled] = useState<boolean>(false);
   const [isBatchMode, setIsBatchMode] = useState<boolean>(true);
   const [sessionAddedCount, setSessionAddedCount] = useState<number>(0);
 
@@ -1112,7 +1112,7 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
                     onChange={(e) => setIsAutoScanEnabled(e.target.checked)}
                     className="rounded border-stone-700 text-amber-500 focus:ring-0 bg-stone-900"
                   />
-                  <span className="hidden sm:inline">Auto-skan (3.5s)</span>
+                  <span className="hidden sm:inline">Auto-skan</span>
                   <span className="sm:hidden">Auto</span>
                 </label>
 
