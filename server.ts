@@ -16,10 +16,41 @@ app.disable('x-powered-by');
 
 // Mały limit dla logowania/rejestracji, większy dla reszty (skaner wysyła obrazy w base64).
 app.use('/api/auth', express.json({ limit: '20kb' }));
+app.use('/api/csp-report', express.json({
+  limit: '10kb',
+  type: ['application/csp-report', 'application/reports+json', 'application/json']
+}));
 app.use(express.json({ limit: '10mb' }));
+
+// Content-Security-Policy (tylko produkcja — tryb deweloperski Vite wymaga skryptów inline).
+// Dozwolone źródła wynikają z tego, czego używa frontend:
+//  - cdn.jsdelivr.net: silnik OCR Tesseract.js (worker, WebAssembly, słownik),
+//  - *.scryfall.io / api.scryfall.com: obrazy kart,
+//  - api.nbp.pl: kursy walut.
+// Naruszenia są raportowane do /api/csp-report i trafiają do logów serwera.
+const CSP = [
+  "default-src 'self'",
+  "script-src 'self' 'wasm-unsafe-eval' https://cdn.jsdelivr.net blob:",
+  "worker-src 'self' blob: https://cdn.jsdelivr.net",
+  "connect-src 'self' https://api.nbp.pl https://cdn.jsdelivr.net blob: data:",
+  "img-src 'self' data: blob: https://*.scryfall.io https://api.scryfall.com",
+  "style-src 'self' 'unsafe-inline'",
+  "font-src 'self' data:",
+  "media-src 'self' blob:",
+  "object-src 'none'",
+  "base-uri 'self'",
+  "form-action 'self'",
+  "frame-ancestors 'none'",
+  "upgrade-insecure-requests",
+  "report-uri /api/csp-report"
+].join('; ');
+const IS_PRODUCTION = process.env.NODE_ENV === 'production';
 
 // Nagłówki bezpieczeństwa. Kamera tylko dla własnej domeny (skaner kart), mikrofon wyłączony.
 app.use((req, res, next) => {
+  if (IS_PRODUCTION) {
+    res.setHeader('Content-Security-Policy', CSP);
+  }
   res.setHeader('Permissions-Policy', 'camera=(self), microphone=(), geolocation=()');
   res.setHeader('X-Content-Type-Options', 'nosniff');
   res.setHeader('X-Frame-Options', 'DENY');
@@ -82,6 +113,20 @@ const scannerDayLimiter = rateLimit({
 const messageLimiter = rateLimit({
   name: 'msg', windowMs: 10 * 60_000, max: 30, key: userKey,
   message: 'Wysyłasz zbyt wiele wiadomości. Spróbuj ponownie później.'
+});
+
+// Raporty naruszeń CSP z przeglądarek — tylko logujemy skrót, żeby wykryć zablokowane zasoby.
+app.post('/api/csp-report', (req, res) => {
+  try {
+    const raw = req.body?.['csp-report'] || (Array.isArray(req.body) ? req.body[0]?.body : req.body) || {};
+    const directive = String(raw['violated-directive'] || raw.effectiveDirective || raw['effective-directive'] || '?').slice(0, 100);
+    const blocked = String(raw['blocked-uri'] || raw.blockedURL || '?').slice(0, 200);
+    const page = String(raw['document-uri'] || raw.documentURL || '?').slice(0, 200);
+    console.warn(`[CSP] zablokowano ${blocked} (${directive}) na ${page}`);
+  } catch {
+    // ignorujemy niepoprawne raporty
+  }
+  res.status(204).end();
 });
 
 // Ensure data directory exists
