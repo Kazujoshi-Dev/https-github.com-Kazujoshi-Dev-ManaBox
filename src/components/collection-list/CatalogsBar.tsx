@@ -122,7 +122,7 @@ export const CatalogsBar: React.FC<CatalogsBarProps> = ({
               </span>
 
               {/* Quick Action Buttons for Catalog */}
-              <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity ml-1">
+              <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 pointer-coarse:opacity-100 transition-opacity ml-1">
                 {!cat.isDefault && onSetDefaultCatalog && (
                   <button
                     type="button"

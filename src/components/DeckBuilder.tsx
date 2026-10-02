@@ -93,6 +93,8 @@ export const DeckBuilder: React.FC<DeckBuilderProps> = ({
 
   // Hover triggers
   const handleHoverCard = useCallback((card: ScryfallCard, e: React.MouseEvent) => {
+    // Na dotyku podgląd „po najechaniu” zostawałby na ekranie po stuknięciu — tam stuknięcie otwiera szczegóły.
+    if (window.matchMedia?.('(hover: none)').matches) return;
     setHoveredCard(card);
     const rect = e.currentTarget.getBoundingClientRect();
     setHoverPosition({ x: rect.right + 10, y: Math.max(20, rect.top - 60) });

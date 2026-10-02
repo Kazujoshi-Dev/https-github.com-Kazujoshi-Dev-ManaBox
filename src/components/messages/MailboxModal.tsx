@@ -485,7 +485,7 @@ export const MailboxModal: React.FC<MailboxModalProps> = ({
                             <button
                               type="button"
                               onClick={(e) => handleDeleteMessage(msg.id, e)}
-                              className="p-1.5 text-stone-500 hover:text-rose-400 rounded-lg hover:bg-stone-800 transition-colors opacity-0 group-hover:opacity-100 cursor-pointer shrink-0"
+                              className="p-1.5 text-stone-500 hover:text-rose-400 rounded-lg hover:bg-stone-800 transition-colors opacity-0 group-hover:opacity-100 pointer-coarse:opacity-100 cursor-pointer shrink-0"
                               title="Usuń"
                             >
                               <Trash2 className="w-3.5 h-3.5" />

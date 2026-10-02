@@ -27,7 +27,7 @@ export const DeckCardRow: React.FC<DeckCardRowProps> = ({
       onMouseLeave={onLeave}
       onClick={() => onViewDetails(card)}
       style={{ height: `${rowHeight}px` }}
-      className={`group relative w-full rounded-xl overflow-hidden border transition-all shadow-md cursor-pointer flex items-center justify-between px-2.5 ${
+      className={`group relative w-full rounded-xl overflow-hidden border transition-all shadow-md cursor-pointer flex items-center justify-between px-2.5 pointer-coarse:min-h-11 ${
         entry.isFoil
           ? 'border-amber-400/60 hover:border-amber-300 shadow-amber-500/10'
           : 'border-stone-700/80 hover:border-amber-400/80 hover:shadow-amber-500/10'
@@ -79,13 +79,13 @@ export const DeckCardRow: React.FC<DeckCardRowProps> = ({
         )}
 
         {/* Action controls (visible on group hover) */}
-        <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1 bg-stone-950/90 rounded-lg px-1 py-0.5 border border-stone-700">
+        <div className="opacity-0 group-hover:opacity-100 pointer-coarse:opacity-100 transition-opacity flex items-center gap-1 pointer-coarse:gap-0 bg-stone-950/90 rounded-lg px-1 py-0.5 pointer-coarse:py-0 border border-stone-700">
           <button
             onClick={(e) => {
               e.stopPropagation();
               onUpdateQuantity(card.id, 1);
             }}
-            className="text-stone-400 hover:text-emerald-400 p-0.5"
+            className="text-stone-400 hover:text-emerald-400 p-0.5 pointer-coarse:p-2"
             title="Zwiększ ilość"
           >
             <PlusCircle className="w-3.5 h-3.5" />
@@ -96,7 +96,7 @@ export const DeckCardRow: React.FC<DeckCardRowProps> = ({
               e.stopPropagation();
               onUpdateQuantity(card.id, -1);
             }}
-            className="text-stone-400 hover:text-rose-400 p-0.5"
+            className="text-stone-400 hover:text-rose-400 p-0.5 pointer-coarse:p-2"
             title="Zmniejsz ilość"
           >
             <MinusCircle className="w-3.5 h-3.5" />
@@ -108,7 +108,7 @@ export const DeckCardRow: React.FC<DeckCardRowProps> = ({
                 e.stopPropagation();
                 onSetCommander(card);
               }}
-              className="text-stone-400 hover:text-amber-300 p-0.5"
+              className="text-stone-400 hover:text-amber-300 p-0.5 pointer-coarse:p-2"
               title="Ustaw jako Dowódcę"
             >
               <Crown className="w-3.5 h-3.5" />

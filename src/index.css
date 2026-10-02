@@ -15,3 +15,38 @@
   from { transform: translateY(100%); }
   to { transform: translateY(0); }
 }
+
+/* ---------- Telefon i dotyk ---------- */
+
+/* Zabezpieczenie: żaden element nie poszerza strony (przewijanie w bok na telefonie). */
+html,
+body {
+  overflow-x: clip;
+}
+
+/* Szybkie stuknięcia: bez opóźnienia na podwójne stuknięcie i bez szarego błysku. */
+button,
+a,
+label,
+summary,
+[role='button'] {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+@media (max-width: 767px) {
+  /* Najdrobniejszy tekst (etykiety, plakietki) czytelny na małym ekranie. */
+  .text-\[9px\],
+  .text-\[10px\],
+  .text-\[11px\] {
+    font-size: 12px;
+    line-height: 1.35;
+  }
+
+  /* iOS powiększa stronę przy wpisywaniu w pole z czcionką < 16 px. */
+  input:not([type='checkbox']):not([type='radio']):not([type='range']),
+  select,
+  textarea {
+    font-size: 16px;
+  }
+}
