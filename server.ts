@@ -63,16 +63,36 @@ app.use((req, res, next) => {
 });
 
 // Auth verification middleware
-function authMiddleware(req: express.Request, res: express.Response, next: express.NextFunction) {
+function bearerToken(req: express.Request): string | null {
   const authHeader = req.headers.authorization;
-  const token = authHeader?.startsWith('Bearer ') ? authHeader.substring(7) : null;
-  const payload = verifyToken(token);
-  if (!payload) {
-    return res.status(401).json({ error: 'Brak autoryzacji lub sesja wygasła. Zaloguj się ponownie.' });
+  return authHeader?.startsWith('Bearer ') ? authHeader.substring(7) : null;
+}
+
+// Sprawdza podpis tokenu ORAZ sesję w bazie: token przestaje działać po wylogowaniu,
+// po 7 dniach bezczynności i najpóźniej po 30 dniach od zalogowania.
+async function authMiddleware(req: express.Request, res: express.Response, next: express.NextFunction) {
+  try {
+    const payload = verifyToken(bearerToken(req));
+    const session = payload ? await db.getSession(payload.sid) : null;
+    if (!payload || !db.isSessionActive(session) || session.userId !== payload.userId) {
+      return res.status(401).json({ error: 'Brak autoryzacji lub sesja wygasła. Zaloguj się ponownie.' });
+    }
+    db.touchSession(session).catch((err) => console.warn('[Sesje] Nie udało się odświeżyć sesji:', err?.message || err));
+    (req as any).user = payload;
+    (req as any).userId = payload.userId;
+    (req as any).sessionId = session.id;
+    next();
+  } catch (err) {
+    sendServerError(res, err, 'authMiddleware');
   }
-  (req as any).user = payload;
-  (req as any).userId = payload.userId;
-  next();
+}
+
+async function issueSessionToken(req: express.Request, user: { id: string; email: string; username: string }) {
+  const session = await db.createSession(user.id, req.get('user-agent') || undefined, req.ip);
+  return generateToken(
+    { userId: user.id, email: user.email, username: user.username, sid: session.id },
+    new Date(session.expiresAt)
+  );
 }
 
 // Błędy serwera logujemy w całości, ale klient dostaje tylko ogólny komunikat
@@ -172,11 +192,7 @@ app.post(['/api/auth/register', '/api/auth/register/', '/api/register'], registe
     const userId = `usr_${crypto.randomUUID()}`;
     const user = await db.createUser(userId, email, username.trim(), hash, salt);
 
-    const token = generateToken({
-      userId: user.id,
-      email: user.email,
-      username: user.username
-    });
+    const token = await issueSessionToken(req, user);
 
     res.status(201).json({
       token,
@@ -210,11 +226,7 @@ app.post(['/api/auth/login', '/api/auth/login/', '/api/login'], loginIpLimiter, 
       return res.status(401).json({ error: 'Nieprawidłowy adres e-mail lub hasło.' });
     }
 
-    const token = generateToken({
-      userId: user.id,
-      email: user.email,
-      username: user.username
-    });
+    const token = await issueSessionToken(req, user);
 
     res.json({
       token,
@@ -252,8 +264,24 @@ app.get('/api/auth/me', authMiddleware, async (req, res) => {
   }
 });
 
-app.post('/api/auth/logout', (req, res) => {
+app.post('/api/auth/logout', async (req, res) => {
+  // Unieważnia bieżącą sesję. Zawsze zwraca sukces — klient i tak czyści token.
+  try {
+    const payload = verifyToken(bearerToken(req));
+    if (payload) await db.revokeSession(payload.sid, payload.userId);
+  } catch (err) {
+    console.warn('[Sesje] Błąd podczas wylogowania:', (err as any)?.message || err);
+  }
   res.json({ success: true });
+});
+
+app.post('/api/auth/logout-all', authMiddleware, async (req, res) => {
+  try {
+    const revoked = await db.revokeAllSessions((req as any).userId);
+    res.json({ success: true, revoked });
+  } catch (err: any) {
+    sendServerError(res, err, '/api/auth/logout-all');
+  }
 });
 
 const COLLECTION_FILE = path.join(DATA_DIR, 'collection.json');
@@ -1944,6 +1972,10 @@ app.get('/api/spellbook/status', (_req, res) => {
 
 async function startServer() {
   await db.initDb();
+  // Porządki w tabeli sesji: przy starcie i raz na dobę.
+  const purge = () => db.purgeOldSessions().catch((err) => console.warn('[Sesje] Czyszczenie nieudane:', err?.message || err));
+  purge();
+  setInterval(purge, 24 * 60 * 60 * 1000).unref();
   if (process.env.NODE_ENV !== 'production') {
     // Vite ładowany tylko w trybie deweloperskim — w produkcji nie jest potrzebny.
     const { createServer: createViteServer } = await import('vite');

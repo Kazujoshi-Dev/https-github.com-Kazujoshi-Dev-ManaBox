@@ -9,6 +9,7 @@ if (!fs.existsSync(DATA_DIR)) {
 
 export const USERS_FILE = path.join(DATA_DIR, 'users.json');
 export const MESSAGES_FILE = path.join(DATA_DIR, 'messages.json');
+export const SESSIONS_FILE = path.join(DATA_DIR, 'sessions.json');
 
 let pool: pg.Pool | null = null;
 let postgresActive = false;

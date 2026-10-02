@@ -131,6 +131,18 @@ export async function initDb(): Promise<void> {
             created_at TIMESTAMPTZ DEFAULT NOW()
           );
 
+          CREATE TABLE IF NOT EXISTS user_sessions (
+            id VARCHAR(64) PRIMARY KEY,
+            user_id VARCHAR(64) NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+            last_used_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+            expires_at TIMESTAMPTZ NOT NULL,
+            revoked_at TIMESTAMPTZ,
+            user_agent VARCHAR(255),
+            ip VARCHAR(64)
+          );
+          CREATE INDEX IF NOT EXISTS idx_user_sessions_user_id ON user_sessions(user_id);
+
           -- Safe forward-compatible migrations
           ALTER TABLE user_decks ADD COLUMN IF NOT EXISTS card_source VARCHAR(30) DEFAULT 'collection';
           ALTER TABLE user_decks ADD COLUMN IF NOT EXISTS commander_is_foil BOOLEAN DEFAULT FALSE;

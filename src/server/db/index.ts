@@ -9,3 +9,4 @@ export * from './repositories/wishlistRepository';
 export * from './repositories/settingsRepository';
 export * from './repositories/deckRepository';
 export * from './repositories/messageRepository';
+export * from './repositories/sessionRepository';

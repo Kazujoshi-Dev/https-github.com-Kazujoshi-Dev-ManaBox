@@ -27,10 +27,25 @@ export function useAuth(onLogoutSuccess?: (msg: string) => void) {
     onLogoutSuccess?.('Pomyślnie wylogowano z konta.');
   }, [handleUnauthorized, onLogoutSuccess]);
 
+  // Unieważnia sesje na wszystkich urządzeniach (łącznie z bieżącym).
+  const handleLogoutAll = useCallback(async (): Promise<boolean> => {
+    try {
+      const res = await authApi.logoutAll(handleUnauthorized);
+      if (!res.ok) return false;
+    } catch {
+      return false;
+    }
+    tokenStorage.clear();
+    setCurrentUser(null);
+    onLogoutSuccess?.('Wylogowano ze wszystkich urządzeń.');
+    return true;
+  }, [handleUnauthorized, onLogoutSuccess]);
+
   return {
     currentUser,
     handleAuthSuccess,
     handleLogout,
+    handleLogoutAll,
     handleUnauthorized
   };
 }

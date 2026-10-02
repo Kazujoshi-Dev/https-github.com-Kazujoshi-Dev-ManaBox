@@ -1,19 +1,38 @@
 import React, { useState } from 'react';
 import { AppSettings, PricingSource, CurrencyCode } from '../types';
 import { DEFAULT_SETTINGS, formatCurrency } from '../utils/formatters';
-import { X, Settings, RefreshCw, Check, ArrowRightLeft, DollarSign, Euro, Coins } from 'lucide-react';
+import { X, Settings, RefreshCw, Check, ArrowRightLeft, DollarSign, Euro, Coins, ShieldCheck, LogOut, Loader2 } from 'lucide-react';
 
 interface SettingsModalProps {
   settings: AppSettings;
   onSaveSettings: (newSettings: AppSettings) => void;
   onClose: () => void;
+  /** Wylogowuje ze wszystkich urządzeń; zwraca false, gdy się nie udało. */
+  onLogoutAll?: () => Promise<boolean>;
 }
 
 export const SettingsModal: React.FC<SettingsModalProps> = ({
   settings,
   onSaveSettings,
-  onClose
+  onClose,
+  onLogoutAll
 }) => {
+  const [confirmLogoutAll, setConfirmLogoutAll] = useState(false);
+  const [isLoggingOutAll, setIsLoggingOutAll] = useState(false);
+  const [logoutAllError, setLogoutAllError] = useState<string | null>(null);
+
+  const handleLogoutAll = async () => {
+    if (!onLogoutAll) return;
+    setIsLoggingOutAll(true);
+    setLogoutAllError(null);
+    const ok = await onLogoutAll();
+    setIsLoggingOutAll(false);
+    if (!ok) {
+      setLogoutAllError('Nie udało się wylogować. Spróbuj ponownie.');
+      setConfirmLogoutAll(false);
+    }
+  };
+
   const [pricingSource, setPricingSource] = useState<PricingSource>(settings.pricingSource);
   const [currency, setCurrency] = useState<CurrencyCode>(settings.currency);
   const [eurRate, setEurRate] = useState<string>(settings.eurToPlnRate.toString());
@@ -315,6 +334,56 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               )}
             </p>
           </div>
+
+          {/* Account security */}
+          {onLogoutAll && (
+            <div>
+              <div className="p-3.5 rounded-xl bg-stone-950 border border-stone-800 space-y-2.5">
+                <div className="flex items-start gap-2.5">
+                  <ShieldCheck className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
+                  <div className="space-y-0.5">
+                    <p className="text-xs font-bold text-stone-200">Bezpieczeństwo konta</p>
+                    <p className="text-[11px] text-stone-400">
+                      Sesja wygasa po 7 dniach bez aktywności. Jeśli logowałeś się na cudzym urządzeniu
+                      lub zgubiłeś telefon, wyloguj się wszędzie.
+                    </p>
+                  </div>
+                </div>
+                {logoutAllError && <p className="text-[11px] text-rose-300">{logoutAllError}</p>}
+                {!confirmLogoutAll ? (
+                  <button
+                    type="button"
+                    onClick={() => setConfirmLogoutAll(true)}
+                    className="w-full py-2 px-3 text-xs font-semibold text-rose-300 bg-rose-950/30 hover:bg-rose-950/50 border border-rose-900/50 rounded-lg flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+                  >
+                    <LogOut className="w-3.5 h-3.5" />
+                    Wyloguj ze wszystkich urządzeń
+                  </button>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <span className="text-[11px] text-stone-300 flex-1">Na pewno? Wylogujesz też to urządzenie.</span>
+                    <button
+                      type="button"
+                      onClick={() => setConfirmLogoutAll(false)}
+                      disabled={isLoggingOutAll}
+                      className="px-3 py-1.5 text-xs font-semibold text-stone-400 hover:text-stone-200 rounded-lg transition-colors cursor-pointer"
+                    >
+                      Anuluj
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleLogoutAll}
+                      disabled={isLoggingOutAll}
+                      className="px-3 py-1.5 text-xs font-bold text-white bg-rose-600 hover:bg-rose-500 rounded-lg flex items-center gap-1.5 transition-colors cursor-pointer disabled:opacity-60"
+                    >
+                      {isLoggingOutAll && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                      Tak, wyloguj
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
 
         </div>
 

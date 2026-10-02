@@ -23,7 +23,7 @@ import { publicSaleApi, messagesApi, usersApi } from './services/api';
 
 export default function App() {
   const { toastMessage, showToast } = useToast();
-  const { currentUser, handleAuthSuccess, handleLogout, handleUnauthorized } = useAuth(showToast);
+  const { currentUser, handleAuthSuccess, handleLogout, handleLogoutAll, handleUnauthorized } = useAuth(showToast);
   const { settings, updateSettings, applyRemoteSettings } = useSettings(handleUnauthorized);
 
   const {
@@ -618,6 +618,11 @@ export default function App() {
         <SettingsModal
           settings={settings}
           onClose={() => setIsSettingsOpen(false)}
+          onLogoutAll={async () => {
+            const ok = await handleLogoutAll();
+            if (ok) setIsSettingsOpen(false);
+            return ok;
+          }}
           onSaveSettings={async (newSettings) => {
             await updateSettings(newSettings);
             showToast('Zapisano nowe ustawienia wyceny i waluty!');

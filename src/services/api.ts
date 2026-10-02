@@ -46,7 +46,9 @@ export const authApi = {
   verifySession: (onUnauthorized?: () => void) =>
     fetchWithAuth('/api/auth/me', {}, onUnauthorized),
   logout: (onUnauthorized?: () => void) =>
-    fetchWithAuth('/api/auth/logout', { method: 'POST' }, onUnauthorized)
+    fetchWithAuth('/api/auth/logout', { method: 'POST' }, onUnauthorized),
+  logoutAll: (onUnauthorized?: () => void) =>
+    fetchWithAuth('/api/auth/logout-all', { method: 'POST' }, onUnauthorized)
 };
 
 export const collectionApi = {

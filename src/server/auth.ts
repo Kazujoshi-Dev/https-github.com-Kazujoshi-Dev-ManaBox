@@ -15,6 +15,8 @@ export interface TokenPayload {
   userId: string;
   email: string;
   username: string;
+  /** Identyfikator sesji w bazie — token jest ważny tylko, dopóki sesja jest aktywna. */
+  sid: string;
   exp: number;
 }
 
@@ -36,9 +38,9 @@ export function verifyPassword(password: string, hash: string, salt: string): bo
   }
 }
 
-export function generateToken(payload: Omit<TokenPayload, 'exp'>): string {
-  // 30 days expiration
-  const exp = Math.floor(Date.now() / 1000) + 30 * 24 * 60 * 60;
+export function generateToken(payload: Omit<TokenPayload, 'exp'>, expiresAt: Date): string {
+  // Token nie przeżyje sesji; o krótszym wygaśnięciu (bezczynność, wylogowanie) decyduje sesja w bazie.
+  const exp = Math.floor(expiresAt.getTime() / 1000);
   const fullPayload: TokenPayload = { ...payload, exp };
   const data = Buffer.from(JSON.stringify(fullPayload)).toString('base64url');
   const signature = crypto
@@ -67,8 +69,11 @@ export function verifyToken(token: string | null | undefined): TokenPayload | nu
     }
 
     const payload: TokenPayload = JSON.parse(Buffer.from(data, 'base64url').toString('utf-8'));
-    if (payload.exp && payload.exp < Math.floor(Date.now() / 1000)) {
+    if (!payload.exp || payload.exp < Math.floor(Date.now() / 1000)) {
       return null; // Expired
+    }
+    if (typeof payload.sid !== 'string' || !payload.sid || typeof payload.userId !== 'string') {
+      return null; // Token sprzed wprowadzenia sesji — wymaga ponownego logowania
     }
     return payload;
   } catch (err) {
