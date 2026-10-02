@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { WishlistItem, ScryfallCard, AppSettings } from '../types';
+import { WishlistItem, ScryfallCard, AppSettings, AuthUser } from '../types';
 import { formatCurrency, getCardImageUri, getCardPrice, handleCardImageError, getCardEdhrecRank } from '../utils/formatters';
 import { ManaSymbol } from './ManaSymbol';
 import { EdhrecBadge } from './EdhrecBadge';
@@ -11,7 +11,11 @@ import {
   ExternalLink, 
   CheckCircle2, 
   Eye, 
-  ArrowRightLeft 
+  ArrowRightLeft,
+  Share2,
+  Copy,
+  Check,
+  FileText
 } from 'lucide-react';
 
 interface WishlistProps {
@@ -21,6 +25,8 @@ interface WishlistProps {
   onMoveToCollection: (wishlistItem: WishlistItem) => void;
   onOpenSearchTab: () => void;
   onViewCardDetails: (card: ScryfallCard) => void;
+  currentUser?: AuthUser | null;
+  showToast?: (message: string) => void;
 }
 
 export const Wishlist: React.FC<WishlistProps> = ({
@@ -29,8 +35,44 @@ export const Wishlist: React.FC<WishlistProps> = ({
   onRemoveFromWishlist,
   onMoveToCollection,
   onOpenSearchTab,
-  onViewCardDetails
+  onViewCardDetails,
+  currentUser,
+  showToast
 }) => {
+  const [copiedLink, setCopiedLink] = useState(false);
+  const [copiedText, setCopiedText] = useState(false);
+
+  // Publiczny link do listy życzeń (działa bez logowania, jak oferta w „Sprzedam”)
+  const publicShareSlug = currentUser?.username || currentUser?.id || '';
+  const publicShareUrl = `${window.location.origin}/?szukam=${encodeURIComponent(publicShareSlug)}`;
+
+  const handleCopyLink = async () => {
+    try {
+      await navigator.clipboard.writeText(publicShareUrl);
+      setCopiedLink(true);
+      showToast?.('Skopiowano link do listy życzeń! Każdy bez konta może go otworzyć.');
+      setTimeout(() => setCopiedLink(false), 2500);
+    } catch {
+      showToast?.('Nie udało się skopiować — zaznacz link i skopiuj ręcznie.');
+    }
+  };
+
+  const handleCopyTextList = async () => {
+    if (wishlist.length === 0) return;
+    const lines = wishlist.map(item =>
+      `${item.targetQuantity}x ${item.card.name} (${item.card.set.toUpperCase()})${item.isFoil ? ' [FOIL]' : ''}`
+    );
+    const header = `=== SZUKAM KART (${currentUser?.username || 'Gracz MTG'}) ===\nLista życzeń: ${publicShareUrl}\n\n`;
+    try {
+      await navigator.clipboard.writeText(header + lines.join('\n'));
+      setCopiedText(true);
+      showToast?.('Skopiowano listę kart (.txt) do schowka!');
+      setTimeout(() => setCopiedText(false), 2500);
+    } catch {
+      showToast?.('Nie udało się skopiować listy.');
+    }
+  };
+
   // Calculate total estimated budget to buy all items on wishlist
   const totalWishlistCost = wishlist.reduce((acc, item) => {
     const price = getCardPrice(item.card, item.isFoil, settings);
@@ -66,6 +108,63 @@ export const Wishlist: React.FC<WishlistProps> = ({
           </button>
         </div>
       </div>
+
+      {/* Publiczny link do listy */}
+      {publicShareSlug && (
+        <div className="bg-stone-900 border border-rose-500/30 rounded-2xl p-4 shadow-xl flex flex-col lg:flex-row lg:items-center gap-3 lg:gap-5">
+          <div className="lg:w-72 shrink-0 space-y-0.5">
+            <p className="text-xs font-bold text-rose-300 flex items-center gap-1.5">
+              <Share2 className="w-4 h-4 text-rose-400" />
+              <span>Publiczny link do listy życzeń</span>
+            </p>
+            <p className="text-[11px] text-stone-400">
+              Wyślij go sprzedającym — zobaczą, jakich kart szukasz, bez zakładania konta.
+            </p>
+          </div>
+
+          <div className="flex-1 min-w-0 flex items-center gap-2 bg-stone-950 p-2 rounded-xl border border-stone-800">
+            <input
+              type="text"
+              readOnly
+              value={publicShareUrl}
+              onFocus={(e) => e.currentTarget.select()}
+              aria-label="Publiczny link do listy życzeń"
+              className="bg-transparent text-xs text-stone-300 font-mono w-full min-w-0 focus:outline-none truncate px-1"
+              title={publicShareUrl}
+            />
+            <button
+              type="button"
+              onClick={handleCopyLink}
+              className="h-9 px-3 bg-rose-600 hover:bg-rose-500 text-white rounded-lg text-xs font-bold transition-all shadow-md flex items-center gap-1.5 shrink-0 cursor-pointer"
+            >
+              {copiedLink ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+              <span>{copiedLink ? 'Skopiowano!' : 'Kopiuj'}</span>
+            </button>
+          </div>
+
+          <div className="flex items-center gap-4 shrink-0">
+            <a
+              href={publicShareUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="text-xs text-stone-400 hover:text-rose-300 transition-colors flex items-center gap-1 font-medium min-h-9"
+            >
+              <ExternalLink className="w-3.5 h-3.5" />
+              <span>Podgląd</span>
+            </a>
+            <button
+              type="button"
+              onClick={handleCopyTextList}
+              disabled={wishlist.length === 0}
+              className="text-xs text-stone-400 hover:text-amber-300 transition-colors flex items-center gap-1 font-medium cursor-pointer min-h-9 disabled:opacity-40 disabled:cursor-default"
+              title="Skopiuj listę kart jako tekst"
+            >
+              {copiedText ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <FileText className="w-3.5 h-3.5" />}
+              <span>{copiedText ? 'Skopiowano!' : 'Kopiuj listę (.txt)'}</span>
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Wishlist Items List */}
       {wishlist.length === 0 ? (

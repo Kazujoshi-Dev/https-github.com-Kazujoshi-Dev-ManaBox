@@ -207,6 +207,8 @@ export const TabContent: React.FC<TabContentProps> = ({
           onMoveToCollection={onMoveWishlistToCollection}
           onOpenSearchTab={() => setActiveTab('search')}
           onViewCardDetails={onSelectCard}
+          currentUser={currentUser || null}
+          showToast={showToast}
         />
       );
 

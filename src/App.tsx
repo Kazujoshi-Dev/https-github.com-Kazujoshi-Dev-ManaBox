@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useEffect } from 'react';
-import { ScryfallCard, CollectionItem, DeckItem, CardCondition, CardLanguage, AppSettings, RegisteredUserSummary } from './types';
+import { ScryfallCard, CollectionItem, DeckItem, CardCondition, CardLanguage, AppSettings, RegisteredUserSummary, WishlistItem } from './types';
 import { Header } from './components/Header';
 import { AuthView } from './components/AuthView';
 import { TabContent, NavigationTab } from './components/TabContent';
@@ -10,6 +10,7 @@ import { ImportExportModal } from './components/ImportExportModal';
 import { DeckImportExportModal } from './components/DeckImportExportModal';
 import { CameraScannerModal } from './components/camera-scanner/CameraScannerModal';
 import { PublicSaleView } from './components/PublicSaleView';
+import { PublicWishlistView } from './components/PublicWishlistView';
 import { MailboxModal } from './components/messages/MailboxModal';
 import { SellQuantityModal } from './components/SellQuantityModal';
 import { Toast } from './components/Toast';
@@ -91,12 +92,26 @@ export default function App() {
     cards: CollectionItem[];
     settings: AppSettings;
   } | null>(null);
+  // Publiczna lista życzeń (link ?szukam=... lub ?wishlist=...)
+  const [publicWishlistData, setPublicWishlistData] = useState<{
+    owner: { id: string; username: string };
+    wishlist: WishlistItem[];
+    settings: AppSettings;
+  } | null>(null);
+  const publicKind = React.useMemo<'sale' | 'wishlist'>(() => {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      return params.get('szukam') || params.get('wishlist') ? 'wishlist' : 'sale';
+    } catch {
+      return 'sale';
+    }
+  }, []);
   const [showLoginModalFromPublic, setShowLoginModalFromPublic] = useState<boolean>(false);
   const [publicSaleError, setPublicSaleError] = useState<string | null>(null);
   const [isLoadingPublicSale, setIsLoadingPublicSale] = useState<boolean>(() => {
     try {
       const params = new URLSearchParams(window.location.search);
-      return Boolean(params.get('sprzedam') || params.get('sale'));
+      return Boolean(params.get('sprzedam') || params.get('sale') || params.get('szukam') || params.get('wishlist'));
     } catch {
       return false;
     }
@@ -107,7 +122,19 @@ export default function App() {
     try {
       const params = new URLSearchParams(window.location.search);
       const saleParam = params.get('sprzedam') || params.get('sale');
-      if (saleParam) {
+      const wishlistParam = params.get('szukam') || params.get('wishlist');
+      if (wishlistParam && !saleParam) {
+        setIsLoadingPublicSale(true);
+        usersApi.getWishlist(wishlistParam)
+          .then(data => {
+            setPublicWishlistData({ owner: data.user, wishlist: data.wishlist, settings: data.settings });
+            setPublicSaleError(null);
+          })
+          .catch(err => {
+            setPublicSaleError(err.message || 'Nie znaleziono listy życzeń tego użytkownika.');
+          })
+          .finally(() => setIsLoadingPublicSale(false));
+      } else if (saleParam) {
         setIsLoadingPublicSale(true);
         publicSaleApi.getOffers(saleParam)
           .then(data => {
@@ -449,8 +476,10 @@ export default function App() {
     return (
       <div className="min-h-screen bg-stone-950 flex flex-col items-center justify-center p-6 text-stone-100">
         <div className="w-12 h-12 rounded-full border-4 border-emerald-500/20 border-t-emerald-500 animate-spin mb-4" />
-        <p className="text-sm font-bold text-stone-300">Ładowanie oferty sprzedaży kart MTG...</p>
-        <p className="text-xs text-stone-500 mt-1">Sprawdzanie publicznego klasera</p>
+        <p className="text-sm font-bold text-stone-300">
+          {publicKind === 'wishlist' ? 'Ładowanie listy życzeń...' : 'Ładowanie oferty sprzedaży kart MTG...'}
+        </p>
+        <p className="text-xs text-stone-500 mt-1">{publicKind === 'wishlist' ? 'Sprawdzanie publicznej listy' : 'Sprawdzanie publicznego klasera'}</p>
       </div>
     );
   }
@@ -463,7 +492,7 @@ export default function App() {
           <div className="w-12 h-12 rounded-2xl bg-rose-500/10 border border-rose-500/30 text-rose-400 flex items-center justify-center mx-auto">
             <CircleDollarSign className="w-6 h-6" />
           </div>
-          <h2 className="text-xl font-black text-white">Nie znaleziono oferty</h2>
+          <h2 className="text-xl font-black text-white">{publicKind === 'wishlist' ? 'Nie znaleziono listy życzeń' : 'Nie znaleziono oferty'}</h2>
           <p className="text-xs text-stone-400">{publicSaleError}</p>
           <button
             onClick={() => {
@@ -488,7 +517,7 @@ export default function App() {
             onClick={() => setShowLoginModalFromPublic(false)}
             className="mb-4 px-3 py-1.5 bg-stone-800 hover:bg-stone-750 text-stone-300 hover:text-white rounded-lg text-xs font-semibold border border-stone-700 transition-colors cursor-pointer flex items-center gap-1.5"
           >
-            <span>← Wróć do oferty sprzedaży</span>
+            <span>{publicKind === 'wishlist' ? '← Wróć do listy życzeń' : '← Wróć do oferty sprzedaży'}</span>
           </button>
         </div>
         <AuthView
@@ -500,6 +529,36 @@ export default function App() {
         />
         <Toast message={toastMessage} />
       </div>
+    );
+  }
+
+  // 4a. Publiczna lista życzeń (bez logowania)
+  if (publicWishlistData) {
+    return (
+      <>
+        <PublicWishlistView
+          owner={publicWishlistData.owner}
+          wishlist={publicWishlistData.wishlist}
+          settings={publicWishlistData.settings}
+          isLoggedIn={Boolean(currentUser)}
+          onOpenLogin={() => setShowLoginModalFromPublic(true)}
+          showToast={showToast}
+        />
+        {currentUser && (
+          <div className="fixed bottom-[calc(1.5rem+env(safe-area-inset-bottom))] right-6 z-40">
+            <button
+              onClick={() => {
+                setPublicWishlistData(null);
+                window.history.pushState({}, '', window.location.pathname);
+              }}
+              className="px-4 py-2.5 bg-gradient-to-r from-amber-600 to-amber-500 hover:from-amber-500 hover:to-amber-400 text-stone-950 font-black text-xs rounded-xl shadow-xl shadow-amber-950/50 flex items-center gap-2 cursor-pointer transition-all"
+            >
+              <span>← Moja Kolekcja ({currentUser.username})</span>
+            </button>
+          </div>
+        )}
+        <Toast message={toastMessage} />
+      </>
     );
   }
 
