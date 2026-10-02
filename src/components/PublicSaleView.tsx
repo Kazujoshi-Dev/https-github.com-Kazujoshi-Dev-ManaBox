@@ -24,7 +24,6 @@ interface PublicSaleViewProps {
   seller: {
     id: string;
     username: string;
-    email?: string;
   };
   cards: CollectionItem[];
   settings: AppSettings;

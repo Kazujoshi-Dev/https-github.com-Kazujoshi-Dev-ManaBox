@@ -168,7 +168,6 @@ export interface AuthUser {
 export interface RegisteredUserSummary {
   id: string;
   username: string;
-  email: string;
   createdAt: string;
   forSaleCount: number;
   forSaleItemsCount: number;

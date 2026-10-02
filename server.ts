@@ -1312,7 +1312,6 @@ app.get('/api/users', async (req, res) => {
           return {
             id: u.id,
             username: u.username,
-            email: u.email,
             createdAt: u.createdAt,
             forSaleCount,
             forSaleItemsCount: forSaleItems.length,
@@ -1324,7 +1323,6 @@ app.get('/api/users', async (req, res) => {
           return {
             id: u.id,
             username: u.username,
-            email: u.email,
             createdAt: u.createdAt,
             forSaleCount: 0,
             forSaleItemsCount: 0,
@@ -1364,7 +1362,6 @@ app.get('/api/public/sale/:userRef', async (req, res) => {
       seller: {
         id: user.id,
         username: user.username,
-        email: user.email,
         createdAt: user.created_at
       },
       cards: forSaleItems,
@@ -1403,7 +1400,6 @@ app.get('/api/public/wishlist/:userRef', async (req, res) => {
       user: {
         id: user.id,
         username: user.username,
-        email: user.email,
         createdAt: user.created_at
       },
       wishlist,

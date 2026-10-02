@@ -52,7 +52,7 @@ export const UsersList: React.FC<UsersListProps> = ({
 
   // For-sale cards state for selected user
   const [sellerOffers, setSellerOffers] = useState<{
-    seller: { id: string; username: string; email?: string; createdAt?: string };
+    seller: { id: string; username: string; createdAt?: string };
     cards: CollectionItem[];
     settings: AppSettings;
   } | null>(null);
@@ -178,10 +178,7 @@ export const UsersList: React.FC<UsersListProps> = ({
         if (filterForSaleOnly && u.forSaleCount <= 0) return false;
         if (!searchQuery.trim()) return true;
         const q = searchQuery.toLowerCase().trim();
-        return (
-          u.username.toLowerCase().includes(q) ||
-          (u.email && u.email.toLowerCase().includes(q))
-        );
+        return u.username.toLowerCase().includes(q);
       })
       .sort((a, b) => {
         if (sortBy === 'sale-desc') {
@@ -1052,7 +1049,7 @@ export const UsersList: React.FC<UsersListProps> = ({
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Szukaj gracza po nazwie lub emailu..."
+            placeholder="Szukaj gracza po nazwie..."
             className="w-full bg-stone-950 border border-stone-800 focus:border-blue-500 rounded-xl pl-9 pr-3.5 py-2 text-xs text-stone-100 placeholder-stone-500 focus:outline-none transition-colors"
           />
         </div>
