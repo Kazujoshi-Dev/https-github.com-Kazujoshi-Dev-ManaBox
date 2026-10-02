@@ -24,6 +24,10 @@ export interface ScanResult {
   isFoilDetected?: boolean;
   isAutoCropped?: boolean;
   isBlackBorderDetected?: boolean;
+  /** Jak serwer rozpoznał kartę: set_number | name_image | name | image | none. */
+  method?: string;
+  /** Wykryte rogi karty we współrzędnych klatki. */
+  quad?: import('./cardDetector').Quad;
 }
 
 export interface CameraDeviceOption {

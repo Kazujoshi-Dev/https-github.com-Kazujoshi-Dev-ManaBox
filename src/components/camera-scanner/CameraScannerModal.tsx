@@ -33,8 +33,10 @@ import {
 import { ScryfallCard, CardCondition, CardLanguage, Catalog, AppSettings } from '../../types';
 import { formatCurrency, getCardImageUri, getCardPrice, getRarityColor, getRarityLabel, handleCardImageError } from '../../utils/formatters';
 import { CameraScannerModalProps, CameraDeviceOption, ScanResult } from './types';
-import { scanCardWithDelverLens, searchCardInScryfall, playScannerChime } from './ocrProcessor';
-import { calculateVideoSensorCrop, CardCropRect, detectFrameMotion } from './cvCardPipeline';
+import { searchCardInScryfall, playScannerChime } from './ocrProcessor';
+import { calculateVideoSensorCrop } from './cvCardPipeline';
+import { detectCardInSource, recognizeCard } from './scanEngine';
+import { Quad, quadMovement } from './cardDetector';
 import { EdhrecBadge } from '../EdhrecBadge';
 
 export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
@@ -53,8 +55,12 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
   const cameraSnapInputRef = useRef<HTMLInputElement | null>(null);
   const viewfinderContainerRef = useRef<HTMLDivElement | null>(null);
   const cardReticleRef = useRef<HTMLDivElement | null>(null);
-  const prevFrameSampleRef = useRef<Uint8ClampedArray | null>(null);
   const steadyCountRef = useRef<number>(0);
+  // Pętla wykrywania karty: ostatnie położenie, liczba klatek bez karty i gotowość do kolejnego skanu
+  const lastQuadRef = useRef<Quad | null>(null);
+  const lostCountRef = useRef<number>(0);
+  const scanArmedRef = useRef<boolean>(true);
+  const [overlayPoints, setOverlayPoints] = useState<string | null>(null);
 
   // Camera State
   const [cameraDevices, setCameraDevices] = useState<CameraDeviceOption[]>([]);
@@ -318,82 +324,68 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
     };
   }, [isOpen, startCamera, stopCamera]);
 
-  // 3. Scan Action (Delver Lens & ManaBox Engine)
-  const performScan = useCallback(async () => {
+  // Celownik we współrzędnych klatki wideo
+  const getSensorGuide = useCallback(() => {
+    const video = videoRef.current;
+    if (!video) return null;
+    if (viewfinderContainerRef.current && cardReticleRef.current) {
+      const r = calculateVideoSensorCrop(video, cardReticleRef.current, viewfinderContainerRef.current);
+      return { x: r.x, y: r.y, width: r.width, height: r.height };
+    }
+    const w = video.videoWidth || 1280;
+    const h = video.videoHeight || 720;
+    const gh = h * 0.84;
+    const gw = gh * (63 / 88);
+    return { x: (w - gw) / 2, y: (h - gh) / 2, width: gw, height: gh };
+  }, []);
+
+  // Wspólna obsługa wyniku skanu (kamera i zdjęcie)
+  const applyScanResult = useCallback((result: ScanResult) => {
+    setScanResult(result);
+    if (result.matchedCard) {
+      setActiveCard(result.matchedCard);
+      setManualQuery(result.matchedCard.name);
+      const where = result.matchedCard.set ? ` [${result.matchedCard.set.toUpperCase()} #${result.matchedCard.collector_number}]` : '';
+      setScanStatus(`Rozpoznano: "${result.matchedCard.name}"${where}`);
+      if (soundEnabled) playScannerChime('success');
+      return true;
+    }
+    if (result.cleanedTitle) {
+      setManualQuery(result.cleanedTitle);
+      setScanStatus(`Odczytano: "${result.cleanedTitle}" — nie znaleziono pewnego dopasowania`);
+    } else {
+      setScanStatus(result.isAutoCropped
+        ? 'Nie rozpoznano karty — popraw oświetlenie (bez odblasków) i przytrzymaj nieruchomo.'
+        : 'Nie wykryto karty — połóż ją na jasnym, jednolitym tle i wypełnij ramkę.');
+    }
+    return false;
+  }, [soundEnabled]);
+
+  // 3. Skan: wykrycie rogów, wyprostowanie, OCR nazwy i stopki, dopasowanie na serwerze
+  const performScan = useCallback(async (quad?: Quad | null) => {
     if (isScanning) return;
-    if (!videoRef.current || videoRef.current.readyState < 2) return;
+    const video = videoRef.current;
+    if (!video || video.readyState < 2) return;
 
     setIsScanning(true);
-    setScanStatus('⚡ Delver Lens: Wycinanie cech i analiza dHash...');
-
     try {
-      const video = videoRef.current;
-      const width = video.videoWidth || 1280;
-      const height = video.videoHeight || 720;
-
-      let cardCrop: CardCropRect | undefined;
-
-      // Oblicz precyzyjne współrzędne fizycznej matrycy wideo odpowiadające wizjerowi 63x88mm w DOM
-      if (viewfinderContainerRef.current && cardReticleRef.current) {
-        cardCrop = calculateVideoSensorCrop(
-          video,
-          cardReticleRef.current,
-          viewfinderContainerRef.current
-        );
-      } else {
-        const cardAspectRatio = 63 / 88;
-        const targetW = Math.round(width * 0.72);
-        const targetH = Math.round(targetW / cardAspectRatio);
-        cardCrop = {
-          x: Math.round((width - targetW) / 2),
-          y: Math.round((height - targetH) / 2),
-          width: targetW,
-          height: targetH,
-        };
-      }
-
-      // Główny potok Delver Lens & ManaBox: dHash ilustracji + stopka + rzadkość symbolu
-      const result = await scanCardWithDelverLens(
-        video,
-        width,
-        height,
-        (_p, statusText) => setScanStatus(statusText),
-        { cardCrop }
-      );
-
-      setScanResult(result);
-
-      if (result.matchedCard) {
-        setActiveCard(result.matchedCard);
-        setManualQuery(result.matchedCard.name);
-        if (result.isFoilDetected) {
-          setIsFoil(true);
-        }
-        setScanStatus(
-          result.isBlackBorderDetected
-            ? `🖤 Wykryto czarną ramkę MTG: "${result.matchedCard.name}"`
-            : result.isAutoCropped
-            ? `✨ Wykryto i wykadrowano z powierzchni: "${result.matchedCard.name}"`
-            : `Rozpoznano: "${result.matchedCard.name}"`
-        );
-        if (soundEnabled) {
-          playScannerChime('success');
-        }
-      } else if (result.cleanedTitle) {
-        setManualQuery(result.cleanedTitle);
-        setScanStatus(`Odczytano: "${result.cleanedTitle}" - sprawdź podpowiedzi`);
-      } else {
-        setScanStatus('Nie odczytano karty. Skorzystaj z suwaka Zoom lub zmień kąt oświetlenia.');
-      }
+      const result = await recognizeCard(video, {
+        quad: quad || null,
+        guide: getSensorGuide() || undefined,
+        onStatus: setScanStatus
+      });
+      applyScanResult(result);
     } catch (err: any) {
-      console.error('Błąd skanowania Delver Lens:', err);
+      console.error('Błąd skanowania:', err);
       setScanStatus('Błąd przetwarzania klatki. Spróbuj ponownie lub wgraj zdjęcie.');
     } finally {
       setIsScanning(false);
     }
-  }, [isScanning, soundEnabled]);
+  }, [isScanning, getSensorGuide, applyScanResult]);
 
-  // Live Frame Stability & Lock-On Tracker (Delver Lens / ManaBox Auto-Trigger)
+  // Pętla wykrywania karty na żywo (jak w ManaBox): kilka razy na sekundę szukamy rogów karty,
+  // rysujemy jej obrys, a gdy karta leży nieruchomo — uruchamiamy skan. Po skanie czekamy,
+  // aż karta zniknie z kadru, żeby nie skanować jej drugi raz.
   useEffect(() => {
     if (!isCameraActive || isScanning || activeCard) {
       setIsReticleLocked(false);
@@ -405,46 +397,49 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
       return;
     }
 
-    const sampleCanvas = document.createElement('canvas');
-    sampleCanvas.width = 24;
-    sampleCanvas.height = 24;
-    const sampleCtx = sampleCanvas.getContext('2d', { willReadFrequently: true });
+    const toDisplay = (q: Quad) => {
+      const v = videoRef.current;
+      const c = viewfinderContainerRef.current;
+      if (!v || !c) return null;
+      const rect = c.getBoundingClientRect();
+      const scale = Math.max(rect.width / v.videoWidth, rect.height / v.videoHeight);
+      const ox = (v.videoWidth * scale - rect.width) / 2;
+      const oy = (v.videoHeight * scale - rect.height) / 2;
+      return [q.tl, q.tr, q.br, q.bl].map((p) => `${(p.x * scale - ox).toFixed(1)},${(p.y * scale - oy).toFixed(1)}`).join(' ');
+    };
 
     motionTrackerTimerRef.current = setInterval(() => {
-      if (!videoRef.current || videoRef.current.readyState < 2 || isScanning || activeCard) return;
-
+      const v = videoRef.current;
+      if (!v || v.readyState < 2 || isScanning || activeCard) return;
       try {
-        if (!sampleCtx) return;
-        const v = videoRef.current;
-        // Próbkujemy centralny obszar wideo (obszar ilustracji w wizjerze)
-        const sampleW = Math.round(v.videoWidth * 0.3);
-        const sampleH = Math.round(v.videoHeight * 0.3);
-        const sampleX = Math.round((v.videoWidth - sampleW) / 2);
-        const sampleY = Math.round((v.videoHeight - sampleH) / 2);
-
-        sampleCtx.drawImage(v, sampleX, sampleY, sampleW, sampleH, 0, 0, 24, 24);
-        const imgData = sampleCtx.getImageData(0, 0, 24, 24);
-        const currData = imgData.data;
-
-        if (prevFrameSampleRef.current) {
-          const { isStable } = detectFrameMotion(prevFrameSampleRef.current, currData);
-          if (isStable) {
-            steadyCountRef.current += 1;
-            if (steadyCountRef.current >= 3) {
-              setIsReticleLocked(true);
-              // Automatyczne wyzwolenie skanu w trybie auto-skanowania lub seryjnym!
-              if (isAutoScanEnabled && steadyCountRef.current === 3) {
-                performScan();
-              }
-            }
-          } else {
-            steadyCountRef.current = 0;
-            setIsReticleLocked(false);
-          }
+        const guide = getSensorGuide();
+        if (!guide) return;
+        const det = detectCardInSource(v, guide);
+        if (!det) {
+          lostCountRef.current += 1;
+          steadyCountRef.current = 0;
+          lastQuadRef.current = null;
+          setOverlayPoints(null);
+          setIsReticleLocked(false);
+          if (lostCountRef.current >= 2) scanArmedRef.current = true; // karta zabrana — gotowi na następną
+          return;
         }
-        prevFrameSampleRef.current = new Uint8ClampedArray(currData);
+        lostCountRef.current = 0;
+        const prev = lastQuadRef.current;
+        const moved = prev ? quadMovement(prev, det.quad) : Infinity;
+        steadyCountRef.current = moved < guide.width * 0.015 ? steadyCountRef.current + 1 : 0;
+        lastQuadRef.current = det.quad;
+        setOverlayPoints(toDisplay(det.quad));
+        const steady = steadyCountRef.current >= 2;
+        setIsReticleLocked(steady);
+        if (steady && isAutoScanEnabled && scanArmedRef.current) {
+          scanArmedRef.current = false;
+          performScan(det.quad);
+        } else if (steady && !scanArmedRef.current) {
+          setScanStatus('Zabierz kartę i połóż następną');
+        }
       } catch (_) {}
-    }, 140);
+    }, 160);
 
     return () => {
       if (motionTrackerTimerRef.current) {
@@ -452,7 +447,7 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
         motionTrackerTimerRef.current = null;
       }
     };
-  }, [isCameraActive, isScanning, activeCard, isAutoScanEnabled, performScan]);
+  }, [isCameraActive, isScanning, activeCard, isAutoScanEnabled, performScan, getSensorGuide]);
 
   // 4. File and Image Processing (Upload, Drag-and-Drop, Clipboard Paste)
   const processImageFile = useCallback(
@@ -460,51 +455,24 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
       if (!file || !file.type.startsWith('image/')) return;
 
       setIsScanning(true);
-      setScanStatus('⚡ Delver Lens: Wczytywanie i analiza ilustracji...');
+      setScanStatus('Wczytywanie zdjęcia...');
 
       const img = new Image();
       img.onload = async () => {
         try {
-          const result = await scanCardWithDelverLens(
-            img,
-            img.naturalWidth,
-            img.naturalHeight,
-            (_p, statusText) => {
-              setScanStatus(statusText);
-            }
-          );
-
-          setScanResult(result);
-          if (result.matchedCard) {
-            setActiveCard(result.matchedCard);
-            setManualQuery(result.matchedCard.name);
-            if (result.isFoilDetected) {
-              setIsFoil(true);
-            }
-            setScanStatus(
-              result.isAutoCropped
-                ? `✨ Wykryto i wykadrowano kartę ze zdjęcia: "${result.matchedCard.name}"`
-                : `Rozpoznano: "${result.matchedCard.name}"`
-            );
-            if (soundEnabled) {
-              playScannerChime('success');
-            }
-          } else if (result.cleanedTitle) {
-            setManualQuery(result.cleanedTitle);
-            setScanStatus(`Odczytano tekst: "${result.cleanedTitle}" - sprawdź podpowiedzi`);
-          } else {
-            setScanStatus('Nie znaleziono pasującej karty na zdjęciu. Spróbuj innego ujęcia.');
-          }
+          const result = await recognizeCard(img, { onStatus: setScanStatus });
+          applyScanResult(result);
         } catch (err: any) {
-          console.error('Błąd OCR pliku:', err);
+          console.error('Błąd przetwarzania zdjęcia:', err);
           setScanStatus('Nie udało się przetworzyć wskazanego pliku.');
         } finally {
           setIsScanning(false);
+          URL.revokeObjectURL(img.src);
         }
       };
       img.src = URL.createObjectURL(file);
     },
-    [soundEnabled]
+    [applyScanResult]
   );
 
   const handleFileUpload = useCallback(
@@ -557,8 +525,11 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
   const handleOpenPrints = useCallback(() => {
     if (!activeCard) return;
     setIsPrintsOpen(true);
-    loadAlternatePrints(activeCard);
-  }, [activeCard, loadAlternatePrints]);
+    // Wydania ze skanu są już posortowane wg podobieństwa do zdjęcia — nie trzeba pytać Scryfall.
+    const fromScan = scanResult?.possibleCards?.filter((c) => c.name === activeCard.name) || [];
+    if (fromScan.length > 1) setPrints(fromScan);
+    else loadAlternatePrints(activeCard);
+  }, [activeCard, loadAlternatePrints, scanResult]);
 
   const handleSelectAlternatePrint = useCallback((printCard: ScryfallCard) => {
     setActiveCard(printCard);
@@ -676,7 +647,7 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
           }
 
           if (!isScanning) {
-            performScan();
+            performScan(lastQuadRef.current);
           }
         }
       }
@@ -999,6 +970,19 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
                 </div>
               )}
 
+              {/* Obrys wykrytej karty (rogi znalezione na żywo) */}
+              {isCameraActive && overlayPoints && (
+                <svg className="absolute inset-0 w-full h-full pointer-events-none" aria-hidden="true">
+                  <polygon
+                    points={overlayPoints}
+                    fill={isReticleLocked ? 'rgba(52,211,153,0.14)' : 'rgba(251,191,36,0.10)'}
+                    stroke={isReticleLocked ? '#34d399' : '#fbbf24'}
+                    strokeWidth={3}
+                    strokeLinejoin="round"
+                  />
+                </svg>
+              )}
+
               {/* Status Message Overlay at Bottom of Viewport */}
               <div className="absolute bottom-2 inset-x-4 flex items-center justify-center">
                 <div className="px-3.5 py-1.5 rounded-full bg-stone-950/85 backdrop-blur-md border border-stone-800 text-xs text-stone-200 font-medium flex items-center gap-2 shadow-lg">
@@ -1133,7 +1117,7 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
                 </label>
 
                 <button
-                  onClick={performScan}
+                  onClick={() => performScan(lastQuadRef.current)}
                   disabled={isScanning || !isCameraActive}
                   title="Rozpocznij skanowanie (lub naciśnij Spację)"
                   className="px-4 py-2 rounded-xl bg-gradient-to-r from-emerald-400 via-emerald-500 to-emerald-600 hover:from-emerald-300 hover:to-emerald-500 text-stone-950 font-extrabold text-xs flex items-center gap-2 shadow-lg shadow-emerald-950/60 transition-all cursor-pointer disabled:opacity-50"

@@ -360,10 +360,48 @@ export async function getCardsByIds(ids: string[]): Promise<any[]> {
 /** Identyfikator karty po kodzie setu i numerze kolekcjonerskim (np. "mh3", "123"). */
 export function findIdBySetNumber(set: string, collectorNumber: string): string | null {
   if (!index || !set || !collectorNumber) return null;
-  const s = set.toLowerCase().trim();
   const cn = collectorNumber.toLowerCase().trim();
-  const hit = index.bySetNumber.get(`${s}/${cn}`) ?? index.bySetNumber.get(`${s}/${cn.replace(/^0+/, '')}`);
-  return hit !== undefined ? index.entries[hit].id : null;
+  const cnVariants = [...new Set([cn, cn.replace(/^0+(?=\d)/, '')])];
+  for (const s of setCodeVariants(set.toLowerCase().trim())) {
+    for (const c of cnVariants) {
+      const hit = index.bySetNumber.get(`${s}/${c}`);
+      if (hit !== undefined) return index.entries[hit].id;
+    }
+  }
+  return null;
+}
+
+// Znaki, które OCR często myli w kodach setów (np. "M19" ↔ "MI9", "MH3" ↔ "MHE").
+const OCR_CONFUSIONS: Record<string, string[]> = {
+  '0': ['o', 'd'], o: ['0'], d: ['0'],
+  '1': ['i', 'l'], i: ['1', 'l'], l: ['1', 'i'],
+  '5': ['s'], s: ['5'],
+  '8': ['b'], b: ['8'],
+  '2': ['z'], z: ['2'],
+  '6': ['g'], g: ['6'],
+  '3': ['e'], e: ['3']
+};
+
+/** Kod setu i warianty z najwyżej dwiema typowymi pomyłkami OCR (oryginał pierwszy). */
+function setCodeVariants(code: string): string[] {
+  const out = new Set<string>([code]);
+  const chars = code.split('');
+  chars.forEach((ch, i) => {
+    for (const alt of OCR_CONFUSIONS[ch] || []) {
+      const one = [...chars];
+      one[i] = alt;
+      out.add(one.join(''));
+      one.forEach((ch2, j) => {
+        if (j <= i) return;
+        for (const alt2 of OCR_CONFUSIONS[ch2] || []) {
+          const two = [...one];
+          two[j] = alt2;
+          out.add(two.join(''));
+        }
+      });
+    }
+  });
+  return [...out];
 }
 
 export interface NameCandidates {

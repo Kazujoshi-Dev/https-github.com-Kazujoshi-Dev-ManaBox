@@ -656,6 +656,11 @@ app.post('/api/scanner/delver-identify', authMiddleware, scannerLimiter, async (
       : await identifyWithScryfallApi(hintTitle, hintSet, hintCollector);
 
     const matched = result.matchedCard;
+    // Jedna linia na skan — do strojenia progów na prawdziwych zdjęciach (bez danych użytkownika).
+    console.log(
+      `[Skan] metoda=${result.method || 'scryfall'} pewność=${result.confidence} obraz=${result.imageDistance ?? '-'} ` +
+        `ocr="${hintTitle}" set=${hintSet || '-'}/${hintCollector || '-'} wynik=${matched ? `${matched.name} [${matched.set}/${matched.collector_number}]` : 'brak'}`
+    );
     return res.json({
       success: true,
       source: cards.isCardDbReady() ? 'local' : 'scryfall',
