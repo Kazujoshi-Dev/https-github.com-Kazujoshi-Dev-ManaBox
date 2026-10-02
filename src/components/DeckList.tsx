@@ -153,6 +153,11 @@ export const DeckList: React.FC<DeckListProps> = ({
                         <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold uppercase tracking-wider bg-purple-500/20 text-purple-300 border border-purple-500/30">
                           {deck.format || 'EDH Commander'}
                         </span>
+                        {deck.isPublic && (
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-emerald-500/15 text-emerald-300 border border-emerald-500/30" title="Talia dostępna pod publicznym linkiem">
+                            Publiczna
+                          </span>
+                        )}
                       </div>
                       <h3 className="text-lg font-black text-white group-hover:text-purple-200 transition-colors">
                         {deck.name}

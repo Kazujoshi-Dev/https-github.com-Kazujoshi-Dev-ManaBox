@@ -18,6 +18,7 @@ import { DeckImportExportModal } from './DeckImportExportModal';
 import { DeckCombosModal } from './deck-builder/DeckCombosModal';
 import { DeckAnalysis } from './deck-builder/DeckAnalysis';
 import { DeckSuggestions } from './deck-builder/DeckSuggestions';
+import { DeckShareModal } from './deck-builder/DeckShareModal';
 import type { EdhrecRecommendation } from '../services/api';
 import { wishlistApi } from '../services/api';
 
@@ -44,6 +45,7 @@ export const DeckBuilder: React.FC<DeckBuilderProps> = ({
 
   // Commander Spellbook Combos Modal state
   const [isCombosModalOpen, setIsCombosModalOpen] = useState(false);
+  const [isShareOpen, setIsShareOpen] = useState(false);
 
   // User adjustable card preview scale (persisted in user AppSettings)
   const [previewScale, setPreviewScale] = useState<number>(settings.deckCardPreviewScale || 100);
@@ -352,6 +354,8 @@ export const DeckBuilder: React.FC<DeckBuilderProps> = ({
             setIsImportExportOpen(true);
           }}
           onOpenCombos={() => setIsCombosModalOpen(true)}
+          onOpenShare={() => setIsShareOpen(true)}
+          isPublic={Boolean(deck.isPublic)}
         />
 
         {/* Commander Featured Showcase / Select Placeholder */}
@@ -462,6 +466,15 @@ export const DeckBuilder: React.FC<DeckBuilderProps> = ({
         onAddCard={handleAddRecommended}
         onReplaceCard={handleReplaceWithRecommended}
       />
+      )}
+
+      {isShareOpen && (
+        <DeckShareModal
+          deck={deck}
+          onClose={() => setIsShareOpen(false)}
+          onChanged={(isPublic) => onUpdateDeck({ ...deck, isPublic })}
+          showToast={showToast}
+        />
       )}
 
       {/* 4. Floating Card Preview on Hover */}

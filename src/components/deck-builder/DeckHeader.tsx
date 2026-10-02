@@ -1,5 +1,5 @@
 import React from 'react';
-import { ArrowLeft, Crown, Layers, Globe, Plus, FileText, Sparkles } from 'lucide-react';
+import { ArrowLeft, Crown, Layers, Globe, Plus, FileText, Sparkles, Share2 } from 'lucide-react';
 import { formatCurrency } from '../../utils/formatters';
 import { DeckHeaderProps } from './types';
 
@@ -16,6 +16,8 @@ export const DeckHeader: React.FC<DeckHeaderProps> = ({
   onOpenAddModal,
   onOpenImportExport,
   onOpenCombos,
+  onOpenShare,
+  isPublic = false,
 }) => {
   return (
     <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
@@ -105,6 +107,23 @@ export const DeckHeader: React.FC<DeckHeaderProps> = ({
           >
             <Sparkles className="w-4 h-4 text-purple-300 group-hover:text-amber-300 transition-colors" />
             <span>Combo (Spellbook)</span>
+          </button>
+        )}
+
+        {/* Publiczny link */}
+        {onOpenShare && (
+          <button
+            type="button"
+            onClick={onOpenShare}
+            className={`px-3 py-2 rounded-xl font-bold text-xs flex items-center gap-1.5 border transition-all cursor-pointer ${
+              isPublic
+                ? 'bg-emerald-500/15 text-emerald-300 border-emerald-500/40 hover:bg-emerald-500/25'
+                : 'bg-stone-850 hover:bg-stone-800 text-stone-200 border-stone-700'
+            }`}
+            title="Udostępnij talię publicznym linkiem"
+          >
+            <Share2 className="w-4 h-4" />
+            <span>{isPublic ? 'Udostępniona' : 'Udostępnij'}</span>
           </button>
         )}
 

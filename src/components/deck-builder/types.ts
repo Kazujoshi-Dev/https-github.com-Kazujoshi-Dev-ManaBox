@@ -26,6 +26,9 @@ export interface DeckHeaderProps {
   onOpenAddModal: () => void;
   onOpenImportExport?: () => void;
   onOpenCombos?: () => void;
+  /** Publiczny link do talii. */
+  onOpenShare?: () => void;
+  isPublic?: boolean;
 }
 
 export interface CommanderShowcaseProps {

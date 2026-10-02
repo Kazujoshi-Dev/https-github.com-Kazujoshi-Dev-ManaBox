@@ -163,6 +163,8 @@ export async function initDb(): Promise<void> {
           ALTER TABLE user_collections ADD COLUMN IF NOT EXISTS previous_prices JSONB;
           ALTER TABLE user_collections ADD COLUMN IF NOT EXISTS prices_changed_at TIMESTAMPTZ;
           ALTER TABLE user_settings ADD COLUMN IF NOT EXISTS auto_nbp_rate BOOLEAN DEFAULT TRUE;
+          -- publiczny link do talii (domyślnie wyłączony)
+          ALTER TABLE user_decks ADD COLUMN IF NOT EXISTS is_public BOOLEAN NOT NULL DEFAULT FALSE;
           -- panel administratora: blokady kont, wymuszona zmiana hasła, ukrycie oferty
           ALTER TABLE users ADD COLUMN IF NOT EXISTS banned_until TIMESTAMPTZ;
           ALTER TABLE users ADD COLUMN IF NOT EXISTS ban_permanent BOOLEAN NOT NULL DEFAULT FALSE;

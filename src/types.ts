@@ -146,6 +146,8 @@ export interface DeckItem {
   cardSource?: 'all' | 'collection'; // 'collection' (tylko z kolekcji) lub 'all' (wszystkie karty MTG)
   commander?: ScryfallCard | null;
   commanderIsFoil?: boolean;
+  /** Talia dostępna pod publicznym linkiem (?talia=id). */
+  isPublic?: boolean;
   cards: DeckCardEntry[];
   createdAt: string;
   updatedAt?: string;

@@ -2117,6 +2117,28 @@ app.get('/api/public/sale/:userRef', async (req, res) => {
   }
 });
 
+// --- PUBLICZNA TALIA (BEZ LOGOWANIA, TYLKO GDY WŁAŚCICIEL WŁĄCZYŁ LINK) ---
+
+app.get('/api/public/deck/:id', async (req, res) => {
+  try {
+    const id = String(req.params.id || '').trim();
+    if (!/^[\w-]{1,64}$/.test(id)) return res.status(404).json({ error: 'Nie znaleziono talii.' });
+    const found = await db.getPublicDeck(id);
+    const owner = found ? await db.getUserById(found.userId) : null;
+    if (!found || !owner || db.isBanActive(owner)) {
+      return res.status(404).json({ error: 'Ta talia nie istnieje albo jej właściciel wyłączył publiczny link.' });
+    }
+    const settings = await db.getSettings(owner.id);
+    res.json({
+      deck: found.deck,
+      owner: { username: owner.username },
+      settings: settings || { currency: 'PLN', pricingSource: 'CARDMARKET', eurToPlnRate: 4.31, usdToPlnRate: 3.96, autoNbpRate: true }
+    });
+  } catch (err: any) {
+    sendServerError(res, err, '/api/public/deck/:id', 'Błąd pobierania talii.');
+  }
+});
+
 // --- PUBLIC USER WISHLIST ENDPOINT (NO AUTH REQUIRED) ---
 
 app.get('/api/public/wishlist/:userRef', async (req, res) => {
@@ -2407,9 +2429,21 @@ app.put('/api/decks/:id', authMiddleware, async (req, res) => {
       format: req.body.format || 'EDH Commander'
     };
     const saved = await db.saveDeck(userId, deckToSave);
+    if (!saved) return res.status(404).json({ error: 'Nie znaleziono talii.' });
     res.json(saved);
   } catch (err: any) {
     sendServerError(res, err, '/api/decks/:id');
+  }
+});
+
+// Publiczny link do talii: włączenie / wyłączenie
+app.put('/api/decks/:id/visibility', authMiddleware, async (req, res) => {
+  try {
+    const ok = await db.setDeckPublic((req as any).userId, String(req.params.id), req.body?.isPublic === true);
+    if (!ok) return res.status(404).json({ error: 'Nie znaleziono talii.' });
+    res.json({ success: true, isPublic: req.body?.isPublic === true });
+  } catch (err: any) {
+    sendServerError(res, err, '/api/decks/:id/visibility');
   }
 });
 

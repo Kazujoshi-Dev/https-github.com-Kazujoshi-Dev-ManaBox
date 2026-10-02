@@ -183,7 +183,22 @@ export const decksApi = {
       body: JSON.stringify(deck)
     }, onUnauthorized),
   delete: (id: string, onUnauthorized?: () => void) =>
-    fetchWithAuth(`/api/decks/${id}`, { method: 'DELETE' }, onUnauthorized)
+    fetchWithAuth(`/api/decks/${id}`, { method: 'DELETE' }, onUnauthorized),
+  setVisibility: async (id: string, isPublic: boolean): Promise<void> => {
+    const res = await fetchWithAuth(`/api/decks/${encodeURIComponent(id)}/visibility`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ isPublic })
+    });
+    await jsonOrThrow(res, 'Nie udało się zmienić udostępniania talii.');
+  }
+};
+
+export const publicDeckApi = {
+  get: async (id: string): Promise<{ deck: DeckItem; owner: { username: string }; settings: AppSettings }> => {
+    const res = await fetch(`/api/public/deck/${encodeURIComponent(id)}`);
+    return jsonOrThrow(res, 'Nie udało się pobrać talii.');
+  }
 };
 
 export const settingsApi = {
