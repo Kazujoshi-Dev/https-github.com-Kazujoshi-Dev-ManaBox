@@ -200,6 +200,66 @@ export const DeckBuilder: React.FC<DeckBuilderProps> = ({
     showToast(`Zamieniono "${oldCard.name}" na "${card.name}".`);
   }, [deck, onUpdateDeck, resolveRecommendedCard, showToast]);
 
+  // Basic Lands w kolorach dowódcy (bezbarwny dowódca: Wastes)
+  const BASIC_NAMES: Record<string, string> = { W: 'Plains', U: 'Island', B: 'Swamp', R: 'Mountain', G: 'Forest', C: 'Wastes' };
+  const basicColors = deck.commander
+    ? deck.commander.color_identity?.length
+      ? ['W', 'U', 'B', 'R', 'G'].filter((c) => deck.commander!.color_identity!.includes(c))
+      : ['C']
+    : ['W', 'U', 'B', 'R', 'G'].filter((c) => colorIdentity.includes(c));
+  const basics = basicColors.map((color) => {
+    const name = BASIC_NAMES[color];
+    const count = deck.cards.filter((e) => !e.isSideboard && e.card.name === name).reduce((sum, e) => sum + e.quantity, 0);
+    return { color, name, count };
+  });
+  const [basicsBusy, setBasicsBusy] = useState<string | null>(null);
+
+  const handleSetBasicCount = useCallback(
+    async (name: string, rawTarget: number) => {
+      const target = Math.max(0, Math.min(99, Math.floor(rawTarget)));
+      const current = deck.cards.filter((e) => !e.isSideboard && e.card.name === name).reduce((sum, e) => sum + e.quantity, 0);
+      if (target === current) return;
+      let cards = deck.cards.map((e) => ({ ...e }));
+      if (target < current) {
+        let remove = current - target;
+        cards = cards
+          .map((e) => {
+            if (remove > 0 && !e.isSideboard && e.card.name === name) {
+              const r = Math.min(remove, e.quantity);
+              remove -= r;
+              return { ...e, quantity: e.quantity - r };
+            }
+            return e;
+          })
+          .filter((e) => e.quantity > 0);
+      } else {
+        const add = target - current;
+        const idx = cards.findIndex((e) => !e.isSideboard && e.card.name === name);
+        if (idx >= 0) {
+          cards[idx].quantity += add;
+        } else {
+          setBasicsBusy(name);
+          let card: ScryfallCard | null = null;
+          try {
+            const res = await fetch(`/api/scryfall/named?exact=${encodeURIComponent(name)}`);
+            card = res.ok ? ((await res.json()) as ScryfallCard) : null;
+          } catch {
+            card = null;
+          } finally {
+            setBasicsBusy(null);
+          }
+          if (!card) {
+            showToast(`Nie udało się pobrać karty ${name}. Spróbuj ponownie.`);
+            return;
+          }
+          cards.push({ card, quantity: add, isCommander: false });
+        }
+      }
+      onUpdateDeck({ ...deck, cards });
+    },
+    [deck, onUpdateDeck, showToast]
+  );
+
   const handleSetCommander = useCallback((card: ScryfallCard) => {
     // Remove from the main 99 if it was in the deck
     const filteredCards = deck.cards.filter(e => e.card.id !== card.id && e.card.name !== card.name);
@@ -373,6 +433,9 @@ export const DeckBuilder: React.FC<DeckBuilderProps> = ({
       <DeckStatsBar
         manaCurve={manaCurve}
         colorIdentity={colorIdentity}
+        basics={basics}
+        onSetBasicCount={handleSetBasicCount}
+        basicsBusy={basicsBusy}
       />
 
       {/* 2b. Board Toolbar: Categories Sorting Info & Card Preview Size Slider */}

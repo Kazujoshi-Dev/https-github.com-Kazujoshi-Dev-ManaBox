@@ -35,7 +35,7 @@ export function getCardCategory(card: ScryfallCard): string {
 export const COLOR_IDENTITY_STYLE_MAP: Record<string, string> = {
   W: 'bg-amber-100 text-stone-900 border-amber-300',
   U: 'bg-blue-500 text-white border-blue-400',
-  B: 'bg-stone-800 text-stone-200 border-stone-600',
+  B: 'bg-stone-950 text-stone-100 border-stone-500',
   R: 'bg-red-500 text-white border-red-400',
   G: 'bg-emerald-500 text-white border-emerald-400',
 };

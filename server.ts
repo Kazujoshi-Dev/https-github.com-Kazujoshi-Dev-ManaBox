@@ -1083,6 +1083,13 @@ app.get('/api/scryfall/named', async (req, res) => {
       queryPath += `&set=${encodeURIComponent(set.toLowerCase())}`;
     }
 
+    // Dokładna nazwa bez wskazanego dodatku: najpierw lokalna baza kart (bez zapytania do Scryfall)
+    if (exact && !set) {
+      const local = await cards.getCardsByNames([exact]).catch(() => new Map<string, any>());
+      const hit = local.get(exact.toLowerCase());
+      if (hit) return res.json(hit);
+    }
+
     const data = await fetchScryfall(queryPath);
     res.json(data);
   } catch (err: any) {

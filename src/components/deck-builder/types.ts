@@ -40,9 +40,20 @@ export interface CommanderShowcaseProps {
   onOpenSearch: () => void;
 }
 
+export interface BasicLandCount {
+  /** Kolor many (W/U/B/R/G) albo C dla Wastes. */
+  color: string;
+  name: string;
+  count: number;
+}
+
 export interface DeckStatsBarProps {
   manaCurve: number[];
   colorIdentity: string[];
+  /** Basic Lands w kolorach dowódcy; bez tej właściwości narzędzie jest ukryte (np. podgląd publiczny). */
+  basics?: BasicLandCount[];
+  onSetBasicCount?: (name: string, count: number) => void | Promise<void>;
+  basicsBusy?: string | null;
 }
 
 export interface DeckCardRowProps {
