@@ -219,6 +219,7 @@ export const TabContent: React.FC<TabContentProps> = ({
           onViewWishlistItem={onViewWishlistItem}
           currentUser={currentUser || null}
           showToast={showToast}
+          onOpenSellerProfile={onOpenSellerProfile}
         />
       );
 

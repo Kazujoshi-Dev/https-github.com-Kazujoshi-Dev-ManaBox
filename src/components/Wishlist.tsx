@@ -1,22 +1,26 @@
 import { PageHeader } from './ui/PageHeader';
-import React, { useState } from 'react';
+import React, { Suspense, lazy, useState } from 'react';
+
+const SellersMapModal = lazy(() => import('./SellersMapModal'));
 import { WishlistItem, ScryfallCard, AppSettings, AuthUser } from '../types';
 import { formatCurrency, getCardImageUri, getCardPrice, handleCardImageError, getCardEdhrecRank } from '../utils/formatters';
 import { ManaSymbol } from './ManaSymbol';
 import { EdhrecBadge } from './EdhrecBadge';
-import { 
-  FolderHeart, 
-  Sparkles, 
-  Trash2, 
-  Plus, 
-  ExternalLink, 
-  CheckCircle2, 
-  Eye, 
+import {
+  FolderHeart,
+  Sparkles,
+  Trash2,
+  Plus,
+  ExternalLink,
+  CheckCircle2,
+  Eye,
   ArrowRightLeft,
   Share2,
   Copy,
   Check,
-  FileText
+  FileText,
+  Map as MapIcon,
+  Loader2
 } from 'lucide-react';
 
 interface WishlistProps {
@@ -30,6 +34,8 @@ interface WishlistProps {
   onViewWishlistItem?: (item: WishlistItem) => void;
   currentUser?: AuthUser | null;
   showToast?: (message: string) => void;
+  /** Otwiera profil sprzedawcy (z mapy sprzedawców). */
+  onOpenSellerProfile?: (username: string) => void;
 }
 
 export const Wishlist: React.FC<WishlistProps> = ({
@@ -41,8 +47,10 @@ export const Wishlist: React.FC<WishlistProps> = ({
   onViewCardDetails,
   onViewWishlistItem,
   currentUser,
-  showToast
+  showToast,
+  onOpenSellerProfile,
 }) => {
+  const [isMapOpen, setIsMapOpen] = useState(false);
   const [copiedLink, setCopiedLink] = useState(false);
   const [copiedText, setCopiedText] = useState(false);
 
@@ -96,10 +104,16 @@ export const Wishlist: React.FC<WishlistProps> = ({
           </>
         }
         actions={
-          <button type="button" onClick={onOpenSearchTab} className="btn btn-primary">
-            <Plus className="w-4 h-4" strokeWidth={2.5} />
-            Dodaj karty
-          </button>
+          <>
+            <button type="button" onClick={() => setIsMapOpen(true)} className="btn btn-secondary" title="Kto w okolicy sprzedaje karty z Twojej listy">
+              <MapIcon className="w-4 h-4" />
+              Mapa sprzedawców
+            </button>
+            <button type="button" onClick={onOpenSearchTab} className="btn btn-primary">
+              <Plus className="w-4 h-4" strokeWidth={2.5} />
+              Dodaj karty
+            </button>
+          </>
         }
       />
 
@@ -256,6 +270,17 @@ export const Wishlist: React.FC<WishlistProps> = ({
         </div>
       )}
 
+      {isMapOpen && (
+        <Suspense
+          fallback={
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70">
+              <Loader2 className="w-8 h-8 text-amber-400 animate-spin" />
+            </div>
+          }
+        >
+          <SellersMapModal onClose={() => setIsMapOpen(false)} onOpenSeller={(u) => onOpenSellerProfile?.(u)} />
+        </Suspense>
+      )}
     </div>
   );
 };

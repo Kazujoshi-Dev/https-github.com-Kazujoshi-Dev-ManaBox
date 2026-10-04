@@ -43,7 +43,7 @@ const MORE_TABS: Array<{ tab: NavigationTab; label: string; icon: React.ElementT
   { tab: 'set-top', label: 'Top z dodatku', icon: Trophy },
   { tab: 'analytics', label: 'Statystyki', icon: BarChart3 },
   { tab: 'wishlist', label: 'Lista życzeń', icon: FolderHeart },
-  { tab: 'for-sale', label: 'Sprzedam / Kupię', icon: CircleDollarSign },
+  { tab: 'for-sale', label: 'Sprzedam', icon: CircleDollarSign },
   { tab: 'users', label: 'Gracze', icon: Users }
 ];
 

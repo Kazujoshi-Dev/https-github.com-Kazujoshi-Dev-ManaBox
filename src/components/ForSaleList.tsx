@@ -170,7 +170,7 @@ export const ForSaleList: React.FC<ForSaleListProps> = ({
     <div className="space-y-6">
       
       <PageHeader
-        title="Sprzedam / Kupię"
+        title="Sprzedam"
         description="Karty oznaczone na sprzedaż. Kupujący widzą je pod Twoim publicznym linkiem, bez zakładania konta."
         meta={
           <>
