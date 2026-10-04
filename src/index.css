@@ -178,3 +178,11 @@ summary,
   .auth-scanline { animation: auth-scan 2.6s ease-in-out infinite alternate; }
   .auth-sleeve:hover { transform: translateY(-6px) scale(1.03); z-index: 1; }
 }
+
+/* Rozwijane menu: krótkie pojawienie się */
+@media (prefers-reduced-motion: no-preference) {
+  .ms-menu-in {
+    animation: ms-rise-in 140ms cubic-bezier(0.2, 0, 0, 1);
+    transform-origin: top right;
+  }
+}

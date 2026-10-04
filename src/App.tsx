@@ -714,6 +714,7 @@ export default function App() {
         lastPriceChangeAt={totals.lastPriceChangeAt}
         settings={settings}
         decksCount={decks.length}
+        forSaleCount={forSaleCount}
         onOpenSettings={() => setActiveTab('settings')}
         onRefreshPrices={refreshPrices}
         isRefreshing={isRefreshingPrices}
