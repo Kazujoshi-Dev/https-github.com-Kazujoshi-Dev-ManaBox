@@ -92,10 +92,12 @@ export const UsersList: React.FC<UsersListProps> = ({
   // Send message modal state
   const [sendMessageRecipient, setSendMessageRecipient] = useState<RegisteredUserSummary | null>(null);
   const [isSendMessageOpen, setIsSendMessageOpen] = useState<boolean>(false);
+  const [sendMessageSubject, setSendMessageSubject] = useState<string>('');
 
-  const handleOpenSendMessage = (user: RegisteredUserSummary, e?: React.MouseEvent) => {
+  const handleOpenSendMessage = (user: RegisteredUserSummary, e?: React.MouseEvent, subject = '') => {
     if (e) e.stopPropagation();
     setSendMessageRecipient(user);
+    setSendMessageSubject(subject);
     setIsSendMessageOpen(true);
   };
 
@@ -410,6 +412,22 @@ export const UsersList: React.FC<UsersListProps> = ({
   // -------------------------------------------------------------
   // DETAIL VIEW: Viewing specific user's profile (sale & wishlist)
   // -------------------------------------------------------------
+  // Okno wiadomości: dostępne w liście graczy i w profilu sprzedawcy
+  const sendMessageModal = isSendMessageOpen ? (
+    <SendMessageModal
+      isOpen={isSendMessageOpen}
+      onClose={() => {
+        setIsSendMessageOpen(false);
+        setSendMessageRecipient(null);
+        setSendMessageSubject('');
+      }}
+      recipient={sendMessageRecipient}
+      availableUsers={users}
+      initialSubject={sendMessageSubject}
+      showToast={showToast}
+    />
+  ) : null;
+
   if (selectedUser) {
     const effSettings = sellerOffers?.settings || settings;
     const publicUrl = `${window.location.origin}/?sprzedam=${encodeURIComponent(selectedUser.username)}`;
@@ -437,8 +455,8 @@ export const UsersList: React.FC<UsersListProps> = ({
                 className="btn btn-primary"
                 title={`Napisz wiadomość do @${selectedUser.username}`}
               >
-                <Mail className="w-3.5 h-3.5" />
-                <span>Napisz wiadomość</span>
+                <Mail className="w-4 h-4" />
+                <span>{profileTab === 'for-sale' ? 'Napisz do sprzedawcy' : 'Napisz wiadomość'}</span>
               </button>
             )}
 
@@ -714,8 +732,21 @@ export const UsersList: React.FC<UsersListProps> = ({
                           </div>
 
                           <div className="pt-2 border-t border-stone-800/80 flex items-center justify-between text-xs">
-                            <span className="tabular-nums text-stone-400 text-[11px]">
+                            <span className="tabular-nums text-stone-400 text-[11px] flex items-center gap-1.5">
                               Ilość: <strong className="text-stone-200">{item.quantity + item.quantityFoil}x</strong>
+                              {currentUser && currentUser.id !== selectedUser.id && (
+                                <button
+                                  type="button"
+                                  onClick={(e) =>
+                                    handleOpenSendMessage(selectedUser, e, `Pytanie o kartę: ${item.card.name} (${item.card.set.toUpperCase()})`)
+                                  }
+                                  className="ml-1 w-7 h-7 rounded-md flex items-center justify-center text-stone-400 hover:text-amber-300 hover:bg-stone-800 cursor-pointer"
+                                  title="Napisz do sprzedawcy o tej karcie"
+                                  aria-label={`Napisz do sprzedawcy o karcie ${item.card.name}`}
+                                >
+                                  <Mail className="w-4 h-4" />
+                                </button>
+                              )}
                             </span>
 
                             <div className="text-right">
@@ -950,7 +981,8 @@ export const UsersList: React.FC<UsersListProps> = ({
             )}
           </div>
         )}
-      </div>
+          {sendMessageModal}
+    </div>
     );
   }
 
@@ -1140,19 +1172,7 @@ export const UsersList: React.FC<UsersListProps> = ({
         </div>
       )}
 
-      {/* Send Message Modal */}
-      {isSendMessageOpen && (
-        <SendMessageModal
-          isOpen={isSendMessageOpen}
-          onClose={() => {
-            setIsSendMessageOpen(false);
-            setSendMessageRecipient(null);
-          }}
-          recipient={sendMessageRecipient}
-          availableUsers={users}
-          showToast={showToast}
-        />
-      )}
+      {sendMessageModal}
     </div>
   );
 };

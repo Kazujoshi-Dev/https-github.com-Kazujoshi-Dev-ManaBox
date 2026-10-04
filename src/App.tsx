@@ -654,6 +654,7 @@ export default function App() {
           settings={publicSaleData.settings}
           onOpenLogin={() => setShowLoginModalFromPublic(true)}
           showToast={showToast}
+          currentUserId={currentUser?.id || null}
         />
         {/* If user is already logged in, show floating button to switch back to their collection */}
         {currentUser && (

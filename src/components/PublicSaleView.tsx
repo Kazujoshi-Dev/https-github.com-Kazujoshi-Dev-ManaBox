@@ -1,18 +1,19 @@
+import { SendMessageModal } from './messages/SendMessageModal';
 import React, { useState, useMemo } from 'react';
 import { CollectionItem, AppSettings, ScryfallCard } from '../types';
 import { formatCurrency, getCardPrice, getCardImageUri, getRarityColor, getRarityLabel, getCardEdhrecRank, handleCardImageError } from '../utils/formatters';
 import { ManaSymbol } from './ManaSymbol';
 import { EdhrecBadge } from './EdhrecBadge';
-import { 
-  CircleDollarSign, 
-  Search, 
-  ArrowUpDown, 
-  Sparkles, 
-  Copy, 
-  Check, 
-  ExternalLink, 
-  FileText, 
-  Eye, 
+import {
+  CircleDollarSign,
+  Search,
+  ArrowUpDown,
+  Sparkles,
+  Copy,
+  Check,
+  ExternalLink,
+  FileText,
+  Eye,
   ShoppingBag,
   LogIn,
   Share2,
@@ -30,6 +31,8 @@ interface PublicSaleViewProps {
   onOpenLogin: () => void;
   onViewCardDetails?: (card: ScryfallCard) => void;
   showToast?: (message: string) => void;
+  /** Zalogowany odwiedzający (może pisać do sprzedawcy). */
+  currentUserId?: string | null;
 }
 
 export const PublicSaleView: React.FC<PublicSaleViewProps> = ({
@@ -39,7 +42,19 @@ export const PublicSaleView: React.FC<PublicSaleViewProps> = ({
   onOpenLogin,
   onViewCardDetails,
   showToast,
+  currentUserId = null,
 }) => {
+  const [messageSubject, setMessageSubject] = useState<string | null>(null);
+  const isOwnOffer = Boolean(currentUserId && currentUserId === seller.id);
+  // Bez logowania przycisk prowadzi do logowania; po zalogowaniu otwiera okno wiadomości
+  const writeToSeller = (subject = '') => {
+    if (!currentUserId) {
+      showToast?.('Zaloguj się, aby napisać do sprzedawcy.');
+      onOpenLogin();
+      return;
+    }
+    setMessageSubject(subject);
+  };
   const [searchQuery, setSearchQuery] = useState('');
   const [filterCondition, setFilterCondition] = useState<string>('all');
   const [filterFoilOnly, setFilterFoilOnly] = useState<boolean>(false);
@@ -143,17 +158,17 @@ export const PublicSaleView: React.FC<PublicSaleViewProps> = ({
       
       {/* Top Navbar */}
       <header className="bg-stone-900 border-b border-stone-800 sticky top-0 z-30 shadow-md">
-        <div className="max-w-[1760px] w-full mx-auto px-4 sm:px-6 lg:px-8 xl:px-10 py-3.5 flex items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-emerald-600 flex items-center justify-center shadow-lg shadow-emerald-950/60 ring-1 ring-emerald-400/30">
+        <div className="max-w-[1760px] w-full mx-auto px-4 sm:px-6 lg:px-8 xl:px-10 py-3.5 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="hidden sm:flex w-10 h-10 rounded-xl bg-emerald-600 items-center justify-center shadow-lg shadow-emerald-950/60 ring-1 ring-emerald-400/30">
               <CircleDollarSign className="w-5 h-5 text-white" />
             </div>
-            <div>
+            <div className="min-w-0">
               <div className="flex items-center gap-2">
-                <h1 className="text-lg font-bold tracking-tight text-emerald-200">
-                  Mana Screw • Oferta na Sprzedaż
+                <h1 className="text-base sm:text-lg font-bold tracking-tight text-emerald-200 truncate">
+                  <span className="hidden sm:inline">Mana Screw • </span>Oferta na sprzedaż
                 </h1>
-                <span className="text-[11px] tabular-nums px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-bold">
+                <span className="hidden md:inline text-[11px] tabular-nums px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-bold">
                   Publiczny Klaser
                 </span>
               </div>
@@ -163,7 +178,7 @@ export const PublicSaleView: React.FC<PublicSaleViewProps> = ({
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 shrink-0">
             <button
               onClick={handleCopyLink}
               className="px-3.5 py-2 bg-stone-800 hover:bg-stone-750 text-stone-200 hover:text-white border border-stone-700 text-xs font-bold rounded-xl transition-all flex items-center gap-1.5 cursor-pointer shadow-sm"
@@ -173,13 +188,19 @@ export const PublicSaleView: React.FC<PublicSaleViewProps> = ({
               <span className="hidden sm:inline">{copiedLink ? 'Skopiowano!' : 'Udostępnij link'}</span>
             </button>
 
-            <button
-              onClick={onOpenLogin}
-              className="px-4 py-2 bg-amber-600 hover:bg-amber-500 text-stone-950 font-bold text-xs rounded-xl shadow-lg shadow-amber-950/50 flex items-center gap-1.5 cursor-pointer transition-all"
-            >
-              <LogIn className="w-4 h-4" />
-              <span>Zaloguj się</span>
-            </button>
+            {!isOwnOffer && (
+              <button type="button" onClick={() => writeToSeller()} className="btn btn-primary" title={`Napisz do @${seller.username}`}>
+                <Mail className="w-4 h-4" />
+                <span className="sm:hidden">Napisz</span>
+                <span className="hidden sm:inline">Napisz do sprzedawcy</span>
+              </button>
+            )}
+            {!currentUserId && (
+              <button type="button" onClick={onOpenLogin} className="btn btn-secondary" aria-label="Zaloguj się">
+                <LogIn className="w-4 h-4" />
+                <span className="hidden sm:inline">Zaloguj się</span>
+              </button>
+            )}
           </div>
         </div>
       </header>
@@ -432,18 +453,43 @@ export const PublicSaleView: React.FC<PublicSaleViewProps> = ({
                 Sprzedający: <strong className="text-emerald-300">@{seller.username}</strong>
               </span>
 
-              <button
-                type="button"
-                onClick={() => setSelectedPreviewCard(null)}
-                className="px-4 py-2 bg-stone-800 hover:bg-stone-700 text-stone-200 text-xs font-bold rounded-xl cursor-pointer"
-              >
-                Zamknij
-              </button>
+              <div className="flex items-center gap-2">
+                {!isOwnOffer && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const c = selectedPreviewCard.card;
+                      setSelectedPreviewCard(null);
+                      writeToSeller(`Pytanie o kartę: ${c.name} (${c.set.toUpperCase()})`);
+                    }}
+                    className="btn btn-primary h-9"
+                  >
+                    <Mail className="w-4 h-4" />
+                    Napisz do sprzedawcy
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={() => setSelectedPreviewCard(null)}
+                  className="btn btn-ghost h-9"
+                >
+                  Zamknij
+                </button>
+              </div>
             </div>
           </div>
         </div>
       )}
 
+      {messageSubject !== null && currentUserId && (
+        <SendMessageModal
+          isOpen
+          onClose={() => setMessageSubject(null)}
+          recipient={{ id: seller.id, username: seller.username }}
+          initialSubject={messageSubject}
+          showToast={showToast}
+        />
+      )}
     </div>
   );
 };
