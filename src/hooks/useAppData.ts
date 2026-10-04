@@ -1,3 +1,4 @@
+import { langFromCard } from '../utils/formatters';
 import { useState, useEffect, useCallback, ChangeEvent } from 'react';
 import { CollectionItem, WishlistItem, Catalog, DeckItem, ScryfallCard, CardCondition, CardLanguage, AppSettings } from '../types';
 import { collectionApi, wishlistApi, catalogsApi, decksApi, settingsApi } from '../services/api';
@@ -300,7 +301,7 @@ export function useAppData({ userId, onUnauthorized, showToast, onSettingsLoaded
       quantity: 1,
       quantityFoil: 0,
       condition: 'NM',
-      language: 'EN',
+      language: langFromCard(card),
       binder: defaultBinder,
       purchasePrice: null
     });

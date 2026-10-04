@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { ArrowLeft, Crown, Plus, Sparkles, Loader2, Check } from 'lucide-react';
 import type { AppSettings, CollectionItem, DeckCardEntry, ScryfallCard } from '../../types';
-import { formatCurrency, getCardImageUri, getCardPrice, handleCardImageError } from '../../utils/formatters';
+import { formatCurrency, getCardImageUri, getCardPrice, handleCardImageError, langFromCard } from '../../utils/formatters';
 
 interface AddCardVersionPickerProps {
   card: ScryfallCard;
@@ -100,7 +100,11 @@ export const AddCardVersionPicker: React.FC<AddCardVersionPickerProps> = ({
             <p className="text-sm font-medium text-stone-100">{selected.name}</p>
             <p className="text-xs text-stone-400">
               {selected.set_name} ({selected.set.toUpperCase()}) #{selected.collector_number}
+              {selected.lang && selected.lang !== 'en' && <>, język {langFromCard(selected)}</>}
             </p>
+            {selected.printed_name && selected.printed_name !== selected.name && (
+              <p className="text-xs text-stone-500">{selected.printed_name}</p>
+            )}
             {settings && price > 0 && <p className="text-sm text-stone-200 tabular-nums mt-1">{formatCurrency(price, settings.currency)}</p>}
             {ownedSel && (
               <p className="text-xs text-emerald-300 mt-1">
@@ -177,6 +181,9 @@ export const AddCardVersionPicker: React.FC<AddCardVersionPickerProps> = ({
                         </span>
                         <span className={`mt-1 block text-xs truncate ${isSel ? 'text-amber-300' : 'text-stone-300'}`}>
                           {p.set.toUpperCase()} #{p.collector_number}
+                          {p.lang && p.lang !== 'en' && (
+                            <span className="ml-1 px-1 rounded bg-stone-700 text-stone-100 text-[11px]">{langFromCard(p)}</span>
+                          )}
                         </span>
                         <span className={`block text-[11px] truncate ${mine ? 'text-emerald-400' : 'text-stone-500'}`}>
                           {mine ? 'W kolekcji' : p.released_at?.slice(0, 4) || p.set_name}

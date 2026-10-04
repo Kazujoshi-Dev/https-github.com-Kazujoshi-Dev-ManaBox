@@ -17,6 +17,9 @@ export interface ScryfallCardFace {
 }
 
 export interface ScryfallCard {
+  /** Kod języka wydania Scryfall, np. "en", "ja". */
+  lang?: string;
+  printed_name?: string;
   id: string;
   name: string;
   cmc: number;

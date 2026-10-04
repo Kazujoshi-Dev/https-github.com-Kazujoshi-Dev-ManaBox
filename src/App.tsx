@@ -1,3 +1,4 @@
+import { langFromCard } from './utils/formatters';
 import React, { useState, useCallback, useEffect } from 'react';
 import { ScryfallCard, CollectionItem, DeckItem, CardCondition, CardLanguage, AppSettings, RegisteredUserSummary, WishlistItem } from './types';
 import { Header } from './components/Header';
@@ -784,7 +785,7 @@ export default function App() {
                   quantity: 0,
                   quantityFoil: 0,
                   condition: 'NM',
-                  language: 'EN',
+                  language: langFromCard(card),
                   binder,
                   addedAt: new Date().toISOString()
                 };

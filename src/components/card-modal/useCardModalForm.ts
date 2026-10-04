@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, useCallback, FormEvent } from 'react';
 import { CollectionItem, ScryfallCard, CardCondition, CardLanguage, Catalog, WishlistItem } from '../../types';
 import { CardSaveData } from './types';
+import { langFromCard } from '../../utils/formatters';
 
 interface UseCardModalFormProps {
   card: ScryfallCard;
@@ -45,7 +46,7 @@ export function useCardModalForm({
     return 0;
   });
   const [condition, setCondition] = useState<CardCondition>(existingItem ? existingItem.condition : 'NM');
-  const [language, setLanguage] = useState<CardLanguage>(existingItem ? existingItem.language : 'EN');
+  const [language, setLanguage] = useState<CardLanguage>(existingItem ? existingItem.language : langFromCard(card));
   const [purchasePrice, setPurchasePrice] = useState<string>(
     existingItem && existingItem.purchasePrice !== undefined && existingItem.purchasePrice !== null
       ? String(existingItem.purchasePrice)
@@ -164,6 +165,9 @@ export function useCardModalForm({
     const oldCard = activeCard;
     setActiveCard(print);
     setFaceIndex(0);
+    // Wydanie w innym języku (np. japońskie) zmienia też język pozycji
+    const printLanguage = (print.lang || 'en') !== (oldCard?.lang || 'en') ? langFromCard(print) : language;
+    if (printLanguage !== language) setLanguage(printLanguage);
 
     if (onSelectPrint) {
       onSelectPrint(print, oldCard);
@@ -175,7 +179,7 @@ export function useCardModalForm({
         quantity,
         quantityFoil,
         condition,
-        language,
+        language: printLanguage,
         purchasePrice: purchasePrice ? parseFloat(purchasePrice) : null,
         notes,
         binder: selectedBinder,

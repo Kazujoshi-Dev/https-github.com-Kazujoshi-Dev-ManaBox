@@ -1,7 +1,7 @@
 import React from 'react';
 import { Layers, Search, Loader2, Check, Sparkles } from 'lucide-react';
 import { ScryfallCard } from '../../types';
-import { formatCurrency, getCardImageUri, getCardPrice, getRarityColor, getRarityLabel, handleCardImageError } from '../../utils/formatters';
+import { formatCurrency, getCardImageUri, getCardPrice, getRarityColor, getRarityLabel, handleCardImageError, langFromCard } from '../../utils/formatters';
 import { CardPrintsTabProps } from './types';
 
 export const CardPrintsTab: React.FC<CardPrintsTabProps> = ({
@@ -97,6 +97,11 @@ export const CardPrintsTab: React.FC<CardPrintsTabProps> = ({
                       <span className={`text-[11px] px-1 rounded border font-semibold ${getRarityColor(p.rarity)}`}>
                         {getRarityLabel(p.rarity).slice(0, 3)}
                       </span>
+                      {p.lang && p.lang !== 'en' && (
+                        <span className="text-[11px] px-1 rounded bg-stone-700 text-stone-100 font-semibold" title="Wersja językowa">
+                          {langFromCard(p)}
+                        </span>
+                      )}
                     </div>
 
                     <p className="font-bold text-stone-200 text-xs mt-1 truncate" title={p.set_name}>

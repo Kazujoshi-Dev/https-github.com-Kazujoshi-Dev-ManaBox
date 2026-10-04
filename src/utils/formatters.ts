@@ -240,3 +240,11 @@ export function getCardEdhrecRank(card?: ScryfallCard | null): number | null {
   return null;
 }
 
+
+
+/** Język karty w kolekcji na podstawie wydania Scryfall (np. "ja" → JP). */
+export function langFromCard(card: { lang?: string } | null | undefined): import('../types').CardLanguage {
+  const map: Record<string, import('../types').CardLanguage> = { en: 'EN', ja: 'JP', de: 'DE', fr: 'FR', it: 'IT', es: 'ES', pl: 'PL' };
+  const l = (card?.lang || 'en').toLowerCase();
+  return map[l] || 'OTHER';
+}

@@ -19,6 +19,16 @@ const SCRYFALL_HEADERS = {
 };
 // Adres można nadpisać (np. w testach), domyślnie oficjalne API Scryfall.
 const BULK_META_URL = process.env.SCRYFALL_BULK_META_URL || 'https://api.scryfall.com/bulk-data/default-cards';
+const ALL_CARDS_META_URL = process.env.SCRYFALL_ALL_CARDS_META_URL || 'https://api.scryfall.com/bulk-data/all-cards';
+/**
+ * Dodatkowe wersje językowe (kody Scryfall, np. "ja,de"). Plik default_cards ma tylko wydania
+ * angielskie, więc te języki dobieramy z pełnego pliku all_cards (strumieniowo, bez zapisu na dysk).
+ * Pusta wartość wyłącza pobieranie.
+ */
+export const EXTRA_LANGS = (process.env.CARD_EXTRA_LANGS ?? 'ja')
+  .split(',')
+  .map((x) => x.trim().toLowerCase())
+  .filter((x) => /^[a-z]{2,3}$/.test(x) && x !== 'en');
 const SYNC_INTERVAL_MS = 20 * 60 * 60 * 1000; // nie częściej niż co 20 h
 const BATCH_SIZE = 400;
 
@@ -234,6 +244,64 @@ async function resolveDownloadUri(meta: any, allowRefetch = true): Promise<strin
  * Pobiera dane zbiorcze Scryfall i aktualizuje tabelę scryfall_cards.
  * Pomija pobieranie, jeśli Scryfall nie opublikował nowej wersji od ostatniego importu.
  */
+/**
+ * Wersje językowe z EXTRA_LANGS (np. japońskie) z pliku all_cards. Plik jest duży (kilka GB
+ * po rozpakowaniu), ale czytamy go strumieniowo i zapisujemy tylko karty w wybranych językach.
+ * Zwraca true, gdy baza się zmieniła.
+ */
+async function syncExtraLanguages(p: pg.Pool, force: boolean): Promise<boolean> {
+  if (!EXTRA_LANGS.length) return false;
+  const metaRes = await fetch(ALL_CARDS_META_URL, { headers: SCRYFALL_HEADERS });
+  if (!metaRes.ok) throw new Error(`all-cards HTTP ${metaRes.status}`);
+  const meta: any = await metaRes.json();
+  const remoteVersion = `${meta.updated_at || ''}|${EXTRA_LANGS.join(',')}`;
+  const localVersion = await getMeta(p, 'extra_langs_version');
+  if (!force && localVersion && localVersion === remoteVersion) return false;
+
+  const started = Date.now();
+  const downloadUri = await resolveDownloadUri(meta);
+  const sizeMb = Math.round((meta.compressed_size || meta.size || 0) / 1e6);
+  console.log(`[Karty] Pobieram wersje językowe (${EXTRA_LANGS.join(', ')}) z pełnych danych Scryfall${sizeMb ? ` (${sizeMb} MB)` : ''}...`);
+  const dataRes = await fetch(downloadUri, { headers: { 'User-Agent': SCRYFALL_HEADERS['User-Agent'] } });
+  if (!dataRes.ok || !dataRes.body) throw new Error(`all-cards download HTTP ${dataRes.status}`);
+
+  const syncStart = new Date().toISOString();
+  const langs = new Set(EXTRA_LANGS);
+  let batch: any[] = [];
+  let total = 0;
+  for await (const card of iterateJsonArrayObjects(decodeStream(dataRes.body as any))) {
+    if (!langs.has(String(card?.lang || '').toLowerCase()) || !isScannable(card)) continue;
+    batch.push(card);
+    if (batch.length >= BATCH_SIZE) {
+      await upsertBatch(p, batch, syncStart);
+      total += batch.length;
+      batch = [];
+    }
+  }
+  if (batch.length) {
+    await upsertBatch(p, batch, syncStart);
+    total += batch.length;
+  }
+  if (total < 500) throw new Error(`podejrzanie mało kart w wybranych językach (${total}), nie usuwam starych`);
+  const removed = await p.query('DELETE FROM scryfall_cards WHERE synced_at < $1 AND lang = ANY($2)', [syncStart, EXTRA_LANGS]);
+  // Scryfall zwykle nie podaje cen wydań nieangielskich: bierzemy ceny angielskiej karty
+  // z tego samego dodatku i numeru (przybliżenie; oznaczone polem prices_from_en).
+  await p.query(
+    `UPDATE scryfall_cards j
+        SET data = jsonb_set(j.data, '{prices}', e.data->'prices') || '{"prices_from_en": true}'::jsonb
+       FROM scryfall_cards e
+      WHERE j.lang = ANY($1) AND e.lang = 'en' AND jsonb_typeof(e.data->'prices') = 'object'
+        AND e.set_code = j.set_code AND e.collector_number = j.collector_number
+        AND COALESCE(j.data->'prices'->>'eur', j.data->'prices'->>'usd', j.data->'prices'->>'eur_foil', j.data->'prices'->>'usd_foil') IS NULL`,
+    [EXTRA_LANGS]
+  );
+  await setMeta(p, 'extra_langs_version', remoteVersion);
+  console.log(
+    `[Karty] Wersje językowe: zaimportowano ${total} kart (usunięto ${removed.rowCount || 0}) w ${Math.round((Date.now() - started) / 1000)} s.`
+  );
+  return true;
+}
+
 export async function syncCardsFromScryfall(force = false): Promise<void> {
   const p = pool();
   if (!p || syncing) return;
@@ -250,6 +318,15 @@ export async function syncCardsFromScryfall(force = false): Promise<void> {
       lastSyncAt = new Date().toISOString();
       await setMeta(p, 'last_check', lastSyncAt);
       console.log('[Karty] Baza kart aktualna, pomijam pobieranie.');
+      const changed = await syncExtraLanguages(p, force).catch((err) => {
+        console.warn('[Karty] Wersje językowe: błąd synchronizacji:', err?.message || err);
+        return false;
+      });
+      if (changed) {
+        await loadCardIndex();
+        await loadHashIndex();
+        buildMissingHashes().catch(() => {});
+      }
       return;
     }
 
@@ -278,11 +355,12 @@ export async function syncCardsFromScryfall(force = false): Promise<void> {
     if (total < 10000) throw new Error(`podejrzanie mało kart w imporcie (${total}) — nie usuwam starych`);
 
     // Usuwamy karty, których nie ma już w danych Scryfall.
-    const removed = await p.query('DELETE FROM scryfall_cards WHERE synced_at < $1', [syncStart]);
+    const removed = await p.query('DELETE FROM scryfall_cards WHERE synced_at < $1 AND NOT (lang = ANY($2))', [syncStart, EXTRA_LANGS]);
     await setMeta(p, 'default_cards_version', remoteVersion);
     lastSyncAt = new Date().toISOString();
     await setMeta(p, 'last_check', lastSyncAt);
     console.log(`[Karty] Zaimportowano ${total} kart (usunięto ${removed.rowCount || 0}) w ${Math.round((Date.now() - started) / 1000)} s.`);
+    await syncExtraLanguages(p, force).catch((err) => console.warn('[Karty] Wersje językowe: błąd synchronizacji:', err?.message || err));
     await loadCardIndex();
     await loadHashIndex();
     buildMissingHashes().catch(() => {});
@@ -303,7 +381,7 @@ export async function loadCardIndex(): Promise<void> {
   const res = await p.query(
     `SELECT id, face_names, set_code, collector_number, COALESCE(to_char(released_at, 'YYYY-MM-DD'), '') AS released
      FROM scryfall_cards
-     ORDER BY released_at DESC NULLS LAST`
+     ORDER BY released_at DESC NULLS LAST, (lang = 'en') DESC`
   );
   const entries: IndexEntry[] = [];
   const nameById = new Map<string, string>();
@@ -312,7 +390,9 @@ export async function loadCardIndex(): Promise<void> {
   for (const r of res.rows) {
     const idx = entries.length;
     entries.push({ id: r.id, set: r.set_code, cn: r.collector_number, released: r.released });
-    bySetNumber.set(`${r.set_code}/${r.collector_number.toLowerCase()}`, idx);
+    // Ten sam numer w dodatku ma też wersja japońska itp.: zostaje pierwsza (angielska)
+    const setKey = `${r.set_code}/${r.collector_number.toLowerCase()}`;
+    if (!bySetNumber.has(setKey)) bySetNumber.set(setKey, idx);
     nameById.set(r.id, normalizeName((r.face_names as string[])[0] || ''));
     const seen = new Set<string>();
     for (const n of r.face_names as string[]) {
@@ -342,8 +422,12 @@ export async function startCardDb(): Promise<void> {
   buildMissingHashes().catch(() => {});
   lastSyncAt = await getMeta(p, 'last_check');
 
+  // Nowe języki (np. po wdrożeniu albo zmianie CARD_EXTRA_LANGS) pobieramy od razu, bez czekania na dobową synchronizację
+  const extraVersion = await getMeta(p, 'extra_langs_version');
+  let extraPending = EXTRA_LANGS.length > 0 && !(extraVersion || '').endsWith(`|${EXTRA_LANGS.join(',')}`);
   const maybeSync = () => {
-    const due = !lastSyncAt || Date.now() - new Date(lastSyncAt).getTime() > SYNC_INTERVAL_MS || !isCardDbReady();
+    const due = extraPending || !lastSyncAt || Date.now() - new Date(lastSyncAt).getTime() > SYNC_INTERVAL_MS || !isCardDbReady();
+    extraPending = false;
     if (due) syncCardsFromScryfall().catch(() => {});
   };
   maybeSync();
@@ -646,16 +730,16 @@ export async function getPrintsLocal(oracleId: string | null, name: string | nul
   if (!p || (!oracleId && !name)) return null;
   const res = oracleId
     ? await p.query(
-        `SELECT data FROM scryfall_cards WHERE oracle_id = $1 AND lang = 'en'
+        `SELECT data FROM scryfall_cards WHERE oracle_id = $1 AND (lang = 'en' OR lang = ANY($2))
            AND COALESCE(data->>'digital', 'false') = 'false'
-         ORDER BY released_at DESC NULLS LAST, collector_number LIMIT 400`,
-        [oracleId]
+         ORDER BY released_at DESC NULLS LAST, set_code, collector_number, (lang = 'en') DESC LIMIT 600`,
+        [oracleId, EXTRA_LANGS]
       )
     : await p.query(
-        `SELECT data FROM scryfall_cards WHERE LOWER(name) = LOWER($1) AND lang = 'en'
+        `SELECT data FROM scryfall_cards WHERE LOWER(name) = LOWER($1) AND (lang = 'en' OR lang = ANY($2))
            AND COALESCE(data->>'digital', 'false') = 'false'
-         ORDER BY released_at DESC NULLS LAST, collector_number LIMIT 400`,
-        [name]
+         ORDER BY released_at DESC NULLS LAST, set_code, collector_number, (lang = 'en') DESC LIMIT 600`,
+        [name, EXTRA_LANGS]
       );
   return res.rows.map((r) => r.data);
 }
