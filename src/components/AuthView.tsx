@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { SupportButton } from './ui/SupportButton';
 import { BinderShowcase } from './auth/BinderShowcase';
 import { FeatureBento } from './auth/FeatureBento';
 import { useShowcaseCards } from './auth/useShowcaseCards';
@@ -311,6 +312,9 @@ export const AuthView: React.FC<AuthViewProps> = ({ onAuthSuccess }) => {
             Dane i obrazy kart:{' '}
             <a href="https://scryfall.com" target="_blank" rel="noopener noreferrer" className="underline hover:text-stone-300">Scryfall</a>. Ceny: Cardmarket i TCGPlayer. Mapa: ©{' '}
             <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer" className="underline hover:text-stone-300">OpenStreetMap</a>.
+          </p>
+          <p>
+            Lubisz Mana Screw? <SupportButton variant="link" />
           </p>
         </div>
       </footer>

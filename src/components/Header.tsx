@@ -21,6 +21,7 @@ import {
   ChevronDown
 } from 'lucide-react';
 import { formatCurrency } from '../utils/formatters';
+import { SupportButton } from './ui/SupportButton';
 import { AppSettings, AuthUser } from '../types';
 
 type Tab = 'collection' | 'search' | 'set-top' | 'analytics' | 'wishlist' | 'decks' | 'for-sale' | 'users' | 'admin' | 'settings';
@@ -210,6 +211,7 @@ export const Header: React.FC<HeaderProps> = ({
         <div className="flex items-center gap-2.5 min-w-0">
           {logo}
           <h1 className="text-base font-semibold tracking-tight text-stone-100 truncate">Mana Screw</h1>
+          <SupportButton variant="icon" className="-ml-1 shrink-0" />
         </div>
         <button
           type="button"
@@ -277,6 +279,7 @@ export const Header: React.FC<HeaderProps> = ({
             >
               <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin text-amber-400' : ''}`} />
             </button>
+            <SupportButton />
             {user && onOpenMailbox && (
               <button
                 type="button"
