@@ -2117,6 +2117,17 @@ app.get('/api/public/sale/:userRef', async (req, res) => {
   }
 });
 
+// --- KARTY NA EKRAN LOGOWANIA (popularne karty z lokalnej bazy Scryfall) ---
+app.get('/api/public/showcase', async (_req, res) => {
+  try {
+    const list = await cards.getShowcaseCards(16).catch(() => []);
+    res.setHeader('Cache-Control', 'public, max-age=3600');
+    res.json({ cards: list });
+  } catch (err: any) {
+    sendServerError(res, err, '/api/public/showcase');
+  }
+});
+
 // --- PUBLICZNA TALIA (BEZ LOGOWANIA, TYLKO GDY WŁAŚCICIEL WŁĄCZYŁ LINK) ---
 
 app.get('/api/public/deck/:id', async (req, res) => {

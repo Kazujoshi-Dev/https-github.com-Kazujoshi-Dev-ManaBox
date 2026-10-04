@@ -71,3 +71,53 @@ summary,
 .leaflet-container {
   font-family: inherit;
 }
+
+
+/* ---------- Ekran logowania ---------- */
+.auth-page {
+  font-family: 'Geist Variable', ui-sans-serif, system-ui, sans-serif;
+}
+.auth-sleeve {
+  transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.auth-foil {
+  background: linear-gradient(
+    115deg,
+    transparent 25%,
+    rgba(255, 214, 140, 0.32) 40%,
+    rgba(160, 220, 255, 0.34) 50%,
+    rgba(255, 170, 220, 0.3) 60%,
+    transparent 75%
+  );
+  background-size: 260% 100%;
+  background-position: 50% 0;
+  mix-blend-mode: color-dodge;
+}
+.auth-scanline {
+  background: linear-gradient(to bottom, transparent calc(100% - 3px), rgba(252, 211, 77, 0.95) calc(100% - 3px));
+  transform: translateY(-100%);
+}
+@media (min-width: 1024px) {
+  .auth-binder {
+    transform: perspective(1600px) rotateY(-8deg) rotateX(3deg);
+  }
+}
+@media (prefers-reduced-motion: no-preference) {
+  @keyframes auth-rise {
+    from { opacity: 0; transform: translateY(16px); }
+    to { opacity: 1; transform: none; }
+  }
+  @keyframes auth-foil {
+    0% { background-position: 130% 0; }
+    100% { background-position: -130% 0; }
+  }
+  @keyframes auth-scan {
+    0% { transform: translateY(-100%); }
+    100% { transform: translateY(0); }
+  }
+  .auth-rise { animation: auth-rise 0.7s cubic-bezier(0.16, 1, 0.3, 1) both; }
+  .auth-rise-late { animation-delay: 0.12s; }
+  .auth-foil { animation: auth-foil 5s ease-in-out infinite; }
+  .auth-scanline { animation: auth-scan 2.6s ease-in-out infinite alternate; }
+  .auth-sleeve:hover { transform: translateY(-6px) scale(1.03); z-index: 1; }
+}

@@ -1,5 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { FeatureHand, FeatureTable } from './AuthFeatures';
+import { BinderShowcase } from './auth/BinderShowcase';
+import { FeatureBento } from './auth/FeatureBento';
+import { useShowcaseCards } from './auth/useShowcaseCards';
+import '@fontsource-variable/geist';
 import { AuthUser } from '../types';
 import { Lock, Mail, User, ArrowRight, CheckCircle2, AlertCircle, Loader2 } from 'lucide-react';
 
@@ -101,209 +104,195 @@ export const AuthView: React.FC<AuthViewProps> = ({ onAuthSuccess }) => {
     }
   };
 
+  const cards = useShowcaseCards();
+  const switchMode = (m: AuthMode) => {
+    setMode(m);
+    setError(null);
+    setSuccessMsg(null);
+  };
+  const inputCls =
+    'w-full bg-stone-950 border border-stone-700 focus:border-amber-400 focus:ring-2 focus:ring-amber-400/30 rounded-xl pl-10 pr-3.5 py-3 text-base sm:text-sm text-stone-100 placeholder-stone-500 focus:outline-none transition-colors';
+  const labelCls = 'block text-sm font-medium text-stone-300 mb-1.5';
+
   return (
-    <div className="min-h-dvh bg-stone-950 text-stone-100 relative overflow-x-clip">
-      {/* Poświata w tle */}
-      <div className="absolute top-0 left-1/3 w-[640px] h-[640px] bg-gradient-to-tr from-amber-600/10 via-purple-600/10 to-blue-600/10 blur-[120px] pointer-events-none rounded-full" aria-hidden="true" />
-
-      <div className="relative z-10 max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-[calc(1.5rem+env(safe-area-inset-top))] pb-10 lg:py-14 lg:grid lg:grid-cols-12 lg:gap-14 lg:items-start">
-
-        {/* Opis aplikacji (na dużym ekranie z kartami funkcji) */}
-        <section className="lg:col-span-7 space-y-6">
+    <div className="auth-page min-h-dvh bg-stone-950 text-stone-100 overflow-x-clip">
+      {/* 1. Hero: logowanie + strona klasera */}
+      <section className="max-w-[1320px] mx-auto px-4 sm:px-6 lg:px-10 pt-[calc(1.25rem+env(safe-area-inset-top))] lg:pt-12 pb-12 lg:pb-20 grid lg:grid-cols-12 gap-10 lg:gap-14 items-center lg:min-h-[100dvh]">
+        <div className="lg:col-span-5 space-y-7 auth-rise">
           <div className="flex items-center gap-3">
-            <img src="/icon-192.png" alt="" className="w-11 h-11 rounded-xl shadow-lg shadow-black/40" />
-            <span className="text-lg font-black tracking-tight text-amber-100">Mana Screw</span>
+            <img src="/icon-192.png" alt="" className="w-10 h-10 rounded-xl" />
+            <span className="text-lg font-bold tracking-tight text-stone-50">Mana Screw</span>
           </div>
-          <div className="space-y-3 max-w-xl">
-            <h1 className="text-[28px] sm:text-4xl lg:text-[44px] font-black tracking-tight leading-[1.08] text-white text-balance">
-              Cała kolekcja kart Magic: The Gathering w jednym miejscu
+
+          <div className="space-y-3">
+            <h1 className="text-[32px] sm:text-4xl xl:text-[44px] font-bold tracking-tight leading-[1.05] text-stone-50 text-balance">
+              Twoja kolekcja Magic: The Gathering, zawsze pod ręką
             </h1>
-            <p className="text-[15px] sm:text-base text-stone-300 leading-relaxed max-w-[60ch]">
-              Skanuj karty telefonem, układaj je w klaserach i sprawdzaj ich wartość w złotówkach. Wystaw karty na
-              sprzedaż jednym linkiem i znajdź graczy w swojej okolicy.
+            <p className="text-base text-stone-400 leading-relaxed max-w-[46ch]">
+              Skanuj karty telefonem, układaj klasery i sprawdzaj wartość w złotówkach. Sprzedawaj i wymieniaj z graczami z okolicy.
             </p>
           </div>
-          <div className="hidden lg:block pt-4 pr-4">
-            <FeatureTable />
-          </div>
-        </section>
 
-        <div className="lg:col-span-5 mt-7 lg:mt-24 lg:sticky lg:top-10 w-full max-w-md mx-auto lg:max-w-none space-y-6">
-        {/* Auth Card */}
-        <div ref={formCardRef} className="bg-stone-900/90 border border-stone-800 rounded-2xl p-5 sm:p-8 shadow-2xl backdrop-blur-xl space-y-6 scroll-mt-6">
-          
-          {/* Mode Switch Tabs */}
-          <div className="grid grid-cols-2 p-1 bg-stone-950 rounded-xl border border-stone-800 text-[11px] font-bold">
-            <button
-              type="button"
-              onClick={() => {
-                setMode('login');
-                setError(null);
-                setSuccessMsg(null);
-              }}
-              className={`py-2 rounded-lg transition-all cursor-pointer ${
-                mode === 'login'
-                  ? 'bg-amber-500 text-stone-950 shadow-md font-black'
-                  : 'text-stone-400 hover:text-stone-200'
-              }`}
-            >
-              Logowanie
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setMode('register');
-                setError(null);
-                setSuccessMsg(null);
-              }}
-              className={`py-2 rounded-lg transition-all cursor-pointer ${
-                mode === 'register'
-                  ? 'bg-amber-500 text-stone-950 shadow-md font-black'
-                  : 'text-stone-400 hover:text-stone-200'
-              }`}
-            >
-              Nowe konto
-            </button>
-          </div>
-
-          {/* Error Banner */}
-          {error && (
-            <div className="p-3 bg-rose-500/10 border border-rose-500/30 rounded-xl flex items-start gap-2.5 text-xs text-rose-300 animate-fadeIn">
-              <AlertCircle className="w-4 h-4 shrink-0 text-rose-400 mt-0.5" />
-              <div className="space-y-1">
-                <span>{error}</span>
-              </div>
+          {/* Formularz */}
+          <div ref={formCardRef} className="rounded-2xl bg-stone-900 ring-1 ring-stone-800 p-5 sm:p-6 space-y-5 scroll-mt-6 shadow-[0_24px_60px_-24px_rgba(12,10,9,0.9)]">
+            <div className="grid grid-cols-2 gap-1 p-1 rounded-xl bg-stone-950 ring-1 ring-stone-800" role="tablist" aria-label="Logowanie lub rejestracja">
+              {(['login', 'register'] as AuthMode[]).map((m) => (
+                <button
+                  key={m}
+                  type="button"
+                  role="tab"
+                  aria-selected={mode === m}
+                  onClick={() => switchMode(m)}
+                  className={`h-10 rounded-lg text-sm font-semibold transition-colors cursor-pointer ${
+                    mode === m ? 'bg-stone-800 text-stone-50 shadow-sm' : 'text-stone-400 hover:text-stone-200'
+                  }`}
+                >
+                  {m === 'login' ? 'Logowanie' : 'Załóż konto'}
+                </button>
+              ))}
             </div>
-          )}
 
-          {/* Success Banner */}
-          {successMsg && (
-            <div className="p-3 bg-emerald-500/10 border border-emerald-500/30 rounded-xl flex items-start gap-2.5 text-xs text-emerald-300 animate-fadeIn">
-              <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-400 mt-0.5" />
-              <span>{successMsg}</span>
-            </div>
-          )}
+            <form onSubmit={handleSubmit} className="space-y-4" noValidate={false}>
+              {mode === 'register' && (
+                <div>
+                  <label htmlFor="auth-username" className={labelCls}>Nazwa gracza</label>
+                  <div className="relative">
+                    <User className="w-4 h-4 text-stone-500 absolute left-3.5 top-1/2 -translate-y-1/2" aria-hidden="true" />
+                    <input
+                      id="auth-username"
+                      type="text"
+                      required
+                      ref={usernameRef}
+                      autoComplete="username"
+                      value={username}
+                      onChange={(e) => setUsername(e.target.value)}
+                      className={inputCls}
+                      aria-describedby="auth-username-help"
+                    />
+                  </div>
+                  <p id="auth-username-help" className="text-xs text-stone-500 mt-1.5">Widoczna dla innych graczy, np. w ofercie sprzedaży.</p>
+                </div>
+              )}
 
-          {/* Form */}
-          <form onSubmit={handleSubmit} className="space-y-4">
-            
-            {/* Username field (only registration) */}
-            {mode === 'register' && (
               <div>
-                <label className="block text-[11px] font-bold uppercase tracking-wider text-stone-400 mb-1.5">
-                  Nazwa gracza / użytkownika
-                </label>
+                <label htmlFor="auth-email" className={labelCls}>Adres e-mail</label>
                 <div className="relative">
-                  <User className="w-4 h-4 text-stone-500 absolute left-3.5 top-3" />
+                  <Mail className="w-4 h-4 text-stone-500 absolute left-3.5 top-1/2 -translate-y-1/2" aria-hidden="true" />
                   <input
-                    type="text"
+                    id="auth-email"
+                    type="email"
                     required
-                    ref={usernameRef}
-                    placeholder="np. Planeswalker"
-                    value={username}
-                    onChange={(e) => setUsername(e.target.value)}
-                    className="w-full bg-stone-950 border border-stone-700 focus:border-amber-500 focus:ring-1 focus:ring-amber-500 rounded-xl pl-10 pr-3.5 py-2.5 text-sm text-stone-100 placeholder-stone-600 focus:outline-none transition-colors"
+                    autoComplete="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    className={inputCls}
                   />
                 </div>
               </div>
-            )}
 
-            {/* Email field */}
-            <div>
-              <label className="block text-[11px] font-bold uppercase tracking-wider text-stone-400 mb-1.5">
-                Adres e-mail
-              </label>
-              <div className="relative">
-                <Mail className="w-4 h-4 text-stone-500 absolute left-3.5 top-3" />
-                <input
-                  type="email"
-                  required
-                  placeholder="twoj.email@domena.pl"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="w-full bg-stone-950 border border-stone-700 focus:border-amber-500 focus:ring-1 focus:ring-amber-500 rounded-xl pl-10 pr-3.5 py-2.5 text-sm text-stone-100 placeholder-stone-600 focus:outline-none transition-colors"
-                />
+              <div>
+                <label htmlFor="auth-password" className={labelCls}>Hasło</label>
+                <div className="relative">
+                  <Lock className="w-4 h-4 text-stone-500 absolute left-3.5 top-1/2 -translate-y-1/2" aria-hidden="true" />
+                  <input
+                    id="auth-password"
+                    type="password"
+                    required
+                    autoComplete={mode === 'register' ? 'new-password' : 'current-password'}
+                    minLength={mode === 'register' ? 8 : undefined}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className={inputCls}
+                    aria-describedby={mode === 'register' ? 'auth-password-help' : undefined}
+                  />
+                </div>
+                {mode === 'register' && <p id="auth-password-help" className="text-xs text-stone-500 mt-1.5">Co najmniej 8 znaków.</p>}
               </div>
-            </div>
 
-            {/* Password field */}
-            <div>
-              <div className="flex items-center justify-between mb-1.5">
-                <label className="block text-[11px] font-bold uppercase tracking-wider text-stone-400">
-                  Hasło
-                </label>
-              </div>
-              <div className="relative">
-                <Lock className="w-4 h-4 text-stone-500 absolute left-3.5 top-3" />
-                <input
-                  type="password"
-                  required
-                  minLength={mode === 'register' ? 8 : undefined}
-                  placeholder="••••••••"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="w-full bg-stone-950 border border-stone-700 focus:border-amber-500 focus:ring-1 focus:ring-amber-500 rounded-xl pl-10 pr-3.5 py-2.5 text-sm text-stone-100 placeholder-stone-600 focus:outline-none transition-colors"
-                />
-              </div>
-              {mode === 'register' && (
-                <p className="text-[10px] text-stone-500 mt-1">Minimum 8 znaków</p>
+              {error && (
+                <p role="alert" className="p-3 rounded-xl bg-rose-500/10 ring-1 ring-rose-500/30 flex items-start gap-2.5 text-sm text-rose-200">
+                  <AlertCircle className="w-4 h-4 shrink-0 text-rose-300 mt-0.5" aria-hidden="true" />
+                  <span>{error}</span>
+                </p>
               )}
-            </div>
-
-            {/* Submit button */}
-            <button
-              type="submit"
-              disabled={isLoading}
-              className="w-full mt-2 py-3 px-4 bg-gradient-to-r from-amber-500 hover:from-amber-400 to-yellow-500 text-stone-950 font-black text-sm rounded-xl shadow-lg shadow-amber-500/20 hover:shadow-amber-500/30 flex items-center justify-center gap-2 transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {isLoading ? (
-                <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  <span>Przetwarzanie...</span>
-                </>
-              ) : mode === 'register' ? (
-                <>
-                  <span>Zarejestruj konto i wejdź do kolekcji</span>
-                  <ArrowRight className="w-4 h-4" />
-                </>
-              ) : (
-                <>
-                  <span>Zaloguj się do kolekcji</span>
-                  <ArrowRight className="w-4 h-4" />
-                </>
+              {successMsg && (
+                <p role="status" className="p-3 rounded-xl bg-emerald-500/10 ring-1 ring-emerald-500/30 flex items-start gap-2.5 text-sm text-emerald-200">
+                  <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-300 mt-0.5" aria-hidden="true" />
+                  <span>{successMsg}</span>
+                </p>
               )}
-            </button>
-          </form>
 
-        </div>
-
-          {/* Duży ekran: zachęta pod formularzem */}
-          {mode === 'login' && (
-            <p className="hidden lg:block text-sm text-stone-400 text-center mt-5">
-              Nie masz konta?{' '}
-              <button type="button" onClick={startRegistration} className="font-bold text-amber-400 hover:text-amber-300 underline underline-offset-4 cursor-pointer">
-                Załóż je w minutę
+              <button
+                type="submit"
+                disabled={isLoading}
+                className="w-full h-12 px-4 rounded-xl bg-amber-400 hover:bg-amber-300 active:scale-[0.98] text-stone-950 font-bold text-sm flex items-center justify-center gap-2 transition-[background-color,transform] cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
+              >
+                {isLoading ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />
+                    <span>Chwileczkę...</span>
+                  </>
+                ) : (
+                  <>
+                    <span>{mode === 'register' ? 'Załóż konto' : 'Zaloguj się'}</span>
+                    <ArrowRight className="w-4 h-4" aria-hidden="true" />
+                  </>
+                )}
               </button>
-            </p>
-          )}
+            </form>
+          </div>
         </div>
 
-        {/* Telefon: funkcje jako karty przewijane palcem */}
-        <section className="lg:hidden mt-10 space-y-4" aria-labelledby="features-heading">
-          <h2 id="features-heading" className="text-lg font-extrabold text-stone-100">Co zyskujesz z kontem</h2>
-          <FeatureHand />
-          {mode === 'login' && (
+        <div className="lg:col-span-7 auth-rise auth-rise-late">
+          <div className="hidden sm:block lg:pl-6 w-full max-w-[min(36rem,calc((100dvh-6rem)/1.45))] mx-auto">
+            <BinderShowcase cards={cards} />
+          </div>
+          <div className="sm:hidden">
+            <BinderShowcase cards={cards} compact />
+          </div>
+        </div>
+      </section>
+
+      {/* 2. Funkcje */}
+      <section className="max-w-[1320px] mx-auto px-4 sm:px-6 lg:px-10 pb-16 lg:pb-24 space-y-8" aria-labelledby="auth-features">
+        <h2 id="auth-features" className="text-2xl sm:text-3xl font-bold tracking-tight text-stone-50 max-w-xl">
+          Wszystko, czego potrzebuje kolekcjoner
+        </h2>
+        <FeatureBento cards={cards} />
+      </section>
+
+      {/* 3. Zachęta do rejestracji */}
+      {mode === 'login' && (
+        <section className="max-w-[1320px] mx-auto px-4 sm:px-6 lg:px-10 pb-16">
+          <div className="rounded-2xl bg-stone-900 ring-1 ring-stone-800 p-6 sm:p-8 flex flex-col sm:flex-row sm:items-center justify-between gap-5">
+            <div className="space-y-1">
+              <h2 className="text-xl font-bold text-stone-50">Konto jest darmowe</h2>
+              <p className="text-sm text-stone-400">Wystarczy e-mail i hasło. Kolekcję możesz zaimportować z pliku tekstowego.</p>
+            </div>
             <button
               type="button"
               onClick={startRegistration}
-              className="w-full h-12 rounded-xl bg-amber-500 hover:bg-amber-400 text-stone-950 font-extrabold text-sm cursor-pointer"
+              className="h-12 px-6 rounded-xl bg-amber-400 hover:bg-amber-300 active:scale-[0.98] text-stone-950 font-bold text-sm shrink-0 cursor-pointer transition-[background-color,transform]"
             >
               Załóż konto
             </button>
-          )}
+          </div>
         </section>
+      )}
 
-      </div>
+      {/* 4. Stopka: informacja prawna wymagana przez Fan Content Policy */}
+      <footer className="border-t border-stone-900">
+        <div className="max-w-[1320px] mx-auto px-4 sm:px-6 lg:px-10 py-8 pb-[calc(2rem+env(safe-area-inset-bottom))] space-y-2 text-xs text-stone-500 leading-relaxed">
+          <p>
+            Mana Screw is unofficial Fan Content permitted under the Fan Content Policy. Not approved/endorsed by Wizards. Portions of the materials used are property of Wizards of the Coast. ©Wizards of the Coast LLC.
+          </p>
+          <p>
+            Dane i obrazy kart:{' '}
+            <a href="https://scryfall.com" target="_blank" rel="noopener noreferrer" className="underline hover:text-stone-300">Scryfall</a>. Ceny: Cardmarket i TCGPlayer. Mapa: ©{' '}
+            <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer" className="underline hover:text-stone-300">OpenStreetMap</a>.
+          </p>
+        </div>
+      </footer>
     </div>
   );
 };
