@@ -4,6 +4,7 @@ import type { CollectionItem, DeckItem, ScryfallCard } from '../../types';
 import { getCardImageUri, handleCardImageError } from '../../utils/formatters';
 import { edhrecApi, type EdhrecCommanderData, type EdhrecRecommendation } from '../../services/api';
 import { getCardCategory } from './constants';
+import { ReplaceCardModal } from './ReplaceCardModal';
 
 interface DeckSuggestionsProps {
   deck: DeckItem;
@@ -49,6 +50,7 @@ export const DeckSuggestions: React.FC<DeckSuggestionsProps> = ({ deck, collecti
   const [tab, setTab] = useState('Wszystkie');
   const [ownedOnly, setOwnedOnly] = useState(false);
   const [limit, setLimit] = useState(18);
+  const [replaceRec, setReplaceRec] = useState<EdhrecRecommendation | null>(null);
 
   useEffect(() => {
     if (!commanderName) return;
@@ -74,6 +76,11 @@ export const DeckSuggestions: React.FC<DeckSuggestionsProps> = ({ deck, collecti
 
   const owned = useMemo(() => new Set(collection.map((c) => frontName(c.card?.name || ''))), [collection]);
   const collectionOnly = (deck.cardSource || 'collection') === 'collection';
+
+  const inclusionByName = useMemo(
+    () => new Map<string, number>((data?.cards || []).map((r) => [frontName(r.name), r.inclusion] as [string, number])),
+    [data]
+  );
 
   const missing = useMemo(
     () => (data?.cards || []).filter((r) => !deckNames.has(frontName(r.name))),
@@ -120,7 +127,7 @@ export const DeckSuggestions: React.FC<DeckSuggestionsProps> = ({ deck, collecti
 
   if (!deck.commander) {
     return (
-      <section className="bg-stone-900 border border-stone-800 rounded-2xl p-4 sm:p-5">
+      <section className="bg-stone-900 border border-stone-800 rounded-xl p-4 sm:p-5">
         <h3 className="text-sm font-bold text-stone-100 flex items-center gap-2">
           <Sparkles className="w-4 h-4 text-amber-400" /> Sugestie kart (EDHREC)
         </h3>
@@ -136,7 +143,7 @@ export const DeckSuggestions: React.FC<DeckSuggestionsProps> = ({ deck, collecti
     <div className="space-y-4" aria-label="Sugestie kart">
       <div className="flex flex-wrap items-end justify-between gap-2 px-1">
         <div>
-          <h2 className="text-lg font-bold text-stone-100">Sugestie dla {deck.commander.name}</h2>
+          <h2 className="text-lg font-semibold text-stone-50">Sugestie dla {deck.commander.name}</h2>
           <p className="text-xs text-stone-400">
             Na podstawie {data ? `${data.numDecks.toLocaleString('pl-PL')} talii` : 'talii'} z EDHREC: co grają inni gracze z tym dowódcą.
           </p>
@@ -162,14 +169,11 @@ export const DeckSuggestions: React.FC<DeckSuggestionsProps> = ({ deck, collecti
       {data && !loading && (
         <>
           {/* Lepsze odpowiedniki */}
-          <section className="bg-stone-900 border border-stone-800 rounded-2xl p-4 sm:p-5">
+          <section className="bg-stone-900 border border-stone-800 rounded-xl p-4 sm:p-5">
             <div className="flex items-start gap-2.5 mb-3">
-              <div className="w-9 h-9 rounded-xl bg-amber-500/10 border border-amber-500/25 text-amber-400 flex items-center justify-center shrink-0">
-                <Repeat className="w-4.5 h-4.5" />
-              </div>
               <div>
-                <h3 className="text-sm font-bold text-stone-100">Lepsze odpowiedniki</h3>
-                <p className="text-xs text-stone-400">
+                <h3 className="text-base font-semibold text-stone-50 flex items-center gap-2"><Repeat className="w-4 h-4 text-stone-400" />Lepsze odpowiedniki</h3>
+                <p className="text-sm text-stone-400 mt-0.5">
                   Karty z talii, które gra mniej niż 10% graczy z tym dowódcą, i popularniejsze karty tego samego typu o podobnym koszcie.
                 </p>
               </div>
@@ -205,15 +209,12 @@ export const DeckSuggestions: React.FC<DeckSuggestionsProps> = ({ deck, collecti
           </section>
 
           {/* Popularne karty spoza talii */}
-          <section className="bg-stone-900 border border-stone-800 rounded-2xl p-4 sm:p-5">
+          <section className="bg-stone-900 border border-stone-800 rounded-xl p-4 sm:p-5">
             <div className="flex flex-wrap items-start justify-between gap-3 mb-3">
               <div className="flex items-start gap-2.5">
-                <div className="w-9 h-9 rounded-xl bg-amber-500/10 border border-amber-500/25 text-amber-400 flex items-center justify-center shrink-0">
-                  <TrendingUp className="w-4.5 h-4.5" />
-                </div>
                 <div>
-                  <h3 className="text-sm font-bold text-stone-100">Najczęściej grane, których nie masz w talii</h3>
-                  <p className="text-xs text-stone-400">Procent = ile talii z tym dowódcą gra kartę. Synergia = o ile częściej niż w innych taliach tych kolorów.</p>
+                  <h3 className="text-base font-semibold text-stone-50 flex items-center gap-2"><TrendingUp className="w-4 h-4 text-stone-400" />Najczęściej grane, których nie masz w talii</h3>
+                  <p className="text-sm text-stone-400 mt-0.5">Procent = ile talii z tym dowódcą gra kartę. Synergia = o ile częściej niż w innych taliach tych kolorów.</p>
                 </div>
               </div>
               <label className="flex items-center gap-2 text-xs text-stone-300 cursor-pointer h-9">
@@ -232,7 +233,7 @@ export const DeckSuggestions: React.FC<DeckSuggestionsProps> = ({ deck, collecti
                     type="button"
                     onClick={() => { setTab(t); setLimit(18); }}
                     className={`h-9 px-3 rounded-full text-xs font-semibold border whitespace-nowrap cursor-pointer ${
-                      tab === t ? 'bg-amber-500/15 border-amber-500/50 text-amber-200' : 'bg-stone-950 border-stone-800 text-stone-400 hover:text-stone-200'
+                      tab === t ? 'bg-stone-800 border-stone-600 text-stone-50' : 'bg-transparent border-transparent text-stone-400 hover:text-stone-200 hover:bg-stone-800/60'
                     }`}
                   >
                     {t} <span className="opacity-60">{n}</span>
@@ -279,15 +280,26 @@ export const DeckSuggestions: React.FC<DeckSuggestionsProps> = ({ deck, collecti
                             </span>
                           )}
                         </p>
-                        <button
-                          type="button"
-                          onClick={() => onAddCard(rec)}
-                          disabled={Boolean(blocked)}
-                          title={blocked || 'Dodaj do talii'}
-                          className="mt-auto h-8 rounded-lg bg-amber-500 hover:bg-amber-400 text-stone-950 text-xs font-bold flex items-center justify-center gap-1 cursor-pointer disabled:bg-stone-800 disabled:text-stone-500 disabled:cursor-not-allowed"
-                        >
-                          <Plus className="w-3.5 h-3.5" /> Dodaj
-                        </button>
+                        <div className="mt-auto grid grid-cols-2 gap-1.5">
+                          <button
+                            type="button"
+                            onClick={() => onAddCard(rec)}
+                            disabled={Boolean(blocked)}
+                            title={blocked || 'Dodaj do talii'}
+                            className="h-8 rounded-md bg-amber-400 hover:bg-amber-300 text-stone-950 text-xs font-semibold flex items-center justify-center gap-1 cursor-pointer disabled:bg-stone-800 disabled:text-stone-500 disabled:cursor-not-allowed"
+                          >
+                            <Plus className="w-3.5 h-3.5" /> Dodaj
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setReplaceRec(rec)}
+                            disabled={Boolean(blocked) || deck.cards.length === 0}
+                            title={blocked || 'Wybierz kartę z talii, którą zastąpi'}
+                            className="h-8 rounded-md ring-1 ring-stone-700 hover:bg-stone-800 text-stone-100 text-xs font-medium flex items-center justify-center gap-1 cursor-pointer disabled:text-stone-500 disabled:cursor-not-allowed disabled:hover:bg-transparent"
+                          >
+                            <Repeat className="w-3.5 h-3.5" /> Zastąp
+                          </button>
+                        </div>
                       </div>
                     </div>
                   );
@@ -308,6 +320,19 @@ export const DeckSuggestions: React.FC<DeckSuggestionsProps> = ({ deck, collecti
             </p>
           </section>
         </>
+      )}
+
+      {replaceRec && (
+        <ReplaceCardModal
+          deck={deck}
+          incoming={replaceRec}
+          inclusionByName={inclusionByName}
+          onClose={() => setReplaceRec(null)}
+          onConfirm={(oldCard) => {
+            onReplaceCard(oldCard, replaceRec);
+            setReplaceRec(null);
+          }}
+        />
       )}
     </div>
   );
