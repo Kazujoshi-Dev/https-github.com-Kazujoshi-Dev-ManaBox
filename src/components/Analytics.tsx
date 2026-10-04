@@ -1,5 +1,5 @@
 import { PageHeader } from './ui/PageHeader';
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { CollectionItem, AppSettings } from '../types';
 import { formatCurrency, getCardImageUri, getCardPrice, handleCardImageError } from '../utils/formatters';
 import { computeValueChange, itemValue } from '../hooks/useCollectionStats';
@@ -26,6 +26,10 @@ import {
   Layers, 
   PieChart as PieIcon 
 } from 'lucide-react';
+
+const MOVERS_LIMIT = 20;
+
+type Mover = { item: CollectionItem; now: number; before: number; delta: number; pct: number | null };
 
 interface AnalyticsProps {
   collection: CollectionItem[];
@@ -140,12 +144,17 @@ export const Analytics: React.FC<AnalyticsProps> = ({ collection, settings, onVi
   const movers = useMemo(() => {
     const list = collection
       .filter(item => item.card && item.previousPrices)
-      .map(item => ({ item, delta: itemValue(item, settings) - itemValue(item, settings, item.previousPrices!) }))
+      .map(item => {
+        const now = itemValue(item, settings);
+        const before = itemValue(item, settings, item.previousPrices!);
+        return { item, now, before, delta: now - before, pct: before > 0 ? ((now - before) / before) * 100 : null };
+      })
       .filter(m => Math.abs(m.delta) >= 0.005);
-    const up = list.filter(m => m.delta > 0).sort((a, b) => b.delta - a.delta)[0] || null;
-    const down = list.filter(m => m.delta < 0).sort((a, b) => a.delta - b.delta)[0] || null;
+    const up = list.filter(m => m.delta > 0).sort((a, b) => b.delta - a.delta).slice(0, MOVERS_LIMIT);
+    const down = list.filter(m => m.delta < 0).sort((a, b) => a.delta - b.delta).slice(0, MOVERS_LIMIT);
     return { up, down };
   }, [collection, settings]);
+  const [moversSide, setMoversSide] = useState<'up' | 'down'>('up');
   const hasChange = change.valueChange !== null;
   const changeSign = !hasChange || Math.abs(change.valueChange!) < 0.005 ? 0 : change.valueChange! > 0 ? 1 : -1;
   const changeColor = changeSign > 0 ? 'text-emerald-400' : changeSign < 0 ? 'text-rose-400' : 'text-stone-200';
@@ -157,18 +166,18 @@ export const Analytics: React.FC<AnalyticsProps> = ({ collection, settings, onVi
       
       <PageHeader title="Statystyki" description="Wartość kolekcji, kolory, krzywa many i rzadkość kart." />
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 rounded-xl border border-stone-800 bg-stone-900 divide-stone-800 [&>*]:p-4 [&>*:nth-child(n+3)]:border-t lg:[&>*:nth-child(n+3)]:border-t-0 [&>*:nth-child(even)]:border-l lg:[&>*:not(:first-child)]:border-l">
+      <div className="grid grid-cols-2 lg:grid-cols-3 rounded-xl border border-stone-800 bg-stone-900 [&>*]:p-4">
         <div className="space-y-1 border-stone-800">
           <p className="text-sm text-stone-400">Karty</p>
           <p className="text-2xl font-semibold text-stone-50 tabular-nums">{stats.totalCards}</p>
           <p className="text-xs text-stone-500">{stats.uniqueCards} różnych pozycji</p>
         </div>
-        <div className="space-y-1 border-stone-800">
+        <div className="space-y-1 border-l border-stone-800">
           <p className="text-sm text-stone-400">Wartość</p>
           <p className="text-2xl font-semibold text-stone-50 tabular-nums">{formatCurrency(stats.totalValue, settings.currency)}</p>
           <p className="text-xs text-stone-500">{settings.pricingSource === 'CARDMARKET' ? 'Cardmarket Trend' : 'TCGPlayer Market'}</p>
         </div>
-        <div className="space-y-1 border-stone-800">
+        <div className="space-y-1 col-span-2 lg:col-span-1 border-t lg:border-t-0 lg:border-l border-stone-800">
           <p className="text-sm text-stone-400 flex items-center gap-1.5">
             <ChangeIcon className={`w-4 h-4 ${changeColor}`} />
             Zmiana wartości
@@ -186,26 +195,6 @@ export const Analytics: React.FC<AnalyticsProps> = ({ collection, settings, onVi
               ? `Od poprzednich cen${change.lastPriceChangeAt ? ` (${new Date(change.lastPriceChangeAt).toLocaleDateString('pl-PL')})` : ''}`
               : 'Pojawi się po odświeżeniu cen'}
           </p>
-        </div>
-        <div className="space-y-1 border-stone-800 min-w-0">
-          <p className="text-sm text-stone-400">Największe zmiany</p>
-          {movers.up || movers.down ? (
-            <div className="space-y-0.5">
-              {[movers.up, movers.down].filter(Boolean).map((m) => (
-                <button
-                  key={m!.item.id}
-                  type="button"
-                  onClick={() => onViewCardDetails(m!.item)}
-                  className="w-full flex items-center justify-between gap-2 text-left text-sm hover:bg-stone-800 rounded-md -mx-1.5 px-1.5 py-1 cursor-pointer"
-                >
-                  <span className="truncate text-stone-200">{m!.item.card.name}</span>
-                  <span className={`shrink-0 font-medium tabular-nums ${m!.delta > 0 ? 'text-emerald-400' : 'text-rose-400'}`}>{fmtDelta(m!.delta)}</span>
-                </button>
-              ))}
-            </div>
-          ) : (
-            <p className="text-2xl font-semibold text-stone-500">—</p>
-          )}
         </div>
       </div>
 
@@ -323,6 +312,116 @@ export const Analytics: React.FC<AnalyticsProps> = ({ collection, settings, onVi
         </div>
       </div>
 
+      {/* Największe zmiany cen od ostatniego odświeżenia */}
+      <section className="bg-stone-900 border border-stone-800 rounded-2xl p-5 sm:p-6 space-y-4">
+        <div className="flex flex-wrap items-end justify-between gap-3">
+          <div>
+            <h3 className="text-base font-semibold text-stone-100 flex items-center gap-2">
+              <ChangeIcon className={`w-5 h-5 ${changeSign < 0 ? 'text-rose-400' : 'text-emerald-400'}`} />
+              Największe zmiany
+            </h3>
+            <p className="text-sm text-stone-400 mt-0.5">
+              Karty z kolekcji, które najwięcej zyskały i straciły od ostatniego odświeżenia cen
+              {change.lastPriceChangeAt ? ` (${new Date(change.lastPriceChangeAt).toLocaleDateString('pl-PL')})` : ''}.
+            </p>
+          </div>
+          {(movers.up.length > 0 || movers.down.length > 0) && (
+            <div className="lg:hidden inline-grid grid-cols-2 p-1 rounded-lg bg-stone-950 ring-1 ring-stone-800" role="tablist" aria-label="Kierunek zmiany">
+              {([
+                ['up', `Zyskały (${movers.up.length})`],
+                ['down', `Straciły (${movers.down.length})`]
+              ] as const).map(([id, label]) => (
+                <button
+                  key={id}
+                  type="button"
+                  role="tab"
+                  aria-selected={moversSide === id}
+                  onClick={() => setMoversSide(id)}
+                  className={`h-8 px-3 rounded-md text-sm cursor-pointer ${moversSide === id ? 'bg-stone-800 text-stone-50 font-medium' : 'text-stone-400'}`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {movers.up.length === 0 && movers.down.length === 0 ? (
+          <p className="text-sm text-stone-400 py-6 text-center">
+            {hasChange ? 'Od ostatniego odświeżenia ceny kart się nie zmieniły.' : 'Zmiany pojawią się po pierwszym odświeżeniu cen.'}
+          </p>
+        ) : (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-8 gap-y-4">
+            {([
+              ['up', 'Zyskały', movers.up],
+              ['down', 'Straciły', movers.down]
+            ] as const).map(([id, title, list]) => (
+              <div key={id} className={moversSide === id ? '' : 'max-lg:hidden'}>
+                <h4 className={`hidden lg:flex items-center gap-1.5 text-sm font-medium mb-2 ${id === 'up' ? 'text-emerald-400' : 'text-rose-400'}`}>
+                  {id === 'up' ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
+                  {title}
+                  <span className="text-stone-500 font-normal tabular-nums">{list.length}</span>
+                </h4>
+                {list.length === 0 ? (
+                  <p className="text-sm text-stone-500 py-3">{id === 'up' ? 'Żadna karta nie zdrożała.' : 'Żadna karta nie potaniała.'}</p>
+                ) : (
+                  <ol className="divide-y divide-stone-800/80">
+                    {(list as Mover[]).map((m, i) => (
+                      <MoverRow key={m.item.id} mover={m} rank={i + 1} currency={settings.currency} fmtDelta={fmtDelta} onOpen={() => onViewCardDetails(m.item)} />
+                    ))}
+                  </ol>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
+
     </div>
+  );
+};
+
+const MoverRow: React.FC<{
+  mover: Mover;
+  rank: number;
+  currency: string;
+  fmtDelta: (v: number) => string;
+  onOpen: () => void;
+}> = ({ mover, rank, currency, fmtDelta, onOpen }) => {
+  const { item, now, before, delta, pct } = mover;
+  const img = getCardImageUri(item.card, 'small') || getCardImageUri(item.card, 'normal');
+  const qty = item.quantity + item.quantityFoil;
+  const up = delta > 0;
+  return (
+    <li>
+      <button type="button" onClick={onOpen} className="w-full flex items-center gap-3 py-2 px-2 -mx-2 rounded-lg text-left hover:bg-stone-800/70 cursor-pointer">
+        <span className="w-5 shrink-0 text-xs text-stone-500 tabular-nums text-right">{rank}</span>
+        <span className="w-9 shrink-0 aspect-[63/88] rounded overflow-hidden bg-stone-800">
+          {img && <img src={img} alt="" loading="lazy" referrerPolicy="no-referrer" onError={(e) => handleCardImageError(e, img)} className="w-full h-full object-cover" />}
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block text-sm text-stone-100 truncate">{item.card.name}</span>
+          <span className="block text-xs text-stone-500 truncate tabular-nums">
+            <span className="max-sm:hidden">
+              {item.card.set.toUpperCase()}
+              {qty > 1 && <> · {qty} szt.</>}
+              {item.quantityFoil > 0 && <> · foil</>}
+              {' · '}
+            </span>
+            {qty > 1 && <span className="sm:hidden">{qty} szt. · </span>}
+            {formatCurrency(before, currency)} → <span className="text-stone-300">{formatCurrency(now, currency)}</span>
+          </span>
+        </span>
+        <span className="shrink-0 text-right tabular-nums">
+          <span className={`block text-sm font-medium ${up ? 'text-emerald-400' : 'text-rose-400'}`}>{fmtDelta(delta)}</span>
+          {pct !== null && (
+            <span className={`block text-xs ${up ? 'text-emerald-400/70' : 'text-rose-400/70'}`}>
+              {pct > 0 ? '+' : ''}
+              {Math.abs(pct) >= 100 ? Math.round(pct) : pct.toFixed(1).replace('.', ',')}%
+            </span>
+          )}
+        </span>
+      </button>
+    </li>
   );
 };
