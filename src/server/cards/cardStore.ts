@@ -286,6 +286,8 @@ export async function syncCardsFromScryfall(force = false): Promise<void> {
     await loadCardIndex();
     await loadHashIndex();
     buildMissingHashes().catch(() => {});
+  // karty na ekran logowania gotowe, zanim wejdzie pierwszy gość
+  getShowcaseCards(16).catch(() => {});
   } catch (err: any) {
     lastSyncError = err?.message || String(err);
     console.warn('[Karty] Synchronizacja nieudana:', lastSyncError);
@@ -375,59 +377,65 @@ let showcaseCache: { at: number; cards: ShowcaseCard[] } | null = null;
 export async function getShowcaseCards(limit = 12): Promise<ShowcaseCard[]> {
   if (showcaseCache && Date.now() - showcaseCache.at < 6 * 60 * 60 * 1000) return showcaseCache.cards;
   const p = pool();
-  if (!p) return [];
-  const base = `lang = 'en'
-        AND data->'image_uris'->>'normal' IS NOT NULL
-        AND COALESCE(data->>'type_line', '') NOT ILIKE '%land%'
-        AND COALESCE(data->>'border_color', 'black') = 'black'
-        AND COALESCE(data->>'full_art', 'false') = 'false'
-        AND COALESCE(data->>'promo', 'false') = 'false'
-        AND COALESCE(data->>'digital', 'false') = 'false'`;
-  const select = `SELECT DISTINCT ON (name) name, data->'image_uris'->>'normal' AS image, data->'image_uris'->>'art_crop' AS art,
-            COALESCE(data->>'type_line', '') ILIKE '%legendary creature%' AS legendary
-       FROM scryfall_cards`;
+  if (!p || !index || index.entries.length === 0) return [];
+
+  // Pełny skan tabeli (ponad 100 tys. wierszy JSONB) na małym serwerze przekracza limit czasu,
+  // więc losujemy wydania z indeksu w pamięci (inne każdego dnia) i pobieramy je po kluczu głównym.
+  const day = Math.floor(Date.now() / 86_400_000);
+  let seed = (day * 2654435761) >>> 0;
+  const rand = () => {
+    seed = (seed * 1664525 + 1013904223) >>> 0;
+    return seed / 4294967296;
+  };
+  const ids = new Set<string>();
+  const total = index.entries.length;
+  for (let n = 0; n < 1500 && ids.size < 800; n++) ids.add(index.entries[Math.floor(rand() * total)].id);
+
   let rows: any[] = [];
   try {
-    // Najpopularniejsze karty wg EDHREC (rank jako liczba w JSON)
     const res = await p.query(
-      `${select}
-        WHERE ${base}
-          AND jsonb_typeof(data->'edhrec_rank') = 'number'
-          AND (data->'edhrec_rank')::numeric <= 400
-        ORDER BY name, released_at DESC NULLS LAST`
+      `SELECT name, data->'image_uris'->>'normal' AS image, data->'image_uris'->>'art_crop' AS art,
+              COALESCE(data->>'type_line', '') AS type_line, data->>'rarity' AS rarity,
+              data->>'border_color' AS border, data->>'full_art' AS full_art, data->>'promo' AS promo,
+              data->>'digital' AS digital, data->>'edhrec_rank' AS rank, lang
+         FROM scryfall_cards WHERE id = ANY($1::uuid[])`,
+      [[...ids]]
     );
     rows = res.rows;
-    if (rows.length < limit) {
-      // Zapas: najnowsze karty rzadkie / mityczne
-      const more = await p.query(
-        `SELECT * FROM (
-           ${select}
-            WHERE ${base} AND data->>'rarity' IN ('rare', 'mythic')
-            ORDER BY name, released_at DESC NULLS LAST
-         ) x ORDER BY random() LIMIT 200`
-      );
-      const seen = new Set(rows.map((r) => r.name));
-      rows = rows.concat(more.rows.filter((r) => !seen.has(r.name)));
-    }
   } catch (err: any) {
     console.warn('[Karty] Nie udało się wybrać kart na ekran logowania:', err?.message || err);
     return [];
   }
-  // Losowanie zależne od dnia: każdego dnia inny zestaw, ale stały w ciągu dnia
-  const day = Math.floor(Date.now() / 86_400_000);
-  const shuffled = rows
-    .map((r, i) => {
-      const k = Math.sin((i + 1) * 12.9898 + day * 78.233) * 43758.5453;
-      return { r, k: k - Math.floor(k) };
-    })
+
+  const seen = new Set<string>();
+  const candidates = rows
+    .filter(
+      (r) =>
+        r.lang === 'en' &&
+        r.image &&
+        !/land/i.test(r.type_line) &&
+        (r.border || 'black') === 'black' &&
+        r.full_art !== 'true' &&
+        r.promo !== 'true' &&
+        r.digital !== 'true' &&
+        (r.rarity === 'rare' || r.rarity === 'mythic')
+    )
+    .map((r) => ({ ...r, rankNum: Number(r.rank) || 1e9, legendary: /legendary creature/i.test(r.type_line) }))
+    // najpierw karty popularne w EDHREC
+    .sort((a, b) => a.rankNum - b.rankNum)
+    .filter((r) => (seen.has(r.name) ? false : (seen.add(r.name), true)));
+
+  const legendary = candidates.filter((r) => r.legendary).slice(0, 3);
+  const others = candidates.filter((r) => !r.legendary).slice(0, Math.max(0, limit - legendary.length));
+  // w klaserze karty w losowej (dziennej) kolejności, nie wg rankingu
+  const mixed = others
+    .map((r) => ({ r, k: rand() }))
     .sort((a, b) => a.k - b.k)
     .map(({ r }) => r);
-  const legendary = shuffled.filter((r) => r.legendary).slice(0, 3);
-  const others = shuffled.filter((r) => !legendary.includes(r)).slice(0, Math.max(0, limit - legendary.length));
-  const cards = [...others, ...legendary].map((r) => ({ name: r.name, image: r.image, artCrop: r.art || null, legendary: Boolean(r.legendary) }));
+  const cards = [...mixed, ...legendary].map((r) => ({ name: r.name, image: r.image, artCrop: r.art || null, legendary: Boolean(r.legendary) }));
   // Pustego wyniku nie zapamiętujemy (np. baza kart jeszcze się synchronizuje)
   if (cards.length) showcaseCache = { at: Date.now(), cards };
-  else console.warn('[Karty] Brak kart na ekran logowania — czy lokalna baza kart Scryfall jest zsynchronizowana?');
+  else console.warn(`[Karty] Brak kart na ekran logowania (wylosowano ${rows.length} wydań, żadne nie pasuje).`);
   return cards;
 }
 
