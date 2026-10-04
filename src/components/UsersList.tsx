@@ -1,4 +1,5 @@
 import { PageHeader } from './ui/PageHeader';
+import { publicUrl } from '../utils/publicLinks';
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { RegisteredUserSummary, AppSettings, AuthUser, CollectionItem, ScryfallCard, WishlistItem, WishlistMatches } from '../types';
 import { usersApi, publicSaleApi, sellersApi } from '../services/api';
@@ -189,7 +190,7 @@ export const UsersList: React.FC<UsersListProps> = ({
 
   const handleCopyUserLink = (username: string, e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
-    const url = `${window.location.origin}/?sprzedam=${encodeURIComponent(username)}`;
+    const url = publicUrl('sale', username);
     navigator.clipboard.writeText(url);
     setCopiedLinkUser(username);
     showToast?.(`Skopiowano publiczny link do oferty użytkownika @${username}!`);
@@ -373,7 +374,7 @@ export const UsersList: React.FC<UsersListProps> = ({
       })
       .join('\n');
 
-    const shareUrl = `${window.location.origin}/?sprzedam=${encodeURIComponent(sellerOffers.seller.username)}`;
+    const shareUrl = publicUrl('sale', sellerOffers.seller.username);
     const header = `=== KARTY NA SPRZEDAŻ OD: @${sellerOffers.seller.username} ===\nŁącznie: ${sellerOffers.cards.length} pozycji | Wartość: ${formatCurrency(selectedUserTotalValue, effSettings.currency)}\nPubliczny link: ${shareUrl}\n\n`;
     navigator.clipboard.writeText(header + textList);
     setCopiedText(true);
@@ -430,7 +431,7 @@ export const UsersList: React.FC<UsersListProps> = ({
 
   if (selectedUser) {
     const effSettings = sellerOffers?.settings || settings;
-    const publicUrl = `${window.location.origin}/?sprzedam=${encodeURIComponent(selectedUser.username)}`;
+    const profileSaleUrl = publicUrl('sale', selectedUser.username);
     const forSaleBadgeCount = sellerOffers?.cards.reduce((sum, c) => sum + c.quantity + c.quantityFoil, 0) ?? selectedUser.forSaleCount;
     const wishlistBadgeCount = userWishlist ? selectedUserWishlistCount : (selectedUser.wishlistCount || 0);
 
@@ -475,7 +476,7 @@ export const UsersList: React.FC<UsersListProps> = ({
             </button>
 
             <a
-              href={publicUrl}
+              href={profileSaleUrl}
               target="_blank"
               rel="noreferrer"
               className="btn btn-secondary"

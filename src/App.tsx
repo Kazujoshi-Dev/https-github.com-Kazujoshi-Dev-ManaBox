@@ -1,4 +1,5 @@
 import { langFromCard } from './utils/formatters';
+import { parsePublicLink } from './utils/publicLinks';
 import React, { useState, useCallback, useEffect } from 'react';
 import { ScryfallCard, CollectionItem, DeckItem, CardCondition, CardLanguage, AppSettings, RegisteredUserSummary, WishlistItem } from './types';
 import { Header } from './components/Header';
@@ -106,33 +107,24 @@ export default function App() {
   } | null>(null);
   // Publiczna talia (link ?talia=id)
   const [publicDeckData, setPublicDeckData] = useState<{ deck: DeckItem; owner: { username: string }; settings: AppSettings } | null>(null);
-  const publicKind = React.useMemo<'sale' | 'wishlist' | 'deck'>(() => {
+  const publicLink = React.useMemo(() => {
     try {
-      const params = new URLSearchParams(window.location.search);
-      if (params.get('talia')) return 'deck';
-      return params.get('szukam') || params.get('wishlist') ? 'wishlist' : 'sale';
+      return parsePublicLink();
     } catch {
-      return 'sale';
+      return null;
     }
   }, []);
+  const publicKind = publicLink?.kind || 'sale';
   const [showLoginModalFromPublic, setShowLoginModalFromPublic] = useState<boolean>(false);
   const [publicSaleError, setPublicSaleError] = useState<string | null>(null);
-  const [isLoadingPublicSale, setIsLoadingPublicSale] = useState<boolean>(() => {
-    try {
-      const params = new URLSearchParams(window.location.search);
-      return Boolean(params.get('sprzedam') || params.get('sale') || params.get('szukam') || params.get('wishlist') || params.get('talia'));
-    } catch {
-      return false;
-    }
-  });
+  const [isLoadingPublicSale, setIsLoadingPublicSale] = useState<boolean>(() => Boolean(publicLink));
 
   // Check if opened via public link (?sprzedam=... or ?sale=...)
   React.useEffect(() => {
     try {
-      const params = new URLSearchParams(window.location.search);
-      const saleParam = params.get('sprzedam') || params.get('sale');
-      const wishlistParam = params.get('szukam') || params.get('wishlist');
-      const deckParam = params.get('talia');
+      const deckParam = publicLink?.kind === 'deck' ? publicLink.ref : null;
+      const wishlistParam = publicLink?.kind === 'wishlist' ? publicLink.ref : null;
+      const saleParam = publicLink?.kind === 'sale' ? publicLink.ref : null;
       if (deckParam) {
         setIsLoadingPublicSale(true);
         publicDeckApi.get(deckParam)
@@ -169,7 +161,7 @@ export default function App() {
           });
       }
     } catch (_) {}
-  }, []);
+  }, [publicLink]);
 
   // Navigation & Active View State
   const [activeTab, setActiveTabState] = useState<NavigationTab>('collection');
@@ -549,7 +541,7 @@ export default function App() {
           <button
             onClick={() => {
               setPublicSaleError(null);
-              window.history.pushState({}, '', window.location.pathname);
+              window.history.pushState({}, '', '/');
             }}
             className="w-full py-2.5 bg-stone-800 hover:bg-stone-700 text-stone-200 text-xs font-bold rounded-xl transition-colors cursor-pointer"
           >
@@ -601,7 +593,7 @@ export default function App() {
             <button
               onClick={() => {
                 setPublicDeckData(null);
-                window.history.pushState({}, '', window.location.pathname);
+                window.history.pushState({}, '', '/');
               }}
               className="px-4 py-2.5 bg-amber-600 hover:bg-amber-500 text-stone-950 font-bold text-xs rounded-xl shadow-xl shadow-amber-950/50 flex items-center gap-2 cursor-pointer transition-all"
             >
@@ -631,7 +623,7 @@ export default function App() {
             <button
               onClick={() => {
                 setPublicWishlistData(null);
-                window.history.pushState({}, '', window.location.pathname);
+                window.history.pushState({}, '', '/');
               }}
               className="px-4 py-2.5 bg-amber-600 hover:bg-amber-500 text-stone-950 font-bold text-xs rounded-xl shadow-xl shadow-amber-950/50 flex items-center gap-2 cursor-pointer transition-all"
             >
@@ -662,7 +654,7 @@ export default function App() {
             <button
               onClick={() => {
                 setPublicSaleData(null);
-                window.history.pushState({}, '', window.location.pathname);
+                window.history.pushState({}, '', '/');
               }}
               className="px-4 py-2.5 bg-amber-600 hover:bg-amber-500 text-stone-950 font-bold text-xs rounded-xl shadow-xl shadow-amber-950/50 flex items-center gap-2 cursor-pointer transition-all"
             >

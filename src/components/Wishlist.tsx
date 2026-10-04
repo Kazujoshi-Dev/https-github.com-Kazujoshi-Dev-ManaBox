@@ -1,4 +1,5 @@
 import { PageHeader } from './ui/PageHeader';
+import { publicUrl } from '../utils/publicLinks';
 import React, { Suspense, lazy, useState } from 'react';
 
 const SellersMapModal = lazy(() => import('./SellersMapModal'));
@@ -56,7 +57,7 @@ export const Wishlist: React.FC<WishlistProps> = ({
 
   // Publiczny link do listy życzeń (działa bez logowania, jak oferta w „Sprzedam”)
   const publicShareSlug = currentUser?.username || currentUser?.id || '';
-  const publicShareUrl = `${window.location.origin}/?szukam=${encodeURIComponent(publicShareSlug)}`;
+  const publicShareUrl = publicUrl('wishlist', publicShareSlug);
 
   const handleCopyLink = async () => {
     try {

@@ -1,4 +1,5 @@
 import { collectionTotals } from './src/utils/collectionValue';
+import { registerSeoRoutes, readTemplate as readSeoTemplate, clearSeoCache } from './src/server/seo';
 import express from 'express';
 import crypto from 'crypto';
 import path from 'path';
@@ -2600,6 +2601,7 @@ app.put('/api/decks/:id', authMiddleware, async (req, res) => {
 app.put('/api/decks/:id/visibility', authMiddleware, async (req, res) => {
   try {
     const ok = await db.setDeckPublic((req as any).userId, String(req.params.id), req.body?.isPublic === true);
+    if (ok) clearSeoCache();
     if (!ok) return res.status(404).json({ error: 'Nie znaleziono talii.' });
     res.json({ success: true, isPublic: req.body?.isPublic === true });
   } catch (err: any) {
@@ -2836,9 +2838,12 @@ async function startServer() {
     const { createServer: createViteServer } = await import('vite');
     const vite = await createViteServer({
       server: { middlewareMode: true, allowedHosts: true },
-      appType: 'spa'
+      appType: 'custom'
     });
     app.use(vite.middlewares);
+    registerSeoRoutes(app, (req) =>
+      vite.transformIndexHtml(req.originalUrl, fs.readFileSync(path.join(process.cwd(), 'index.html'), 'utf8'))
+    );
   } else {
     const distPath = path.join(process.cwd(), 'dist');
     // Pliki z hashem w nazwie (dist/assets) można cache'ować długo; index.html zawsze świeży.
@@ -2848,6 +2853,8 @@ async function startServer() {
     app.use('/api', (_req: express.Request, res: express.Response) => {
       res.status(404).json({ error: 'Nie znaleziono.' });
     });
+    // robots.txt, sitemap.xml i strony z metadanymi dla wyszukiwarek
+    registerSeoRoutes(app, async () => readSeoTemplate(path.join(distPath, 'index.html')));
     app.get('*', (_req: express.Request, res: express.Response) => {
       res.setHeader('Cache-Control', 'no-cache');
       res.sendFile(path.join(distPath, 'index.html'));

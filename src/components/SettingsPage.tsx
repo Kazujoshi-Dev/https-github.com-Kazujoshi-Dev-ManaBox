@@ -1,4 +1,5 @@
 import { PageHeader } from './ui/PageHeader';
+import { publicUrl } from '../utils/publicLinks';
 import React, { useMemo, useState } from 'react';
 import {
   Settings, User, Coins, ShieldCheck, Share2, Database, Check, RefreshCw, Euro, DollarSign, LogOut, Loader2,
@@ -651,8 +652,8 @@ const SharingSection: React.FC<{ user: AuthUser; showToast: (msg: string) => voi
   const [copied, setCopied] = useState<string | null>(null);
   const slug = encodeURIComponent(user.username);
   const links = [
-    { id: 'sale', title: 'Oferta sprzedaży', desc: 'Karty oznaczone „na sprzedaż”, z cenami.', url: `${window.location.origin}/?sprzedam=${slug}` },
-    { id: 'wish', title: 'Lista życzeń', desc: 'Karty, których szukasz.', url: `${window.location.origin}/?szukam=${slug}` }
+    { id: 'sale', title: 'Oferta sprzedaży', desc: 'Karty oznaczone „na sprzedaż”, z cenami.', url: publicUrl('sale', slug) },
+    { id: 'wish', title: 'Lista życzeń', desc: 'Karty, których szukasz.', url: publicUrl('wishlist', slug) }
   ];
   const copy = async (id: string, url: string) => {
     try {

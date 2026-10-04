@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from 'react';
+import { publicUrl } from '../utils/publicLinks';
 import { WishlistItem, AppSettings } from '../types';
 import { formatCurrency, getCardPrice, getCardImageUri, getRarityColor, getRarityLabel, getCardEdhrecRank, handleCardImageError } from '../utils/formatters';
 import { ManaSymbol } from './ManaSymbol';
@@ -16,7 +17,7 @@ interface PublicWishlistViewProps {
   showToast?: (message: string) => void;
 }
 
-/** Publiczna lista życzeń (link ?szukam=nazwa) — dostępna bez logowania. */
+/** Publiczna lista życzeń (link /szukam/nazwa) — dostępna bez logowania. */
 export const PublicWishlistView: React.FC<PublicWishlistViewProps> = ({
   owner,
   wishlist,
@@ -40,7 +41,7 @@ export const PublicWishlistView: React.FC<PublicWishlistViewProps> = ({
     [wishlist, settings]
   );
 
-  const shareUrl = `${window.location.origin}/?szukam=${encodeURIComponent(owner.username)}`;
+  const shareUrl = publicUrl('wishlist', owner.username);
 
   const copy = async (text: string, done: () => void, okMsg: string) => {
     try {

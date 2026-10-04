@@ -67,7 +67,7 @@ export const FeatureBento: React.FC<{ cards: ShowcaseCard[] }> = ({ cards }) => 
           <p className="text-sm text-stone-400 leading-relaxed">Oznacz karty na sprzedaż i wyślij link. Kupujący przejrzy ofertę bez konta i napisze do Ciebie prosto z niej.</p>
         </div>
         <code className="mt-auto block truncate rounded-lg bg-stone-950 ring-1 ring-stone-800 px-3 py-2 text-xs text-amber-200">
-          manascrew.eu/?sprzedam=twoja-nazwa
+          manascrew.eu/sprzedam/twoja-nazwa
         </code>
       </article>
 

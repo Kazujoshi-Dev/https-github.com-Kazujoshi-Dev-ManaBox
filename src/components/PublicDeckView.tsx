@@ -20,7 +20,7 @@ interface PublicDeckViewProps {
   showToast?: (msg: string) => void;
 }
 
-/** Publiczny podgląd talii (link ?talia=id) — dostępny bez logowania. */
+/** Publiczny podgląd talii (link /talia/id) — dostępny bez logowania. */
 export const PublicDeckView: React.FC<PublicDeckViewProps> = ({ deck, owner, settings, isLoggedIn = false, onOpenLogin, showToast }) => {
   const { totalCardsCount, totalDeckValue, categorizedCards, manaCurve, colorIdentity } = useDeckStats({ deck, settings });
   const [preview, setPreview] = useState<ScryfallCard | null>(null);

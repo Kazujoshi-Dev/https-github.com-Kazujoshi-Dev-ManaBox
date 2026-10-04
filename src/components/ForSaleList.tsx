@@ -1,4 +1,5 @@
 import { PageHeader } from './ui/PageHeader';
+import { publicUrl } from '../utils/publicLinks';
 import React, { useState, useMemo, Suspense, lazy } from 'react';
 import { CollectionItem, AppSettings, AuthUser } from '../types';
 import { formatCurrency, getCardPrice, getCardImageUri, getRarityColor, getRarityLabel, getCardEdhrecRank, handleCardImageError } from '../utils/formatters';
@@ -83,7 +84,7 @@ export const ForSaleList: React.FC<ForSaleListProps> = ({
 
   // Public link generation
   const publicShareSlug = currentUser?.username || currentUser?.id || 'oferta';
-  const publicShareUrl = `${window.location.origin}/?sprzedam=${encodeURIComponent(publicShareSlug)}`;
+  const publicShareUrl = publicUrl('sale', publicShareSlug);
 
   const handleCopyLink = () => {
     navigator.clipboard.writeText(publicShareUrl);

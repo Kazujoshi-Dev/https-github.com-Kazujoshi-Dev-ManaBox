@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { publicUrl } from '../../utils/publicLinks';
 import { X, Share2, Copy, Check, ExternalLink, Loader2, Lock, Globe, FileText } from 'lucide-react';
 import type { DeckItem } from '../../types';
 import { decksApi } from '../../services/api';
@@ -14,7 +15,7 @@ export function deckToText(deck: DeckItem): string {
   return lines.join('\n');
 }
 
-export const deckPublicUrl = (deckId: string) => `${window.location.origin}/?talia=${encodeURIComponent(deckId)}`;
+export const deckPublicUrl = (deckId: string) => publicUrl('deck', deckId);
 
 interface DeckShareModalProps {
   deck: DeckItem;
