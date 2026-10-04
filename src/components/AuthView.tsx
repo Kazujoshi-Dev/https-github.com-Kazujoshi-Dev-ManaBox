@@ -104,6 +104,9 @@ export const AuthView: React.FC<AuthViewProps> = ({ onAuthSuccess }) => {
   };
 
   const cards = useShowcaseCards();
+  // Tło: grafika legendarnej karty z dzisiejszego zestawu (zmienia się codziennie)
+  const backdrop = cards.find((c) => c.legendary && c.artCrop)?.artCrop || cards.find((c) => c.artCrop)?.artCrop || null;
+  const [backdropLoaded, setBackdropLoaded] = useState(false);
   // Bez kart (np. baza kart jeszcze się synchronizuje) formularz stoi na środku, bez pustej kolumny
   const hasCards = cards.length >= 3;
   const switchMode = (m: AuthMode) => {
@@ -116,9 +119,24 @@ export const AuthView: React.FC<AuthViewProps> = ({ onAuthSuccess }) => {
   const labelCls = 'block text-sm font-medium text-stone-300 mb-1.5';
 
   return (
-    <div className="auth-page min-h-dvh bg-stone-950 text-stone-100 overflow-x-clip">
+    <div className="auth-page relative isolate min-h-dvh bg-stone-950 text-stone-100 overflow-x-clip">
+      {/* Tło: przyciemniona grafika karty, ziarno i winieta; wygasa ku dołowi strony */}
+      <div className="auth-backdrop" aria-hidden="true">
+        {backdrop && (
+          <img
+            src={backdrop}
+            alt=""
+            referrerPolicy="no-referrer"
+            onLoad={() => setBackdropLoaded(true)}
+            className={`auth-backdrop-art ${backdropLoaded ? 'is-loaded' : ''}`}
+          />
+        )}
+        <div className="auth-backdrop-shade" />
+        <div className="auth-backdrop-grain" />
+      </div>
+
       {/* 1. Hero: logowanie + strona klasera */}
-      <section className="max-w-[1320px] mx-auto px-4 sm:px-6 lg:px-10 pt-[calc(1.25rem+env(safe-area-inset-top))] lg:pt-12 pb-12 lg:pb-20 grid lg:grid-cols-12 gap-10 lg:gap-14 items-center lg:min-h-[100dvh]">
+      <section className="relative max-w-[1320px] mx-auto px-4 sm:px-6 lg:px-10 pt-[calc(1.25rem+env(safe-area-inset-top))] lg:pt-12 pb-12 lg:pb-20 grid lg:grid-cols-12 gap-10 lg:gap-14 items-center lg:min-h-[100dvh]">
         <div className={`${hasCards ? 'lg:col-span-5' : 'lg:col-span-12 lg:max-w-xl lg:mx-auto w-full'} space-y-7 auth-rise`}>
           <div className="flex items-center gap-3">
             <img src="/icon-192.png" alt="" className="w-10 h-10 rounded-xl" />
@@ -130,12 +148,12 @@ export const AuthView: React.FC<AuthViewProps> = ({ onAuthSuccess }) => {
               Twoja kolekcja Magic: The Gathering, zawsze pod ręką
             </h1>
             <p className="text-base text-stone-400 leading-relaxed max-w-[46ch]">
-              Skanuj karty telefonem, układaj klasery i sprawdzaj wartość w złotówkach. Sprzedawaj i wymieniaj z graczami z okolicy.
+              Skanuj karty telefonem, buduj talie Commander i śledź wartość kolekcji w złotówkach. Sprzedawaj i wymieniaj z graczami z okolicy.
             </p>
           </div>
 
           {/* Formularz */}
-          <div ref={formCardRef} className="rounded-2xl bg-stone-900 ring-1 ring-stone-800 p-5 sm:p-6 space-y-5 scroll-mt-6 shadow-[0_24px_60px_-24px_rgba(12,10,9,0.9)]">
+          <div ref={formCardRef} className="rounded-2xl bg-stone-900/90 backdrop-blur-md ring-1 ring-stone-700/60 p-5 sm:p-6 space-y-5 scroll-mt-6 shadow-[0_24px_60px_-24px_rgba(12,10,9,0.9)]">
             <div className="grid grid-cols-2 gap-1 p-1 rounded-xl bg-stone-950 ring-1 ring-stone-800" role="tablist" aria-label="Logowanie lub rejestracja">
               {(['login', 'register'] as AuthMode[]).map((m) => (
                 <button
@@ -257,7 +275,7 @@ export const AuthView: React.FC<AuthViewProps> = ({ onAuthSuccess }) => {
       </section>
 
       {/* 2. Funkcje */}
-      <section className="max-w-[1320px] mx-auto px-4 sm:px-6 lg:px-10 pb-16 lg:pb-24 space-y-8" aria-labelledby="auth-features">
+      <section className="relative max-w-[1320px] mx-auto px-4 sm:px-6 lg:px-10 pb-16 lg:pb-24 space-y-8" aria-labelledby="auth-features">
         <h2 id="auth-features" className="text-2xl sm:text-3xl font-bold tracking-tight text-stone-50 max-w-xl">
           Wszystko, czego potrzebuje kolekcjoner
         </h2>
@@ -266,7 +284,7 @@ export const AuthView: React.FC<AuthViewProps> = ({ onAuthSuccess }) => {
 
       {/* 3. Zachęta do rejestracji */}
       {mode === 'login' && (
-        <section className="max-w-[1320px] mx-auto px-4 sm:px-6 lg:px-10 pb-16">
+        <section className="relative max-w-[1320px] mx-auto px-4 sm:px-6 lg:px-10 pb-16">
           <div className="rounded-2xl bg-stone-900 ring-1 ring-stone-800 p-6 sm:p-8 flex flex-col sm:flex-row sm:items-center justify-between gap-5">
             <div className="space-y-1">
               <h2 className="text-xl font-bold text-stone-50">Konto jest darmowe</h2>
@@ -284,7 +302,7 @@ export const AuthView: React.FC<AuthViewProps> = ({ onAuthSuccess }) => {
       )}
 
       {/* 4. Stopka: informacja prawna wymagana przez Fan Content Policy */}
-      <footer className="border-t border-stone-900">
+      <footer className="relative border-t border-stone-900">
         <div className="max-w-[1320px] mx-auto px-4 sm:px-6 lg:px-10 py-8 pb-[calc(2rem+env(safe-area-inset-bottom))] space-y-2 text-xs text-stone-500 leading-relaxed">
           <p>
             Mana Screw is unofficial Fan Content permitted under the Fan Content Policy. Not approved/endorsed by Wizards. Portions of the materials used are property of Wizards of the Coast. ©Wizards of the Coast LLC.

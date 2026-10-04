@@ -19,7 +19,7 @@ export const FeatureBento: React.FC<{ cards: ShowcaseCard[] }> = ({ cards }) => 
         <div className="space-y-2 max-w-sm">
           <ScanLine className="w-6 h-6 text-amber-400" strokeWidth={1.75} aria-hidden="true" />
           <h3 className="text-xl font-bold text-stone-50">Skaner kart w telefonie</h3>
-          <p className="text-sm text-stone-400 leading-relaxed">Nakieruj aparat na kartę. Aplikacja rozpozna nazwę, wydanie i cenę, bez limitu skanów.</p>
+          <p className="text-sm text-stone-400 leading-relaxed">Nakieruj aparat na kartę. Aplikacja rozpozna nazwę, wydanie i cenę, także wersje japońskie. Bez limitu skanów.</p>
         </div>
         {scanCard && (
           <div className="relative mx-auto mt-auto w-44 sm:w-48">
@@ -37,7 +37,7 @@ export const FeatureBento: React.FC<{ cards: ShowcaseCard[] }> = ({ cards }) => 
         <div className="space-y-2 sm:flex-1">
           <FolderOpen className="w-6 h-6 text-amber-400" strokeWidth={1.75} aria-hidden="true" />
           <h3 className="text-lg font-bold text-stone-50">Klasery i filtry</h3>
-          <p className="text-sm text-stone-400 leading-relaxed">Dziel kolekcję na klasery, oznaczaj foile i filtruj po kolorze, secie oraz rzadkości.</p>
+          <p className="text-sm text-stone-400 leading-relaxed">Dziel kolekcję na klasery, oznaczaj foile i wersje językowe, filtruj po kolorze, secie i rzadkości.</p>
         </div>
         {binderArt.length === 3 && (
           <div className="flex sm:flex-col gap-2 sm:w-40 shrink-0" aria-hidden="true">
@@ -54,7 +54,7 @@ export const FeatureBento: React.FC<{ cards: ShowcaseCard[] }> = ({ cards }) => 
         <div className="space-y-1.5">
           <h3 className="text-lg font-bold">Wycena w złotówkach</h3>
           <p className="text-sm text-stone-900/80 leading-relaxed">
-            Ceny z Cardmarket i TCGPlayer po kursie NBP. Widzisz wartość kolekcji i jej zmianę po każdej aktualizacji cen.
+            Ceny z Cardmarket i TCGPlayer po kursie NBP. Wykres pokazuje, jak zmieniają się wartość kolekcji i liczba kart: tydzień, miesiąc, rok.
           </p>
         </div>
       </article>
@@ -64,7 +64,7 @@ export const FeatureBento: React.FC<{ cards: ShowcaseCard[] }> = ({ cards }) => 
         <Link2 className="w-6 h-6 text-amber-400" strokeWidth={1.75} aria-hidden="true" />
         <div className="space-y-1.5">
           <h3 className="text-lg font-bold text-stone-50">Oferta jednym linkiem</h3>
-          <p className="text-sm text-stone-400 leading-relaxed">Oznacz karty na sprzedaż i wyślij link. Kupujący nie musi zakładać konta.</p>
+          <p className="text-sm text-stone-400 leading-relaxed">Oznacz karty na sprzedaż i wyślij link. Kupujący przejrzy ofertę bez konta i napisze do Ciebie prosto z niej.</p>
         </div>
         <code className="mt-auto block truncate rounded-lg bg-stone-950 ring-1 ring-stone-800 px-3 py-2 text-xs text-amber-200">
           manascrew.eu/?sprzedam=twoja-nazwa
@@ -94,7 +94,7 @@ export const FeatureBento: React.FC<{ cards: ShowcaseCard[] }> = ({ cards }) => 
         <Swords className="w-6 h-6 text-amber-400" strokeWidth={1.75} aria-hidden="true" />
         <div className="space-y-1.5">
           <h3 className="text-lg font-bold text-stone-50">Talie Commander</h3>
-          <p className="text-sm text-stone-400 leading-relaxed">Buduj talie z własnych kart. Sprawdzaj losową rękę, kolory many i podpowiedzi z EDHREC.</p>
+          <p className="text-sm text-stone-400 leading-relaxed">Szacowany bracket i Game Changers, legalność kart, tokeny, losowa ręka, kolory many i podpowiedzi z EDHREC.</p>
         </div>
         {legendary.length >= 2 && (
           <div className="mt-auto flex -space-x-6" aria-hidden="true">
