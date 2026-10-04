@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import { DeckItem, AppSettings } from '../types';
 import { getCardPrice, formatCurrency } from '../utils/formatters';
 import { exportDeckToTxt, downloadTxtFile } from '../utils/textCardList';
-import { Swords, Plus, Crown, Trash2, Download, Copy, Check, Upload, FileText, Pencil } from 'lucide-react';
+import { Swords, Plus, Crown, Trash2, Download, Copy, Check, Upload, FileText, Pencil, FolderInput, Loader2 } from 'lucide-react';
 
 interface DeckListProps {
   decks: DeckItem[];
@@ -15,6 +15,9 @@ interface DeckListProps {
   onEditDeck?: (deck: DeckItem) => void;
   onOpenImportDeck?: () => void;
   showToast?: (message: string) => void;
+  /** Dodaje wszystkie karty talii (te same wydania i foil) do domyślnego klasera. */
+  onCopyToCollection?: (deck: DeckItem) => Promise<boolean>;
+  defaultBinder?: string;
 }
 
 export const DeckList: React.FC<DeckListProps> = ({
@@ -26,8 +29,12 @@ export const DeckList: React.FC<DeckListProps> = ({
   onEditDeck,
   onOpenImportDeck,
   showToast,
+  onCopyToCollection,
+  defaultBinder = 'Klaser Główny',
 }) => {
   const [copiedDeckId, setCopiedDeckId] = useState<string | null>(null);
+  const [confirmCopyId, setConfirmCopyId] = useState<string | null>(null);
+  const [copyingId, setCopyingId] = useState<string | null>(null);
 
   const handleExportDeckFile = (e: React.MouseEvent, deck: DeckItem) => {
     e.stopPropagation();
@@ -158,6 +165,18 @@ export const DeckList: React.FC<DeckListProps> = ({
                       <button type="button" onClick={(e) => handleCopyDeckList(e, deck)} className={iconBtn} title="Kopiuj listę do schowka" aria-label="Kopiuj listę do schowka">
                         {copiedDeckId === deck.id ? <Check className="w-4 h-4 text-emerald-400" /> : <Copy className="w-4 h-4" />}
                       </button>
+                      {onCopyToCollection && count > 0 && (
+                        <button
+                          type="button"
+                          onClick={() => setConfirmCopyId(confirmCopyId === deck.id ? null : deck.id)}
+                          className={iconBtn}
+                          title={`Dodaj karty talii do klasera „${defaultBinder}”`}
+                          aria-label="Dodaj karty talii do kolekcji"
+                          aria-expanded={confirmCopyId === deck.id}
+                        >
+                          <FolderInput className="w-4 h-4" />
+                        </button>
+                      )}
                       {onEditDeck && (
                         <button type="button" onClick={() => onEditDeck(deck)} className={iconBtn} title="Edytuj nazwę, opis i dowódcę" aria-label="Edytuj talię">
                           <Pencil className="w-4 h-4" />
@@ -174,6 +193,34 @@ export const DeckList: React.FC<DeckListProps> = ({
                       </button>
                     </div>
                   </div>
+
+                  {confirmCopyId === deck.id && onCopyToCollection && (
+                    <div className="rounded-lg bg-stone-950 ring-1 ring-stone-700 p-3 space-y-2.5" onClick={(e) => e.stopPropagation()}>
+                      <p className="text-sm text-stone-300">
+                        Dodać <span className="text-stone-50 font-medium tabular-nums">{count}</span> kart do klasera{' '}
+                        <span className="text-stone-50 font-medium">„{defaultBinder}”</span>? Te same wydania i wersje foil co w talii.
+                      </p>
+                      <div className="flex justify-end gap-1.5">
+                        <button type="button" onClick={() => setConfirmCopyId(null)} className="btn btn-ghost h-8 px-3">
+                          Anuluj
+                        </button>
+                        <button
+                          type="button"
+                          disabled={copyingId === deck.id}
+                          onClick={async () => {
+                            setCopyingId(deck.id);
+                            const ok = await onCopyToCollection(deck);
+                            setCopyingId(null);
+                            if (ok) setConfirmCopyId(null);
+                          }}
+                          className="btn btn-primary h-8 px-3"
+                        >
+                          {copyingId === deck.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <FolderInput className="w-4 h-4" />}
+                          Dodaj do kolekcji
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </article>
             );

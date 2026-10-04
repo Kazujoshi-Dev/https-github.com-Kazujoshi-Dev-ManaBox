@@ -772,6 +772,34 @@ export default function App() {
               updateDeck(updated);
             }}
             onDeleteDeck={handleDeleteDeckAndReset}
+            onCopyDeckToCollection={async (deck) => {
+              const binder = catalogs.find((c) => c.isDefault)?.name || 'Klaser Główny';
+              // Te same wydania i wersje foil co w talii; ta sama karta w kilku wpisach sumuje się
+              const byKey = new Map<string, any>();
+              const add = (card: any, qty: number, foil: boolean) => {
+                const key = card.id;
+                const prev = byKey.get(key) || {
+                  card,
+                  cardId: card.id,
+                  quantity: 0,
+                  quantityFoil: 0,
+                  condition: 'NM',
+                  language: 'EN',
+                  binder,
+                  addedAt: new Date().toISOString()
+                };
+                if (foil) prev.quantityFoil += qty;
+                else prev.quantity += qty;
+                byKey.set(key, prev);
+              };
+              if (deck.commander) add(deck.commander, 1, Boolean(deck.commanderIsFoil));
+              deck.cards.filter((e) => !e.isSideboard && !e.isCommander).forEach((e) => add(e.card, e.quantity, Boolean(e.isFoil)));
+              const items = [...byKey.values()];
+              const total = items.reduce((sum, i) => sum + i.quantity + i.quantityFoil, 0);
+              const ok = await bulkAddToCollection(items);
+              showToast(ok ? `Dodano ${total} kart z talii „${deck.name}” do klasera „${binder}”.` : 'Nie udało się dodać kart do kolekcji. Spróbuj ponownie.');
+              return ok;
+            }}
             onOpenCreateDeckModal={() => {
               setDeckToEdit(null);
               setIsDeckCreateModalOpen(true);

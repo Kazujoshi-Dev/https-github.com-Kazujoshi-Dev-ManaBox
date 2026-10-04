@@ -65,6 +65,7 @@ interface TabContentProps {
   onViewDeckCardDetails?: (card: ScryfallCard) => void;
   onOpenScannerModal?: () => void;
   onOpenImportDeck?: () => void;
+  onCopyDeckToCollection?: (deck: DeckItem) => Promise<boolean>;
   onOpenCollectionImportExport?: (tab: 'export' | 'import') => void;
   onUpdateSettings?: (newSettings: AppSettings) => Promise<void> | void;
   onEditDeck?: (deck: DeckItem) => void;
@@ -110,6 +111,7 @@ export const TabContent: React.FC<TabContentProps> = ({
   onViewDeckCardDetails,
   onOpenScannerModal,
   onOpenImportDeck,
+  onCopyDeckToCollection,
   onOpenCollectionImportExport,
   onUpdateSettings,
   onEditDeck,
@@ -172,6 +174,8 @@ export const TabContent: React.FC<TabContentProps> = ({
           onDeleteDeck={onDeleteDeck}
           onEditDeck={onEditDeck}
           onOpenImportDeck={onOpenImportDeck}
+          onCopyToCollection={onCopyDeckToCollection}
+          defaultBinder={catalogs.find((c) => c.isDefault)?.name || 'Klaser Główny'}
           showToast={showToast}
         />
       );
