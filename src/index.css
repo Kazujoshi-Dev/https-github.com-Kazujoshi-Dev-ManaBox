@@ -234,3 +234,13 @@ summary,
     color: var(--color-stone-100);
   }
 }
+
+/* Podgląd wersji foil w oknie dodawania karty */
+.ms-foil-preview::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(115deg, rgba(253, 230, 138, 0.18), rgba(186, 230, 253, 0.12) 40%, rgba(245, 208, 254, 0.18) 70%, rgba(253, 230, 138, 0.12));
+  mix-blend-mode: screen;
+}

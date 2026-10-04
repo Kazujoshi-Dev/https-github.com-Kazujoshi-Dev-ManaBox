@@ -1333,6 +1333,17 @@ app.get('/api/scryfall/prints', async (req, res) => {
     let targetOracleId = oracleId;
     let targetName = cardName;
 
+    // Najpierw lokalna baza kart (bez zapytań do Scryfall)
+    if (!targetOracleId && cardId && /^[0-9a-f-]{36}$/i.test(cardId)) {
+      const [local] = await cards.getCardsByIds([cardId]).catch(() => []);
+      if (local?.oracle_id) targetOracleId = local.oracle_id;
+      if (!targetName && local?.name) targetName = local.name;
+    }
+    const localPrints = await cards.getPrintsLocal(targetOracleId || null, targetOracleId ? null : targetName || null).catch(() => null);
+    if (localPrints && localPrints.length) {
+      return res.json({ total_cards: localPrints.length, data: localPrints });
+    }
+
     if (!targetOracleId && cardId) {
       try {
         const card = await fetchScryfall(`/cards/${cardId}`);

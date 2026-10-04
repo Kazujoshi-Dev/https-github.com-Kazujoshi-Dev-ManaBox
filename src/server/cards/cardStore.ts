@@ -639,3 +639,23 @@ export async function getDeckTokens(ids: string[], names: string[]): Promise<Dec
 
   return [...out.values()].sort((a, b) => b.sources.length - a.sources.length || a.name.localeCompare(b.name));
 }
+
+/** Wszystkie wydania karty (po oracle_id albo dokładnej nazwie) z lokalnej bazy, od najnowszych. */
+export async function getPrintsLocal(oracleId: string | null, name: string | null): Promise<any[] | null> {
+  const p = pool();
+  if (!p || (!oracleId && !name)) return null;
+  const res = oracleId
+    ? await p.query(
+        `SELECT data FROM scryfall_cards WHERE oracle_id = $1 AND lang = 'en'
+           AND COALESCE(data->>'digital', 'false') = 'false'
+         ORDER BY released_at DESC NULLS LAST, collector_number LIMIT 400`,
+        [oracleId]
+      )
+    : await p.query(
+        `SELECT data FROM scryfall_cards WHERE LOWER(name) = LOWER($1) AND lang = 'en'
+           AND COALESCE(data->>'digital', 'false') = 'false'
+         ORDER BY released_at DESC NULLS LAST, collector_number LIMIT 400`,
+        [name]
+      );
+  return res.rows.map((r) => r.data);
+}

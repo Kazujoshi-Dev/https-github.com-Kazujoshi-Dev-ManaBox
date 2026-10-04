@@ -113,40 +113,44 @@ export const DeckBuilder: React.FC<DeckBuilderProps> = ({
   }, []);
 
   // Card Operations
-  const handleAddCardToDeck = useCallback((card: ScryfallCard, asCommander = false) => {
+  const handleAddCardToDeck = useCallback((card: ScryfallCard, asCommander = false, isFoil?: boolean) => {
     if (asCommander) {
       onUpdateDeck({
         ...deck,
         commander: card,
+        commanderIsFoil: Boolean(isFoil),
+        // dowódca nie może być jednocześnie wśród 99 kart
+        cards: deck.cards.filter((e) => e.card.name !== card.name),
       });
       closeSearchModal();
       return;
     }
 
-    const existingIdx = deck.cards.findIndex(e => e.card.id === card.id || e.card.name === card.name);
-    let updatedCards = [...deck.cards];
+    const isBasic = (card.type_line || '').toLowerCase().includes('basic');
+    const singleton = /commander|edh/i.test(deck.format || '') || Boolean(deck.commander);
+    const updatedCards = deck.cards.map((e) => ({ ...e }));
+    const sameName = updatedCards.findIndex((e) => !e.isSideboard && e.card.name === card.name);
+    const samePrint = updatedCards.findIndex((e) => !e.isSideboard && e.card.id === card.id);
 
-    if (existingIdx >= 0) {
-      // In EDH Commander format, non-basic lands can only have 1 copy
-      const isBasic = (card.type_line || '').toLowerCase().includes('basic');
-      if (deck.format === 'EDH Commander' && !isBasic && updatedCards[existingIdx].quantity >= 1) {
-        // singleton rule for EDH
-      } else {
-        updatedCards[existingIdx].quantity += 1;
+    if (singleton && !isBasic && sameName >= 0) {
+      // Karta już jest w talii: zmieniamy jej wydanie / wersję foil zamiast dodawać kopię
+      const prev = updatedCards[sameName];
+      updatedCards[sameName] = { ...prev, card, isFoil: isFoil ?? prev.isFoil };
+      if (prev.card.id !== card.id || Boolean(prev.isFoil) !== Boolean(isFoil ?? prev.isFoil)) {
+        showToast(`Zmieniono wersję „${card.name}” w talii.`);
       }
+    } else if (samePrint >= 0) {
+      updatedCards[samePrint].quantity += 1;
+      if (isFoil !== undefined) updatedCards[samePrint].isFoil = isFoil;
     } else {
-      updatedCards.push({
-        card,
-        quantity: 1,
-        isCommander: false,
-      });
+      updatedCards.push({ card, quantity: 1, isCommander: false, ...(isFoil ? { isFoil: true } : {}) });
     }
 
     onUpdateDeck({
       ...deck,
       cards: updatedCards,
     });
-  }, [deck, onUpdateDeck, closeSearchModal]);
+  }, [deck, onUpdateDeck, closeSearchModal, showToast]);
 
   const handleUpdateQuantity = useCallback((cardId: string, delta: number) => {
     let updatedCards = [...deck.cards];
@@ -568,6 +572,7 @@ export const DeckBuilder: React.FC<DeckBuilderProps> = ({
         searchQuery={searchQuery}
         searchResults={searchResults}
         isSearchingScryfall={isSearchingScryfall}
+        settings={settings}
         onClose={closeSearchModal}
         onSearchChange={handleSearchCards}
         onSourceChange={setSearchSource}

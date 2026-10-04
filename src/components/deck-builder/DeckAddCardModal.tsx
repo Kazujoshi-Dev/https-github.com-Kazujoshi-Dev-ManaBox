@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
+import { AddCardVersionPicker } from './AddCardVersionPicker';
 import { Plus, X, Layers, Globe, Search, Crown } from 'lucide-react';
 import { DeckAddCardModalProps } from './types';
 
@@ -16,9 +17,15 @@ export const DeckAddCardModal: React.FC<DeckAddCardModalProps> = ({
   onSearchChange,
   onSourceChange,
   onAddCard,
+  settings,
 }) => {
   // „Wstecz” na telefonie zamyka to okno zamiast opuszczać stronę
   useBackToClose(isOpen, onClose);
+  // Drugi krok: wybór wydania i wersji foil dla klikniętej karty
+  const [picking, setPicking] = useState<{ card: import('../../types').ScryfallCard; asCommander: boolean } | null>(null);
+  useEffect(() => {
+    if (!isOpen) setPicking(null);
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
@@ -33,14 +40,14 @@ export const DeckAddCardModal: React.FC<DeckAddCardModalProps> = ({
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        className="bg-stone-900 border border-stone-800 rounded-2xl w-full max-w-2xl max-h-[85vh] flex flex-col shadow-2xl overflow-hidden max-sm:w-full max-sm:max-w-none max-sm:rounded-b-none max-sm:rounded-t-3xl max-sm:max-h-[92dvh] max-sm:pb-[env(safe-area-inset-bottom)] max-sm:animate-[slideUp_.2s_ease-out] max-sm:mt-auto max-sm:mb-0 max-sm:overflow-y-auto"
+        className="bg-stone-900 border border-stone-800 rounded-2xl w-full max-w-3xl max-h-[88vh] flex flex-col shadow-2xl overflow-hidden max-sm:w-full max-sm:max-w-none max-sm:rounded-b-none max-sm:rounded-t-3xl max-sm:max-h-[92dvh] max-sm:pb-[env(safe-area-inset-bottom)] max-sm:animate-[slideUp_.2s_ease-out] max-sm:mt-auto max-sm:mb-0 max-sm:overflow-y-auto"
       >
         {/* Modal Header */}
         <div className="p-4 border-b border-stone-800 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Plus className="w-5 h-5 text-amber-400" />
-            <h3 className="font-bold text-base text-white">
-              Dodaj kartę do talii "{deckName}"
+            <h3 className="font-semibold text-base text-stone-50">
+              {picking ? (picking.asCommander ? 'Wybierz wersję dowódcy' : `Wybierz wersję: ${picking.card.name}`) : `Dodaj kartę do talii „${deckName}”`}
             </h3>
           </div>
           <button
@@ -51,6 +58,22 @@ export const DeckAddCardModal: React.FC<DeckAddCardModalProps> = ({
           </button>
         </div>
 
+        {picking ? (
+          <AddCardVersionPicker
+            card={picking.card}
+            asCommander={picking.asCommander}
+            collection={collection}
+            deckCards={deckCards}
+            settings={settings}
+            collectionOnly={searchSource === 'collection'}
+            onBack={() => setPicking(null)}
+            onConfirm={(card, isFoil, asCommander) => {
+              onAddCard(card, asCommander, isFoil);
+              setPicking(null);
+            }}
+          />
+        ) : (
+        <>
         {/* Search Input & Source Switcher */}
         <div className="p-4 border-b border-stone-800 space-y-3">
           {/* Segmented Source Switcher */}
@@ -181,7 +204,7 @@ export const DeckAddCardModal: React.FC<DeckAddCardModalProps> = ({
                 <div className="flex items-center gap-2 shrink-0">
                   {isLegendary && (
                     <button
-                      onClick={() => onAddCard(card, true)}
+                      onClick={() => setPicking({ card, asCommander: true })}
                       className="px-2.5 py-1.5 bg-amber-600/30 hover:bg-amber-600 text-amber-200 hover:text-white rounded-lg text-xs font-bold transition-colors flex items-center gap-1 border border-amber-500/40 cursor-pointer"
                     >
                       <Crown className="w-3.5 h-3.5" />
@@ -190,7 +213,7 @@ export const DeckAddCardModal: React.FC<DeckAddCardModalProps> = ({
                   )}
 
                   <button
-                    onClick={() => onAddCard(card, false)}
+                    onClick={() => setPicking({ card, asCommander: false })}
                     className="px-3 py-1.5 bg-amber-500 hover:bg-amber-400 text-stone-950 rounded-lg text-xs font-bold transition-colors flex items-center gap-1 cursor-pointer"
                   >
                     <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
@@ -201,6 +224,8 @@ export const DeckAddCardModal: React.FC<DeckAddCardModalProps> = ({
             );
           })}
         </div>
+        </>
+        )}
       </div>
     </div>
   );
