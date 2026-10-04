@@ -55,7 +55,7 @@ export const CatalogFormModal: React.FC<CatalogFormModalProps> = ({
         {/* Form */}
         <form onSubmit={onSubmit} className="space-y-4">
           <div>
-            <label className="block text-xs uppercase font-bold text-stone-300 mb-1">
+            <label className="block text-xs font-bold text-stone-300 mb-1">
               Nazwa katalogu *
             </label>
             <input
@@ -69,7 +69,7 @@ export const CatalogFormModal: React.FC<CatalogFormModalProps> = ({
           </div>
 
           <div>
-            <label className="block text-xs uppercase font-bold text-stone-300 mb-1">
+            <label className="block text-xs font-bold text-stone-300 mb-1">
               Opis (opcjonalnie)
             </label>
             <input
@@ -82,7 +82,7 @@ export const CatalogFormModal: React.FC<CatalogFormModalProps> = ({
           </div>
 
           <div>
-            <label className="block text-xs uppercase font-bold text-stone-300 mb-1.5">
+            <label className="block text-xs font-bold text-stone-300 mb-1.5">
               Kolor etykiety
             </label>
             <div className="flex items-center gap-2 flex-wrap">

@@ -18,11 +18,11 @@ export const CardMarketPrices: React.FC<CardMarketPricesProps> = ({
       {/* Price Table from Scryfall (Interactive Foil / Standard selector) */}
       <div className="w-full bg-stone-950/80 p-3.5 rounded-xl border border-stone-800/80 space-y-2">
         <div className="flex items-center justify-between">
-          <p className="text-xs font-semibold text-stone-400 flex items-center gap-1.5 uppercase font-mono">
+          <p className="text-xs font-semibold text-stone-400 flex items-center gap-1.5 tabular-nums">
             <Coins className="w-3.5 h-3.5 text-amber-400" />
             <span>Aktualne Ceny Rynkowe (Scryfall)</span>
           </p>
-          <span className="text-[10px] text-amber-400/80 font-mono">
+          <span className="text-[11px] text-amber-400/80 tabular-nums">
             Kliknij, aby wybrać
           </span>
         </div>
@@ -40,20 +40,20 @@ export const CardMarketPrices: React.FC<CardMarketPricesProps> = ({
             }`}
           >
             <div className="flex items-center justify-between gap-1 w-full">
-              <p className={`text-[10px] font-bold ${!isFoil ? 'text-amber-400' : 'text-stone-400'}`}>
+              <p className={`text-[11px] font-bold ${!isFoil ? 'text-amber-400' : 'text-stone-400'}`}>
                 PLN Polska (Standard)
               </p>
               {!isFoil && (
-                <span className="text-[9px] font-black uppercase text-amber-300 bg-amber-500/20 px-1 py-0.2 rounded flex items-center gap-0.5">
+                <span className="text-[11px] font-bold text-amber-300 bg-amber-500/20 px-1 py-0.2 rounded flex items-center gap-0.5">
                   <Check className="w-2.5 h-2.5 stroke-[3]" />
                   Wybrana
                 </span>
               )}
             </div>
-            <p className="font-mono font-black text-emerald-400 text-sm mt-1">
+            <p className="tabular-nums font-bold text-emerald-400 text-sm mt-1">
               {formatCurrency(plnPriceNorm, 'PLN')}
             </p>
-            <span className="text-[9px] text-stone-500 group-hover:text-amber-300/90 mt-1 transition-colors">
+            <span className="text-[11px] text-stone-500 group-hover:text-amber-300/90 mt-1 transition-colors">
               {!isFoil ? '✓ Aktywna wersja zwykła' : 'Kliknij: wybierz Standard'}
             </span>
           </button>
@@ -70,37 +70,37 @@ export const CardMarketPrices: React.FC<CardMarketPricesProps> = ({
             }`}
           >
             <div className="flex items-center justify-between gap-1 w-full">
-              <p className="text-[10px] text-amber-400 font-bold flex items-center gap-1">
+              <p className="text-[11px] text-amber-400 font-bold flex items-center gap-1">
                 <Sparkles className="w-3 h-3 text-amber-400" />
                 <span>PLN Foil</span>
               </p>
               {isFoil && (
-                <span className="text-[9px] font-black uppercase text-amber-300 bg-amber-500/30 px-1 py-0.2 rounded flex items-center gap-0.5">
+                <span className="text-[11px] font-bold text-amber-300 bg-amber-500/30 px-1 py-0.2 rounded flex items-center gap-0.5">
                   <Check className="w-2.5 h-2.5 stroke-[3]" />
                   Wybrana
                 </span>
               )}
             </div>
-            <p className="font-mono font-black text-amber-300 text-sm mt-1">
+            <p className="tabular-nums font-bold text-amber-300 text-sm mt-1">
               {formatCurrency(plnPriceFoil, 'PLN')}
             </p>
-            <span className="text-[9px] text-stone-500 group-hover:text-amber-300/90 mt-1 transition-colors">
-              {isFoil ? '✓ Aktywna wersja błyszcząca ✨' : 'Kliknij: wybierz Foil ✨'}
+            <span className="text-[11px] text-stone-500 group-hover:text-amber-300/90 mt-1 transition-colors">
+              {isFoil ? '✓ Aktywna wersja błyszcząca' : 'Kliknij: wybierz Foil'}
             </span>
           </button>
 
           {/* EUR Standard */}
           <div className="bg-stone-900 p-2 rounded-lg border border-stone-800 text-left">
-            <p className="text-[10px] text-stone-400">EUR Standard</p>
-            <p className="font-mono font-bold text-blue-300 text-sm mt-0.5">
+            <p className="text-[11px] text-stone-400">EUR Standard</p>
+            <p className="tabular-nums font-bold text-amber-300 text-sm mt-0.5">
               {formatCurrency(activeCard.prices?.eur, 'EUR')}
             </p>
           </div>
 
           {/* USD Standard */}
           <div className="bg-stone-900 p-2 rounded-lg border border-stone-800 text-left">
-            <p className="text-[10px] text-stone-400">USD Standard</p>
-            <p className="font-mono font-bold text-stone-300 text-sm mt-0.5">
+            <p className="text-[11px] text-stone-400">USD Standard</p>
+            <p className="tabular-nums font-bold text-stone-300 text-sm mt-0.5">
               {formatCurrency(activeCard.prices?.usd, 'USD')}
             </p>
           </div>
@@ -122,7 +122,7 @@ export const CardMarketPrices: React.FC<CardMarketPricesProps> = ({
       {isOnWishlist ? (
         <p className="w-full py-2 px-3 bg-rose-950/30 text-rose-200 rounded-xl text-xs font-semibold flex items-center justify-center gap-2 border border-rose-800/40">
           <FolderHeart className="w-4 h-4 text-rose-400" />
-          <span>Na liście życzeń — zmiany wersji i foil zapisują się automatycznie</span>
+          <span>Na liście życzeń: zmiany wersji i foil zapisują się automatycznie</span>
         </p>
       ) : onAddToWishlist && (
         <button

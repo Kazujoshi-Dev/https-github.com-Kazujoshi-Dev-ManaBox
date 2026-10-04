@@ -38,13 +38,13 @@ export const CardImagePreview: React.FC<CardImagePreviewProps> = ({
       )}
 
       {/* Set & collector badge over image */}
-      <div className="absolute top-2 left-2 bg-stone-950/85 backdrop-blur-md px-2 py-1 rounded-lg border border-stone-800 text-[10px] font-mono text-amber-300">
+      <div className="absolute top-2 left-2 bg-stone-950/85 backdrop-blur-md px-2 py-1 rounded-lg border border-stone-800 text-[11px] tabular-nums text-amber-300">
         [{setCode.toUpperCase()}] #{collectorNumber}
       </div>
 
       {/* Foil Badge over image */}
       {isFoil && (
-        <div className="absolute top-2 right-2 bg-gradient-to-r from-amber-400 via-amber-500 to-amber-600 text-stone-950 font-black text-[10px] px-2 py-0.5 rounded-lg shadow-xl flex items-center gap-1 border border-amber-200 animate-pulse">
+        <div className="absolute top-2 right-2 bg-amber-400 text-stone-950 font-bold text-[11px] px-2 py-0.5 rounded-lg shadow-xl flex items-center gap-1 border border-amber-200 animate-pulse">
           <Sparkles className="w-3 h-3 fill-stone-950" />
           <span>FOIL</span>
         </div>

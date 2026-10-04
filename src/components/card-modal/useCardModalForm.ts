@@ -138,7 +138,7 @@ export function useCardModalForm({
       onToggleFoil(toFoil);
     }
 
-    const label = toFoil ? 'Foil (Błyszcząca) ✨' : 'Standard (Zwykła)';
+    const label = toFoil ? 'Foil (Błyszcząca)' : 'Standard (Zwykła)';
     if (existingItem) {
       onSaveToCollection({
         card: activeCard,
@@ -156,7 +156,7 @@ export function useCardModalForm({
       showNotice(`Zapisano na liście życzeń: wersja ${label}`);
     } else {
       // Karty nie ma w kolekcji — zmiana dotyczy formularza, zapis po kliknięciu „Dodaj”
-      showNotice(`Wybrano wersję ${label} — kliknij „Dodaj”, aby zapisać kartę w kolekcji`);
+      showNotice(`Wybrano wersję ${label}. Kliknij „Dodaj”, aby zapisać kartę w kolekcji`);
     }
   }, [quantity, quantityFoil, purchasePrice, onToggleFoil, existingItem, onSaveToCollection, activeCard, condition, language, notes, selectedBinder, showNotice, wishlistItem, onUpdateWishlistItem]);
 
@@ -185,7 +185,7 @@ export function useCardModalForm({
       onUpdateWishlistItem({ card: print });
       showNotice(`Zapisano na liście życzeń wersję: [${print.set.toUpperCase()}] #${print.collector_number} (${print.set_name})`);
     } else {
-      showNotice(`Wybrano wersję: [${print.set.toUpperCase()}] #${print.collector_number} (${print.set_name}) — kliknij „Dodaj”, aby zapisać`);
+      showNotice(`Wybrano wersję: [${print.set.toUpperCase()}] #${print.collector_number} (${print.set_name}). Kliknij „Dodaj”, aby zapisać`);
     }
   }, [activeCard, onSelectPrint, existingItem, onSaveToCollection, quantity, quantityFoil, condition, language, purchasePrice, notes, selectedBinder, showNotice, wishlistItem, onUpdateWishlistItem]);
 

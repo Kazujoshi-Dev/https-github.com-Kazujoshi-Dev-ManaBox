@@ -22,12 +22,11 @@ export const DeckCategoryColumn: React.FC<DeckCategoryColumnProps> = ({
       {/* Category Header Badge */}
       <div className="flex items-center justify-between pb-2 border-b border-stone-800">
         <div className="flex items-center gap-2">
-          <span className="text-base">{category.icon}</span>
-          <h4 className="font-bold text-xs text-stone-200 uppercase tracking-wide">
+          <h4 className="font-bold text-xs text-stone-200 ">
             {category.name}
           </h4>
         </div>
-        <span className={`px-2 py-0.5 rounded-full font-mono text-[10px] font-bold ${category.badge}`}>
+        <span className={`px-2 py-0.5 rounded-full tabular-nums text-[11px] font-bold ${category.badge}`}>
           {totalCatQty}
         </span>
       </div>

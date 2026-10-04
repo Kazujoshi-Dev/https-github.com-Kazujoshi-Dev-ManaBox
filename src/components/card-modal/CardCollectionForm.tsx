@@ -49,7 +49,7 @@ export const CardCollectionForm: React.FC<CardCollectionFormProps> = ({
 }) => {
   return (
     <form onSubmit={onSubmitSave} className="bg-stone-950/90 p-4 rounded-xl border border-stone-800 space-y-4">
-      <h3 className="text-xs font-bold uppercase tracking-wider text-amber-400 flex items-center gap-1.5">
+      <h3 className="text-xs font-bold text-amber-400 flex items-center gap-1.5">
         <FolderPlus className="w-4 h-4" />
         <span>{existingItem ? 'Edytuj parametry w kolekcji' : 'Dodaj do swojej kolekcji'}</span>
       </h3>
@@ -57,7 +57,7 @@ export const CardCollectionForm: React.FC<CardCollectionFormProps> = ({
       {/* CATALOG / BINDER SELECTOR */}
       <div className="p-3 bg-stone-900/80 rounded-xl border border-stone-800 space-y-2">
         <div className="flex items-center justify-between">
-          <label className="block text-[11px] uppercase font-bold text-amber-300 flex items-center gap-1.5">
+          <label className="block text-[11px] font-bold text-amber-300 flex items-center gap-1.5">
             <Folder className="w-3.5 h-3.5 text-amber-400" />
             <span>Wybierz Katalog dla tej karty:</span>
           </label>
@@ -77,7 +77,7 @@ export const CardCollectionForm: React.FC<CardCollectionFormProps> = ({
         {/* Inline Create Catalog Form */}
         {isCreatingCatalog ? (
           <div className="p-2.5 bg-stone-950 rounded-lg border border-amber-500/40 space-y-2 animate-fadeIn">
-            <p className="text-[10px] uppercase font-bold text-stone-300">Tworzenie nowego katalogu:</p>
+            <p className="text-[11px] font-bold text-stone-300">Tworzenie nowego katalogu:</p>
             <div className="flex gap-2">
               <input
                 type="text"
@@ -114,16 +114,16 @@ export const CardCollectionForm: React.FC<CardCollectionFormProps> = ({
               {catalogs.length > 0 ? (
                 catalogs.map(cat => (
                   <option key={cat.id} value={cat.name}>
-                    📁 {cat.name} {cat.isDefault ? '(Domyślny)' : ''}
+                    {cat.name} {cat.isDefault ? '(Domyślny)' : ''}
                   </option>
                 ))
               ) : (
-                <option value="Klaser Główny">📁 Klaser Główny</option>
+                <option value="Klaser Główny">Klaser Główny</option>
               )}
             </select>
 
             <div className="flex items-center text-xs text-stone-400 bg-stone-950/60 px-3 py-1.5 rounded-lg border border-stone-800">
-              <span>Aktualny cel: <strong className="text-amber-300 font-mono">{selectedBinder}</strong></span>
+              <span>Aktualny cel: <strong className="text-amber-300 tabular-nums">{selectedBinder}</strong></span>
             </div>
           </div>
         )}
@@ -132,7 +132,7 @@ export const CardCollectionForm: React.FC<CardCollectionFormProps> = ({
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {/* Normal Quantity */}
         <div>
-          <label className="block text-[10px] uppercase font-semibold text-stone-400 mb-1">
+          <label className="block text-[11px] font-semibold text-stone-400 mb-1">
             Ilość (Zwykłe)
           </label>
           <input
@@ -140,13 +140,13 @@ export const CardCollectionForm: React.FC<CardCollectionFormProps> = ({
             min="0"
             value={quantity}
             onChange={(e) => onQuantityChange(Math.max(0, parseInt(e.target.value, 10) || 0))}
-            className="w-full bg-stone-900 border border-stone-700 rounded-lg px-2.5 py-1.5 text-sm font-mono font-bold text-stone-100 focus:outline-none focus:border-amber-500"
+            className="w-full bg-stone-900 border border-stone-700 rounded-lg px-2.5 py-1.5 text-sm tabular-nums font-bold text-stone-100 focus:outline-none focus:border-amber-500"
           />
         </div>
 
         {/* Foil Quantity */}
         <div>
-          <label className="block text-[10px] uppercase font-semibold text-amber-400 mb-1 flex items-center gap-1">
+          <label className="block text-[11px] font-semibold text-amber-400 mb-1 flex items-center gap-1">
             <Sparkles className="w-2.5 h-2.5" />
             <span>Ilość (Foil)</span>
           </label>
@@ -155,13 +155,13 @@ export const CardCollectionForm: React.FC<CardCollectionFormProps> = ({
             min="0"
             value={quantityFoil}
             onChange={(e) => onQuantityFoilChange(Math.max(0, parseInt(e.target.value, 10) || 0))}
-            className="w-full bg-stone-900 border border-stone-700 rounded-lg px-2.5 py-1.5 text-sm font-mono font-bold text-amber-300 focus:outline-none focus:border-amber-500"
+            className="w-full bg-stone-900 border border-stone-700 rounded-lg px-2.5 py-1.5 text-sm tabular-nums font-bold text-amber-300 focus:outline-none focus:border-amber-500"
           />
         </div>
 
         {/* Condition */}
         <div>
-          <label className="block text-[10px] uppercase font-semibold text-stone-400 mb-1">
+          <label className="block text-[11px] font-semibold text-stone-400 mb-1">
             Stan karty
           </label>
           <select
@@ -177,7 +177,7 @@ export const CardCollectionForm: React.FC<CardCollectionFormProps> = ({
 
         {/* Language */}
         <div>
-          <label className="block text-[10px] uppercase font-semibold text-stone-400 mb-1">
+          <label className="block text-[11px] font-semibold text-stone-400 mb-1">
             Język
           </label>
           <select
@@ -195,7 +195,7 @@ export const CardCollectionForm: React.FC<CardCollectionFormProps> = ({
       {/* Notes */}
       <div>
         <div>
-          <label className="block text-[10px] uppercase font-semibold text-stone-400 mb-1">
+          <label className="block text-[11px] font-semibold text-stone-400 mb-1">
             Notatki / tagi
           </label>
           <input
@@ -212,7 +212,7 @@ export const CardCollectionForm: React.FC<CardCollectionFormProps> = ({
       <button
         type="submit"
         disabled={quantity === 0 && quantityFoil === 0}
-        className="w-full py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-stone-950 font-extrabold text-xs tracking-wider uppercase flex items-center justify-center gap-2 shadow-lg shadow-amber-950/40 transition-all cursor-pointer disabled:opacity-50"
+        className="w-full py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-stone-950 font-bold text-xs flex items-center justify-center gap-2 shadow-lg shadow-amber-950/40 transition-all cursor-pointer disabled:opacity-50"
       >
         {isSaved ? (
           <>

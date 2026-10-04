@@ -20,7 +20,7 @@ export const CardPrintsTab: React.FC<CardPrintsTabProps> = ({
     <div className="space-y-4 bg-stone-950/80 p-5 rounded-2xl border border-stone-800">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h3 className="text-base font-extrabold text-amber-300 flex items-center gap-2">
+          <h3 className="text-base font-bold text-amber-300 flex items-center gap-2">
             <Layers className="w-4 h-4 text-amber-400" />
             <span>Wybierz wersję / rodzaj printu dla: {cardName}</span>
           </h3>
@@ -88,13 +88,13 @@ export const CardPrintsTab: React.FC<CardPrintsTabProps> = ({
                 <div className="flex-1 min-w-0 flex flex-col justify-between text-xs">
                   <div>
                     <div className="flex items-center gap-1.5 flex-wrap">
-                      <span className="uppercase font-mono font-bold text-[10px] bg-stone-800 text-stone-200 px-1.5 py-0.5 rounded border border-stone-700">
+                      <span className="tabular-nums font-bold text-[11px] bg-stone-800 text-stone-200 px-1.5 py-0.5 rounded border border-stone-700">
                         {p.set.toUpperCase()}
                       </span>
-                      <span className="font-mono text-[10px] text-stone-400">
+                      <span className="tabular-nums text-[11px] text-stone-400">
                         #{p.collector_number}
                       </span>
-                      <span className={`text-[9px] px-1 rounded border font-semibold ${getRarityColor(p.rarity)}`}>
+                      <span className={`text-[11px] px-1 rounded border font-semibold ${getRarityColor(p.rarity)}`}>
                         {getRarityLabel(p.rarity).slice(0, 3)}
                       </span>
                     </div>
@@ -103,18 +103,18 @@ export const CardPrintsTab: React.FC<CardPrintsTabProps> = ({
                       {p.set_name}
                     </p>
 
-                    <p className="text-[10px] text-stone-400">
+                    <p className="text-[11px] text-stone-400">
                       {p.released_at ? p.released_at.slice(0, 4) : '—'} • {p.artist || 'Artist'}
                     </p>
                   </div>
 
                   {/* Prices in PLN */}
                   <div className="pt-1.5 border-t border-stone-800/80 flex items-center justify-between">
-                    <span className="font-mono font-bold text-emerald-400 text-xs">
+                    <span className="tabular-nums font-bold text-emerald-400 text-xs">
                       {formatCurrency(pNormPln, 'PLN')}
                     </span>
                     {pFoilPln > 0 && (
-                      <span className="font-mono text-amber-300 text-[10px] flex items-center gap-0.5">
+                      <span className="tabular-nums text-amber-300 text-[11px] flex items-center gap-0.5">
                         <Sparkles className="w-2.5 h-2.5 text-amber-400" />
                         {formatCurrency(pFoilPln, 'PLN')}
                       </span>
@@ -124,7 +124,7 @@ export const CardPrintsTab: React.FC<CardPrintsTabProps> = ({
                   {/* Print Action / State Badge */}
                   <div className="pt-1.5 flex justify-end">
                     {isSelected ? (
-                      <span className="text-[10px] font-bold text-amber-300 flex items-center gap-1 bg-amber-500/20 px-2 py-0.5 rounded-md border border-amber-500/30">
+                      <span className="text-[11px] font-bold text-amber-300 flex items-center gap-1 bg-amber-500/20 px-2 py-0.5 rounded-md border border-amber-500/30">
                         <Check className="w-3 h-3 stroke-[3]" />
                         <span>{isExistingItem ? 'Zapisany print' : 'Wybrany print'}</span>
                       </span>
@@ -135,7 +135,7 @@ export const CardPrintsTab: React.FC<CardPrintsTabProps> = ({
                           e.stopPropagation();
                           onSelectPrint(p);
                         }}
-                        className="text-[10px] font-bold text-stone-300 hover:text-stone-950 flex items-center gap-1 bg-stone-800 hover:bg-amber-400 px-2 py-0.5 rounded-md transition-colors cursor-pointer border border-stone-700 hover:border-amber-400"
+                        className="text-[11px] font-bold text-stone-300 hover:text-stone-950 flex items-center gap-1 bg-stone-800 hover:bg-amber-400 px-2 py-0.5 rounded-md transition-colors cursor-pointer border border-stone-700 hover:border-amber-400"
                       >
                         <span>{isExistingItem ? 'Zmień i zapisz print' : 'Wybierz ten print'}</span>
                       </button>
@@ -144,7 +144,7 @@ export const CardPrintsTab: React.FC<CardPrintsTabProps> = ({
                 </div>
 
                 {isSelected && (
-                  <div className="absolute -top-2 right-2 bg-amber-500 text-stone-950 text-[9px] font-black uppercase px-2 py-0.5 rounded-full shadow flex items-center gap-1">
+                  <div className="absolute -top-2 right-2 bg-amber-500 text-stone-950 text-[11px] font-bold px-2 py-0.5 rounded-full shadow flex items-center gap-1">
                     <Check className="w-2.5 h-2.5 stroke-[3]" />
                     <span>Aktywny</span>
                   </div>

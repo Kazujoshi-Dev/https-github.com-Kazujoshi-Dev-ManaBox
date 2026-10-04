@@ -54,7 +54,7 @@ export const CollectionFiltersBar: React.FC<CollectionFiltersBarProps> = ({
               onClick={() => onFilterChange({ color: col.id })}
               className={`shrink-0 px-2.5 py-1.5 md:py-1 rounded-lg text-xs transition-all cursor-pointer ${
                 filters.color === col.id
-                  ? 'bg-amber-500 text-stone-950 font-extrabold shadow-sm'
+                  ? 'bg-amber-500 text-stone-950 font-bold shadow-sm'
                   : 'text-stone-400 hover:text-stone-200 hover:bg-stone-800'
               }`}
             >
@@ -101,7 +101,7 @@ export const CollectionFiltersBar: React.FC<CollectionFiltersBarProps> = ({
       <div className={`${showAdvanced ? 'grid' : 'hidden'} md:grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 pt-2 border-t border-stone-800/60 text-xs`}>
         {/* Type Filter */}
         <div>
-          <label className="block text-[10px] uppercase font-semibold text-stone-400 mb-1">Typ karty</label>
+          <label className="block text-[11px] font-semibold text-stone-400 mb-1">Typ karty</label>
           <select
             value={filters.type}
             onChange={(e) => onFilterChange({ type: e.target.value })}
@@ -115,7 +115,7 @@ export const CollectionFiltersBar: React.FC<CollectionFiltersBarProps> = ({
 
         {/* Rarity Filter */}
         <div>
-          <label className="block text-[10px] uppercase font-semibold text-stone-400 mb-1">Rzadkość</label>
+          <label className="block text-[11px] font-semibold text-stone-400 mb-1">Rzadkość</label>
           <select
             value={filters.rarity}
             onChange={(e) => onFilterChange({ rarity: e.target.value })}
@@ -129,7 +129,7 @@ export const CollectionFiltersBar: React.FC<CollectionFiltersBarProps> = ({
 
         {/* Binder / Catalog Filter */}
         <div>
-          <label className="block text-[10px] uppercase font-semibold text-stone-400 mb-1">Katalog / Klaser</label>
+          <label className="block text-[11px] font-semibold text-stone-400 mb-1">Katalog / Klaser</label>
           <select
             value={filters.binder}
             onChange={(e) => onFilterChange({ binder: e.target.value })}
@@ -145,7 +145,7 @@ export const CollectionFiltersBar: React.FC<CollectionFiltersBarProps> = ({
 
         {/* Set Filter */}
         <div>
-          <label className="block text-[10px] uppercase font-semibold text-stone-400 mb-1">Dodatek (Set)</label>
+          <label className="block text-[11px] font-semibold text-stone-400 mb-1">Dodatek (Set)</label>
           <select
             value={filters.set}
             onChange={(e) => onFilterChange({ set: e.target.value })}
@@ -160,7 +160,7 @@ export const CollectionFiltersBar: React.FC<CollectionFiltersBarProps> = ({
 
         {/* Sort By */}
         <div>
-          <label className="block text-[10px] uppercase font-semibold text-stone-400 mb-1">Sortowanie</label>
+          <label className="block text-[11px] font-semibold text-stone-400 mb-1">Sortowanie</label>
           <select
             value={filters.sortBy}
             onChange={(e) => onFilterChange({ sortBy: e.target.value as any })}

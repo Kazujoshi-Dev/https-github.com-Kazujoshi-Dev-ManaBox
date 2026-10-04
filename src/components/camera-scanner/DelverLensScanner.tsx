@@ -568,7 +568,7 @@ export const DelverLensScanner: React.FC<DelverLensScannerProps> = ({
           <div>
             <h3 className="text-sm font-bold text-stone-100 flex items-center gap-1.5">
               <span>Skaner Delver Lens (HTML5 Canvas Preprocessing)</span>
-              <span className="text-[10px] bg-amber-500/20 text-amber-300 font-mono px-1.5 py-0.5 rounded border border-amber-500/30">
+              <span className="text-[11px] bg-amber-500/20 text-amber-300 tabular-nums px-1.5 py-0.5 rounded border border-amber-500/30">
                 63×88 mm
               </span>
             </h3>
@@ -640,9 +640,9 @@ export const DelverLensScanner: React.FC<DelverLensScannerProps> = ({
                   <div className="absolute -bottom-1.5 -right-1.5 w-4 h-4 border-b-4 border-r-4 border-amber-400 rounded-br" />
 
                   {/* Strefa 1: Górne 15% (Nazwa i Koszt Many) */}
-                  <div className="w-[92%] h-[15%] border-2 border-dashed border-amber-300 bg-amber-400/20 rounded-lg flex items-center justify-between px-2 text-[10px] text-amber-200 font-mono font-bold mx-auto mt-1 shadow-sm backdrop-blur-[1px]">
-                    <span>🏷️ GÓRNE 15% (NAZWA KARTY)</span>
-                    <span className="text-[9px] bg-amber-500/30 px-1 py-0.5 rounded text-amber-300">OCR</span>
+                  <div className="w-[92%] h-[15%] border-2 border-dashed border-amber-300 bg-amber-400/20 rounded-lg flex items-center justify-between px-2 text-[11px] text-amber-200 tabular-nums font-bold mx-auto mt-1 shadow-sm backdrop-blur-[1px]">
+                    <span>GÓRNE 15% (NAZWA KARTY)</span>
+                    <span className="text-[11px] bg-amber-500/30 px-1 py-0.5 rounded text-amber-300">OCR</span>
                   </div>
 
                   {/* Linia animacji skanowania */}
@@ -651,9 +651,9 @@ export const DelverLensScanner: React.FC<DelverLensScannerProps> = ({
                   )}
 
                   {/* Strefa 2: Dolne 10% (Symbol Setu i Numer Kolekcjonera) */}
-                  <div className="w-[92%] h-[10%] border border-dashed border-amber-300/80 bg-amber-400/15 rounded-lg flex items-center justify-between px-2 text-[10px] text-amber-300 font-mono font-bold mb-1 shadow-sm backdrop-blur-[1px]">
-                    <span>🔢 DOLNE 10% (SET & NR)</span>
-                    <span className="text-[9px] opacity-80">np. OTJ 125</span>
+                  <div className="w-[92%] h-[10%] border border-dashed border-amber-300/80 bg-amber-400/15 rounded-lg flex items-center justify-between px-2 text-[11px] text-amber-300 tabular-nums font-bold mb-1 shadow-sm backdrop-blur-[1px]">
+                    <span>DOLNE 10% (SET & NR)</span>
+                    <span className="text-[11px] opacity-80">np. OTJ 125</span>
                   </div>
                 </div>
               </div>
@@ -662,17 +662,17 @@ export const DelverLensScanner: React.FC<DelverLensScannerProps> = ({
 
           {/* Dolny pasek akcji: Przycisk „Skanuj” */}
           <div className="w-full flex items-center justify-between mt-3 px-1">
-            <span className="text-xs text-stone-400 font-mono truncate max-w-[65%]">
+            <span className="text-xs text-stone-400 tabular-nums truncate max-w-[65%]">
               {statusMessage}
             </span>
             <button
               type="button"
               disabled={!isCameraActive || isProcessing}
               onClick={handleCaptureAndScan}
-              className={`px-5 py-2.5 rounded-xl font-extrabold text-xs flex items-center gap-2 cursor-pointer shadow-lg transition-all ${
+              className={`px-5 py-2.5 rounded-xl font-bold text-xs flex items-center gap-2 cursor-pointer shadow-lg transition-all ${
                 isProcessing
                   ? 'bg-stone-800 text-stone-500 cursor-not-allowed'
-                  : 'bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-300 hover:to-amber-400 text-stone-950 shadow-amber-950/40 hover:scale-[1.02]'
+                  : 'bg-amber-400 hover:bg-amber-300 text-stone-950 shadow-amber-950/40 hover:scale-[1.02]'
               }`}
             >
               {isProcessing ? (
@@ -693,7 +693,7 @@ export const DelverLensScanner: React.FC<DelverLensScannerProps> = ({
         {/* Prawa kolumna: Podgląd Preprocessing & Wynik Rozpoznania */}
         <div className="lg:col-span-5 p-4 bg-stone-900/90 border-t lg:border-t-0 lg:border-l border-stone-800 flex flex-col justify-between overflow-y-auto space-y-4">
           <div className="space-y-3.5">
-            <h4 className="text-xs font-bold uppercase tracking-wider text-amber-400 flex items-center gap-1.5">
+            <h4 className="text-xs font-bold text-amber-400 flex items-center gap-1.5">
               <Sparkles className="w-3.5 h-3.5" />
               <span>Podgląd Image Preprocessing (W stylu Delver Lens)</span>
             </h4>
@@ -702,17 +702,17 @@ export const DelverLensScanner: React.FC<DelverLensScannerProps> = ({
               <div className="space-y-3">
                 {/* 1. Odczytany Tytuł */}
                 <div className="p-3 bg-stone-950 rounded-xl border border-stone-800 space-y-1">
-                  <span className="text-[10px] text-stone-400 block font-mono">Rozpoznana nazwa karty:</span>
+                  <span className="text-[11px] text-stone-400 block tabular-nums">Rozpoznana nazwa karty:</span>
                   <div className="text-base font-bold text-amber-300">
                     {scanResult.cleanedTitle || <span className="italic text-stone-500">Nie odczytano tekstu</span>}
                   </div>
                   {scanResult.detectedSet && (
                     <div className="text-xs text-stone-300 pt-1 flex items-center gap-2">
-                      <span className="bg-stone-800 px-2 py-0.5 rounded text-stone-200 font-mono text-[11px]">
+                      <span className="bg-stone-800 px-2 py-0.5 rounded text-stone-200 tabular-nums text-[11px]">
                         SET: [{scanResult.detectedSet.toUpperCase()}]
                       </span>
                       {scanResult.detectedCollectorNumber && (
-                        <span className="bg-stone-800 px-2 py-0.5 rounded text-stone-200 font-mono text-[11px]">
+                        <span className="bg-stone-800 px-2 py-0.5 rounded text-stone-200 tabular-nums text-[11px]">
                           NR: #{scanResult.detectedCollectorNumber}
                         </span>
                       )}
@@ -722,9 +722,9 @@ export const DelverLensScanner: React.FC<DelverLensScannerProps> = ({
 
                 {/* 2. Zbinaryzowany Pasek Górny (Tytuł 15%) */}
                 <div className="p-2.5 bg-stone-950 rounded-xl border border-stone-800 space-y-1">
-                  <div className="flex items-center justify-between text-[10px] text-stone-400">
-                    <span className="font-mono text-amber-300 font-bold">1. Pasek górny (15%): Filtr Otsu</span>
-                    <span className="text-[9px] text-emerald-400 font-semibold">Tylko czarny tekst</span>
+                  <div className="flex items-center justify-between text-[11px] text-stone-400">
+                    <span className="tabular-nums text-amber-300 font-bold">1. Pasek górny (15%): Filtr Otsu</span>
+                    <span className="text-[11px] text-emerald-400 font-semibold">Tylko czarny tekst</span>
                   </div>
                   <div className="bg-white rounded p-1 flex items-center justify-center border border-stone-300">
                     <img
@@ -733,16 +733,16 @@ export const DelverLensScanner: React.FC<DelverLensScannerProps> = ({
                       className="max-h-8 w-full object-contain filter contrast-125"
                     />
                   </div>
-                  <p className="text-[10px] text-stone-500 font-mono pt-0.5 truncate">
+                  <p className="text-[11px] text-stone-500 tabular-nums pt-0.5 truncate">
                     Surowy odczyt OCR: "{scanResult.rawTitleText.trim()}"
                   </p>
                 </div>
 
                 {/* 3. Zbinaryzowany Pasek Dolny (Set/Numer 10%) */}
                 <div className="p-2.5 bg-stone-950 rounded-xl border border-stone-800 space-y-1">
-                  <div className="flex items-center justify-between text-[10px] text-stone-400">
-                    <span className="font-mono text-amber-300 font-bold">2. Pasek dolny (10%): Stopka</span>
-                    <span className="text-[9px] text-emerald-400 font-semibold">Kod setu & Numer</span>
+                  <div className="flex items-center justify-between text-[11px] text-stone-400">
+                    <span className="tabular-nums text-amber-300 font-bold">2. Pasek dolny (10%): Stopka</span>
+                    <span className="text-[11px] text-emerald-400 font-semibold">Kod setu & Numer</span>
                   </div>
                   <div className="bg-white rounded p-1 flex items-center justify-center border border-stone-300">
                     <img
@@ -755,7 +755,7 @@ export const DelverLensScanner: React.FC<DelverLensScannerProps> = ({
 
                 {/* 4. Wycięta karta 63x88mm */}
                 <div className="p-2.5 bg-stone-950 rounded-xl border border-stone-800 space-y-1">
-                  <span className="text-[10px] text-stone-400 font-mono block">
+                  <span className="text-[11px] text-stone-400 tabular-nums block">
                     3. Wycięta zawartość wizjera (samej karty):
                   </span>
                   <div className="flex justify-center bg-black/40 rounded p-1">

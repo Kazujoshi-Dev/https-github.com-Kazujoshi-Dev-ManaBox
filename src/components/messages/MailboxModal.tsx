@@ -227,20 +227,20 @@ export const MailboxModal: React.FC<MailboxModalProps> = ({
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-6 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
       <div 
-        className="relative w-full max-w-4xl h-[620px] max-h-[92vh] bg-stone-900 border border-stone-800 rounded-3xl shadow-2xl overflow-hidden flex flex-col max-sm:w-full max-sm:max-w-none max-sm:rounded-b-none max-sm:rounded-t-3xl max-sm:max-h-[92dvh] max-sm:pb-[env(safe-area-inset-bottom)] max-sm:animate-[slideUp_.2s_ease-out] max-sm:mt-auto max-sm:mb-0 max-sm:h-[92dvh]"
+        className="relative w-full max-w-4xl h-[620px] max-h-[92vh] bg-stone-900 border border-stone-800 rounded-2xl shadow-2xl overflow-hidden flex flex-col max-sm:w-full max-sm:max-w-none max-sm:rounded-b-none max-sm:rounded-t-3xl max-sm:max-h-[92dvh] max-sm:pb-[env(safe-area-inset-bottom)] max-sm:animate-[slideUp_.2s_ease-out] max-sm:mt-auto max-sm:mb-0 max-sm:h-[92dvh]"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Top Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-stone-800 bg-stone-950/70">
           <div className="flex items-center gap-3">
-            <div className="p-2 rounded-xl bg-blue-500/15 border border-blue-500/30 text-blue-400">
+            <div className="p-2 rounded-xl bg-amber-500/15 border border-amber-500/30 text-amber-400">
               <Mail className="w-5 h-5" />
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h3 className="text-base font-black text-white">Skrzynka Wiadomości</h3>
+                <h3 className="text-base font-bold text-white">Skrzynka Wiadomości</h3>
                 {unreadCount > 0 && (
-                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-500 text-white font-mono shadow-sm">
+                  <span className="px-2 py-0.5 rounded-full text-[11px] font-bold bg-amber-500 text-stone-950 tabular-nums shadow-sm">
                     {unreadCount} nowych
                   </span>
                 )}
@@ -257,7 +257,7 @@ export const MailboxModal: React.FC<MailboxModalProps> = ({
               className="p-2 text-stone-400 hover:text-stone-100 hover:bg-stone-800 rounded-xl transition-colors cursor-pointer"
               title="Odśwież skrzynkę"
             >
-              <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin text-blue-400' : ''}`} />
+              <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin text-amber-400' : ''}`} />
             </button>
             <button
               type="button"
@@ -280,14 +280,14 @@ export const MailboxModal: React.FC<MailboxModalProps> = ({
               }}
               className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
                 activeTab === 'inbox'
-                  ? 'bg-blue-600 text-white shadow-md shadow-blue-950/50'
+                  ? 'bg-amber-500 text-stone-950 shadow-md shadow-amber-950/50'
                   : 'bg-stone-900 text-stone-400 hover:text-stone-200 border border-stone-800'
               }`}
             >
               <Inbox className="w-3.5 h-3.5" />
               <span>Odebrane</span>
               {unreadCount > 0 && (
-                <span className="px-1.5 py-0.2 rounded-full text-[10px] font-bold bg-white text-blue-900 font-mono">
+                <span className="px-1.5 py-0.2 rounded-full text-[11px] font-bold bg-white text-amber-900 tabular-nums">
                   {unreadCount}
                 </span>
               )}
@@ -301,13 +301,13 @@ export const MailboxModal: React.FC<MailboxModalProps> = ({
               }}
               className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
                 activeTab === 'sent'
-                  ? 'bg-blue-600 text-white shadow-md shadow-blue-950/50'
+                  ? 'bg-amber-500 text-stone-950 shadow-md shadow-amber-950/50'
                   : 'bg-stone-900 text-stone-400 hover:text-stone-200 border border-stone-800'
               }`}
             >
               <Send className="w-3.5 h-3.5" />
               <span>Wysłane</span>
-              <span className="text-[10px] font-mono text-stone-400">({sent.length})</span>
+              <span className="text-[11px] tabular-nums text-stone-400">({sent.length})</span>
             </button>
 
             <button
@@ -318,7 +318,7 @@ export const MailboxModal: React.FC<MailboxModalProps> = ({
               }}
               className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
                 activeTab === 'compose'
-                  ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-md shadow-emerald-950/50'
+                  ? 'bg-emerald-600 text-white shadow-md shadow-emerald-950/50'
                   : 'bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 border border-emerald-500/30'
               }`}
             >
@@ -331,9 +331,9 @@ export const MailboxModal: React.FC<MailboxModalProps> = ({
             <button
               type="button"
               onClick={handleMarkAllAsRead}
-              className="text-[11px] text-stone-400 hover:text-blue-300 transition-colors flex items-center gap-1 cursor-pointer font-medium"
+              className="text-[11px] text-stone-400 hover:text-amber-300 transition-colors flex items-center gap-1 cursor-pointer font-medium"
             >
-              <CheckCheck className="w-3.5 h-3.5 text-blue-400" />
+              <CheckCheck className="w-3.5 h-3.5 text-amber-400" />
               <span>Oznacz wszystkie jako przeczytane</span>
             </button>
           )}
@@ -362,7 +362,7 @@ export const MailboxModal: React.FC<MailboxModalProps> = ({
                       <button
                         type="button"
                         onClick={() => handleReply(selectedMessage)}
-                        className="px-3.5 py-1.5 text-xs font-bold text-blue-300 hover:text-blue-200 bg-blue-500/15 hover:bg-blue-500/25 border border-blue-500/30 rounded-xl transition-all flex items-center gap-1.5 cursor-pointer"
+                        className="px-3.5 py-1.5 text-xs font-bold text-amber-300 hover:text-amber-200 bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/30 rounded-xl transition-all flex items-center gap-1.5 cursor-pointer"
                       >
                         <Reply className="w-3.5 h-3.5" />
                         <span>Odpowiedz</span>
@@ -381,12 +381,12 @@ export const MailboxModal: React.FC<MailboxModalProps> = ({
 
                   {/* Header info */}
                   <div className="p-6 border-b border-stone-800/80 bg-stone-900/40 space-y-2">
-                    <h2 className="text-lg font-black text-white">{selectedMessage.subject}</h2>
+                    <h2 className="text-lg font-bold text-white">{selectedMessage.subject}</h2>
                     <div className="flex items-center justify-between text-xs text-stone-400 flex-wrap gap-2">
                       <div className="flex items-center gap-2">
-                        <span>Od: <strong className="text-blue-300 font-mono">@{selectedMessage.senderUsername}</strong></span>
+                        <span>Od: <strong className="text-amber-300 tabular-nums">@{selectedMessage.senderUsername}</strong></span>
                         <span>→</span>
-                        <span>Do: <strong className="text-stone-200 font-mono">@{selectedMessage.recipientUsername}</strong></span>
+                        <span>Do: <strong className="text-stone-200 tabular-nums">@{selectedMessage.recipientUsername}</strong></span>
                       </div>
                       <span className="flex items-center gap-1 text-[11px] text-stone-500">
                         <Clock className="w-3 h-3" />
@@ -412,7 +412,7 @@ export const MailboxModal: React.FC<MailboxModalProps> = ({
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
                         placeholder={`Szukaj w ${activeTab === 'inbox' ? 'odebranych' : 'wysłanych'}...`}
-                        className="w-full bg-stone-950 border border-stone-800 focus:border-blue-500 rounded-xl pl-8 pr-3 py-1.5 text-xs text-stone-100 placeholder-stone-500 focus:outline-none transition-colors"
+                        className="w-full bg-stone-950 border border-stone-800 focus:border-amber-500 rounded-xl pl-8 pr-3 py-1.5 text-xs text-stone-100 placeholder-stone-500 focus:outline-none transition-colors"
                       />
                     </div>
                   </div>
@@ -421,7 +421,7 @@ export const MailboxModal: React.FC<MailboxModalProps> = ({
                   <div className="flex-1 overflow-y-auto divide-y divide-stone-800/60">
                     {isLoading ? (
                       <div className="flex flex-col items-center justify-center py-20 space-y-3">
-                        <div className="w-8 h-8 rounded-full border-3 border-blue-500/20 border-t-blue-500 animate-spin" />
+                        <div className="w-8 h-8 rounded-full border-3 border-amber-500/20 border-t-blue-500 animate-spin" />
                         <p className="text-xs text-stone-400">Ładowanie wiadomości...</p>
                       </div>
                     ) : (activeTab === 'inbox' ? filteredInbox : filteredSent).length === 0 ? (
@@ -449,14 +449,14 @@ export const MailboxModal: React.FC<MailboxModalProps> = ({
                             key={msg.id}
                             onClick={() => handleSelectMessage(msg, isInboxItem)}
                             className={`group px-6 py-3.5 hover:bg-stone-850/60 transition-colors cursor-pointer flex items-center justify-between gap-4 ${
-                              isUnread ? 'bg-blue-950/20' : ''
+                              isUnread ? 'bg-amber-950/20' : ''
                             }`}
                           >
                             <div className="flex items-center gap-3 min-w-0 flex-1">
                               {/* Indicator icon */}
                               <div className="shrink-0">
                                 {isUnread ? (
-                                  <div className="w-2.5 h-2.5 rounded-full bg-blue-500 shadow-sm shadow-blue-500/80 animate-pulse" />
+                                  <div className="w-2.5 h-2.5 rounded-full bg-amber-500 shadow-sm shadow-amber-500/80 animate-pulse" />
                                 ) : (
                                   <div className="w-2.5 h-2.5 rounded-full bg-stone-700 opacity-40" />
                                 )}
@@ -464,18 +464,18 @@ export const MailboxModal: React.FC<MailboxModalProps> = ({
 
                               <div className="min-w-0 flex-1 space-y-0.5">
                                 <div className="flex items-center justify-between gap-2">
-                                  <span className={`text-xs font-mono truncate ${
-                                    isUnread ? 'text-blue-300 font-extrabold' : 'text-stone-300 font-semibold'
+                                  <span className={`text-xs tabular-nums truncate ${
+                                    isUnread ? 'text-amber-300 font-bold' : 'text-stone-300 font-semibold'
                                   }`}>
                                     {isInboxItem ? `@${msg.senderUsername}` : `Do: @${msg.recipientUsername}`}
                                   </span>
-                                  <span className="text-[10px] text-stone-500 shrink-0 font-mono">
+                                  <span className="text-[11px] text-stone-500 shrink-0 tabular-nums">
                                     {formatDate(msg.createdAt)}
                                   </span>
                                 </div>
 
                                 <h4 className={`text-xs truncate ${
-                                  isUnread ? 'text-white font-black' : 'text-stone-300 font-medium'
+                                  isUnread ? 'text-white font-bold' : 'text-stone-300 font-medium'
                                 }`}>
                                   {msg.subject}
                                 </h4>
@@ -516,15 +516,15 @@ export const MailboxModal: React.FC<MailboxModalProps> = ({
 
               {/* Recipient */}
               <div>
-                <label className="block text-xs font-bold text-stone-300 uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
-                  <User className="w-3.5 h-3.5 text-blue-400" />
+                <label className="block text-xs font-bold text-stone-300 mb-1.5 flex items-center gap-1.5">
+                  <User className="w-3.5 h-3.5 text-amber-400" />
                   <span>Odbiorca wiadomości</span>
                 </label>
                 {availableUsers.length > 0 ? (
                   <select
                     value={composeRecipient}
                     onChange={(e) => setComposeRecipient(e.target.value)}
-                    className="w-full bg-stone-950 border border-stone-800 focus:border-blue-500 rounded-xl px-3.5 py-2.5 text-sm text-stone-100 focus:outline-none cursor-pointer"
+                    className="w-full bg-stone-950 border border-stone-800 focus:border-amber-500 rounded-xl px-3.5 py-2.5 text-sm text-stone-100 focus:outline-none cursor-pointer"
                   >
                     <option value="">-- Wybierz gracza z listy --</option>
                     {availableUsers
@@ -541,14 +541,14 @@ export const MailboxModal: React.FC<MailboxModalProps> = ({
                     value={composeRecipient}
                     onChange={(e) => setComposeRecipient(e.target.value)}
                     placeholder="Wpisz nazwę gracza (np. DejvidLP)..."
-                    className="w-full bg-stone-950 border border-stone-800 focus:border-blue-500 rounded-xl px-3.5 py-2.5 text-sm text-stone-100 placeholder-stone-500 focus:outline-none"
+                    className="w-full bg-stone-950 border border-stone-800 focus:border-amber-500 rounded-xl px-3.5 py-2.5 text-sm text-stone-100 placeholder-stone-500 focus:outline-none"
                   />
                 )}
               </div>
 
               {/* Subject */}
               <div>
-                <label className="block text-xs font-bold text-stone-300 uppercase tracking-wider mb-1.5">
+                <label className="block text-xs font-bold text-stone-300 mb-1.5">
                   Temat
                 </label>
                 <input
@@ -557,13 +557,13 @@ export const MailboxModal: React.FC<MailboxModalProps> = ({
                   onChange={(e) => setComposeSubject(e.target.value)}
                   placeholder="np. Zapytanie o kartę na sprzedaż, propozycja wymiany..."
                   maxLength={150}
-                  className="w-full bg-stone-950 border border-stone-800 focus:border-blue-500 rounded-xl px-3.5 py-2.5 text-sm text-stone-100 placeholder-stone-500 focus:outline-none transition-colors"
+                  className="w-full bg-stone-950 border border-stone-800 focus:border-amber-500 rounded-xl px-3.5 py-2.5 text-sm text-stone-100 placeholder-stone-500 focus:outline-none transition-colors"
                 />
               </div>
 
               {/* Body */}
               <div className="flex-1 flex flex-col min-h-[160px]">
-                <label className="block text-xs font-bold text-stone-300 uppercase tracking-wider mb-1.5">
+                <label className="block text-xs font-bold text-stone-300 mb-1.5">
                   Treść wiadomości
                 </label>
                 <textarea
@@ -571,7 +571,7 @@ export const MailboxModal: React.FC<MailboxModalProps> = ({
                   onChange={(e) => setComposeBody(e.target.value)}
                   rows={7}
                   placeholder="Napisz swoją wiadomość..."
-                  className="w-full flex-1 bg-stone-950 border border-stone-800 focus:border-blue-500 rounded-xl px-3.5 py-2.5 text-sm text-stone-100 placeholder-stone-500 focus:outline-none transition-colors resize-none"
+                  className="w-full flex-1 bg-stone-950 border border-stone-800 focus:border-amber-500 rounded-xl px-3.5 py-2.5 text-sm text-stone-100 placeholder-stone-500 focus:outline-none transition-colors resize-none"
                 />
               </div>
 
@@ -590,7 +590,7 @@ export const MailboxModal: React.FC<MailboxModalProps> = ({
                 <button
                   type="submit"
                   disabled={isSending || !composeRecipient.trim() || !composeSubject.trim() || !composeBody.trim()}
-                  className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 disabled:opacity-50 text-white font-extrabold text-xs shadow-lg shadow-blue-950/60 transition-all flex items-center gap-2 cursor-pointer"
+                  className="px-5 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 disabled:opacity-50 text-stone-950 font-bold text-xs shadow-lg shadow-amber-950/60 transition-all flex items-center gap-2 cursor-pointer"
                 >
                   <Send className="w-4 h-4 stroke-[2.2]" />
                   <span>{isSending ? 'Wysyłanie...' : 'Wyślij wiadomość'}</span>

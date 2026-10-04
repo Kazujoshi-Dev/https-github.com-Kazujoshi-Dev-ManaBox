@@ -113,7 +113,7 @@ export const DeckShareModal: React.FC<DeckShareModalProps> = ({ deck, onClose, o
                   value={url}
                   onFocus={(e) => e.currentTarget.select()}
                   aria-label="Publiczny link do talii"
-                  className="flex-1 min-w-0 bg-transparent px-1.5 text-xs font-mono text-stone-300 focus:outline-none"
+                  className="flex-1 min-w-0 bg-transparent px-1.5 text-xs tabular-nums text-stone-300 focus:outline-none"
                 />
                 <button type="button" onClick={() => copy('link')} className="h-9 px-3 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold flex items-center gap-1.5 shrink-0 cursor-pointer">
                   {copied === 'link' ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}

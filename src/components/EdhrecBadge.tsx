@@ -14,8 +14,8 @@ export const EdhrecBadge: React.FC<EdhrecBadgeProps> = ({ rank, className = '', 
 
   const sizeClasses = {
     xs: 'text-[8px] px-1.5 py-0.5 gap-0.5',
-    sm: 'text-[9px] px-2 py-0.5 gap-1',
-    md: 'text-[10px] px-2.5 py-0.5 gap-1'
+    sm: 'text-[11px] px-2 py-0.5 gap-1',
+    md: 'text-[11px] px-2.5 py-0.5 gap-1'
   }[size];
 
   const iconSizes = {
@@ -27,10 +27,10 @@ export const EdhrecBadge: React.FC<EdhrecBadgeProps> = ({ rank, className = '', 
   return (
     <div
       title={`Pozycja w rankingu EDHREC: #${numRank.toLocaleString()} (popularność w formacie Commander)`}
-      className={`bg-gradient-to-r from-amber-500 via-purple-500 to-blue-500 text-stone-950 font-extrabold rounded shadow-md flex items-center uppercase tracking-wider border border-white/20 select-none ${sizeClasses} ${className}`}
+      className={`bg-stone-950/90 text-amber-300 ring-1 ring-amber-400/40 font-semibold rounded shadow-md flex items-center border border-white/20 select-none ${sizeClasses} ${className}`}
     >
       <Trophy className={`${iconSizes} fill-stone-950 stroke-[1.5] shrink-0`} />
-      <span className="font-mono leading-none">EDH #{numRank.toLocaleString()}</span>
+      <span className="tabular-nums leading-none">EDH #{numRank.toLocaleString()}</span>
     </div>
   );
 };

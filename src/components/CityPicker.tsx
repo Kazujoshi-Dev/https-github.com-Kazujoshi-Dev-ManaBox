@@ -65,7 +65,7 @@ export const CityPicker: React.FC = () => {
         <div className="space-y-0.5">
           <p className="text-xs font-bold text-stone-200">Miejscowość (opcjonalnie)</p>
           <p className="text-[11px] text-stone-400">
-            Pojawisz się na mapie sprzedawców, gdy masz karty na sprzedaż. Inni użytkownicy zobaczą tylko nazwę miasta —
+            Pojawisz się na mapie sprzedawców, gdy masz karty na sprzedaż. Inni użytkownicy zobaczą tylko nazwę miasta,
             nigdy dokładny adres.
           </p>
         </div>
@@ -120,7 +120,7 @@ export const CityPicker: React.FC = () => {
         </ul>
       )}
       {query.trim().length >= 3 && !isSearching && suggestions.length === 0 && !message && (
-        <p className="text-[11px] text-stone-500">Brak wyników — spróbuj innej pisowni.</p>
+        <p className="text-[11px] text-stone-500">Brak wyników. Spróbuj innej pisowni.</p>
       )}
 
       {message && (
@@ -129,7 +129,7 @@ export const CityPicker: React.FC = () => {
           {message.text}
         </p>
       )}
-      <p className="text-[10px] text-stone-500">Dane miejscowości: © OpenStreetMap</p>
+      <p className="text-[11px] text-stone-500">Dane miejscowości: © OpenStreetMap</p>
     </div>
   );
 };

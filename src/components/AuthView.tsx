@@ -2,7 +2,6 @@ import React, { useEffect, useRef, useState } from 'react';
 import { BinderShowcase } from './auth/BinderShowcase';
 import { FeatureBento } from './auth/FeatureBento';
 import { useShowcaseCards } from './auth/useShowcaseCards';
-import '@fontsource-variable/geist';
 import { AuthUser } from '../types';
 import { Lock, Mail, User, ArrowRight, CheckCircle2, AlertCircle, Loader2 } from 'lucide-react';
 

@@ -18,11 +18,11 @@ export const ManaSymbol: React.FC<ManaSymbolProps> = ({ cost, size = 'md' }) => 
 
   if (symbols.length === 0 && cost) {
     // If string does not use brackets, split single characters if simple
-    return <span className="font-mono text-xs font-bold text-amber-300">{cost}</span>;
+    return <span className="tabular-nums text-xs font-bold text-amber-300">{cost}</span>;
   }
 
   const sizeClasses = {
-    sm: 'w-4 h-4 text-[10px]',
+    sm: 'w-4 h-4 text-[11px]',
     md: 'w-5 h-5 text-xs',
     lg: 'w-6 h-6 text-sm',
   }[size];
@@ -48,7 +48,7 @@ export const ManaSymbol: React.FC<ManaSymbolProps> = ({ cost, size = 'md' }) => 
           key={idx}
           className={`${sizeClasses} ${getSymbolBg(
             sym
-          )} inline-flex items-center justify-center rounded-full font-bold font-mono border shadow-xs select-none`}
+          )} inline-flex items-center justify-center rounded-full font-bold tabular-nums border shadow-xs select-none`}
           title={`Mana: ${sym}`}
         >
           {sym}

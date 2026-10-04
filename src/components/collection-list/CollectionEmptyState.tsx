@@ -18,7 +18,7 @@ export const CollectionEmptyState: React.FC<CollectionEmptyStateProps> = ({
       </div>
       <div>
         <h3 className="text-lg font-bold text-stone-200">
-          {activeBinder === FOR_SALE_BINDER ? 'Brak kart na sprzedaż — oznacz kartę przyciskiem $' : isCatalogFiltered ? `Brak kart w katalogu "${activeBinder}"` : 'Brak kart w kolekcji'}
+          {activeBinder === FOR_SALE_BINDER ? 'Brak kart na sprzedaż. Oznacz kartę przyciskiem $' : isCatalogFiltered ? `Brak kart w katalogu "${activeBinder}"` : 'Brak kart w kolekcji'}
         </h3>
         <p className="text-xs text-stone-400 mt-1 max-w-md mx-auto">
           {isCatalogFiltered 

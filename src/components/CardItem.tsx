@@ -76,8 +76,8 @@ export const CardItem: React.FC<CardItemProps> = ({
               </button>
               <p className="text-[11px] text-stone-400 flex items-center gap-2 mt-0.5 flex-wrap">
                 <span>{card.type_line}</span>
-                <span className="text-[10px] text-amber-300/90 bg-amber-500/10 px-1.5 py-0.5 rounded border border-amber-500/20 font-medium">
-                  📁 {binder || 'Klaser Główny'}
+                <span className="text-[11px] text-amber-300/90 bg-amber-500/10 px-1.5 py-0.5 rounded border border-amber-500/20 font-medium">
+                  {binder || 'Klaser Główny'}
                 </span>
                 {edhrecRank != null && (
                   <EdhrecBadge rank={edhrecRank} size="xs" />
@@ -93,10 +93,10 @@ export const CardItem: React.FC<CardItemProps> = ({
 
         <td className="py-2.5 px-3">
           <div className="flex items-center gap-1.5">
-            <span className="uppercase font-mono text-[11px] bg-stone-800 text-stone-300 px-1.5 py-0.5 rounded border border-stone-700">
+            <span className="tabular-nums text-[11px] bg-stone-800 text-stone-300 px-1.5 py-0.5 rounded border border-stone-700">
               {card.set}
             </span>
-            <span className={`text-[10px] px-1.5 py-0.5 rounded border font-semibold ${getRarityColor(card.rarity)}`}>
+            <span className={`text-[11px] px-1.5 py-0.5 rounded border font-semibold ${getRarityColor(card.rarity)}`}>
               {getRarityLabel(card.rarity)}
             </span>
           </div>
@@ -104,20 +104,20 @@ export const CardItem: React.FC<CardItemProps> = ({
 
         <td className="py-2.5 px-3">
           <div className="flex items-center gap-1">
-            <span className="text-stone-300 bg-stone-800 font-mono px-1.5 py-0.5 rounded text-[11px]">
+            <span className="text-stone-300 bg-stone-800 tabular-nums px-1.5 py-0.5 rounded text-[11px]">
               {condition}
             </span>
-            <span className="text-stone-400 font-mono text-[10px]">
+            <span className="text-stone-400 tabular-nums text-[11px]">
               [{language}]
             </span>
           </div>
         </td>
 
-        <td className="py-2.5 px-3 font-mono font-medium text-stone-200">
+        <td className="py-2.5 px-3 tabular-nums font-medium text-stone-200">
           <div className="flex flex-col">
             <span>{formatCurrency(priceNormal, settings.currency)}</span>
             {priceFoil > 0 && (
-              <span className="text-[10px] text-amber-400 flex items-center gap-0.5">
+              <span className="text-[11px] text-amber-400 flex items-center gap-0.5">
                 <Sparkles className="w-2.5 h-2.5" />
                 {formatCurrency(priceFoil, settings.currency)}
               </span>
@@ -134,7 +134,7 @@ export const CardItem: React.FC<CardItemProps> = ({
             >
               <Minus className="w-3 h-3" />
             </button>
-            <span className="font-mono font-bold text-stone-100 min-w-[24px] text-center">
+            <span className="tabular-nums font-bold text-stone-100 min-w-[24px] text-center">
               {totalQuantity}
             </span>
             <button
@@ -144,12 +144,12 @@ export const CardItem: React.FC<CardItemProps> = ({
               <Plus className="w-3 h-3" />
             </button>
           </div>
-          <div className="text-[10px] text-stone-400 mt-0.5">
+          <div className="text-[11px] text-stone-400 mt-0.5">
             Norm: {quantity} | Foil: {quantityFoil}
           </div>
         </td>
 
-        <td className="py-2.5 px-3 font-mono font-bold text-emerald-400">
+        <td className="py-2.5 px-3 tabular-nums font-bold text-emerald-400">
           {formatCurrency(itemTotalValue, settings.currency)}
         </td>
 
@@ -202,7 +202,7 @@ export const CardItem: React.FC<CardItemProps> = ({
       
       {/* Foil Effect Banner if card is Foil */}
       {quantityFoil > 0 && (
-        <div className="absolute top-0 right-0 z-10 bg-gradient-to-l from-amber-500 via-purple-500 to-blue-500 text-stone-950 font-extrabold text-[10px] px-2 py-0.5 rounded-bl-lg shadow-sm flex items-center gap-1 uppercase tracking-wider">
+        <div className="absolute top-0 right-0 z-10 ms-foil-chip font-semibold text-[11px] px-2 py-0.5 rounded-bl-lg shadow-sm flex items-center gap-1 ">
           <Sparkles className="w-3 h-3 fill-stone-950" />
           <span>Foil ({quantityFoil})</span>
         </div>
@@ -210,18 +210,18 @@ export const CardItem: React.FC<CardItemProps> = ({
 
       {/* For Sale Banner / Badge */}
       {item.isForSale && (
-        <div className="absolute top-2 left-2 z-10 bg-emerald-950/95 text-emerald-300 border border-emerald-500/50 text-[10px] font-extrabold px-2 py-0.5 rounded-full shadow-lg flex items-center gap-1 uppercase tracking-wider backdrop-blur-md">
+        <div className="absolute top-2 left-2 z-10 bg-emerald-950/95 text-emerald-300 border border-emerald-500/50 text-[11px] font-bold px-2 py-0.5 rounded-full shadow-lg flex items-center gap-1 backdrop-blur-md">
           <CircleDollarSign className="w-3 h-3 text-emerald-400 stroke-[2.5]" />
           <span>Sprzedam</span>
           {item.salePrice ? (
-            <span className="text-[9px] text-emerald-200 font-mono">({formatCurrency(item.salePrice, settings.currency)})</span>
+            <span className="text-[11px] text-emerald-200 tabular-nums">({formatCurrency(item.salePrice, settings.currency)})</span>
           ) : null}
         </div>
       )}
 
       {/* Binder badge */}
       {binder && !item.isForSale && (
-        <div className="absolute top-2 left-2 z-10 bg-stone-950/80 backdrop-blur-md text-stone-300 text-[10px] px-2 py-0.5 rounded-full border border-stone-800 flex items-center gap-1 font-medium">
+        <div className="absolute top-2 left-2 z-10 bg-stone-950/80 backdrop-blur-md text-stone-300 text-[11px] px-2 py-0.5 rounded-full border border-stone-800 flex items-center gap-1 font-medium">
           <Folder className="w-2.5 h-2.5 text-amber-400" />
           <span className="truncate max-w-[100px]">{binder}</span>
         </div>
@@ -253,7 +253,7 @@ export const CardItem: React.FC<CardItemProps> = ({
         {edhrecRank != null && (
           <div 
             title={`Ranking EDHREC: #${edhrecRank.toLocaleString()} (popularność w formacie Commander)`}
-            className="absolute bottom-0 left-0 z-10 bg-gradient-to-r from-amber-500 via-purple-500 to-blue-500 text-stone-950 font-extrabold text-[10px] px-2 py-0.5 rounded-tr-lg shadow-sm flex items-center gap-1 uppercase tracking-wider select-none border-t border-r border-white/20"
+            className="absolute bottom-0 left-0 z-10 ms-foil-chip font-semibold text-[11px] px-2 py-0.5 rounded-tr-lg shadow-sm flex items-center gap-1 select-none border-t border-r border-white/20"
           >
             <Trophy className="w-3 h-3 fill-stone-950 stroke-[1.5] shrink-0" />
             <span>EDH #{edhrecRank.toLocaleString()}</span>
@@ -262,8 +262,8 @@ export const CardItem: React.FC<CardItemProps> = ({
 
         {/* Total Price Tag overlay on bottom right of image */}
         <div className="absolute bottom-2 right-2 bg-stone-950/90 backdrop-blur-md px-2 py-1 rounded-lg border border-stone-800 shadow-md">
-          <p className="text-[9px] uppercase font-bold text-stone-400 leading-none">Wartość</p>
-          <p className="text-xs font-extrabold font-mono text-emerald-400 leading-tight">
+          <p className="text-[11px] font-bold text-stone-400 leading-none">Wartość</p>
+          <p className="text-xs font-bold tabular-nums text-emerald-400 leading-tight">
             {formatCurrency(itemTotalValue, settings.currency)}
           </p>
         </div>
@@ -287,13 +287,13 @@ export const CardItem: React.FC<CardItemProps> = ({
           </p>
 
           <div className="flex items-center gap-1.5 mt-2 flex-wrap">
-            <span className="uppercase font-mono text-[10px] font-bold bg-stone-800 text-stone-300 px-1.5 py-0.5 rounded border border-stone-700">
+            <span className="tabular-nums text-[11px] font-bold bg-stone-800 text-stone-300 px-1.5 py-0.5 rounded border border-stone-700">
               {card.set}
             </span>
-            <span className={`text-[10px] px-1.5 py-0.5 rounded border font-semibold ${getRarityColor(card.rarity)}`}>
+            <span className={`text-[11px] px-1.5 py-0.5 rounded border font-semibold ${getRarityColor(card.rarity)}`}>
               {getRarityLabel(card.rarity)}
             </span>
-            <span className="text-[10px] text-stone-400 bg-stone-800 px-1.5 py-0.5 rounded border border-stone-800">
+            <span className="text-[11px] text-stone-400 bg-stone-800 px-1.5 py-0.5 rounded border border-stone-800">
               {condition} • {language}
             </span>
           </div>
@@ -310,9 +310,9 @@ export const CardItem: React.FC<CardItemProps> = ({
               <Minus className="w-3 h-3" />
             </button>
 
-            <div className="text-center px-1 font-mono text-xs">
-              <span className="font-extrabold text-amber-300">{totalQuantity}</span>
-              <span className="text-[9px] text-stone-400 ml-0.5">szt</span>
+            <div className="text-center px-1 tabular-nums text-xs">
+              <span className="font-bold text-amber-300">{totalQuantity}</span>
+              <span className="text-[11px] text-stone-400 ml-0.5">szt</span>
             </div>
 
             <button

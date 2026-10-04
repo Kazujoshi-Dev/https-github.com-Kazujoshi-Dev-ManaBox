@@ -33,10 +33,10 @@ export const DeckHeader: React.FC<DeckHeaderProps> = ({
 
         <div>
           <div className="flex items-center gap-2.5 flex-wrap">
-            <h2 className="text-xl sm:text-2xl font-black text-stone-100 tracking-tight">
+            <h2 className="text-xl sm:text-2xl font-bold text-stone-100 tracking-tight">
               {name}
             </h2>
-            <span className="px-2.5 py-0.5 rounded-full text-xs font-bold uppercase tracking-wider bg-purple-500/20 text-purple-300 border border-purple-500/30 flex items-center gap-1 font-mono">
+            <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30 flex items-center gap-1 tabular-nums">
               <Crown className="w-3.5 h-3.5 text-amber-400" />
               <span>{format || 'EDH Commander'}</span>
             </span>
@@ -45,10 +45,10 @@ export const DeckHeader: React.FC<DeckHeaderProps> = ({
             <button
               type="button"
               onClick={onToggleCardSource}
-              className={`px-2.5 py-0.5 rounded-full text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 font-mono border transition-all cursor-pointer ${
+              className={`px-2.5 py-0.5 rounded-full text-xs font-bold flex items-center gap-1.5 tabular-nums border transition-all cursor-pointer ${
                 cardSource === 'collection'
                   ? 'bg-amber-500/15 text-amber-300 border-amber-500/40 hover:bg-amber-500/25'
-                  : 'bg-purple-500/15 text-purple-300 border-purple-500/40 hover:bg-purple-500/25'
+                  : 'bg-amber-500/15 text-amber-300 border-amber-500/40 hover:bg-amber-500/25'
               }`}
               title="Kliknij, aby przełączyć źródło wyszukiwania kart"
             >
@@ -59,7 +59,7 @@ export const DeckHeader: React.FC<DeckHeaderProps> = ({
                 </>
               ) : (
                 <>
-                  <Globe className="w-3.5 h-3.5 text-purple-400" />
+                  <Globe className="w-3.5 h-3.5 text-amber-400" />
                   <span>Źródło: Wszystkie karty MTG</span>
                 </>
               )}
@@ -77,7 +77,7 @@ export const DeckHeader: React.FC<DeckHeaderProps> = ({
         <div className="bg-stone-950 px-3.5 py-2 rounded-xl border border-stone-800 flex items-center gap-2">
           <span className="text-xs text-stone-400">Liczba kart:</span>
           <span
-            className={`text-sm font-black font-mono px-2 py-0.5 rounded ${
+            className={`text-sm font-bold tabular-nums px-2 py-0.5 rounded ${
               totalCardsCount === 100
                 ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
                 : totalCardsCount > 100
@@ -92,7 +92,7 @@ export const DeckHeader: React.FC<DeckHeaderProps> = ({
         {/* Total Estimated Deck Value */}
         <div className="bg-stone-950 px-3.5 py-2 rounded-xl border border-stone-800 flex items-center gap-2">
           <span className="text-xs text-stone-400">Wartość rynkowa:</span>
-          <span className="text-sm font-black text-amber-300 font-mono">
+          <span className="text-sm font-bold text-amber-300 tabular-nums">
             {formatCurrency(totalDeckValue, currency)}
           </span>
         </div>
@@ -102,10 +102,10 @@ export const DeckHeader: React.FC<DeckHeaderProps> = ({
           <button
             type="button"
             onClick={onOpenCombos}
-            className="px-3.5 py-2 bg-gradient-to-r from-purple-900/60 to-purple-800/60 hover:from-purple-800/80 hover:to-purple-700/80 text-purple-200 border border-purple-500/40 rounded-xl font-bold text-xs flex items-center gap-2 transition-all cursor-pointer shadow-md shadow-purple-950/30 group"
+            className="px-3.5 py-2 bg-amber-900/60 hover:bg-amber-800/80 text-amber-200 border border-amber-500/40 rounded-xl font-bold text-xs flex items-center gap-2 transition-all cursor-pointer shadow-md shadow-amber-950/30 group"
             title="Sprawdź kombinacje i nieskończone pętle talii w bazie Commander Spellbook"
           >
-            <Sparkles className="w-4 h-4 text-purple-300 group-hover:text-amber-300 transition-colors" />
+            <Sparkles className="w-4 h-4 text-amber-300 group-hover:text-amber-300 transition-colors" />
             <span>Combo (Spellbook)</span>
           </button>
         )}
@@ -132,10 +132,10 @@ export const DeckHeader: React.FC<DeckHeaderProps> = ({
           <button
             type="button"
             onClick={onOpenImportExport}
-            className="px-3 py-2 bg-stone-850 hover:bg-stone-800 text-purple-300 hover:text-purple-200 border border-purple-500/30 rounded-xl font-bold text-xs flex items-center gap-1.5 transition-all cursor-pointer shadow-sm"
+            className="px-3 py-2 bg-stone-850 hover:bg-stone-800 text-amber-300 hover:text-amber-200 border border-amber-500/30 rounded-xl font-bold text-xs flex items-center gap-1.5 transition-all cursor-pointer shadow-sm"
             title="Importuj lub eksportuj talię jako plik .txt (np. format '1x Talisman of Impulse (tdc) 332')"
           >
-            <FileText className="w-4 h-4 text-purple-400" />
+            <FileText className="w-4 h-4 text-amber-400" />
             <span>Plik .txt</span>
           </button>
         )}
@@ -143,7 +143,7 @@ export const DeckHeader: React.FC<DeckHeaderProps> = ({
         {/* Add Card to Deck Button */}
         <button
           onClick={onOpenAddModal}
-          className="px-4 py-2 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-stone-950 font-black text-xs rounded-xl shadow-lg shadow-amber-950/40 flex items-center gap-2 transition-all cursor-pointer"
+          className="px-4 py-2 bg-amber-500 hover:bg-amber-400 text-stone-950 font-bold text-xs rounded-xl shadow-lg shadow-amber-950/40 flex items-center gap-2 transition-all cursor-pointer"
         >
           <Plus className="w-4 h-4 stroke-[3]" />
           <span>Dodaj kartę do talii</span>

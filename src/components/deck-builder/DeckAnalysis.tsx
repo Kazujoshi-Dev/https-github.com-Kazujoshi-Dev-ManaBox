@@ -102,7 +102,7 @@ export const DeckAnalysis: React.FC<DeckAnalysisProps> = ({ deck, onViewCardDeta
 
   return (
     <div className="space-y-4" aria-label="Statystyki talii">
-      <h2 className="text-lg font-black text-stone-100 px-1">Statystyki talii</h2>
+      <h2 className="text-lg font-bold text-stone-100 px-1">Statystyki talii</h2>
 
       {/* 1. Przykładowa ręka */}
       <Panel
@@ -160,7 +160,7 @@ export const DeckAnalysis: React.FC<DeckAnalysisProps> = ({ deck, onViewCardDeta
                     className="w-full h-full object-cover"
                   />
                 ) : null}
-                <span className="absolute inset-x-0 bottom-0 bg-black/75 text-[10px] text-stone-100 px-1 py-0.5 truncate">{l.card.name}</span>
+                <span className="absolute inset-x-0 bottom-0 bg-black/75 text-[11px] text-stone-100 px-1 py-0.5 truncate">{l.card.name}</span>
               </button>
             );
           })}
@@ -178,7 +178,7 @@ export const DeckAnalysis: React.FC<DeckAnalysisProps> = ({ deck, onViewCardDeta
         <div className="overflow-x-auto -mx-4 sm:mx-0">
           <table className="w-full min-w-[600px] text-sm [&_th]:px-2 [&_td]:px-2 [&_th]:whitespace-nowrap">
             <thead>
-              <tr className="text-[11px] uppercase tracking-wider text-stone-500 text-right">
+              <tr className="text-[11px] text-stone-500 text-right">
                 <th className="text-left font-bold py-2 pl-4 sm:pl-0">Typ</th>
                 <th className="font-bold py-2">W talii</th>
                 <th className="font-bold py-2">Średnio</th>
@@ -194,12 +194,12 @@ export const DeckAnalysis: React.FC<DeckAnalysisProps> = ({ deck, onViewCardDeta
                 return (
                   <tr key={o.id} className="text-right text-stone-300">
                     <td className="text-left py-2 pl-4 sm:pl-0 font-semibold text-stone-100">{o.label}</td>
-                    <td className="py-2 font-mono">{o.count}</td>
-                    <td className="py-2 font-mono">{o.expected.toFixed(1).replace('.', ',')}</td>
+                    <td className="py-2 tabular-nums">{o.count}</td>
+                    <td className="py-2 tabular-nums">{o.expected.toFixed(1).replace('.', ',')}</td>
                     {o.exact.map((p, i) => (
-                      <td key={i} className={`py-2 font-mono ${p === max ? 'text-amber-300 font-bold' : ''}`}>{pct(p)}</td>
+                      <td key={i} className={`py-2 tabular-nums ${p === max ? 'text-amber-300 font-bold' : ''}`}>{pct(p)}</td>
                     ))}
-                    <td className="py-2 pr-4 sm:pr-0 font-mono text-emerald-400">{pct(o.atLeastOne)}</td>
+                    <td className="py-2 pr-4 sm:pr-0 tabular-nums text-emerald-400">{pct(o.atLeastOne)}</td>
                   </tr>
                 );
               })}
@@ -217,7 +217,7 @@ export const DeckAnalysis: React.FC<DeckAnalysisProps> = ({ deck, onViewCardDeta
         icon={Droplets}
       >
         {mana.colors.length === 0 ? (
-          <p className="text-sm text-stone-400">Talia jest bezbarwna — brak wymagań kolorystycznych.</p>
+          <p className="text-sm text-stone-400">Talia jest bezbarwna, więc nie ma wymagań kolorystycznych.</p>
         ) : (
           <div className="space-y-4">
             {/* Udział kolorów: koszty vs źródła */}
@@ -227,7 +227,7 @@ export const DeckAnalysis: React.FC<DeckAnalysisProps> = ({ deck, onViewCardDeta
                 { label: 'Kolory produkowane przez Lands', key: 'sourceShare' as const }
               ].map((row) => (
                 <div key={row.key}>
-                  <p className="text-[11px] uppercase tracking-wider font-bold text-stone-500 mb-1.5">{row.label}</p>
+                  <p className="text-[11px] font-bold text-stone-500 mb-1.5">{row.label}</p>
                   <div className="flex h-4 rounded-full overflow-hidden bg-stone-800">
                     {mana.colors.map((c) =>
                       c[row.key] > 0 ? (
@@ -254,7 +254,7 @@ export const DeckAnalysis: React.FC<DeckAnalysisProps> = ({ deck, onViewCardDeta
                   <div key={c.color} className={`rounded-xl border p-3 bg-stone-950 ${ok ? 'border-stone-800' : 'border-rose-500/40'}`}>
                     <div className="flex items-center justify-between gap-2">
                       <span className="flex items-center gap-2 text-sm font-bold text-stone-100">
-                        <span className={`w-6 h-6 rounded-full text-[11px] font-black flex items-center justify-center ${COLOR_DOT[c.color]}`}>{c.color}</span>
+                        <span className={`w-6 h-6 rounded-full text-[11px] font-bold flex items-center justify-center ${COLOR_DOT[c.color]}`}>{c.color}</span>
                         {COLOR_NAMES[c.color]}
                       </span>
                       {ok ? (
@@ -265,19 +265,19 @@ export const DeckAnalysis: React.FC<DeckAnalysisProps> = ({ deck, onViewCardDeta
                     </div>
                     <dl className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1 text-xs">
                       <dt className="text-stone-500">Źródła (Lands)</dt>
-                      <dd className={`text-right font-mono font-bold ${ok ? 'text-stone-100' : 'text-rose-300'}`}>{c.landSources}</dd>
+                      <dd className={`text-right tabular-nums font-bold ${ok ? 'text-stone-100' : 'text-rose-300'}`}>{c.landSources}</dd>
                       <dt className="text-stone-500">Potrzebne</dt>
-                      <dd className="text-right font-mono font-bold text-stone-100">{c.hardestCard ? c.needed : '—'}</dd>
+                      <dd className="text-right tabular-nums font-bold text-stone-100">{c.hardestCard ? c.needed : '—'}</dd>
                       {c.otherSources > 0 && (
                         <>
                           <dt className="text-stone-500">Inne źródła</dt>
-                          <dd className="text-right font-mono text-stone-300" title="Artifacts i Creatures dające manę (nie liczone do wymagań)">+{c.otherSources}</dd>
+                          <dd className="text-right tabular-nums text-stone-300" title="Artifacts i Creatures dające manę (nie liczone do wymagań)">+{c.otherSources}</dd>
                         </>
                       )}
                       {c.hardestCard && (
                         <>
                           <dt className="text-stone-500">Szansa na czas</dt>
-                          <dd className={`text-right font-mono font-bold ${c.probability >= TARGET_PROBABILITY ? 'text-emerald-400' : 'text-amber-300'}`}>{pct(c.probability)}</dd>
+                          <dd className={`text-right tabular-nums font-bold ${c.probability >= TARGET_PROBABILITY ? 'text-emerald-400' : 'text-amber-300'}`}>{pct(c.probability)}</dd>
                         </>
                       )}
                     </dl>
@@ -298,7 +298,7 @@ export const DeckAnalysis: React.FC<DeckAnalysisProps> = ({ deck, onViewCardDeta
 
             {/* Sugestie */}
             <div className="rounded-xl border border-amber-500/25 bg-amber-500/5 p-3.5 space-y-2">
-              <p className="text-xs font-bold uppercase tracking-wider text-amber-300 flex items-center gap-1.5">
+              <p className="text-xs font-bold text-amber-300 flex items-center gap-1.5">
                 <Lightbulb className="w-4 h-4" />
                 Sugestie
               </p>
@@ -312,7 +312,7 @@ export const DeckAnalysis: React.FC<DeckAnalysisProps> = ({ deck, onViewCardDeta
             <p className="text-[11px] text-stone-500 flex items-start gap-1.5">
               <Info className="w-3.5 h-3.5 shrink-0 mt-px" />
               „Potrzebne” to liczba Lands danego koloru, przy której kartę wymagającą najwięcej symboli tego koloru zagrasz w turze równej jej
-              kosztowi z szansą ok. 90% (gra na wyjściu, przy zagrywaniu Land co turę) — metoda Franka Karstena. Hybrydy i koszty phyrexian
+              kosztowi z szansą ok. 90% (gra na wyjściu, przy zagrywaniu Land co turę). Metoda Franka Karstena. Hybrydy i koszty phyrexian
               liczą się do rozkładu po 0,5 i nie są wymaganiem.
             </p>
           </div>

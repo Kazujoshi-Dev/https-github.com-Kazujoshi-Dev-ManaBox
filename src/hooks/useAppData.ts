@@ -147,7 +147,7 @@ export function useAppData({ userId, onUnauthorized, showToast, onSettingsLoaded
       if (nextForSale) {
         showToast(`Wystawiono "${item.card.name}" na sprzedaż! Przeniesiono ją z klasera do kategorii „Sprzedam”.`);
       } else {
-        showToast(`Wycofano "${item.card.name}" ze sprzedaży — wróciła do klasera „${item.binder || 'Klaser Główny'}”.`);
+        showToast(`Wycofano "${item.card.name}" ze sprzedaży i wróciła do klasera „${item.binder || 'Klaser Główny'}”.`);
       }
     }
   }, [updateCollectionItemData, showToast]);
@@ -266,7 +266,7 @@ export function useAppData({ userId, onUnauthorized, showToast, onSettingsLoaded
           setCollection(prev => prev.map(c => c.id === updated.id ? updated : c));
           showToast(
             isAddition
-              ? `Dodano "${data.card.name}" — masz teraz ${updated.quantity + updated.quantityFoil} szt.`
+              ? `Dodano "${data.card.name}", masz teraz ${updated.quantity + updated.quantityFoil} szt.`
               : `Zapisano wersję "${data.card.name}" [${data.card.set.toUpperCase()}] #${data.card.collector_number}`
           );
           return updated;
@@ -420,7 +420,7 @@ export function useAppData({ userId, onUnauthorized, showToast, onSettingsLoaded
           })));
         }
         const target = catalogs.find(c => c.id === id);
-        showToast(`Oznaczono "${target?.name || 'Katalog'}" jako domyślny ⭐`);
+        showToast(`Oznaczono "${target?.name || 'Katalog'}" jako domyślny`);
       }
     } catch (err) {
       console.error('Failed to set default catalog:', err);
@@ -506,7 +506,7 @@ export function useAppData({ userId, onUnauthorized, showToast, onSettingsLoaded
           showToast(
             (changed > 0
               ? `Zaktualizowano ceny: ${data.updatedCount} kart, ${changed} ze zmianą ceny.`
-              : `Zaktualizowano ceny dla ${data.updatedCount} kart — bez zmian od ostatniej aktualizacji.`) +
+              : `Zaktualizowano ceny dla ${data.updatedCount} kart, bez zmian od ostatniej aktualizacji.`) +
               (skipped > 0 ? ` ${skipped} kart spoza bazy zaktualizujemy przy kolejnym odświeżeniu (najwcześniej za kilka godzin).` : '')
           );
         }

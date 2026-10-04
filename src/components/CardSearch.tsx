@@ -92,11 +92,11 @@ export const CardSearch: React.FC<CardSearchProps> = ({ onSelectCard, settings }
     <div className="space-y-6">
       
       {/* Search Header Banner */}
-      <div className="bg-gradient-to-r from-stone-900 via-stone-900 to-amber-950/40 border border-stone-800 rounded-2xl p-6 shadow-xl space-y-4">
+      <div className="bg-stone-900 to-amber-950/40 border border-stone-800 rounded-2xl p-6 shadow-xl space-y-4">
         <div>
           <div className="flex items-center gap-2">
             <h2 className="text-xl font-bold text-stone-100">Przeszukuj Scryfall API</h2>
-            <span className="text-[10px] uppercase font-mono px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-300 border border-amber-500/30">
+            <span className="text-[11px] tabular-nums px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-300 border border-amber-500/30">
               Ponad 80 000 kart
             </span>
           </div>
@@ -131,7 +131,7 @@ export const CardSearch: React.FC<CardSearchProps> = ({ onSelectCard, settings }
             <button
               type="submit"
               disabled={isLoading || !query.trim()}
-              className="px-5 py-3 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-stone-950 font-extrabold text-xs tracking-wider uppercase flex items-center gap-2 shadow-lg transition-all disabled:opacity-50 cursor-pointer shrink-0"
+              className="px-5 py-3 rounded-xl bg-amber-500 hover:bg-amber-400 text-stone-950 font-bold text-xs flex items-center gap-2 shadow-lg transition-all disabled:opacity-50 cursor-pointer shrink-0"
             >
               {isLoading ? (
                 <>
@@ -162,7 +162,7 @@ export const CardSearch: React.FC<CardSearchProps> = ({ onSelectCard, settings }
                   className="w-full px-4 py-2.5 text-left text-xs text-stone-200 hover:bg-stone-800/80 hover:text-amber-300 flex items-center justify-between transition-colors cursor-pointer"
                 >
                   <span className="font-semibold">{cardName}</span>
-                  <span className="text-[10px] font-mono text-stone-500 uppercase">Scryfall</span>
+                  <span className="text-[11px] tabular-nums text-stone-500 ">Scryfall</span>
                 </button>
               ))}
             </div>
@@ -184,7 +184,7 @@ export const CardSearch: React.FC<CardSearchProps> = ({ onSelectCard, settings }
         <div className="space-y-4">
           <div className="flex items-center justify-between px-1">
             <h3 className="text-sm font-bold text-stone-200">
-              Wyniki wyszukiwania (<span className="text-amber-400 font-mono">{searchResults.length}</span>)
+              Wyniki wyszukiwania (<span className="text-amber-400 tabular-nums">{searchResults.length}</span>)
             </h3>
             <span className="text-xs text-stone-400">Kliknij kartę, aby dodać ją do kolekcji</span>
           </div>
@@ -214,7 +214,7 @@ export const CardSearch: React.FC<CardSearchProps> = ({ onSelectCard, settings }
                     />
 
                     <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
-                      <div className="px-3 py-1.5 rounded-full bg-amber-500 text-stone-950 font-extrabold text-xs flex items-center gap-1.5 shadow-lg">
+                      <div className="px-3 py-1.5 rounded-full bg-amber-500 text-stone-950 font-bold text-xs flex items-center gap-1.5 shadow-lg">
                         <Plus className="w-4 h-4 stroke-[3]" />
                         <span>Dodaj / Szczegóły</span>
                       </div>
@@ -224,7 +224,7 @@ export const CardSearch: React.FC<CardSearchProps> = ({ onSelectCard, settings }
                     {edhrecRank != null && (
                       <div 
                         title={`Ranking EDHREC: #${edhrecRank.toLocaleString()} (popularność w formacie Commander)`}
-                        className="absolute bottom-0 left-0 z-10 bg-gradient-to-r from-amber-500 via-purple-500 to-blue-500 text-stone-950 font-extrabold text-[10px] px-2 py-0.5 rounded-tr-lg shadow-sm flex items-center gap-1 uppercase tracking-wider select-none border-t border-r border-white/20"
+                        className="absolute bottom-0 left-0 z-10 ms-foil-chip font-semibold text-[11px] px-2 py-0.5 rounded-tr-lg shadow-sm flex items-center gap-1 select-none border-t border-r border-white/20"
                       >
                         <Trophy className="w-3 h-3 fill-stone-950 stroke-[1.5] shrink-0" />
                         <span>EDH #{edhrecRank.toLocaleString()}</span>
@@ -232,7 +232,7 @@ export const CardSearch: React.FC<CardSearchProps> = ({ onSelectCard, settings }
                     )}
 
                     <div className="absolute bottom-2 right-2 bg-stone-950/90 backdrop-blur-md px-2 py-0.5 rounded border border-stone-800">
-                      <p className="text-xs font-bold font-mono text-emerald-400">
+                      <p className="text-xs font-bold tabular-nums text-emerald-400">
                         {formatCurrency(price, settings ? settings.currency : 'USD')}
                       </p>
                     </div>
@@ -250,15 +250,15 @@ export const CardSearch: React.FC<CardSearchProps> = ({ onSelectCard, settings }
                         <ManaSymbol cost={card.mana_cost} size="sm" />
                       </div>
 
-                      <p className="text-[10px] text-stone-400 line-clamp-1 mt-0.5">
+                      <p className="text-[11px] text-stone-400 line-clamp-1 mt-0.5">
                         {card.type_line}
                       </p>
 
                       <div className="flex items-center gap-1.5 mt-2">
-                        <span className="uppercase font-mono text-[9px] font-bold bg-stone-800 text-stone-300 px-1.5 py-0.5 rounded border border-stone-700">
+                        <span className="tabular-nums text-[11px] font-bold bg-stone-800 text-stone-300 px-1.5 py-0.5 rounded border border-stone-700">
                           {card.set}
                         </span>
-                        <span className={`text-[9px] px-1.5 py-0.5 rounded border font-semibold ${getRarityColor(card.rarity)}`}>
+                        <span className={`text-[11px] px-1.5 py-0.5 rounded border font-semibold ${getRarityColor(card.rarity)}`}>
                           {getRarityLabel(card.rarity)}
                         </span>
                       </div>

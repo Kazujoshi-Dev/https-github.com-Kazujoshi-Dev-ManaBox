@@ -339,11 +339,11 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
     }
     if (result.cleanedTitle) {
       setManualQuery(result.cleanedTitle);
-      setScanStatus(`Odczytano: "${result.cleanedTitle}" — nie znaleziono pewnego dopasowania`);
+      setScanStatus(`Odczytano: "${result.cleanedTitle}". Nie znaleziono pewnego dopasowania`);
     } else {
       setScanStatus(result.isAutoCropped
-        ? 'Nie rozpoznano karty — popraw oświetlenie (bez odblasków) i przytrzymaj nieruchomo.'
-        : 'Nie wykryto karty — połóż ją na jasnym, jednolitym tle i wypełnij ramkę.');
+        ? 'Nie rozpoznano karty. Popraw oświetlenie (bez odblasków) i przytrzymaj nieruchomo.'
+        : 'Nie wykryto karty. Połóż ją na jasnym, jednolitym tle i wypełnij ramkę.');
     }
     return false;
   }, [soundEnabled]);
@@ -566,7 +566,7 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
       });
 
       setSessionAddedCount((prev) => prev + 1);
-      const notice = `Dodano: "${activeCard.name}" [${activeCard.set.toUpperCase()}] (${isFoil ? 'Foil ✨' : 'Standard'}) do katalogu "${selectedBinder}"`;
+      const notice = `Dodano: "${activeCard.name}" [${activeCard.set.toUpperCase()}] (${isFoil ? 'Foil' : 'Standard'}) do katalogu "${selectedBinder}"`;
       setLastAddedNotice(notice);
       showToast(notice);
 
@@ -684,7 +684,7 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h2 className="text-sm sm:text-base font-extrabold text-stone-100">
+                <h2 className="text-sm sm:text-base font-bold text-stone-100">
                   Skaner Kart MTG
                 </h2>
               </div>
@@ -726,7 +726,7 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
             </button>
 
             {sessionAddedCount > 0 && (
-              <span className="hidden sm:inline-flex items-center gap-1.5 text-xs font-mono font-bold text-amber-400 bg-amber-500/10 px-2.5 py-1 rounded-lg border border-amber-500/20">
+              <span className="hidden sm:inline-flex items-center gap-1.5 text-xs tabular-nums font-bold text-amber-400 bg-amber-500/10 px-2.5 py-1 rounded-lg border border-amber-500/20">
                 <CheckCircle2 className="w-3.5 h-3.5" />
                 <span>{sessionAddedCount}</span>
               </span>
@@ -825,7 +825,7 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
                   </div>
 
                   <div className="space-y-1.5">
-                    <h4 className="text-base font-extrabold text-stone-100">
+                    <h4 className="text-base font-bold text-stone-100">
                       {cameraError === 'PERMISSION_DENIED'
                         ? 'Brak zgody na użycie kamery'
                         : cameraError === 'NO_CAMERA_FOUND'
@@ -841,7 +841,7 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
                         ? 'To urządzenie nie ma dostępnej kamery. Możesz zrobić zdjęcie karty aparatem albo wybrać zdjęcie z galerii.'
                         : cameraError
                         ? 'Otwórz stronę bezpośrednio w przeglądarce (nie w podglądzie ani w ramce). Możesz też zrobić zdjęcie karty.'
-                        : 'Jeśli przeglądarka zapyta o dostęp do kamery — zezwól.'}
+                        : 'Jeśli przeglądarka zapyta o dostęp do kamery, zezwól.'}
                     </p>
                   </div>
 
@@ -850,7 +850,7 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
                       <button
                         type="button"
                         onClick={() => startCamera()}
-                        className="w-full h-12 px-4 rounded-xl bg-gradient-to-r from-emerald-500 to-emerald-600 text-stone-950 font-extrabold text-sm flex items-center justify-center gap-2 cursor-pointer"
+                        className="w-full h-12 px-4 rounded-xl bg-emerald-500 text-stone-950 font-bold text-sm flex items-center justify-center gap-2 cursor-pointer"
                       >
                         <RefreshCw className="w-4 h-4" />
                         <span>Spróbuj ponownie</span>
@@ -911,7 +911,7 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
                     {/* Czysta ramka karty MTG (63x88mm) bez wyjaśnień sekcji */}
                     {isReticleLocked && (
                       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none">
-                        <span className="px-3 py-1 rounded-full bg-emerald-500 text-stone-950 font-black text-[10px] uppercase tracking-wider shadow-lg flex items-center gap-1 animate-pulse">
+                        <span className="px-3 py-1 rounded-full bg-emerald-500 text-stone-950 font-bold text-[11px] shadow-lg flex items-center gap-1 animate-pulse">
                           <CheckCircle2 className="w-3.5 h-3.5 stroke-[3]" />
                           <span>KARTA WYKRYTA</span>
                         </span>
@@ -964,7 +964,7 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
                   >
                     {cameraDevices.map((c) => (
                       <option key={c.deviceId} value={c.deviceId}>
-                        {/obs|virtual/i.test(c.label) ? '🎥 OBS: ' : '📷 '}
+                        {/obs|virtual/i.test(c.label) ? 'OBS: ' : ''}
                         {c.label}
                       </option>
                     ))}
@@ -975,7 +975,7 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
                 {zoomRange && isCameraActive && (
                   <div className="flex items-center gap-1.5 bg-stone-900/90 border border-stone-700 px-2 py-1 rounded-lg">
                     <ZoomIn className="w-3.5 h-3.5 text-amber-400 shrink-0" />
-                    <span className="text-[10px] font-mono text-stone-300 font-semibold shrink-0">
+                    <span className="text-[11px] tabular-nums text-stone-300 font-semibold shrink-0">
                       {zoomLevel.toFixed(1)}x
                     </span>
                     <input
@@ -994,7 +994,7 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
                           key={preset}
                           type="button"
                           onClick={() => handleZoomChange(preset)}
-                          className={`px-1 py-0.5 rounded text-[9px] font-mono font-bold transition-colors ${
+                          className={`px-1 py-0.5 rounded text-[11px] tabular-nums font-bold transition-colors ${
                             Math.abs(zoomLevel - preset) < 0.1
                               ? 'bg-amber-500 text-stone-950'
                               : 'bg-stone-800 text-stone-400 hover:text-stone-200'
@@ -1076,7 +1076,7 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
                   onClick={() => performScan(lastQuadRef.current)}
                   disabled={isScanning || !isCameraActive}
                   title="Rozpocznij skanowanie (lub naciśnij Spację)"
-                  className="h-12 sm:h-auto px-6 sm:px-4 sm:py-2 rounded-full sm:rounded-xl bg-gradient-to-r from-emerald-400 via-emerald-500 to-emerald-600 hover:from-emerald-300 hover:to-emerald-500 text-stone-950 font-extrabold text-sm sm:text-xs flex items-center gap-2 shadow-lg shadow-emerald-950/60 transition-all cursor-pointer disabled:opacity-50 active:scale-95"
+                  className="h-12 sm:h-auto px-6 sm:px-4 sm:py-2 rounded-full sm:rounded-xl bg-emerald-400 hover:bg-emerald-300 text-stone-950 font-bold text-sm sm:text-xs flex items-center gap-2 shadow-lg shadow-emerald-950/60 transition-all cursor-pointer disabled:opacity-50 active:scale-95"
                 >
                   {isScanning ? (
                     <>
@@ -1087,7 +1087,7 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
                     <>
                       <Zap className="w-4 h-4 fill-stone-950" />
                       <span>Zeskanuj</span>
-                      <kbd className="hidden sm:inline px-1.5 py-0.5 rounded bg-black/20 text-[9px] font-mono font-bold tracking-tight text-stone-900 border border-black/10">
+                      <kbd className="hidden sm:inline px-1.5 py-0.5 rounded bg-black/20 text-[11px] tabular-nums font-bold tracking-tight text-stone-900 border border-black/10">
                         Spacja
                       </kbd>
                     </>
@@ -1107,23 +1107,23 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
             {/* Visual Scan Debug Snippet (Delver Lens Preprocessing & Cutouts) */}
             {scanResult && (scanResult.debugCropUrl || scanResult.debugArtUrl || scanResult.debugTitleUrl) && (
               <div className="hidden sm:block p-2.5 bg-stone-950/85 rounded-xl border border-stone-800 space-y-2 text-xs text-left shrink-0">
-                <div className="flex items-center justify-between text-[10px] text-stone-400">
+                <div className="flex items-center justify-between text-[11px] text-stone-400">
                   <span className="font-semibold text-stone-300 flex items-center gap-1.5">
                     <Zap className="w-3.5 h-3.5 text-emerald-400 fill-emerald-400" />
-                    <span className="text-emerald-400 font-extrabold">Podgląd skanu:</span>
+                    <span className="text-emerald-400 font-bold">Podgląd skanu:</span>
                   </span>
                   <div className="flex items-center gap-2">
                     {scanResult.isBlackBorderDetected ? (
-                      <span className="text-[9px] uppercase px-1.5 py-0.5 rounded font-bold border bg-emerald-500/20 text-emerald-300 border-emerald-500/40 flex items-center gap-1 shadow-sm">
-                        <span>🖤 Czarna ramka MTG</span>
+                      <span className="text-[11px] px-1.5 py-0.5 rounded font-bold border bg-emerald-500/20 text-emerald-300 border-emerald-500/40 flex items-center gap-1 shadow-sm">
+                        <span>Czarna ramka MTG</span>
                       </span>
                     ) : scanResult.isAutoCropped ? (
-                      <span className="text-[9px] uppercase px-1.5 py-0.5 rounded font-bold border bg-emerald-500/20 text-emerald-300 border-emerald-500/40 animate-pulse">
+                      <span className="text-[11px] px-1.5 py-0.5 rounded font-bold border bg-emerald-500/20 text-emerald-300 border-emerald-500/40 animate-pulse">
                         Auto-Crop 63×88
                       </span>
                     ) : null}
                     {scanResult.detectedRarity && (
-                      <span className={`text-[9px] uppercase px-1.5 py-0.5 rounded font-bold border ${
+                      <span className={`text-[11px] px-1.5 py-0.5 rounded font-bold border ${
                         scanResult.detectedRarity === 'mythic' ? 'bg-orange-500/20 text-orange-400 border-orange-500/30' :
                         scanResult.detectedRarity === 'rare' ? 'bg-amber-500/20 text-amber-400 border-amber-500/30' :
                         scanResult.detectedRarity === 'uncommon' ? 'bg-cyan-500/20 text-cyan-300 border-cyan-500/30' :
@@ -1133,7 +1133,7 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
                       </span>
                     )}
                     {scanResult.confidence > 0 && (
-                      <span className="font-mono text-emerald-300 font-bold">
+                      <span className="tabular-nums text-emerald-300 font-bold">
                         Pewność: {Math.round(scanResult.confidence)}%
                       </span>
                     )}
@@ -1147,13 +1147,13 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
                     <div className="grid grid-cols-12 gap-2">
                       {/* Art Crop with dHash Fingerprint */}
                       <div className="col-span-8 p-1.5 rounded-lg bg-stone-900 border border-stone-800 space-y-1">
-                        <div className="flex items-center justify-between text-[9px] text-stone-400">
-                          <span className="font-mono text-emerald-300 font-semibold flex items-center gap-1">
+                        <div className="flex items-center justify-between text-[11px] text-stone-400">
+                          <span className="tabular-nums text-emerald-300 font-semibold flex items-center gap-1">
                             <Sparkles className="w-2.5 h-2.5" />
                             <span>Ilustracja (Art Crop)</span>
                           </span>
                           {scanResult.perceptualHash && (
-                            <span className="text-[8px] font-mono text-emerald-400/90 bg-black/40 px-1 rounded">
+                            <span className="text-[8px] tabular-nums text-emerald-400/90 bg-black/40 px-1 rounded">
                               dHash: {scanResult.perceptualHash.slice(0, 8)}...
                             </span>
                           )}
@@ -1169,7 +1169,7 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
 
                       {/* Set Symbol & Rarity Crop */}
                       <div className="col-span-4 p-1.5 rounded-lg bg-stone-900 border border-stone-800 space-y-1 flex flex-col justify-between">
-                        <div className="text-[9px] text-stone-400 font-mono">
+                        <div className="text-[11px] text-stone-400 tabular-nums">
                           <span>Symbol & Rarity</span>
                         </div>
                         <div className="bg-black/60 rounded p-1 flex items-center justify-center overflow-hidden border border-stone-800 flex-1 min-h-[36px]">
@@ -1180,7 +1180,7 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
                               className="max-h-8 object-contain"
                             />
                           ) : (
-                            <span className="text-[9px] text-stone-500 italic">Brak</span>
+                            <span className="text-[11px] text-stone-500 italic">Brak</span>
                           )}
                         </div>
                       </div>
@@ -1190,14 +1190,14 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
                   {/* Top Strip */}
                   {scanResult.debugTitleUrl && (
                     <div className="p-1.5 rounded-lg bg-stone-900 border border-stone-800 space-y-1">
-                      <div className="flex items-center justify-between text-[9px] text-stone-400">
-                        <span className="font-mono text-amber-300 font-semibold flex items-center gap-1">
+                      <div className="flex items-center justify-between text-[11px] text-stone-400">
+                        <span className="tabular-nums text-amber-300 font-semibold flex items-center gap-1">
                           <span>Pasek górny (Nazwa/Koszt)</span>
                           {scanResult.isBlackBorderDetected && (
                             <span className="text-[8px] text-emerald-400 bg-emerald-950/60 px-1 rounded border border-emerald-500/30">wewnątrz ramki</span>
                           )}
                         </span>
-                        <span className="text-stone-300 text-[8px] uppercase tracking-wider font-bold">Tytuł</span>
+                        <span className="text-stone-300 text-[8px] font-bold">Tytuł</span>
                       </div>
                       <div className="bg-white rounded p-1 flex items-center justify-center overflow-hidden border border-stone-300">
                         <img
@@ -1212,14 +1212,14 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
                   {/* Bottom Strip */}
                   {scanResult.debugBottomUrl && (
                     <div className="p-1.5 rounded-lg bg-stone-900 border border-stone-800 space-y-1">
-                      <div className="flex items-center justify-between text-[9px] text-stone-400">
-                        <span className="font-mono text-amber-300 font-semibold flex items-center gap-1">
+                      <div className="flex items-center justify-between text-[11px] text-stone-400">
+                        <span className="tabular-nums text-amber-300 font-semibold flex items-center gap-1">
                           <span>Stopka (Set/Numer)</span>
                           {scanResult.isBlackBorderDetected && (
                             <span className="text-[8px] text-emerald-400 bg-emerald-950/60 px-1 rounded border border-emerald-500/30">nad dolną ramką</span>
                           )}
                         </span>
-                        <span className="text-stone-300 text-[8px] uppercase tracking-wider font-bold">Stopka</span>
+                        <span className="text-stone-300 text-[8px] font-bold">Stopka</span>
                       </div>
                       <div className="bg-white rounded p-1 flex items-center justify-center overflow-hidden border border-stone-300">
                         <img
@@ -1263,13 +1263,13 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
                     {/* Metadata */}
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-1.5 flex-wrap">
-                        <span className="uppercase font-mono text-[10px] font-bold bg-stone-800 text-stone-200 px-1.5 py-0.5 rounded border border-stone-700">
+                        <span className="tabular-nums text-[11px] font-bold bg-stone-800 text-stone-200 px-1.5 py-0.5 rounded border border-stone-700">
                           {activeCard.set.toUpperCase()}
                         </span>
-                        <span className="font-mono text-[10px] text-stone-400">
+                        <span className="tabular-nums text-[11px] text-stone-400">
                           #{activeCard.collector_number}
                         </span>
-                        <span className={`text-[9px] px-1.5 py-0.5 rounded border font-semibold ${getRarityColor(activeCard.rarity)}`}>
+                        <span className={`text-[11px] px-1.5 py-0.5 rounded border font-semibold ${getRarityColor(activeCard.rarity)}`}>
                           {getRarityLabel(activeCard.rarity)}
                         </span>
                       </div>
@@ -1292,10 +1292,10 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
                               : 'bg-stone-900 hover:bg-stone-850 border-stone-800 text-stone-400'
                           }`}
                         >
-                          <span className={`text-[10px] font-bold ${!isFoil ? 'text-amber-300' : 'text-stone-400'}`}>
+                          <span className={`text-[11px] font-bold ${!isFoil ? 'text-amber-300' : 'text-stone-400'}`}>
                             Standard
                           </span>
-                          <span className="font-mono font-bold text-emerald-400 text-xs mt-0.5">
+                          <span className="tabular-nums font-bold text-emerald-400 text-xs mt-0.5">
                             {formatCurrency(normPln, 'PLN')}
                           </span>
                         </button>
@@ -1309,11 +1309,11 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
                               : 'bg-stone-900 hover:bg-stone-850 border-stone-800 text-stone-400'
                           }`}
                         >
-                          <span className="text-[10px] font-bold text-amber-400 flex items-center gap-1">
+                          <span className="text-[11px] font-bold text-amber-400 flex items-center gap-1">
                             <Sparkles className="w-2.5 h-2.5" />
-                            <span>Foil ✨</span>
+                            <span>Foil</span>
                           </span>
-                          <span className="font-mono font-bold text-amber-300 text-xs mt-0.5">
+                          <span className="tabular-nums font-bold text-amber-300 text-xs mt-0.5">
                             {formatCurrency(foilPln, 'PLN')}
                           </span>
                         </button>
@@ -1341,7 +1341,7 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
                 {isPrintsOpen && (
                   <div className="p-3 bg-stone-950 rounded-xl border border-stone-800 space-y-2 max-h-56 overflow-y-auto">
                     <div className="flex items-center justify-between sticky top-0 bg-stone-950 pb-1 z-10 border-b border-stone-800/60">
-                      <span className="text-[11px] font-bold text-amber-300 uppercase font-mono">
+                      <span className="text-[11px] font-bold text-amber-300 tabular-nums">
                         Dostępne wydania ({prints.length}):
                       </span>
                       <button
@@ -1372,12 +1372,12 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
                               }`}
                             >
                               <div className="flex items-center gap-2 truncate">
-                                <span className="uppercase font-mono text-[10px] bg-stone-800 px-1 py-0.2 rounded border border-stone-700">
+                                <span className="tabular-nums text-[11px] bg-stone-800 px-1 py-0.2 rounded border border-stone-700">
                                   {p.set.toUpperCase()}
                                 </span>
                                 <span className="truncate">{p.set_name} (#{p.collector_number})</span>
                               </div>
-                              <div className="shrink-0 font-mono text-emerald-400 text-[11px]">
+                              <div className="shrink-0 tabular-nums text-emerald-400 text-[11px]">
                                 {formatCurrency(getCardPrice(p, false, { ...settings, currency: 'PLN' }), 'PLN')}
                               </div>
                             </div>
@@ -1392,7 +1392,7 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
                 <div className="space-y-3 p-3 bg-stone-950/60 rounded-xl border border-stone-800/80 text-xs">
                   {/* Catalog selection */}
                   <div>
-                    <label className="block text-[10px] uppercase font-bold text-amber-300 mb-1 flex items-center gap-1.5">
+                    <label className="block text-[11px] font-bold text-amber-300 mb-1 flex items-center gap-1.5">
                       <FolderPlus className="w-3.5 h-3.5 text-amber-400" />
                       <span>Docelowy Klaser / Katalog:</span>
                     </label>
@@ -1403,7 +1403,7 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
                     >
                       {catalogs.map((c) => (
                         <option key={c.id} value={c.name}>
-                          📁 {c.name} {c.isDefault ? '(Domyślny)' : ''}
+                          {c.name} {c.isDefault ? '(Domyślny)' : ''}
                         </option>
                       ))}
                     </select>
@@ -1412,7 +1412,7 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
                   {/* Quantity & Condition */}
                   <div className="grid grid-cols-2 gap-2">
                     <div>
-                      <label className="block text-[10px] uppercase font-semibold text-stone-400 mb-1">
+                      <label className="block text-[11px] font-semibold text-stone-400 mb-1">
                         Ilość sztuk
                       </label>
                       <div className="flex items-center gap-1">
@@ -1423,7 +1423,7 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
                         >
                           <Minus className="w-3 h-3" />
                         </button>
-                        <span className="w-8 text-center font-mono font-bold text-stone-100">
+                        <span className="w-8 text-center tabular-nums font-bold text-stone-100">
                           {quantity}
                         </span>
                         <button
@@ -1437,7 +1437,7 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
                     </div>
 
                     <div>
-                      <label className="block text-[10px] uppercase font-semibold text-stone-400 mb-1">
+                      <label className="block text-[11px] font-semibold text-stone-400 mb-1">
                         Stan karty
                       </label>
                       <select
@@ -1487,7 +1487,7 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
                           className="w-full p-2 rounded-lg bg-stone-950 hover:bg-stone-800 border border-stone-800 hover:border-amber-500/50 text-stone-200 text-xs flex items-center justify-between transition-colors cursor-pointer text-left"
                         >
                           <span className="font-bold truncate">{c.name}</span>
-                          <span className="text-[10px] font-mono text-stone-400 shrink-0 ml-2">[{c.set.toUpperCase()}]</span>
+                          <span className="text-[11px] tabular-nums text-stone-400 shrink-0 ml-2">[{c.set.toUpperCase()}]</span>
                         </button>
                       ))}
                     </div>
@@ -1560,7 +1560,7 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
                   onClick={handleAddCardToCollection}
                   disabled={!activeCard || isAdding}
                   title="Dodaj kartę do klasera (lub naciśnij Enter)"
-                  className="flex-1 min-w-0 h-12 sm:h-auto sm:py-2.5 px-3 rounded-xl bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-500 hover:to-emerald-400 text-stone-950 font-extrabold text-sm sm:text-xs tracking-wider uppercase flex items-center justify-center gap-2 shadow-lg shadow-emerald-950/40 transition-all cursor-pointer disabled:opacity-40"
+                  className="flex-1 min-w-0 h-12 sm:h-auto sm:py-2.5 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-stone-950 font-bold text-sm sm:text-xs flex items-center justify-center gap-2 shadow-lg shadow-emerald-950/40 transition-all cursor-pointer disabled:opacity-40"
                 >
                   {isAdding ? (
                     <>
@@ -1573,7 +1573,7 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
                       <span className="truncate">
                         Dodaj do klasera "{selectedBinder}"
                       </span>
-                      <kbd className="hidden sm:inline px-1.5 py-0.5 rounded bg-black/20 text-[9px] font-mono font-bold tracking-tight text-stone-900 border border-black/10">
+                      <kbd className="hidden sm:inline px-1.5 py-0.5 rounded bg-black/20 text-[11px] tabular-nums font-bold tracking-tight text-stone-900 border border-black/10">
                         Enter ↵
                       </kbd>
                     </>

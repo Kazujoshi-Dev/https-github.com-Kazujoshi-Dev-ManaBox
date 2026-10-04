@@ -202,7 +202,7 @@ export const ImportExportModal: React.FC<ImportExportModalProps> = ({
               <FileText className="w-5 h-5" />
             </div>
             <div>
-              <h2 className="text-base sm:text-lg font-extrabold text-stone-100">
+              <h2 className="text-base sm:text-lg font-bold text-stone-100">
                 Eksport i Import Kolekcji
               </h2>
               <p className="text-xs text-stone-400">
@@ -255,7 +255,7 @@ export const ImportExportModal: React.FC<ImportExportModalProps> = ({
               <div className="p-3.5 bg-stone-950/70 border border-stone-800 rounded-xl space-y-1">
                 <div className="flex items-center justify-between text-xs">
                   <span className="font-semibold text-stone-300">Twoja kolekcja zawiera:</span>
-                  <span className="font-bold text-amber-300 font-mono">{collection.length} unikalnych wpisów</span>
+                  <span className="font-bold text-amber-300 tabular-nums">{collection.length} unikalnych wpisów</span>
                 </div>
                 <p className="text-[11px] text-stone-400">
                   Eksport do pliku tekstowego jest zgodny ze standardem list MTG (Moxfield, Archidekt, Deckstats): <code className="text-amber-300/90 font-mono">1x Talisman of Impulse (tdc) 332</code>
@@ -267,7 +267,7 @@ export const ImportExportModal: React.FC<ImportExportModalProps> = ({
                 <button
                   type="button"
                   onClick={handleDownloadTxt}
-                  className="py-3 px-4 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-stone-950 font-black text-xs flex items-center justify-center gap-2 shadow-lg shadow-amber-950/50 cursor-pointer transition-all"
+                  className="py-3 px-4 rounded-xl bg-amber-500 hover:bg-amber-400 text-stone-950 font-bold text-xs flex items-center justify-center gap-2 shadow-lg shadow-amber-950/50 cursor-pointer transition-all"
                 >
                   <Download className="w-4 h-4 stroke-[2.5]" />
                   <span>Pobierz plik .txt (Kolekcja)</span>
@@ -296,9 +296,9 @@ export const ImportExportModal: React.FC<ImportExportModalProps> = ({
               <div className="space-y-1.5">
                 <div className="flex items-center justify-between text-[11px] text-stone-400">
                   <span className="font-semibold text-stone-300">Podgląd formatu tekstowego (.txt):</span>
-                  <span className="font-mono text-[10px]">pokazano początek pliku</span>
+                  <span className="tabular-nums text-[11px]">pokazano początek pliku</span>
                 </div>
-                <div className="bg-stone-950 p-3 rounded-xl border border-stone-800 font-mono text-[11px] text-stone-300 max-h-48 overflow-y-auto whitespace-pre leading-relaxed select-all">
+                <div className="bg-stone-950 p-3 rounded-xl border border-stone-800 tabular-nums text-[11px] text-stone-300 max-h-48 overflow-y-auto whitespace-pre leading-relaxed select-all">
                   {previewLines}
                   {collection.length > 10 && '\n... (i pozostałe karty)'}
                 </div>
@@ -372,7 +372,7 @@ export const ImportExportModal: React.FC<ImportExportModalProps> = ({
                       setImportText("1x Talisman of Impulse (tdc) 332\n1x Sol Ring (cmm) 401\n1x Rhystic Study (woe) 15\n1x Lightning Bolt (2x2) 117\n1x Cyclonic Rift (rtr) 35 *F*");
                       setResolvedCards(null);
                     }}
-                    className="text-[10px] text-amber-400 hover:text-amber-300 font-semibold hover:underline cursor-pointer"
+                    className="text-[11px] text-amber-400 hover:text-amber-300 font-semibold hover:underline cursor-pointer"
                   >
                     Wstaw przykład
                   </button>
@@ -385,7 +385,7 @@ export const ImportExportModal: React.FC<ImportExportModalProps> = ({
                     setResolvedCards(null);
                   }}
                   placeholder="np.:&#10;1x Talisman of Impulse (tdc) 332&#10;1x Sol Ring (c21) 263&#10;4x Counterspell (mh2) 267&#10;1x Lightning Bolt"
-                  className="w-full bg-stone-950 border border-stone-700 rounded-xl p-3 text-stone-200 font-mono text-[11px] focus:outline-none focus:border-amber-500 placeholder:text-stone-600"
+                  className="w-full bg-stone-950 border border-stone-700 rounded-xl p-3 text-stone-200 tabular-nums text-[11px] focus:outline-none focus:border-amber-500 placeholder:text-stone-600"
                 />
               </div>
 
@@ -395,7 +395,7 @@ export const ImportExportModal: React.FC<ImportExportModalProps> = ({
                   type="button"
                   onClick={handleAnalyzeText}
                   disabled={!importText.trim() || isResolving}
-                  className="w-full py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-stone-950 font-black text-xs flex items-center justify-center gap-2 shadow-lg shadow-amber-950/40 cursor-pointer transition-all disabled:opacity-50"
+                  className="w-full py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-stone-950 font-bold text-xs flex items-center justify-center gap-2 shadow-lg shadow-amber-950/40 cursor-pointer transition-all disabled:opacity-50"
                 >
                   {isResolving ? (
                     <>
@@ -429,7 +429,7 @@ export const ImportExportModal: React.FC<ImportExportModalProps> = ({
                   </div>
 
                   {/* List of matched cards */}
-                  <div className="max-h-40 overflow-y-auto space-y-1 divide-y divide-stone-800/60 font-mono text-[11px] pr-1">
+                  <div className="max-h-40 overflow-y-auto space-y-1 divide-y divide-stone-800/60 tabular-nums text-[11px] pr-1">
                     {resolvedCards.map((res, idx) => (
                       <div key={idx} className="pt-1 flex items-center justify-between gap-2">
                         <div className="truncate flex items-center gap-1.5">
@@ -438,16 +438,16 @@ export const ImportExportModal: React.FC<ImportExportModalProps> = ({
                             {res.card ? res.card.name : res.parsed.name}
                           </span>
                           {res.parsed.set && (
-                            <span className="text-[10px] text-stone-500">[{res.parsed.set.toUpperCase()}]</span>
+                            <span className="text-[11px] text-stone-500">[{res.parsed.set.toUpperCase()}]</span>
                           )}
                           {res.parsed.isFoil && (
-                            <span className="text-[10px] text-amber-300">✨ Foil</span>
+                            <span className="text-[11px] text-amber-300">Foil</span>
                           )}
                         </div>
                         {res.card ? (
-                          <span className="text-emerald-400 text-[10px] shrink-0 font-sans font-semibold">OK</span>
+                          <span className="text-emerald-400 text-[11px] shrink-0 font-sans font-semibold">OK</span>
                         ) : (
-                          <span className="text-rose-400 text-[10px] shrink-0 font-sans">Brak w Scryfall</span>
+                          <span className="text-rose-400 text-[11px] shrink-0 font-sans">Brak w Scryfall</span>
                         )}
                       </div>
                     ))}
@@ -467,7 +467,7 @@ export const ImportExportModal: React.FC<ImportExportModalProps> = ({
                       type="button"
                       onClick={handleConfirmImport}
                       disabled={foundCount === 0 || isImporting}
-                      className="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-400 hover:to-emerald-500 text-stone-950 font-black text-xs flex items-center justify-center gap-2 shadow-lg shadow-emerald-950/40 cursor-pointer transition-all disabled:opacity-50"
+                      className="flex-1 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-stone-950 font-bold text-xs flex items-center justify-center gap-2 shadow-lg shadow-emerald-950/40 cursor-pointer transition-all disabled:opacity-50"
                     >
                       {isImporting ? (
                         <>

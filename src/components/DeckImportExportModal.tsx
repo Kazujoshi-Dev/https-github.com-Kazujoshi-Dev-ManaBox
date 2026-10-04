@@ -261,15 +261,15 @@ export const DeckImportExportModal: React.FC<DeckImportExportModalProps> = ({
         {/* Modal Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-stone-800 bg-stone-950/80">
           <div className="flex items-center gap-3">
-            <div className="p-2.5 rounded-xl bg-purple-500/10 border border-purple-500/20 text-purple-400">
+            <div className="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-400">
               <Swords className="w-5 h-5" />
             </div>
             <div>
-              <h2 className="text-base sm:text-lg font-extrabold text-stone-100">
+              <h2 className="text-base sm:text-lg font-bold text-stone-100">
                 {deck ? `Talia EDH: ${deck.name}` : 'Importuj Talię EDH Commander (.txt)'}
               </h2>
               <p className="text-xs text-stone-400">
-                Pliki tekstowe .txt (format <code className="text-purple-300 font-mono">1x Nazwa (dodatek) nr</code>)
+                Pliki tekstowe .txt (format <code className="text-amber-300 font-mono">1x Nazwa (dodatek) nr</code>)
               </p>
             </div>
           </div>
@@ -290,7 +290,7 @@ export const DeckImportExportModal: React.FC<DeckImportExportModalProps> = ({
               onClick={() => setActiveTab('export')}
               className={`py-2 px-4 text-xs font-bold border-b-2 flex items-center gap-2 cursor-pointer transition-all ${
                 activeTab === 'export'
-                  ? 'border-purple-500 text-purple-300 bg-purple-500/10 rounded-t-lg'
+                  ? 'border-amber-500 text-amber-300 bg-amber-500/10 rounded-t-lg'
                   : 'border-transparent text-stone-400 hover:text-stone-200'
               }`}
             >
@@ -303,7 +303,7 @@ export const DeckImportExportModal: React.FC<DeckImportExportModalProps> = ({
               onClick={() => setActiveTab('import')}
               className={`py-2 px-4 text-xs font-bold border-b-2 flex items-center gap-2 cursor-pointer transition-all ${
                 activeTab === 'import'
-                  ? 'border-purple-500 text-purple-300 bg-purple-500/10 rounded-t-lg'
+                  ? 'border-amber-500 text-amber-300 bg-amber-500/10 rounded-t-lg'
                   : 'border-transparent text-stone-400 hover:text-stone-200'
               }`}
             >
@@ -321,7 +321,7 @@ export const DeckImportExportModal: React.FC<DeckImportExportModalProps> = ({
               <div className="p-3.5 bg-stone-950/70 border border-stone-800 rounded-xl space-y-2">
                 <div className="flex items-center justify-between text-xs">
                   <span className="font-semibold text-stone-300">Talia:</span>
-                  <span className="font-bold text-purple-300 font-mono">{deck.name}</span>
+                  <span className="font-bold text-amber-300 tabular-nums">{deck.name}</span>
                 </div>
                 {deck.commander && (
                   <div className="flex items-center gap-2 text-amber-300 font-semibold text-xs">
@@ -331,7 +331,7 @@ export const DeckImportExportModal: React.FC<DeckImportExportModalProps> = ({
                 )}
                 <div className="flex items-center justify-between text-[11px] text-stone-400 pt-1 border-t border-stone-800/80">
                   <span>Liczba kart w talii:</span>
-                  <span className="font-mono font-bold text-stone-200">
+                  <span className="tabular-nums font-bold text-stone-200">
                     {(deck.commander ? 1 : 0) + (deck.cards?.reduce((s, c) => s + c.quantity, 0) || 0)} / 100 kart
                   </span>
                 </div>
@@ -342,7 +342,7 @@ export const DeckImportExportModal: React.FC<DeckImportExportModalProps> = ({
                 <button
                   type="button"
                   onClick={handleDownloadTxt}
-                  className="py-3 px-4 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-black text-xs flex items-center justify-center gap-2 shadow-lg shadow-purple-950/50 cursor-pointer transition-all"
+                  className="py-3 px-4 rounded-xl bg-amber-500 hover:bg-amber-400 text-stone-950 font-bold text-xs flex items-center justify-center gap-2 shadow-lg shadow-amber-950/50 cursor-pointer transition-all"
                 >
                   <Download className="w-4 h-4 stroke-[2.5]" />
                   <span>Pobierz plik .txt (Talia EDH)</span>
@@ -371,9 +371,9 @@ export const DeckImportExportModal: React.FC<DeckImportExportModalProps> = ({
               <div className="space-y-1.5">
                 <div className="flex items-center justify-between text-[11px] text-stone-400">
                   <span className="font-semibold text-stone-300">Podgląd pliku tekstowego (.txt):</span>
-                  <span className="font-mono text-[10px]">format: 1x Nazwa (kod) nr</span>
+                  <span className="tabular-nums text-[11px]">format: 1x Nazwa (kod) nr</span>
                 </div>
-                <div className="bg-stone-950 p-3 rounded-xl border border-stone-800 font-mono text-[11px] text-stone-300 max-h-56 overflow-y-auto whitespace-pre leading-relaxed select-all">
+                <div className="bg-stone-950 p-3 rounded-xl border border-stone-800 tabular-nums text-[11px] text-stone-300 max-h-56 overflow-y-auto whitespace-pre leading-relaxed select-all">
                   {previewLines}
                   {txtExportContent.split('\n').length > 16 && '\n... (i pozostałe karty)'}
                 </div>
@@ -393,7 +393,7 @@ export const DeckImportExportModal: React.FC<DeckImportExportModalProps> = ({
                   <p className="text-[11px] text-stone-400">Pobrany np. z Moxfield, Archidekt lub plik z dysku</p>
                 </div>
                 <label className="px-4 py-2 rounded-xl bg-stone-800 hover:bg-stone-750 border border-stone-700 text-stone-200 font-bold text-xs flex items-center justify-center gap-2 cursor-pointer transition-colors shrink-0">
-                  <Upload className="w-4 h-4 text-purple-400" />
+                  <Upload className="w-4 h-4 text-amber-400" />
                   <span>Wczytaj plik .txt</span>
                   <input
                     type="file"
@@ -408,7 +408,7 @@ export const DeckImportExportModal: React.FC<DeckImportExportModalProps> = ({
               {deck && (
                 <div className="space-y-1.5 p-3 bg-stone-950/50 border border-stone-800 rounded-xl">
                   <label className="font-bold text-stone-300 text-xs flex items-center gap-1.5">
-                    <Layers className="w-4 h-4 text-purple-400" />
+                    <Layers className="w-4 h-4 text-amber-400" />
                     <span>Tryb importu dla talii „{deck.name}”:</span>
                   </label>
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mt-2">
@@ -417,7 +417,7 @@ export const DeckImportExportModal: React.FC<DeckImportExportModalProps> = ({
                       onClick={() => setImportTargetMode('append')}
                       className={`p-2 rounded-lg text-[11px] font-semibold text-center border transition-all cursor-pointer ${
                         importTargetMode === 'append'
-                          ? 'bg-purple-500/20 text-purple-300 border-purple-500/50'
+                          ? 'bg-amber-500/20 text-amber-300 border-amber-500/50'
                           : 'bg-stone-900 text-stone-400 border-stone-800 hover:bg-stone-850'
                       }`}
                     >
@@ -428,7 +428,7 @@ export const DeckImportExportModal: React.FC<DeckImportExportModalProps> = ({
                       onClick={() => setImportTargetMode('replace')}
                       className={`p-2 rounded-lg text-[11px] font-semibold text-center border transition-all cursor-pointer ${
                         importTargetMode === 'replace'
-                          ? 'bg-purple-500/20 text-purple-300 border-purple-500/50'
+                          ? 'bg-amber-500/20 text-amber-300 border-amber-500/50'
                           : 'bg-stone-900 text-stone-400 border-stone-800 hover:bg-stone-850'
                       }`}
                     >
@@ -439,7 +439,7 @@ export const DeckImportExportModal: React.FC<DeckImportExportModalProps> = ({
                       onClick={() => setImportTargetMode('new_deck')}
                       className={`p-2 rounded-lg text-[11px] font-semibold text-center border transition-all cursor-pointer ${
                         importTargetMode === 'new_deck'
-                          ? 'bg-purple-500/20 text-purple-300 border-purple-500/50'
+                          ? 'bg-amber-500/20 text-amber-300 border-amber-500/50'
                           : 'bg-stone-900 text-stone-400 border-stone-800 hover:bg-stone-850'
                       }`}
                     >
@@ -458,7 +458,7 @@ export const DeckImportExportModal: React.FC<DeckImportExportModalProps> = ({
                     value={deckName}
                     onChange={(e) => setDeckName(e.target.value)}
                     placeholder="np. Moja Talia EDH - Atraxa"
-                    className="w-full bg-stone-950 border border-stone-700 rounded-xl p-2.5 text-stone-200 text-xs focus:outline-none focus:border-purple-500"
+                    className="w-full bg-stone-950 border border-stone-700 rounded-xl p-2.5 text-stone-200 text-xs focus:outline-none focus:border-amber-500"
                   />
                 </div>
               )}
@@ -475,7 +475,7 @@ export const DeckImportExportModal: React.FC<DeckImportExportModalProps> = ({
                       );
                       setResolvedItems(null);
                     }}
-                    className="text-[10px] text-purple-400 hover:text-purple-300 font-semibold hover:underline cursor-pointer"
+                    className="text-[11px] text-amber-400 hover:text-amber-300 font-semibold hover:underline cursor-pointer"
                   >
                     Wstaw przykład
                   </button>
@@ -488,7 +488,7 @@ export const DeckImportExportModal: React.FC<DeckImportExportModalProps> = ({
                     setResolvedItems(null);
                   }}
                   placeholder="np.:&#10;// Commander&#10;1x Atraxa, Praetors' Voice (2xm) 196 *CMDR*&#10;&#10;// Deck&#10;1x Talisman of Impulse (tdc) 332&#10;1x Sol Ring (cmm) 401&#10;1x Rhystic Study (woe) 15"
-                  className="w-full bg-stone-950 border border-stone-700 rounded-xl p-3 text-stone-200 font-mono text-[11px] focus:outline-none focus:border-purple-500 placeholder:text-stone-600"
+                  className="w-full bg-stone-950 border border-stone-700 rounded-xl p-3 text-stone-200 tabular-nums text-[11px] focus:outline-none focus:border-amber-500 placeholder:text-stone-600"
                 />
               </div>
 
@@ -498,7 +498,7 @@ export const DeckImportExportModal: React.FC<DeckImportExportModalProps> = ({
                   type="button"
                   onClick={handleAnalyzeDecklist}
                   disabled={!importText.trim() || isResolving}
-                  className="w-full py-2.5 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-black text-xs flex items-center justify-center gap-2 shadow-lg shadow-purple-950/40 cursor-pointer transition-all disabled:opacity-50"
+                  className="w-full py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-stone-950 font-bold text-xs flex items-center justify-center gap-2 shadow-lg shadow-amber-950/40 cursor-pointer transition-all disabled:opacity-50"
                 >
                   {isResolving ? (
                     <>
@@ -542,12 +542,12 @@ export const DeckImportExportModal: React.FC<DeckImportExportModalProps> = ({
                         />
                       )}
                       <div>
-                        <span className="text-[10px] font-bold text-amber-400 uppercase tracking-wider block">
-                          👑 Wykryty Dowódca
+                        <span className="text-[11px] font-bold text-amber-400 block">
+                          Wykryty Dowódca
                         </span>
                         <p className="text-xs font-bold text-white">
                           {detectedCommander.name}{' '}
-                          <span className="text-stone-400 font-mono text-[10px]">
+                          <span className="text-stone-400 tabular-nums text-[11px]">
                             [{detectedCommander.set?.toUpperCase()} #{detectedCommander.collector_number}]
                           </span>
                         </p>
@@ -556,7 +556,7 @@ export const DeckImportExportModal: React.FC<DeckImportExportModalProps> = ({
                   )}
 
                   {/* List of matched cards */}
-                  <div className="max-h-40 overflow-y-auto space-y-1 divide-y divide-stone-800/60 font-mono text-[11px] pr-1">
+                  <div className="max-h-40 overflow-y-auto space-y-1 divide-y divide-stone-800/60 tabular-nums text-[11px] pr-1">
                     {resolvedItems.map((res, idx) => (
                       <div key={idx} className="pt-1 flex items-center justify-between gap-2">
                         <div className="truncate flex items-center gap-1.5">
@@ -565,19 +565,19 @@ export const DeckImportExportModal: React.FC<DeckImportExportModalProps> = ({
                             {res.card ? res.card.name : res.parsed.name}
                           </span>
                           {res.parsed.set && (
-                            <span className="text-[10px] text-stone-500">[{res.parsed.set.toUpperCase()}]</span>
+                            <span className="text-[11px] text-stone-500">[{res.parsed.set.toUpperCase()}]</span>
                           )}
                           {res.parsed.collectorNumber && (
-                            <span className="text-[10px] text-stone-500">#{res.parsed.collectorNumber}</span>
+                            <span className="text-[11px] text-stone-500">#{res.parsed.collectorNumber}</span>
                           )}
                           {res.parsed.isFoil && (
-                            <span className="text-[10px] text-amber-300">✨ Foil</span>
+                            <span className="text-[11px] text-amber-300">Foil</span>
                           )}
                         </div>
                         {res.card ? (
-                          <span className="text-emerald-400 text-[10px] shrink-0 font-sans font-semibold">OK</span>
+                          <span className="text-emerald-400 text-[11px] shrink-0 font-sans font-semibold">OK</span>
                         ) : (
-                          <span className="text-rose-400 text-[10px] shrink-0 font-sans">Brak w Scryfall</span>
+                          <span className="text-rose-400 text-[11px] shrink-0 font-sans">Brak w Scryfall</span>
                         )}
                       </div>
                     ))}
@@ -597,7 +597,7 @@ export const DeckImportExportModal: React.FC<DeckImportExportModalProps> = ({
                       type="button"
                       onClick={handleConfirmImport}
                       disabled={foundCount === 0 || isSubmitting}
-                      className="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-black text-xs flex items-center justify-center gap-2 shadow-lg shadow-purple-950/40 cursor-pointer transition-all disabled:opacity-50"
+                      className="flex-1 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-stone-950 font-bold text-xs flex items-center justify-center gap-2 shadow-lg shadow-amber-950/40 cursor-pointer transition-all disabled:opacity-50"
                     >
                       {isSubmitting ? (
                         <>

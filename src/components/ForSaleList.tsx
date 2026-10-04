@@ -100,7 +100,7 @@ export const ForSaleList: React.FC<ForSaleListProps> = ({
         const price = item.salePrice !== undefined && item.salePrice !== null
           ? formatCurrency(item.salePrice, settings.currency)
           : formatCurrency(getCardPrice(item.card, Boolean(item.quantityFoil > 0), settings), settings.currency);
-        return `${totalQty}x ${item.card.name} (${item.card.set.toUpperCase()}) #${item.card.collector_number}${foilTag} [${item.condition}, ${item.language}] — ${price}`;
+        return `${totalQty}x ${item.card.name} (${item.card.set.toUpperCase()}) #${item.card.collector_number}${foilTag} [${item.condition}, ${item.language}] - ${price}`;
       })
       .join('\n');
 
@@ -169,23 +169,22 @@ export const ForSaleList: React.FC<ForSaleListProps> = ({
     <div className="space-y-6">
       
       {/* 1. Header Banner & Public Share Link Box */}
-      <div className="bg-stone-900 border border-stone-800 rounded-3xl p-6 shadow-2xl relative overflow-hidden">
-        <div className="absolute top-0 right-0 w-96 h-96 bg-gradient-to-bl from-emerald-500/10 via-emerald-600/5 to-transparent rounded-full blur-3xl pointer-events-none" />
+      <div className="bg-stone-900 border border-stone-800 rounded-2xl p-6 shadow-2xl relative overflow-hidden">
 
         <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6 relative z-10">
           
           {/* Left Title & Metrics */}
           <div className="space-y-2">
             <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-emerald-600 to-teal-500 border border-emerald-400/40 flex items-center justify-center shadow-lg shadow-emerald-950/60">
+              <div className="w-12 h-12 rounded-2xl bg-emerald-600 border border-emerald-400/40 flex items-center justify-center shadow-lg shadow-emerald-950/60">
                 <CircleDollarSign className="w-6 h-6 text-white stroke-[2.2]" />
               </div>
               <div>
                 <div className="flex items-center gap-2">
-                  <h2 className="text-xl sm:text-2xl font-black text-white tracking-tight">
+                  <h2 className="text-xl sm:text-2xl font-bold text-white tracking-tight">
                     Karty na Sprzedaż
                   </h2>
-                  <span className="px-2.5 py-0.5 rounded-full text-xs font-mono font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">
+                  <span className="px-2.5 py-0.5 rounded-full text-xs tabular-nums font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">
                     {totalCardsCount} szt.
                   </span>
                 </div>
@@ -197,8 +196,8 @@ export const ForSaleList: React.FC<ForSaleListProps> = ({
 
             <div className="flex items-center gap-4 pt-1">
               <div className="flex items-baseline gap-1.5 bg-stone-950/80 px-3.5 py-1.5 rounded-xl border border-stone-800">
-                <span className="text-[11px] uppercase font-bold text-stone-400">Wartość oferty:</span>
-                <span className="text-base font-extrabold font-mono text-emerald-300">
+                <span className="text-[11px] font-bold text-stone-400">Wartość oferty:</span>
+                <span className="text-base font-bold tabular-nums text-emerald-300">
                   {formatCurrency(totalValue, settings.currency)}
                 </span>
               </div>
@@ -224,7 +223,7 @@ export const ForSaleList: React.FC<ForSaleListProps> = ({
                 <Share2 className="w-4 h-4 text-emerald-400" />
                 <span>Twój unikalny publiczny link</span>
               </span>
-              <span className="text-[10px] text-stone-400 font-medium bg-stone-900 px-2 py-0.5 rounded-full border border-stone-800">
+              <span className="text-[11px] text-stone-400 font-medium bg-stone-900 px-2 py-0.5 rounded-full border border-stone-800">
                 Dostępny bez logowania
               </span>
             </div>
@@ -234,7 +233,7 @@ export const ForSaleList: React.FC<ForSaleListProps> = ({
                 type="text"
                 readOnly
                 value={publicShareUrl}
-                className="bg-transparent text-xs text-stone-300 font-mono w-full focus:outline-none select-all truncate"
+                className="bg-transparent text-xs text-stone-300 tabular-nums w-full focus:outline-none select-all truncate"
                 title={publicShareUrl}
               />
               <button
@@ -276,8 +275,8 @@ export const ForSaleList: React.FC<ForSaleListProps> = ({
 
       {/* 2. Empty State or Cards Board */}
       {allForSaleCards.length === 0 ? (
-        <div className="bg-stone-900/70 border border-dashed border-stone-800 rounded-3xl p-12 text-center space-y-5 shadow-inner">
-          <div className="w-20 h-20 rounded-3xl bg-emerald-950/50 border border-emerald-500/30 text-emerald-400 mx-auto flex items-center justify-center shadow-lg">
+        <div className="bg-stone-900/70 border border-dashed border-stone-800 rounded-2xl p-12 text-center space-y-5 shadow-inner">
+          <div className="w-20 h-20 rounded-2xl bg-emerald-950/50 border border-emerald-500/30 text-emerald-400 mx-auto flex items-center justify-center shadow-lg">
             <CircleDollarSign className="w-10 h-10" />
           </div>
 
@@ -293,7 +292,7 @@ export const ForSaleList: React.FC<ForSaleListProps> = ({
           <button
             type="button"
             onClick={onGoToCollection}
-            className="px-5 py-2.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold text-xs rounded-xl shadow-lg shadow-emerald-950/60 transition-all cursor-pointer inline-flex items-center gap-2"
+            className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-xl shadow-lg shadow-emerald-950/60 transition-all cursor-pointer inline-flex items-center gap-2"
           >
             <Folder className="w-4 h-4" />
             <span>Przejdź do Mojej Kolekcji i oznacz karty</span>
@@ -326,7 +325,7 @@ export const ForSaleList: React.FC<ForSaleListProps> = ({
                 onClick={() => setFilterFoilOnly(prev => !prev)}
                 className={`px-3 py-1.5 rounded-xl text-xs font-bold border transition-all flex items-center gap-1.5 cursor-pointer ${
                   filterFoilOnly
-                    ? 'bg-gradient-to-r from-amber-500/20 to-purple-500/20 text-amber-300 border-amber-500/40 shadow'
+                    ? 'bg-amber-500/20 text-amber-300 border-amber-500/40 shadow'
                     : 'bg-stone-950 text-stone-400 border-stone-800 hover:border-stone-700'
                 }`}
               >
@@ -383,13 +382,13 @@ export const ForSaleList: React.FC<ForSaleListProps> = ({
                   className="group relative bg-stone-900 rounded-2xl border border-emerald-500/30 hover:border-emerald-400/70 transition-all duration-300 overflow-hidden flex flex-col shadow-lg hover:shadow-2xl hover:shadow-emerald-950/30"
                 >
                   {/* Top Badges */}
-                  <div className="absolute top-2 left-2 z-10 bg-emerald-950/95 text-emerald-300 border border-emerald-500/50 text-[10px] font-extrabold px-2.5 py-0.5 rounded-full shadow-lg flex items-center gap-1 uppercase tracking-wider backdrop-blur-md">
+                  <div className="absolute top-2 left-2 z-10 bg-emerald-950/95 text-emerald-300 border border-emerald-500/50 text-[11px] font-bold px-2.5 py-0.5 rounded-full shadow-lg flex items-center gap-1 backdrop-blur-md">
                     <CircleDollarSign className="w-3 h-3 text-emerald-400 stroke-[2.5]" />
                     <span>Na sprzedaż</span>
                   </div>
 
                   {item.quantityFoil > 0 && (
-                    <div className="absolute top-0 right-0 z-10 bg-gradient-to-l from-amber-500 via-purple-500 to-blue-500 text-stone-950 font-extrabold text-[10px] px-2 py-0.5 rounded-bl-lg shadow-sm flex items-center gap-1 uppercase tracking-wider">
+                    <div className="absolute top-0 right-0 z-10 ms-foil-chip font-semibold text-[11px] px-2 py-0.5 rounded-bl-lg shadow-sm flex items-center gap-1 ">
                       <Sparkles className="w-3 h-3 fill-stone-950" />
                       <span>Foil</span>
                     </div>
@@ -418,8 +417,8 @@ export const ForSaleList: React.FC<ForSaleListProps> = ({
 
                     {/* Asking Price Tag on image */}
                     <div className="absolute bottom-2 right-2 bg-stone-950/95 backdrop-blur-md px-2.5 py-1 rounded-xl border border-emerald-500/40 shadow-xl">
-                      <p className="text-[9px] uppercase font-bold text-stone-400 leading-none">Cena</p>
-                      <p className="text-xs font-black font-mono text-emerald-300 leading-tight">
+                      <p className="text-[11px] font-bold text-stone-400 leading-none">Cena</p>
+                      <p className="text-xs font-bold tabular-nums text-emerald-300 leading-tight">
                         {formatCurrency(effectivePrice, settings.currency)}
                       </p>
                     </div>
@@ -440,13 +439,13 @@ export const ForSaleList: React.FC<ForSaleListProps> = ({
                       </div>
 
                       <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
-                        <span className="uppercase font-mono text-[9px] font-bold bg-stone-800 text-stone-300 px-1.5 py-0.2 rounded border border-stone-700">
+                        <span className="tabular-nums text-[11px] font-bold bg-stone-800 text-stone-300 px-1.5 py-0.2 rounded border border-stone-700">
                           {item.card.set}
                         </span>
-                        <span className={`text-[9px] px-1.5 py-0.2 rounded border font-semibold ${getRarityColor(item.card.rarity)}`}>
+                        <span className={`text-[11px] px-1.5 py-0.2 rounded border font-semibold ${getRarityColor(item.card.rarity)}`}>
                           {getRarityLabel(item.card.rarity)}
                         </span>
-                        <span className="text-[9px] text-stone-400 bg-stone-800 px-1.5 py-0.2 rounded">
+                        <span className="text-[11px] text-stone-400 bg-stone-800 px-1.5 py-0.2 rounded">
                           {item.condition} • {item.language}
                         </span>
                       </div>
@@ -456,7 +455,7 @@ export const ForSaleList: React.FC<ForSaleListProps> = ({
                     <div className="pt-2 border-t border-stone-800/80 space-y-1.5">
                       {isEditingPrice ? (
                         <div className="space-y-1 bg-stone-950 p-2 rounded-xl border border-emerald-500/40">
-                          <label className="text-[10px] text-stone-400 block font-medium">Własna cena ({settings.currency}):</label>
+                          <label className="text-[11px] text-stone-400 block font-medium">Własna cena ({settings.currency}):</label>
                           <div className="flex items-center gap-1">
                             <input
                               type="number"
@@ -464,20 +463,20 @@ export const ForSaleList: React.FC<ForSaleListProps> = ({
                               value={tempPrice}
                               onChange={(e) => setTempPrice(e.target.value)}
                               placeholder={activeMarketPrice ? activeMarketPrice.toString() : '0.00'}
-                              className="w-full bg-stone-900 border border-stone-700 rounded-lg px-2 py-1 text-xs text-emerald-300 font-mono font-bold focus:outline-none focus:border-emerald-500"
+                              className="w-full bg-stone-900 border border-stone-700 rounded-lg px-2 py-1 text-xs text-emerald-300 tabular-nums font-bold focus:outline-none focus:border-emerald-500"
                               autoFocus
                             />
                             <button
                               type="button"
                               onClick={() => handleSaveCustomPrice(item)}
-                              className="px-2 py-1 bg-emerald-600 hover:bg-emerald-500 text-white text-[10px] font-bold rounded-lg cursor-pointer"
+                              className="px-2 py-1 bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] font-bold rounded-lg cursor-pointer"
                             >
                               OK
                             </button>
                             <button
                               type="button"
                               onClick={() => setEditingPriceId(null)}
-                              className="px-2 py-1 bg-stone-800 text-stone-400 text-[10px] rounded-lg cursor-pointer"
+                              className="px-2 py-1 bg-stone-800 text-stone-400 text-[11px] rounded-lg cursor-pointer"
                             >
                               ✕
                             </button>
@@ -491,13 +490,13 @@ export const ForSaleList: React.FC<ForSaleListProps> = ({
                               setEditingPriceId(item.id);
                               setTempPrice(item.salePrice !== undefined && item.salePrice !== null ? item.salePrice.toString() : '');
                             }}
-                            className="text-stone-400 hover:text-emerald-300 transition-colors text-[10px] font-medium underline cursor-pointer"
+                            className="text-stone-400 hover:text-emerald-300 transition-colors text-[11px] font-medium underline cursor-pointer"
                             title="Zmień cenę sprzedaży na własną"
                           >
                             {item.salePrice ? 'Własna cena: Zmień' : 'Ustaw własną cenę'}
                           </button>
 
-                          <span className="font-mono text-[10px] text-stone-500">
+                          <span className="tabular-nums text-[11px] text-stone-500">
                             {item.quantity + item.quantityFoil} szt.
                           </span>
                         </div>
@@ -505,8 +504,8 @@ export const ForSaleList: React.FC<ForSaleListProps> = ({
 
                       {/* Bottom action bar */}
                       <div className="flex items-center justify-between pt-1">
-                        <span className="text-[10px] text-stone-500 truncate max-w-[100px]" title={item.binder || 'Klaser Główny'}>
-                          📁 {item.binder || 'Klaser'}
+                        <span className="text-[11px] text-stone-500 truncate max-w-[100px]" title={item.binder || 'Klaser Główny'}>
+                          {item.binder || 'Klaser'}
                         </span>
 
                         <button

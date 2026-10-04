@@ -266,7 +266,7 @@ export async function recognizeCard(
     })
   });
   const data: any = res.ok ? await res.json() : {};
-  if (res.status === 429) opts.onStatus?.('Skanujesz zbyt szybko — chwila przerwy.');
+  if (res.status === 429) opts.onStatus?.('Skanujesz zbyt szybko, chwila przerwy.');
 
   return {
     rawText: title,

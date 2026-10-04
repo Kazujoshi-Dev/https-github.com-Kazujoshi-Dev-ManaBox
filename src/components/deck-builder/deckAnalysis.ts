@@ -346,10 +346,10 @@ export function analyzeMana(deck: DeckItem, library: LibraryCard[]): ManaReport 
   const recommendedLands = recommendLands(N + (deck.commander ? 1 : 0), avgMv);
   if (recommendedLands !== null && L < recommendedLands - 1) {
     suggestions.push(
-      `Lands w talii: ${L} — przy średnim koszcie ${avgMv.toFixed(2).replace('.', ',')} zalecane jest ok. ${recommendedLands}. Dodaj ${recommendedLands - L} × Land (mniej, jeśli grasz dużo taniej rampy lub dobierania).`
+      `Lands w talii: ${L}. Przy średnim koszcie ${avgMv.toFixed(2).replace('.', ',')} zalecane jest ok. ${recommendedLands}. Dodaj ${recommendedLands - L} × Land (mniej, jeśli grasz dużo taniej rampy lub dobierania).`
     );
   } else if (recommendedLands !== null && L > recommendedLands + 2) {
-    suggestions.push(`Lands w talii: ${L} — przy tym średnim koszcie wystarczy ok. ${recommendedLands}. Możesz zamienić ${L - recommendedLands} × Land na inne karty.`);
+    suggestions.push(`Lands w talii: ${L}. Przy tym średnim koszcie wystarczy ok. ${recommendedLands}. Możesz zamienić ${L - recommendedLands} × Land na inne karty.`);
   }
   const surplus = colors
     .filter((c) => c.landSources - c.needed > 0 && c.basicsInDeck > 0)
@@ -364,16 +364,16 @@ export function analyzeMana(deck: DeckItem, library: LibraryCard[]): ManaReport 
     const donor = surplus.find((s) => s.color !== c.color && s.free > 0);
     if (donor) {
       const swap = Math.min(deficit, donor.free);
-      text += ` — np. zamień ${swap} × ${BASIC_LAND[donor.color]} na ${BASIC_LAND[c.color]}`;
+      text += `, np. zamień ${swap} × ${BASIC_LAND[donor.color]} na ${BASIC_LAND[c.color]}`;
       donor.free -= swap;
       if (swap < deficit) text += ` i dodaj ${deficit - swap} × dual Land z tym kolorem`;
     } else {
-      text += ' — najlepiej dual Lands lub zamieniając bezbarwne Lands';
+      text += ', najlepiej dual Lands lub zamieniając bezbarwne Lands';
     }
-    if (c.unreachable) text += '. Nawet gdyby wszystkie Lands dawały ten kolor, szansa nie dobije do 90% — rozważ więcej Lands.';
+    if (c.unreachable) text += '. Nawet gdyby wszystkie Lands dawały ten kolor, szansa nie dobije do 90%. Rozważ więcej Lands.';
     suggestions.push(text + (c.unreachable ? '' : '.'));
   }
-  if (!suggestions.length && L > 0) suggestions.push('Baza many wygląda dobrze — liczba źródeł każdego koloru wystarcza do zagrywania kart na czas.');
+  if (!suggestions.length && L > 0) suggestions.push('Baza many wygląda dobrze: liczba źródeł każdego koloru wystarcza do zagrywania kart na czas.');
 
   return { deckSize: N, lands: L, avgManaValue: avgMv, recommendedLands, colors, suggestions };
 }

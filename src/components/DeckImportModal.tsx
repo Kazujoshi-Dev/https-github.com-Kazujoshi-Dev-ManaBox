@@ -173,15 +173,15 @@ export const DeckImportModal: React.FC<DeckImportModalProps> = ({
         {/* Modal Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-stone-800 bg-stone-950/80">
           <div className="flex items-center gap-3">
-            <div className="p-2.5 rounded-xl bg-purple-500/10 border border-purple-500/20 text-purple-400">
+            <div className="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-400">
               <Swords className="w-5 h-5" />
             </div>
             <div>
-              <h2 className="text-base sm:text-lg font-extrabold text-stone-100">
+              <h2 className="text-base sm:text-lg font-bold text-stone-100">
                 Importuj Nową Talię EDH (.txt)
               </h2>
               <p className="text-xs text-stone-400">
-                Wczytaj plik w formacie <code className="text-purple-300 font-mono">1x Nazwa (dodatek) nr</code> (Moxfield, Archidekt)
+                Wczytaj plik w formacie <code className="text-amber-300 font-mono">1x Nazwa (dodatek) nr</code> (Moxfield, Archidekt)
               </p>
             </div>
           </div>
@@ -203,7 +203,7 @@ export const DeckImportModal: React.FC<DeckImportModalProps> = ({
               <p className="text-[11px] text-stone-400">Pobrany np. z Moxfield, Archidekt lub plik z dysku</p>
             </div>
             <label className="px-4 py-2 rounded-xl bg-stone-800 hover:bg-stone-750 border border-stone-700 text-stone-200 font-bold text-xs flex items-center justify-center gap-2 cursor-pointer transition-colors shrink-0">
-              <Upload className="w-4 h-4 text-purple-400" />
+              <Upload className="w-4 h-4 text-amber-400" />
               <span>Wczytaj plik .txt</span>
               <input
                 type="file"
@@ -222,7 +222,7 @@ export const DeckImportModal: React.FC<DeckImportModalProps> = ({
               value={deckName}
               onChange={(e) => setDeckName(e.target.value)}
               placeholder="np. Moja Talia EDH - Atraxa"
-              className="w-full bg-stone-950 border border-stone-700 rounded-xl p-2.5 text-stone-200 text-xs focus:outline-none focus:border-purple-500"
+              className="w-full bg-stone-950 border border-stone-700 rounded-xl p-2.5 text-stone-200 text-xs focus:outline-none focus:border-amber-500"
             />
           </div>
 
@@ -230,7 +230,7 @@ export const DeckImportModal: React.FC<DeckImportModalProps> = ({
           <div className="space-y-1.5">
             <div className="flex items-center justify-between text-xs">
               <label className="font-bold text-stone-300">Wklej listę kart talii:</label>
-              <span className="text-[10px] text-stone-400 font-mono">Format: 1x Nazwa (kod) nr</span>
+              <span className="text-[11px] text-stone-400 tabular-nums">Format: 1x Nazwa (kod) nr</span>
             </div>
             <textarea
               rows={6}
@@ -240,7 +240,7 @@ export const DeckImportModal: React.FC<DeckImportModalProps> = ({
                 setResolvedItems(null);
               }}
               placeholder="np.:&#10;// Commander&#10;1x Atraxa, Praetors' Voice (c16) 28 *CMDR*&#10;&#10;// Deck&#10;1x Talisman of Impulse (tdc) 332&#10;1x Sol Ring (c21) 263&#10;1x Cyclonic Rift"
-              className="w-full bg-stone-950 border border-stone-700 rounded-xl p-3 text-stone-200 font-mono text-[11px] focus:outline-none focus:border-purple-500 placeholder:text-stone-600"
+              className="w-full bg-stone-950 border border-stone-700 rounded-xl p-3 text-stone-200 tabular-nums text-[11px] focus:outline-none focus:border-amber-500 placeholder:text-stone-600"
             />
           </div>
 
@@ -250,7 +250,7 @@ export const DeckImportModal: React.FC<DeckImportModalProps> = ({
               type="button"
               onClick={handleAnalyzeDecklist}
               disabled={!importText.trim() || isResolving}
-              className="w-full py-2.5 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-black text-xs flex items-center justify-center gap-2 shadow-lg shadow-purple-950/40 cursor-pointer transition-all disabled:opacity-50"
+              className="w-full py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-stone-950 font-bold text-xs flex items-center justify-center gap-2 shadow-lg shadow-amber-950/40 cursor-pointer transition-all disabled:opacity-50"
             >
               {isResolving ? (
                 <>
@@ -285,19 +285,19 @@ export const DeckImportModal: React.FC<DeckImportModalProps> = ({
 
               {/* Detected Commander Banner */}
               {detectedCommander && (
-                <div className="p-2.5 rounded-lg bg-purple-500/15 border border-purple-500/30 flex items-center justify-between text-xs">
+                <div className="p-2.5 rounded-lg bg-amber-500/15 border border-amber-500/30 flex items-center justify-between text-xs">
                   <div className="flex items-center gap-2">
                     <Crown className="w-4 h-4 text-amber-400 shrink-0" />
                     <span>
-                      Wykryty Dowódca: <strong className="text-purple-300">{detectedCommander.name}</strong>
+                      Wykryty Dowódca: <strong className="text-amber-300">{detectedCommander.name}</strong>
                     </span>
                   </div>
-                  <span className="text-[10px] text-amber-300 font-mono font-bold">Commander</span>
+                  <span className="text-[11px] text-amber-300 tabular-nums font-bold">Commander</span>
                 </div>
               )}
 
               {/* Card List preview */}
-              <div className="max-h-40 overflow-y-auto space-y-1 divide-y divide-stone-800/60 font-mono text-[11px] pr-1">
+              <div className="max-h-40 overflow-y-auto space-y-1 divide-y divide-stone-800/60 tabular-nums text-[11px] pr-1">
                 {resolvedItems.map((res, idx) => (
                   <div key={idx} className="pt-1 flex items-center justify-between gap-2">
                     <div className="truncate flex items-center gap-1.5">
@@ -306,16 +306,16 @@ export const DeckImportModal: React.FC<DeckImportModalProps> = ({
                         {res.card ? res.card.name : res.parsed.name}
                       </span>
                       {res.parsed.isCommander && (
-                        <span className="text-[10px] text-purple-300 font-bold">★ CMDR</span>
+                        <span className="text-[11px] text-amber-300 font-bold">★ CMDR</span>
                       )}
                       {res.parsed.set && (
-                        <span className="text-[10px] text-stone-500">[{res.parsed.set.toUpperCase()}]</span>
+                        <span className="text-[11px] text-stone-500">[{res.parsed.set.toUpperCase()}]</span>
                       )}
                     </div>
                     {res.card ? (
-                      <span className="text-emerald-400 text-[10px] shrink-0 font-sans font-semibold">OK</span>
+                      <span className="text-emerald-400 text-[11px] shrink-0 font-sans font-semibold">OK</span>
                     ) : (
-                      <span className="text-rose-400 text-[10px] shrink-0 font-sans">Brak</span>
+                      <span className="text-rose-400 text-[11px] shrink-0 font-sans">Brak</span>
                     )}
                   </div>
                 ))}
@@ -335,7 +335,7 @@ export const DeckImportModal: React.FC<DeckImportModalProps> = ({
                   type="button"
                   onClick={handleConfirmCreate}
                   disabled={foundCount === 0 || isCreating}
-                  className="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-400 hover:to-emerald-500 text-stone-950 font-black text-xs flex items-center justify-center gap-2 shadow-lg shadow-emerald-950/40 cursor-pointer transition-all disabled:opacity-50"
+                  className="flex-1 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-stone-950 font-bold text-xs flex items-center justify-center gap-2 shadow-lg shadow-emerald-950/40 cursor-pointer transition-all disabled:opacity-50"
                 >
                   {isCreating ? (
                     <>

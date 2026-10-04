@@ -37,12 +37,12 @@ export const ForcePasswordChange: React.FC<Props> = ({ user, onChanged, onLogout
 
   return (
     <div className="min-h-dvh bg-stone-950 flex items-center justify-center p-4 text-stone-100">
-      <form onSubmit={submit} className="w-full max-w-sm bg-stone-900 border border-stone-800 rounded-3xl p-6 space-y-4 shadow-2xl">
+      <form onSubmit={submit} className="w-full max-w-sm bg-stone-900 border border-stone-800 rounded-2xl p-6 space-y-4 shadow-2xl">
         <div className="w-12 h-12 rounded-2xl bg-amber-500/15 border border-amber-500/30 text-amber-400 flex items-center justify-center">
           <KeyRound className="w-6 h-6" />
         </div>
         <div className="space-y-1">
-          <h1 className="text-xl font-black">Ustaw nowe hasło</h1>
+          <h1 className="text-xl font-bold">Ustaw nowe hasło</h1>
           <p className="text-sm text-stone-400">
             Cześć, <strong className="text-stone-200">{user.username}</strong>! Logujesz się hasłem tymczasowym od administratora.
             Ustaw własne hasło, aby korzystać z konta.
@@ -57,7 +57,7 @@ export const ForcePasswordChange: React.FC<Props> = ({ user, onChanged, onLogout
         )}
 
         <label className="block space-y-1.5">
-          <span className="text-[11px] font-bold uppercase tracking-wider text-stone-400">Nowe hasło</span>
+          <span className="text-[11px] font-bold text-stone-400">Nowe hasło</span>
           <input
             type="password"
             autoComplete="new-password"
@@ -69,7 +69,7 @@ export const ForcePasswordChange: React.FC<Props> = ({ user, onChanged, onLogout
           />
         </label>
         <label className="block space-y-1.5">
-          <span className="text-[11px] font-bold uppercase tracking-wider text-stone-400">Powtórz hasło</span>
+          <span className="text-[11px] font-bold text-stone-400">Powtórz hasło</span>
           <input
             type="password"
             autoComplete="new-password"
@@ -82,7 +82,7 @@ export const ForcePasswordChange: React.FC<Props> = ({ user, onChanged, onLogout
         <button
           type="submit"
           disabled={saving}
-          className="w-full h-12 rounded-xl bg-amber-500 hover:bg-amber-400 text-stone-950 font-black text-sm flex items-center justify-center gap-2 cursor-pointer disabled:opacity-60"
+          className="w-full h-12 rounded-xl bg-amber-500 hover:bg-amber-400 text-stone-950 font-bold text-sm flex items-center justify-center gap-2 cursor-pointer disabled:opacity-60"
         >
           {saving && <Loader2 className="w-4 h-4 animate-spin" />}
           Zapisz hasło

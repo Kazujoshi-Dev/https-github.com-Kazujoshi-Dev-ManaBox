@@ -114,7 +114,7 @@ const SellersMapModal: React.FC<SellersMapModalProps> = ({ onClose, onOpenSeller
         }}
         className="w-full flex items-center gap-3 px-3 py-2.5 min-h-14 rounded-xl bg-stone-950/70 border border-stone-800 hover:border-emerald-500/40 active:bg-stone-800 text-left cursor-pointer"
       >
-        <div className="w-9 h-9 rounded-full bg-gradient-to-tr from-emerald-600 to-teal-500 text-white font-black flex items-center justify-center shrink-0">
+        <div className="w-9 h-9 rounded-full bg-emerald-600 text-white font-bold flex items-center justify-center shrink-0">
           {s.username.slice(0, 1).toUpperCase()}
         </div>
         <div className="min-w-0 flex-1">
@@ -152,7 +152,7 @@ const SellersMapModal: React.FC<SellersMapModalProps> = ({ onClose, onOpenSeller
               <MapPin className="w-5 h-5" />
             </div>
             <div className="min-w-0">
-              <h2 className="text-base font-extrabold text-stone-100 truncate">Mapa sprzedawców</h2>
+              <h2 className="text-base font-bold text-stone-100 truncate">Mapa sprzedawców</h2>
               <p className="text-xs text-stone-400 truncate">
                 {cities ? `${totalSellers} ${totalSellers === 1 ? 'sprzedawca' : 'sprzedawców'} w ${cities.length} ${cities.length === 1 ? 'mieście' : 'miastach'}` : 'Ładowanie...'}
               </p>
@@ -194,7 +194,7 @@ const SellersMapModal: React.FC<SellersMapModalProps> = ({ onClose, onOpenSeller
               <>
                 <div className="flex items-center justify-between gap-2">
                   <div className="min-w-0">
-                    <p className="text-sm font-extrabold text-stone-100 flex items-center gap-1.5">
+                    <p className="text-sm font-bold text-stone-100 flex items-center gap-1.5">
                       <MapPin className="w-4 h-4 text-emerald-400 shrink-0" />
                       <span className="truncate">{selected.city}</span>
                     </p>
@@ -217,8 +217,8 @@ const SellersMapModal: React.FC<SellersMapModalProps> = ({ onClose, onOpenSeller
             ) : (
               cities && (
                 <>
-                  <p className="text-xs font-bold uppercase tracking-wider text-stone-400">
-                    {cities.length ? 'Miasta — kliknij, aby zobaczyć sprzedawców' : 'Brak sprzedawców na mapie'}
+                  <p className="text-xs font-bold text-stone-400">
+                    {cities.length ? 'Kliknij miasto, aby zobaczyć sprzedawców' : 'Brak sprzedawców na mapie'}
                   </p>
                   {cities.length === 0 && (
                     <p className="text-sm text-stone-400">
@@ -235,7 +235,7 @@ const SellersMapModal: React.FC<SellersMapModalProps> = ({ onClose, onOpenSeller
                             onClick={() => focusCity(c)}
                             className="w-full flex items-center gap-3 px-3 py-2 min-h-12 rounded-xl hover:bg-stone-800 active:bg-stone-800 text-left cursor-pointer"
                           >
-                            <span className="min-w-8 h-8 px-1.5 rounded-full bg-emerald-500/20 text-emerald-300 text-sm font-black flex items-center justify-center">
+                            <span className="min-w-8 h-8 px-1.5 rounded-full bg-emerald-500/20 text-emerald-300 text-sm font-bold flex items-center justify-center">
                               {c.sellers.length}
                             </span>
                             <span className="min-w-0 flex-1">

@@ -52,15 +52,15 @@ export const PublicDeckView: React.FC<PublicDeckViewProps> = ({ deck, owner, set
       <header className="bg-stone-900 border-b border-stone-800 sticky top-0 z-30 shadow-md pt-[env(safe-area-inset-top)]">
         <div className="max-w-[1760px] w-full mx-auto px-4 sm:px-6 lg:px-8 xl:px-10 py-3 flex items-center justify-between gap-3">
           <div className="flex items-center gap-3 min-w-0">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-purple-700 to-amber-600 flex items-center justify-center shrink-0 ring-1 ring-purple-400/30">
+            <div className="w-10 h-10 rounded-xl bg-amber-700 flex items-center justify-center shrink-0 ring-1 ring-amber-400/30">
               <Swords className="w-5 h-5 text-white" />
             </div>
             <div className="min-w-0">
-              <h1 className="text-base sm:text-lg font-black tracking-tight truncate">
+              <h1 className="text-base sm:text-lg font-bold tracking-tight truncate">
                 <span className="hidden sm:inline text-stone-400 font-bold">Mana Screw • </span>Talia
               </h1>
               <p className="text-xs text-stone-400 truncate">
-                Autor: <strong className="text-purple-300">@{owner.username}</strong>
+                Autor: <strong className="text-amber-300">@{owner.username}</strong>
               </p>
             </div>
           </div>
@@ -71,14 +71,14 @@ export const PublicDeckView: React.FC<PublicDeckViewProps> = ({ deck, owner, set
               aria-label="Kopiuj link do talii"
               className="h-10 px-3 bg-stone-800 hover:bg-stone-700 text-stone-200 border border-stone-700 text-xs font-bold rounded-xl flex items-center gap-1.5 cursor-pointer"
             >
-              {copied === 'link' ? <Check className="w-4 h-4 text-emerald-400" /> : <Share2 className="w-4 h-4 text-purple-300" />}
+              {copied === 'link' ? <Check className="w-4 h-4 text-emerald-400" /> : <Share2 className="w-4 h-4 text-amber-300" />}
               <span className="hidden sm:inline">{copied === 'link' ? 'Skopiowano!' : 'Udostępnij'}</span>
             </button>
             {!isLoggedIn && (
               <button
                 type="button"
                 onClick={onOpenLogin}
-                className="h-10 px-4 bg-gradient-to-r from-amber-600 to-amber-500 hover:from-amber-500 hover:to-amber-400 text-stone-950 font-black text-xs rounded-xl flex items-center gap-1.5 cursor-pointer"
+                className="h-10 px-4 bg-amber-600 hover:bg-amber-500 text-stone-950 font-bold text-xs rounded-xl flex items-center gap-1.5 cursor-pointer"
               >
                 <LogIn className="w-4 h-4" />
                 Zaloguj się
@@ -90,7 +90,7 @@ export const PublicDeckView: React.FC<PublicDeckViewProps> = ({ deck, owner, set
 
       <main className="max-w-[1760px] w-full mx-auto px-4 sm:px-6 lg:px-8 xl:px-10 pt-6 space-y-5">
         {/* Nagłówek talii */}
-        <div className="bg-stone-900 border border-stone-800 rounded-3xl p-5 sm:p-6 flex flex-col md:flex-row gap-5 md:items-center">
+        <div className="bg-stone-900 border border-stone-800 rounded-2xl p-5 sm:p-6 flex flex-col md:flex-row gap-5 md:items-center">
           {deck.commander && (
             <button
               type="button"
@@ -105,11 +105,11 @@ export const PublicDeckView: React.FC<PublicDeckViewProps> = ({ deck, owner, set
           )}
           <div className="space-y-3 min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-2">
-              <span className="px-2.5 py-0.5 rounded-full text-xs font-bold uppercase tracking-wider bg-purple-500/20 text-purple-300 border border-purple-500/30 font-mono">
+              <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30 tabular-nums">
                 {deck.format || 'EDH Commander'}
               </span>
             </div>
-            <h2 className="text-2xl sm:text-3xl font-black text-white tracking-tight break-words">{deck.name}</h2>
+            <h2 className="text-2xl sm:text-3xl font-bold text-white tracking-tight break-words">{deck.name}</h2>
             {deck.commander && (
               <p className="text-sm text-stone-300 flex items-center gap-1.5">
                 <Crown className="w-4 h-4 text-amber-400" /> Dowódca: <strong className="text-stone-100">{deck.commander.name}</strong>
@@ -128,7 +128,7 @@ export const PublicDeckView: React.FC<PublicDeckViewProps> = ({ deck, owner, set
                 onClick={() => copy('txt')}
                 className="h-10 px-3.5 bg-stone-800 hover:bg-stone-700 text-stone-200 border border-stone-700 text-xs font-bold rounded-xl flex items-center gap-2 cursor-pointer"
               >
-                {copied === 'txt' ? <Check className="w-4 h-4 text-emerald-400" /> : <FileText className="w-4 h-4 text-purple-300" />}
+                {copied === 'txt' ? <Check className="w-4 h-4 text-emerald-400" /> : <FileText className="w-4 h-4 text-amber-300" />}
                 Kopiuj listę kart
               </button>
             </div>
@@ -153,7 +153,7 @@ export const PublicDeckView: React.FC<PublicDeckViewProps> = ({ deck, owner, set
         {!isLoggedIn && (
           <div className="bg-stone-900 border border-amber-500/30 rounded-2xl p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <p className="text-sm text-stone-300">Chcesz zbudować własną talię i sprawdzić, które karty już masz? Załóż darmowe konto w Mana Screw.</p>
-            <button type="button" onClick={onOpenLogin} className="h-11 px-5 rounded-xl bg-amber-500 hover:bg-amber-400 text-stone-950 text-sm font-black shrink-0 cursor-pointer">
+            <button type="button" onClick={onOpenLogin} className="h-11 px-5 rounded-xl bg-amber-500 hover:bg-amber-400 text-stone-950 text-sm font-bold shrink-0 cursor-pointer">
               Załóż konto
             </button>
           </div>

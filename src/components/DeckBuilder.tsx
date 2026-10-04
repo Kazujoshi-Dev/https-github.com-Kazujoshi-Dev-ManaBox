@@ -424,7 +424,7 @@ export const DeckBuilder: React.FC<DeckBuilderProps> = ({
               <ZoomIn className="w-4 h-4" />
             </button>
 
-            <span className="text-xs font-mono font-bold text-amber-300 min-w-[2.8rem] text-right">
+            <span className="text-xs tabular-nums font-bold text-amber-300 min-w-[2.8rem] text-right">
               {previewScale}%
             </span>
 

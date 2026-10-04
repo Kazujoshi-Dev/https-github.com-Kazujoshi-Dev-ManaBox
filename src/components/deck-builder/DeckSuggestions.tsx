@@ -130,15 +130,15 @@ export const DeckSuggestions: React.FC<DeckSuggestionsProps> = ({ deck, collecti
   }
 
   const addDisabledReason = (rec: EdhrecRecommendation) =>
-    collectionOnly && !owned.has(frontName(rec.name)) ? 'Talia korzysta tylko z kart z kolekcji — przełącz źródło na „Wszystkie karty”, aby dodać' : null;
+    collectionOnly && !owned.has(frontName(rec.name)) ? 'Talia korzysta tylko z kart z kolekcji. Przełącz źródło na „Wszystkie karty”, aby dodać' : null;
 
   return (
     <div className="space-y-4" aria-label="Sugestie kart">
       <div className="flex flex-wrap items-end justify-between gap-2 px-1">
         <div>
-          <h2 className="text-lg font-black text-stone-100">Sugestie dla {deck.commander.name}</h2>
+          <h2 className="text-lg font-bold text-stone-100">Sugestie dla {deck.commander.name}</h2>
           <p className="text-xs text-stone-400">
-            Na podstawie {data ? `${data.numDecks.toLocaleString('pl-PL')} talii` : 'talii'} z EDHREC — co grają inni gracze z tym dowódcą.
+            Na podstawie {data ? `${data.numDecks.toLocaleString('pl-PL')} talii` : 'talii'} z EDHREC: co grają inni gracze z tym dowódcą.
           </p>
         </div>
         {data && (
@@ -175,7 +175,7 @@ export const DeckSuggestions: React.FC<DeckSuggestionsProps> = ({ deck, collecti
               </div>
             </div>
             {upgrades.length === 0 ? (
-              <p className="text-sm text-stone-400">Nie znaleźliśmy oczywistych zamienników — karty w talii są popularne wśród graczy tego dowódcy.</p>
+              <p className="text-sm text-stone-400">Nie znaleźliśmy oczywistych zamienników. Karty w talii są popularne wśród graczy tego dowódcy.</p>
             ) : (
               <ul className="divide-y divide-stone-800">
                 {upgrades.map(({ from, fromInclusion, to }) => (
@@ -184,12 +184,12 @@ export const DeckSuggestions: React.FC<DeckSuggestionsProps> = ({ deck, collecti
                       <button type="button" onClick={() => onViewCardDetails(from)} className="text-sm text-stone-300 hover:text-amber-300 truncate cursor-pointer text-left">
                         {from.name}
                       </button>
-                      <span className="text-[11px] font-mono text-rose-300 shrink-0">{fromInclusion > 0 ? pct(fromInclusion) : 'rzadko'}</span>
+                      <span className="text-[11px] tabular-nums text-rose-300 shrink-0">{fromInclusion > 0 ? pct(fromInclusion) : 'rzadko'}</span>
                       <ArrowRight className="w-4 h-4 text-stone-500 shrink-0" />
                       <button type="button" onClick={() => to.card && onViewCardDetails(to.card)} className="text-sm font-semibold text-stone-100 hover:text-amber-300 truncate cursor-pointer text-left">
                         {to.name}
                       </button>
-                      <span className="text-[11px] font-mono text-emerald-400 shrink-0">{pct(to.inclusion)}</span>
+                      <span className="text-[11px] tabular-nums text-emerald-400 shrink-0">{pct(to.inclusion)}</span>
                     </div>
                     <button
                       type="button"
@@ -263,7 +263,7 @@ export const DeckSuggestions: React.FC<DeckSuggestionsProps> = ({ deck, collecti
                           <span className="absolute inset-0 flex items-center justify-center p-2 text-xs text-stone-300 text-center">{rec.name}</span>
                         )}
                         {isOwned && (
-                          <span className="absolute top-1.5 left-1.5 text-[10px] font-bold px-1.5 py-0.5 rounded bg-emerald-600 text-white">W kolekcji</span>
+                          <span className="absolute top-1.5 left-1.5 text-[11px] font-bold px-1.5 py-0.5 rounded bg-emerald-600 text-white">W kolekcji</span>
                         )}
                       </button>
                       <div className="p-2 space-y-1.5 flex-1 flex flex-col">

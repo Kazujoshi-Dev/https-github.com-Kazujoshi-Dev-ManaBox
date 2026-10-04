@@ -16,7 +16,7 @@ export const CommanderShowcase: React.FC<CommanderShowcaseProps> = ({
     const commanderPrice = settings ? getCardPrice(commander, Boolean(commanderIsFoil), settings) : 0;
 
     return (
-      <div className={`mt-5 p-4 rounded-xl bg-gradient-to-r from-amber-950/30 via-stone-950 to-purple-950/20 border flex flex-col sm:flex-row items-center justify-between gap-4 ${
+      <div className={`mt-5 p-4 rounded-xl bg-amber-950/30 border flex flex-col sm:flex-row items-center justify-between gap-4 ${
         commanderIsFoil ? 'border-amber-400/60 shadow-lg shadow-amber-500/10' : 'border-amber-500/30'
       }`}>
         <div className="flex items-center gap-3.5">
@@ -33,19 +33,19 @@ export const CommanderShowcase: React.FC<CommanderShowcaseProps> = ({
           </div>
           <div>
             <div className="flex items-center gap-2 flex-wrap">
-              <span className="text-[10px] uppercase font-mono font-bold px-2 py-0.5 rounded-full bg-amber-500 text-stone-950">
-                👑 Dowódca Talii
+              <span className="text-[11px] tabular-nums font-bold px-2 py-0.5 rounded-full bg-amber-500 text-stone-950">
+                Dowódca Talii
               </span>
               {commanderIsFoil && (
-                <span className="text-[9px] uppercase font-mono font-bold px-2 py-0.5 rounded-full bg-gradient-to-r from-amber-500/30 to-purple-500/30 text-amber-300 border border-amber-400/50">
-                  ✨ FOIL
+                <span className="text-[11px] tabular-nums font-bold px-2 py-0.5 rounded-full bg-amber-500/30 text-amber-300 border border-amber-400/50">
+                  FOIL
                 </span>
               )}
               {getCardEdhrecRank(commander) != null && (
                 <EdhrecBadge rank={getCardEdhrecRank(commander)} size="xs" />
               )}
               {settings && commanderPrice > 0 && (
-                <span className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded-full border flex items-center gap-1 ${
+                <span className={`text-[11px] tabular-nums font-bold px-2 py-0.5 rounded-full border flex items-center gap-1 ${
                   commanderIsFoil
                     ? 'text-amber-300 bg-amber-950/60 border-amber-500/40'
                     : 'text-emerald-300 bg-stone-900 border-stone-700'
@@ -54,7 +54,7 @@ export const CommanderShowcase: React.FC<CommanderShowcaseProps> = ({
                   {formatCurrency(commanderPrice, settings.currency)}
                 </span>
               )}
-              <span className="text-xs font-mono text-amber-300 font-bold">
+              <span className="text-xs tabular-nums text-amber-300 font-bold">
                 {commander.mana_cost}
               </span>
             </div>
@@ -93,10 +93,10 @@ export const CommanderShowcase: React.FC<CommanderShowcaseProps> = ({
     <div className="mt-5 p-4 rounded-xl bg-stone-950/60 border border-dashed border-amber-500/30 flex flex-col sm:flex-row items-center justify-between gap-4">
       <div className="flex items-center gap-3.5">
         <div className="w-12 h-16 rounded-lg bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-xl shrink-0">
-          👑
+          <Crown className="w-5 h-5 text-amber-400" />
         </div>
         <div>
-          <span className="text-[10px] uppercase font-mono font-bold px-2 py-0.5 rounded-full bg-stone-800 text-stone-400">
+          <span className="text-[11px] tabular-nums font-bold px-2 py-0.5 rounded-full bg-stone-800 text-stone-400">
             Brak wybranego dowódcy
           </span>
           <h3 className="text-sm font-bold text-stone-200 mt-1">
@@ -109,7 +109,7 @@ export const CommanderShowcase: React.FC<CommanderShowcaseProps> = ({
       </div>
       <button
         onClick={onOpenSearch}
-        className="px-4 py-2 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-stone-950 font-bold text-xs rounded-xl shadow-md flex items-center gap-2 transition-all cursor-pointer shrink-0"
+        className="px-4 py-2 bg-amber-500 hover:bg-amber-400 text-stone-950 font-bold text-xs rounded-xl shadow-md flex items-center gap-2 transition-all cursor-pointer shrink-0"
       >
         <Crown className="w-4 h-4" />
         <span>Wybierz Dowódcę</span>

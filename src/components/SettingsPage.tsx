@@ -35,7 +35,7 @@ interface SettingsPageProps {
 const card = 'bg-stone-900 border border-stone-800 rounded-2xl p-4 sm:p-6';
 const inputCls =
   'w-full bg-stone-950 border border-stone-700 focus:border-amber-500 rounded-xl px-3.5 py-2.5 text-sm text-stone-100 placeholder-stone-500 focus:outline-none';
-const labelCls = 'block text-[11px] font-bold uppercase tracking-wider text-stone-400 mb-1.5';
+const labelCls = 'block text-[11px] font-bold text-stone-400 mb-1.5';
 
 const SectionHeader: React.FC<{ title: string; description: string }> = ({ title, description }) => (
   <div className="mb-4">
@@ -55,7 +55,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = (props) => {
           <Settings className="w-5 h-5" />
         </div>
         <div>
-          <h2 className="text-xl font-black text-stone-100">Ustawienia</h2>
+          <h2 className="text-xl font-bold text-stone-100">Ustawienia</h2>
           <p className="text-xs text-stone-400">Zarządzaj kontem, wyceną kolekcji i bezpieczeństwem</p>
         </div>
       </div>
@@ -112,7 +112,7 @@ const AccountSection: React.FC<{
 }> = ({ user, onOpenImportExport, onAccountDeleted }) => (
   <div className="space-y-4">
     <div className={card}>
-      <SectionHeader title="Dane konta" description="Nazwę gracza może zmienić administrator — napisz do niego, jeśli potrzebujesz." />
+      <SectionHeader title="Dane konta" description="Nazwę gracza może zmienić administrator. Napisz do niego, jeśli potrzebujesz." />
       <dl className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         {[
           { label: 'Nazwa gracza', value: user.username },
@@ -120,7 +120,7 @@ const AccountSection: React.FC<{
           { label: 'Konto od', value: user.createdAt ? new Date(user.createdAt).toLocaleDateString('pl-PL', { dateStyle: 'long' }) : '—' }
         ].map((r) => (
           <div key={r.label} className="bg-stone-950 border border-stone-800 rounded-xl p-3 min-w-0">
-            <dt className="text-[10px] uppercase font-bold text-stone-500">{r.label}</dt>
+            <dt className="text-[11px] font-bold text-stone-500">{r.label}</dt>
             <dd className="text-sm font-semibold text-stone-100 truncate mt-0.5" title={r.value}>{r.value}</dd>
           </div>
         ))}
@@ -177,7 +177,7 @@ const DeleteAccountCard: React.FC<{
 
       {user.isAdmin ? (
         <p className="mt-4 text-xs text-amber-200 bg-amber-500/10 border border-amber-500/30 rounded-lg p-2.5">
-          To konto administratora — nie można go usunąć z ustawień.
+          To konto administratora, więc nie można go usunąć z ustawień.
         </p>
       ) : !open ? (
         <button
@@ -314,7 +314,7 @@ const PricingSection: React.FC<{ settings: AppSettings; onSave: (s: AppSettings)
   };
 
   const sources: Array<{ id: PricingSource; name: string; desc: string; icon: React.ElementType; color: string }> = [
-    { id: 'CARDMARKET', name: 'Cardmarket', desc: 'Price Trend z Cardmarket (EUR). Polecane dla Polski i Europy.', icon: Euro, color: 'text-blue-400' },
+    { id: 'CARDMARKET', name: 'Cardmarket', desc: 'Price Trend z Cardmarket (EUR). Polecane dla Polski i Europy.', icon: Euro, color: 'text-amber-400' },
     { id: 'TCGPLAYER', name: 'TCGPlayer', desc: 'Średnia cena rynkowa z TCGPlayer (USD). Rynek amerykański.', icon: DollarSign, color: 'text-emerald-400' }
   ];
   const currencies: Array<{ id: CurrencyCode; label: string }> = [
@@ -405,8 +405,8 @@ const PricingSection: React.FC<{ settings: AppSettings; onSave: (s: AppSettings)
             <label key={r.label} className="block">
               <span className={labelCls}>{r.label}</span>
               <span className="relative block">
-                <input type="number" step="0.0001" min="0" value={r.value} onChange={(e) => r.set(e.target.value)} className={`${inputCls} font-mono font-bold pr-12`} />
-                <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-stone-500 font-mono text-xs">PLN</span>
+                <input type="number" step="0.0001" min="0" value={r.value} onChange={(e) => r.set(e.target.value)} className={`${inputCls} tabular-nums font-bold pr-12`} />
+                <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-stone-500 tabular-nums text-xs">PLN</span>
               </span>
             </label>
           ))}
@@ -423,7 +423,7 @@ const PricingSection: React.FC<{ settings: AppSettings; onSave: (s: AppSettings)
         )}
         <p className="mt-4 text-xs text-stone-400">
           Przykład: karta za ~10 EUR / ~11 USD będzie warta{' '}
-          <strong className="text-emerald-400 font-mono">{formatCurrency(example, currency)}</strong>.
+          <strong className="text-emerald-400 tabular-nums">{formatCurrency(example, currency)}</strong>.
         </p>
       </div>
 
@@ -619,7 +619,7 @@ const SharingSection: React.FC<{ user: AuthUser; showToast: (msg: string) => voi
       showToast('Skopiowano link do schowka.');
       setTimeout(() => setCopied(null), 2000);
     } catch {
-      showToast('Nie udało się skopiować — zaznacz link i skopiuj ręcznie.');
+      showToast('Nie udało się skopiować. Zaznacz link i skopiuj ręcznie.');
     }
   };
   return (
@@ -638,7 +638,7 @@ const SharingSection: React.FC<{ user: AuthUser; showToast: (msg: string) => voi
                 value={l.url}
                 onFocus={(e) => e.currentTarget.select()}
                 aria-label={`Link: ${l.title}`}
-                className="basis-full sm:basis-auto flex-1 min-w-0 bg-stone-900 border border-stone-800 rounded-lg px-3 py-2 text-xs font-mono text-stone-300 focus:outline-none"
+                className="basis-full sm:basis-auto flex-1 min-w-0 bg-stone-900 border border-stone-800 rounded-lg px-3 py-2 text-xs tabular-nums text-stone-300 focus:outline-none"
               />
               <button
                 type="button"

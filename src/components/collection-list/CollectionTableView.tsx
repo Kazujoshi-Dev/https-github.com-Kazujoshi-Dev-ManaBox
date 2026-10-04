@@ -41,7 +41,7 @@ export const CollectionTableView: React.FC<CollectionTableViewProps> = ({
                 <div className="min-w-0 flex-1">
                   <p className="text-sm font-semibold text-stone-100 truncate">{card.name}</p>
                   <p className="text-xs text-stone-400 truncate">
-                    <span className="uppercase font-mono">{card.set}</span>
+                    <span className="tabular-nums">{card.set}</span>
                     {card.collector_number ? ` #${card.collector_number}` : ''} · {item.condition} · {item.language}
                   </p>
                   <div className="flex items-center gap-1.5 mt-0.5">
@@ -89,7 +89,7 @@ export const CollectionTableView: React.FC<CollectionTableViewProps> = ({
       <div className="hidden md:block bg-stone-900 border border-stone-800 rounded-2xl overflow-hidden shadow-lg overflow-x-auto">
         <table className="w-full text-left border-collapse">
           <thead>
-            <tr className="bg-stone-950 text-stone-400 uppercase font-mono text-[10px] tracking-wider border-b border-stone-800">
+            <tr className="bg-stone-950 text-stone-400 tabular-nums text-[11px] border-b border-stone-800">
               <th className="py-3 px-3">Karta</th>
               <th className="py-3 px-3">Koszt</th>
               <th className="py-3 px-3">Set / Rzadkość</th>

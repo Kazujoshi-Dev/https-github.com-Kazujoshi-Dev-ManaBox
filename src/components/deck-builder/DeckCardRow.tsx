@@ -47,12 +47,12 @@ export const DeckCardRow: React.FC<DeckCardRowProps> = ({
 
       {/* Left: Quantity Badge, Foil tag & Card Name */}
       <div className="relative z-10 flex items-center gap-2 min-w-0 pr-2">
-        <span className="px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 font-mono text-[10px] font-bold border border-amber-500/30 shrink-0">
+        <span className="px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 tabular-nums text-[11px] font-bold border border-amber-500/30 shrink-0">
           {entry.quantity}x
         </span>
         {entry.isFoil && (
-          <span className="px-1.5 py-0.2 rounded bg-gradient-to-r from-amber-500/30 to-purple-500/30 text-amber-300 font-mono text-[9px] font-black border border-amber-400/40 shrink-0 flex items-center gap-0.5">
-            ✨ FOIL
+          <span className="px-1.5 py-0.2 rounded bg-amber-500/30 text-amber-300 tabular-nums text-[11px] font-bold border border-amber-400/40 shrink-0 flex items-center gap-0.5">
+            FOIL
           </span>
         )}
         <span className="font-bold text-xs text-stone-100 truncate group-hover:text-amber-200 transition-colors drop-shadow-md">
@@ -63,7 +63,7 @@ export const DeckCardRow: React.FC<DeckCardRowProps> = ({
       {/* Right: Price, Mana Cost & Quick Actions */}
       <div className="relative z-10 flex items-center gap-1.5 shrink-0">
         {settings && singlePrice > 0 && (
-          <span className={`text-[10px] font-mono font-bold px-1.5 py-0.5 rounded shadow ${
+          <span className={`text-[11px] tabular-nums font-bold px-1.5 py-0.5 rounded shadow ${
             entry.isFoil
               ? 'text-amber-300 bg-amber-950/70 border border-amber-500/40'
               : 'text-emerald-300 bg-stone-900/80 border border-stone-700/60'
@@ -73,7 +73,7 @@ export const DeckCardRow: React.FC<DeckCardRowProps> = ({
         )}
 
         {card.mana_cost && (
-          <span className="text-[11px] font-mono font-bold text-amber-300 drop-shadow">
+          <span className="text-[11px] tabular-nums font-bold text-amber-300 drop-shadow">
             {card.mana_cost}
           </span>
         )}
@@ -124,7 +124,7 @@ export const DeckCardRow: React.FC<DeckCardRowProps> = ({
               e.stopPropagation();
               onViewDetails(card);
             }}
-            className="text-stone-400 hover:text-blue-300 p-0.5"
+            className="text-stone-400 hover:text-amber-300 p-0.5"
             title="Szczegóły karty"
           >
             <ExternalLink className="w-3.5 h-3.5" />

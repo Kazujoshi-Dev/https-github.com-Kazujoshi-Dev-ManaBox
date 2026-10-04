@@ -56,7 +56,7 @@ export const Wishlist: React.FC<WishlistProps> = ({
       showToast?.('Skopiowano link do listy życzeń! Każdy bez konta może go otworzyć.');
       setTimeout(() => setCopiedLink(false), 2500);
     } catch {
-      showToast?.('Nie udało się skopiować — zaznacz link i skopiuj ręcznie.');
+      showToast?.('Nie udało się skopiować. Zaznacz link i skopiuj ręcznie.');
     }
   };
 
@@ -99,12 +99,12 @@ export const Wishlist: React.FC<WishlistProps> = ({
 
         <div className="flex items-center gap-4 bg-stone-950 p-3 rounded-xl border border-stone-800">
           <div>
-            <p className="text-[10px] uppercase font-bold text-stone-400">Szacowany koszt</p>
-            <p className="text-lg font-bold font-mono text-emerald-400">{formatCurrency(totalWishlistCost, settings.currency)}</p>
+            <p className="text-[11px] font-bold text-stone-400">Szacowany koszt</p>
+            <p className="text-lg font-bold tabular-nums text-emerald-400">{formatCurrency(totalWishlistCost, settings.currency)}</p>
           </div>
           <button
             onClick={onOpenSearchTab}
-            className="px-3.5 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-stone-950 font-bold text-xs flex items-center gap-1.5 transition-all shadow-md cursor-pointer"
+            className="px-3.5 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-stone-950 font-bold text-xs flex items-center gap-1.5 transition-all shadow-md cursor-pointer"
           >
             <Plus className="w-4 h-4 stroke-[2.5]" />
             <span>Dodaj kolejne</span>
@@ -121,7 +121,7 @@ export const Wishlist: React.FC<WishlistProps> = ({
               <span>Publiczny link do listy życzeń</span>
             </p>
             <p className="text-[11px] text-stone-400">
-              Wyślij go sprzedającym — zobaczą, jakich kart szukasz, bez zakładania konta.
+              Wyślij go sprzedającym. Zobaczą, jakich kart szukasz, bez zakładania konta.
             </p>
           </div>
 
@@ -132,7 +132,7 @@ export const Wishlist: React.FC<WishlistProps> = ({
               value={publicShareUrl}
               onFocus={(e) => e.currentTarget.select()}
               aria-label="Publiczny link do listy życzeń"
-              className="bg-transparent text-xs text-stone-300 font-mono w-full min-w-0 focus:outline-none truncate px-1"
+              className="bg-transparent text-xs text-stone-300 tabular-nums w-full min-w-0 focus:outline-none truncate px-1"
               title={publicShareUrl}
             />
             <button
@@ -241,16 +241,16 @@ export const Wishlist: React.FC<WishlistProps> = ({
                     </p>
 
                     <div className="flex items-center gap-1.5 mt-2 text-xs">
-                      <span className="uppercase font-mono text-[10px] font-bold bg-stone-800 text-stone-300 px-1.5 py-0.5 rounded border border-stone-700">
+                      <span className="tabular-nums text-[11px] font-bold bg-stone-800 text-stone-300 px-1.5 py-0.5 rounded border border-stone-700">
                         {card.set}
                       </span>
                       {item.isFoil && (
-                        <span className="text-[10px] text-amber-300 bg-amber-500/10 px-1.5 py-0.5 rounded border border-amber-500/30 flex items-center gap-1">
+                        <span className="text-[11px] text-amber-300 bg-amber-500/10 px-1.5 py-0.5 rounded border border-amber-500/30 flex items-center gap-1">
                           <Sparkles className="w-2.5 h-2.5" />
                           <span>Foil</span>
                         </span>
                       )}
-                      <span className="text-[11px] text-stone-300 font-mono">
+                      <span className="text-[11px] text-stone-300 tabular-nums">
                         x{item.targetQuantity}
                       </span>
                     </div>
@@ -258,8 +258,8 @@ export const Wishlist: React.FC<WishlistProps> = ({
 
                   <div className="pt-2 border-t border-stone-800 flex items-center justify-between">
                     <div>
-                      <p className="text-[9px] uppercase text-stone-400">Rynkowo</p>
-                      <p className="text-sm font-mono font-bold text-emerald-400">
+                      <p className="text-[11px] text-stone-400">Rynkowo</p>
+                      <p className="text-sm tabular-nums font-bold text-emerald-400">
                         {formatCurrency(itemTotal, settings.currency)}
                       </p>
                     </div>

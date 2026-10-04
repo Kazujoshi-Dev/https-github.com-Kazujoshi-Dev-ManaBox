@@ -16,10 +16,10 @@ export const CardModalHeader: React.FC<CardModalHeaderProps> = ({
   return (
     <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-stone-800 bg-stone-950/70 flex flex-wrap items-center justify-between gap-2 shrink-0">
       <div className="flex items-center gap-3 min-w-0 flex-1 basis-full sm:basis-auto order-1">
-        <h2 className="text-xl sm:text-2xl font-black text-amber-100 tracking-tight flex items-center gap-2">
+        <h2 className="text-xl sm:text-2xl font-bold text-amber-100 tracking-tight flex items-center gap-2">
           <span>{cardName}</span>
           {isPromo && (
-            <span className="text-[10px] uppercase font-mono px-2 py-0.5 rounded bg-purple-500/20 text-purple-300 border border-purple-500/40">
+            <span className="text-[11px] tabular-nums px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/40">
               Promo
             </span>
           )}
@@ -33,8 +33,8 @@ export const CardModalHeader: React.FC<CardModalHeaderProps> = ({
           onClick={() => onSelectTab(activeTab === 'combos' ? 'details' : 'combos')}
           className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 border transition-all cursor-pointer ${
             activeTab === 'combos'
-              ? 'bg-purple-600 text-white border-purple-500 shadow-md'
-              : 'bg-stone-900 hover:bg-stone-800 text-purple-300 border-purple-500/30'
+              ? 'bg-amber-500 text-stone-950 border-amber-500 shadow-md'
+              : 'bg-stone-900 hover:bg-stone-800 text-amber-300 border-amber-500/30'
           }`}
           title="Przeglądaj kombinacje Commander Spellbook dla tej karty"
         >

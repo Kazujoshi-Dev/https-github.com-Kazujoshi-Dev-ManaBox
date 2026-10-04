@@ -39,9 +39,9 @@ export const CatalogsBar: React.FC<CatalogsBarProps> = ({
             <Folder className="w-4 h-4" />
           </div>
           <div>
-            <h2 className="text-sm font-black uppercase tracking-wider text-stone-100 flex items-center gap-2">
+            <h2 className="text-sm font-bold text-stone-100 flex items-center gap-2">
               <span>Katalogi i Klasery Kolekcji</span>
-              <span className="text-[10px] bg-stone-800 text-stone-400 px-2 py-0.5 rounded-full font-mono font-normal">
+              <span className="text-[11px] bg-stone-800 text-stone-400 px-2 py-0.5 rounded-full tabular-nums font-normal">
                 {catalogs.length} katalogów
               </span>
             </h2>
@@ -65,7 +65,7 @@ export const CatalogsBar: React.FC<CatalogsBarProps> = ({
 
           <button
             onClick={onOpenCreateCatalog}
-            className="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-stone-950 font-extrabold text-xs flex items-center justify-center gap-1.5 shadow-md shadow-amber-950/40 transition-all cursor-pointer shrink-0"
+            className="px-3.5 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-stone-950 font-bold text-xs flex items-center justify-center gap-1.5 shadow-md shadow-amber-950/40 transition-all cursor-pointer shrink-0"
           >
             <FolderPlus className="w-4 h-4 stroke-[2.5]" />
             <span>+ Utwórz nowy katalog</span>
@@ -80,13 +80,13 @@ export const CatalogsBar: React.FC<CatalogsBarProps> = ({
           onClick={() => onSelectBinder('ALL')}
           className={`px-3 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer shrink-0 flex items-center gap-2 border ${
             activeBinder === 'ALL'
-              ? 'bg-amber-500 text-stone-950 border-amber-400 shadow-md font-extrabold'
+              ? 'bg-amber-500 text-stone-950 border-amber-400 shadow-md font-bold'
               : 'bg-stone-950 text-stone-300 border-stone-800 hover:border-stone-700 hover:bg-stone-850'
           }`}
         >
           <FolderOpen className="w-3.5 h-3.5" />
           <span>Wszystkie karty</span>
-          <span className={`px-1.5 py-0.2 rounded-full font-mono text-[10px] ${
+          <span className={`px-1.5 py-0.2 rounded-full tabular-nums text-[11px] ${
             activeBinder === 'ALL' ? 'bg-stone-950 text-amber-300' : 'bg-stone-800 text-stone-400'
           }`}>
             {totalCollectionCount}
@@ -102,11 +102,11 @@ export const CatalogsBar: React.FC<CatalogsBarProps> = ({
               ? 'bg-emerald-500/20 text-emerald-200 border-emerald-500/50 ring-1 ring-emerald-500/40 shadow-md'
               : 'bg-stone-950 text-stone-300 border-stone-800 hover:border-stone-700 hover:bg-stone-850'
           }`}
-          title="Karty oznaczone na sprzedaż — nie ma ich w klaserach, dopóki ich nie wycofasz"
+          title="Karty oznaczone na sprzedaż. Nie ma ich w klaserach, dopóki ich nie wycofasz"
         >
           <CircleDollarSign className="w-3.5 h-3.5 text-emerald-400" />
           <span>Sprzedam</span>
-          <span className={`px-1.5 py-0.2 rounded-full font-mono text-[10px] ${
+          <span className={`px-1.5 py-0.2 rounded-full tabular-nums text-[11px] ${
             activeBinder === FOR_SALE_BINDER ? 'bg-stone-950/80 text-emerald-300' : 'bg-stone-800 text-stone-400'
           }`}>
             {forSaleCount}
@@ -138,7 +138,7 @@ export const CatalogsBar: React.FC<CatalogsBarProps> = ({
                 </span>
               )}
 
-              <span className={`px-1.5 py-0.2 rounded-full font-mono text-[10px] ${
+              <span className={`px-1.5 py-0.2 rounded-full tabular-nums text-[11px] ${
                 isSelected ? 'bg-stone-950/80 text-stone-200' : 'bg-stone-800 text-stone-400'
               }`}>
                 {stats.count}
@@ -195,9 +195,9 @@ export const CatalogsBar: React.FC<CatalogsBarProps> = ({
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h3 className="text-sm font-extrabold text-stone-100">{activeCatalogObj.name}</h3>
+                <h3 className="text-sm font-bold text-stone-100">{activeCatalogObj.name}</h3>
                 {activeCatalogObj.isDefault && (
-                  <span className="text-[10px] font-mono uppercase bg-amber-500/20 text-amber-300 border border-amber-500/30 px-1.5 py-0.2 rounded-full flex items-center gap-1 font-bold">
+                  <span className="text-[11px] tabular-nums bg-amber-500/20 text-amber-300 border border-amber-500/30 px-1.5 py-0.2 rounded-full flex items-center gap-1 font-bold">
                     <Star className="w-3 h-3 fill-amber-400 text-amber-400" />
                     Domyślny
                   </span>
@@ -211,8 +211,8 @@ export const CatalogsBar: React.FC<CatalogsBarProps> = ({
 
           <div className="flex items-center gap-3 shrink-0">
             <div className="text-right">
-              <p className="text-[10px] uppercase font-mono text-stone-400">Wartość katalogu</p>
-              <p className="font-mono font-black text-emerald-400 text-sm">
+              <p className="text-[11px] tabular-nums text-stone-400">Wartość katalogu</p>
+              <p className="tabular-nums font-bold text-emerald-400 text-sm">
                 {formatCurrency(catalogStats.get(activeCatalogObj.name)?.totalValue || 0, currency)}
               </p>
             </div>

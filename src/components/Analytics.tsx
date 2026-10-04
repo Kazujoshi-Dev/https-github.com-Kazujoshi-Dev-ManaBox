@@ -170,31 +170,31 @@ export const Analytics: React.FC<AnalyticsProps> = ({ collection, settings, onVi
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           
           <div className="bg-stone-950 p-4 rounded-xl border border-stone-800 space-y-1">
-            <p className="text-[10px] uppercase font-bold text-stone-400 flex items-center gap-1">
+            <p className="text-[11px] font-bold text-stone-400 flex items-center gap-1">
               <Layers className="w-3.5 h-3.5 text-amber-400" />
               <span>Łączna Liczba Kart</span>
             </p>
-            <p className="text-2xl font-black text-amber-200">{stats.totalCards} <span className="text-xs font-normal text-stone-400">szt.</span></p>
+            <p className="text-2xl font-bold text-amber-200">{stats.totalCards} <span className="text-xs font-normal text-stone-400">szt.</span></p>
             <p className="text-[11px] text-stone-500">{stats.uniqueCards} unikalnych wpisów</p>
           </div>
 
           <div className="bg-stone-950 p-4 rounded-xl border border-stone-800 space-y-1">
-            <p className="text-[10px] uppercase font-bold text-stone-400 flex items-center gap-1">
+            <p className="text-[11px] font-bold text-stone-400 flex items-center gap-1">
               <Coins className="w-3.5 h-3.5 text-emerald-400" />
               <span>Wartość Rynkowa ({settings.currency})</span>
             </p>
-            <p className="text-2xl font-black text-emerald-400">{formatCurrency(stats.totalValue, settings.currency)}</p>
+            <p className="text-2xl font-bold text-emerald-400">{formatCurrency(stats.totalValue, settings.currency)}</p>
             <p className="text-[11px] text-stone-500">
               Wycena wg: {settings.pricingSource === 'CARDMARKET' ? 'Cardmarket Trend' : 'TCGPlayer Market'}
             </p>
           </div>
 
           <div className="bg-stone-950 p-4 rounded-xl border border-stone-800 space-y-1">
-            <p className="text-[10px] uppercase font-bold text-stone-400 flex items-center gap-1">
+            <p className="text-[11px] font-bold text-stone-400 flex items-center gap-1">
               <ChangeIcon className={`w-3.5 h-3.5 ${changeColor}`} />
               <span>Zmiana wartości</span>
             </p>
-            <p className={`text-2xl font-black ${changeColor}`}>
+            <p className={`text-2xl font-bold ${changeColor}`}>
               {hasChange ? fmtDelta(change.valueChange!) : '—'}
               {change.valueChangePercent !== null && changeSign !== 0 && (
                 <span className="ml-1.5 text-sm font-bold opacity-80">
@@ -210,7 +210,7 @@ export const Analytics: React.FC<AnalyticsProps> = ({ collection, settings, onVi
           </div>
 
           <div className="bg-stone-950 p-4 rounded-xl border border-stone-800 space-y-2">
-            <p className="text-[10px] uppercase font-bold text-stone-400 flex items-center gap-1">
+            <p className="text-[11px] font-bold text-stone-400 flex items-center gap-1">
               <TrendingUp className="w-3.5 h-3.5 text-amber-400" />
               <span>Największe zmiany</span>
             </p>
@@ -229,7 +229,7 @@ export const Analytics: React.FC<AnalyticsProps> = ({ collection, settings, onVi
                 ))}
               </div>
             ) : (
-              <p className="text-2xl font-black text-stone-200">—</p>
+              <p className="text-2xl font-bold text-stone-200">—</p>
             )}
             <p className="text-[11px] text-stone-500">Karty, których wartość zmieniła się najbardziej</p>
           </div>
@@ -247,7 +247,7 @@ export const Analytics: React.FC<AnalyticsProps> = ({ collection, settings, onVi
               <Flame className="w-4 h-4 text-amber-400" />
               <span>Krzywa Many (Mana Value / CMC)</span>
             </h3>
-            <span className="text-[10px] text-stone-400">Rozkład według kosztu</span>
+            <span className="text-[11px] text-stone-400">Rozkład według kosztu</span>
           </div>
 
           <div className="h-64 w-full pt-4">
@@ -269,10 +269,10 @@ export const Analytics: React.FC<AnalyticsProps> = ({ collection, settings, onVi
         <div className="bg-stone-900 border border-stone-800 rounded-2xl p-5 shadow-lg space-y-4">
           <div className="flex items-center justify-between">
             <h3 className="text-sm font-bold text-stone-200 flex items-center gap-1.5">
-              <PieIcon className="w-4 h-4 text-blue-400" />
+              <PieIcon className="w-4 h-4 text-amber-400" />
               <span>Rozkład Kolorów Kart</span>
             </h3>
-            <span className="text-[10px] text-stone-400">Udział w kolekcji</span>
+            <span className="text-[11px] text-stone-400">Udział w kolekcji</span>
           </div>
 
           <div className="h-64 w-full">
@@ -332,7 +332,7 @@ export const Analytics: React.FC<AnalyticsProps> = ({ collection, settings, onVi
                     onError={(e) => handleCardImageError(e, img)}
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform" 
                   />
-                  <div className="absolute top-1 left-1 bg-amber-500 text-stone-950 font-black text-[10px] w-5 h-5 rounded-full flex items-center justify-center shadow">
+                  <div className="absolute top-1 left-1 bg-amber-500 text-stone-950 font-bold text-[11px] w-5 h-5 rounded-full flex items-center justify-center shadow">
                     #{index + 1}
                   </div>
                 </div>
@@ -341,10 +341,10 @@ export const Analytics: React.FC<AnalyticsProps> = ({ collection, settings, onVi
                   <h4 className="font-bold text-xs text-stone-100 group-hover:text-amber-300 line-clamp-1 transition-colors">
                     {card.name}
                   </h4>
-                  <p className="text-[10px] text-stone-400 uppercase font-mono mt-0.5">
+                  <p className="text-[11px] text-stone-400 tabular-nums mt-0.5">
                     {card.set} • {item.quantity + item.quantityFoil} szt.
                   </p>
-                  <p className="text-xs font-mono font-bold text-emerald-400 mt-1">
+                  <p className="text-xs tabular-nums font-bold text-emerald-400 mt-1">
                     {formatCurrency(totalValue, settings.currency)}
                   </p>
                 </div>

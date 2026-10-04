@@ -99,10 +99,10 @@ export const Header: React.FC<HeaderProps> = ({
       {/* Telefon: jeden kompaktowy rząd — reszta funkcji jest w dolnym pasku nawigacji */}
       <div className="md:hidden flex items-center justify-between gap-3 px-4 py-2.5">
         <div className="flex items-center gap-2.5 min-w-0">
-          <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-amber-600 via-red-600 to-purple-700 flex items-center justify-center shrink-0">
+          <div className="w-9 h-9 rounded-xl bg-amber-600 flex items-center justify-center shrink-0">
             <Sparkles className="w-4.5 h-4.5 text-amber-100" />
           </div>
-          <h1 className="text-lg font-bold tracking-tight bg-gradient-to-r from-amber-200 via-amber-100 to-stone-200 bg-clip-text text-transparent truncate">
+          <h1 className="text-lg font-bold tracking-tight text-amber-200 truncate">
             Mana Screw
           </h1>
         </div>
@@ -127,15 +127,15 @@ export const Header: React.FC<HeaderProps> = ({
           
           {/* Logo & Title */}
           <div className="flex items-center gap-3 shrink-0">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-amber-600 via-red-600 to-purple-700 flex items-center justify-center shadow-lg shadow-amber-900/30 ring-1 ring-amber-400/30">
+            <div className="w-10 h-10 rounded-xl bg-amber-600 flex items-center justify-center shadow-lg shadow-amber-900/30 ring-1 ring-amber-400/30">
               <Sparkles className="w-5 h-5 text-amber-100" />
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h1 className="text-xl font-bold tracking-tight whitespace-nowrap bg-gradient-to-r from-amber-200 via-amber-100 to-stone-200 bg-clip-text text-transparent">
+                <h1 className="text-xl font-bold tracking-tight whitespace-nowrap text-amber-200">
                   Mana Screw
                 </h1>
-                <span className="text-[10px] uppercase font-mono whitespace-nowrap px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20 font-semibold">
+                <span className="text-[11px] tabular-nums whitespace-nowrap px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20 font-semibold">
                   {settings.pricingSource === 'CARDMARKET' ? 'Cardmarket Trend' : 'TCGPlayer Market'}
                 </span>
               </div>
@@ -150,7 +150,7 @@ export const Header: React.FC<HeaderProps> = ({
             <div className="flex items-center gap-2">
               <Layers className="w-4 h-4 text-amber-400" />
               <div>
-                <p className="text-[10px] uppercase font-semibold text-stone-400">Karty</p>
+                <p className="text-[11px] font-semibold text-stone-400">Karty</p>
                 <p className="text-sm font-bold text-stone-100">{totalCards} szt.</p>
               </div>
             </div>
@@ -160,7 +160,7 @@ export const Header: React.FC<HeaderProps> = ({
             <div className="flex items-center gap-2">
               <Coins className="w-4 h-4 text-emerald-400" />
               <div>
-                <p className="text-[10px] uppercase font-semibold text-stone-400">
+                <p className="text-[11px] font-semibold text-stone-400">
                   Wartość ({settings.currency})
                 </p>
                 <p className="text-sm font-bold text-emerald-400">
@@ -173,7 +173,7 @@ export const Header: React.FC<HeaderProps> = ({
             <div className="flex items-center gap-2" title={changeTitle}>
               <ChangeIcon className={`w-4 h-4 ${changeColor}`} />
               <div>
-                <p className="text-[10px] uppercase font-semibold text-stone-400">Zmiana wartości</p>
+                <p className="text-[11px] font-semibold text-stone-400">Zmiana wartości</p>
                 <p className={`text-sm font-bold ${changeColor} whitespace-nowrap`}>
                   {changeText}
                   {percentText && <span className="ml-1 text-xs font-semibold opacity-80">({percentText})</span>}
@@ -233,7 +233,7 @@ export const Header: React.FC<HeaderProps> = ({
 
             <button
               onClick={onOpenAddModal}
-              className="px-3 py-2 text-xs font-semibold rounded-lg bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-500 hover:to-amber-600 text-stone-900 flex items-center gap-1.5 transition-all shadow-sm cursor-pointer"
+              className="px-3 py-2 text-xs font-semibold rounded-lg bg-amber-600 hover:bg-amber-500 text-stone-900 flex items-center gap-1.5 transition-all shadow-sm cursor-pointer"
             >
               <Plus className="w-4 h-4 stroke-[2.5]" />
               <span>Dodaj kartę</span>
@@ -255,7 +255,7 @@ export const Header: React.FC<HeaderProps> = ({
             >
               <Layers className="w-4 h-4" />
               <span>Moja Kolekcja</span>
-              <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-stone-800 text-stone-300 font-mono">
+              <span className="text-[11px] px-1.5 py-0.2 rounded-full bg-stone-800 text-stone-300 tabular-nums">
                 {totalCards}
               </span>
             </button>
@@ -264,14 +264,14 @@ export const Header: React.FC<HeaderProps> = ({
               onClick={() => setActiveTab('decks')}
               className={`px-3.5 py-2 rounded-lg text-xs font-semibold flex items-center gap-2 transition-all whitespace-nowrap ${
                 activeTab === 'decks'
-                  ? 'bg-purple-500/20 text-purple-300 border border-purple-500/40 font-bold'
+                  ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40 font-bold'
                   : 'text-stone-400 hover:text-stone-200 hover:bg-stone-800/60'
               }`}
             >
-              <Swords className="w-4 h-4 text-purple-300" />
+              <Swords className="w-4 h-4 text-amber-300" />
               <span>Talie (EDH)</span>
               {decksCount > 0 && (
-                <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-purple-950 text-purple-300 font-mono font-bold border border-purple-800/50">
+                <span className="text-[11px] px-1.5 py-0.2 rounded-full bg-amber-950 text-amber-300 tabular-nums font-bold border border-amber-800/50">
                   {decksCount}
                 </span>
               )}
@@ -299,7 +299,7 @@ export const Header: React.FC<HeaderProps> = ({
             >
               <Trophy className="w-4 h-4 text-amber-400" />
               <span>Top z dodatku</span>
-              <span className="text-[9px] uppercase px-1.5 py-0.2 rounded-full bg-amber-500/20 text-amber-300 font-bold border border-amber-500/30 font-mono">
+              <span className="text-[11px] px-1.5 py-0.2 rounded-full bg-amber-500/20 text-amber-300 font-bold border border-amber-500/30 tabular-nums">
                 TOP 5
               </span>
             </button>
@@ -339,7 +339,7 @@ export const Header: React.FC<HeaderProps> = ({
               <CircleDollarSign className="w-4 h-4 text-emerald-400" />
               <span>Sprzedam</span>
               {forSaleCount > 0 && (
-                <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-emerald-950 text-emerald-300 font-mono font-bold border border-emerald-800/50">
+                <span className="text-[11px] px-1.5 py-0.2 rounded-full bg-emerald-950 text-emerald-300 tabular-nums font-bold border border-emerald-800/50">
                   {forSaleCount}
                 </span>
               )}
@@ -349,11 +349,11 @@ export const Header: React.FC<HeaderProps> = ({
               onClick={() => setActiveTab('users')}
               className={`px-3.5 py-2 rounded-lg text-xs font-semibold flex items-center gap-2 transition-all whitespace-nowrap ${
                 activeTab === 'users'
-                  ? 'bg-blue-500/20 text-blue-300 border border-blue-500/40 font-bold shadow-sm'
+                  ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40 font-bold shadow-sm'
                   : 'text-stone-400 hover:text-stone-200 hover:bg-stone-800/60'
               }`}
             >
-              <Users className="w-4 h-4 text-blue-400" />
+              <Users className="w-4 h-4 text-amber-400" />
               <span>Użytkownicy</span>
             </button>
 
@@ -398,12 +398,12 @@ export const Header: React.FC<HeaderProps> = ({
                 type="button"
                 onClick={onOpenMailbox}
                 title="Otwórz skrzynkę wiadomości"
-                className="p-1.5 px-2.5 text-stone-300 hover:text-blue-300 hover:bg-stone-800 rounded-lg transition-colors text-xs flex items-center gap-1.5 cursor-pointer font-medium border border-transparent hover:border-stone-700 relative"
+                className="p-1.5 px-2.5 text-stone-300 hover:text-amber-300 hover:bg-stone-800 rounded-lg transition-colors text-xs flex items-center gap-1.5 cursor-pointer font-medium border border-transparent hover:border-stone-700 relative"
               >
-                <Mail className="w-3.5 h-3.5 text-blue-400" />
+                <Mail className="w-3.5 h-3.5 text-amber-400" />
                 <span className="hidden md:inline">Wiadomości</span>
                 {unreadMessagesCount > 0 && (
-                  <span className="px-1.5 py-0.2 rounded-full text-[10px] font-bold bg-blue-500 text-white font-mono shadow-sm">
+                  <span className="px-1.5 py-0.2 rounded-full text-[11px] font-bold bg-amber-500 text-stone-950 tabular-nums shadow-sm">
                     {unreadMessagesCount}
                   </span>
                 )}
@@ -418,7 +418,7 @@ export const Header: React.FC<HeaderProps> = ({
                     <User className="w-3 h-3 text-amber-400" />
                     <span>{user.username}</span>
                   </span>
-                  <span className="text-[10px] text-stone-400 truncate max-w-[130px] font-mono">
+                  <span className="text-[11px] text-stone-400 truncate max-w-[130px] tabular-nums">
                     {user.email}
                   </span>
                 </div>

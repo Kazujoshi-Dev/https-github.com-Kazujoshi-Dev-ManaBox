@@ -53,15 +53,15 @@ export const DeckList: React.FC<DeckListProps> = ({
       {/* Decks Header Banner */}
       <div className="bg-stone-900 border border-stone-800 rounded-2xl p-6 shadow-xl flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div className="flex items-center gap-2.5">
-          <div className="w-10 h-10 rounded-xl bg-purple-600/30 border border-purple-500/40 flex items-center justify-center">
-            <Swords className="w-5 h-5 text-purple-300" />
+          <div className="w-10 h-10 rounded-xl bg-amber-600/30 border border-amber-500/40 flex items-center justify-center">
+            <Swords className="w-5 h-5 text-amber-300" />
           </div>
           <div>
-            <h2 className="text-xl sm:text-2xl font-black text-white tracking-tight">
+            <h2 className="text-xl sm:text-2xl font-bold text-white tracking-tight">
               Twoje Talie (Format EDH Commander)
             </h2>
             <p className="text-xs text-stone-400">
-              Twórz talie 100-kartowe, stakuj karty według typów, eksportuj i importuj pliki .txt (<code className="text-purple-300 font-mono">1x Nazwa (set) nr</code>).
+              Twórz talie 100-kartowe, stakuj karty według typów, eksportuj i importuj pliki .txt (<code className="text-amber-300 font-mono">1x Nazwa (set) nr</code>).
             </p>
           </div>
         </div>
@@ -70,17 +70,17 @@ export const DeckList: React.FC<DeckListProps> = ({
           {onOpenImportDeck && (
             <button
               onClick={onOpenImportDeck}
-              className="px-3.5 py-2.5 bg-stone-800 hover:bg-stone-750 text-purple-300 hover:text-purple-200 border border-purple-500/40 font-bold text-xs rounded-xl shadow-md flex items-center justify-center gap-2 cursor-pointer transition-all shrink-0"
+              className="px-3.5 py-2.5 bg-stone-800 hover:bg-stone-750 text-amber-300 hover:text-amber-200 border border-amber-500/40 font-bold text-xs rounded-xl shadow-md flex items-center justify-center gap-2 cursor-pointer transition-all shrink-0"
               title="Importuj talię z pliku .txt (np. format '1x Talisman of Impulse (tdc) 332')"
             >
-              <Upload className="w-4 h-4 text-purple-400" />
+              <Upload className="w-4 h-4 text-amber-400" />
               <span>Importuj talię .txt</span>
             </button>
           )}
 
           <button
             onClick={onCreateDeckClick}
-            className="px-4 py-2.5 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-bold text-xs rounded-xl shadow-lg shadow-purple-950/50 flex items-center justify-center gap-2 cursor-pointer transition-all shrink-0"
+            className="px-4 py-2.5 bg-amber-500 hover:bg-amber-400 text-stone-950 font-bold text-xs rounded-xl shadow-lg shadow-amber-950/50 flex items-center justify-center gap-2 cursor-pointer transition-all shrink-0"
           >
             <Plus className="w-4 h-4 stroke-[3]" />
             <span>Utwórz nową talię EDH</span>
@@ -91,7 +91,7 @@ export const DeckList: React.FC<DeckListProps> = ({
       {/* Decks Grid */}
       {decks.length === 0 ? (
         <div className="bg-stone-900/60 border border-dashed border-stone-800 rounded-2xl p-12 text-center space-y-4">
-          <div className="w-16 h-16 rounded-2xl bg-purple-950/50 border border-purple-800/40 text-purple-400 mx-auto flex items-center justify-center">
+          <div className="w-16 h-16 rounded-2xl bg-amber-950/50 border border-amber-800/40 text-amber-400 mx-auto flex items-center justify-center">
             <Swords className="w-8 h-8" />
           </div>
           <div>
@@ -103,7 +103,7 @@ export const DeckList: React.FC<DeckListProps> = ({
           <div className="flex items-center justify-center gap-3 flex-wrap">
             <button
               onClick={onCreateDeckClick}
-              className="px-4 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white text-xs font-bold rounded-xl shadow-md cursor-pointer transition-all inline-flex items-center gap-2"
+              className="px-4 py-2 bg-amber-500 hover:bg-amber-400 text-stone-950 text-xs font-bold rounded-xl shadow-md cursor-pointer transition-all inline-flex items-center gap-2"
             >
               <Plus className="w-4 h-4" />
               <span>Utwórz nową talię</span>
@@ -112,9 +112,9 @@ export const DeckList: React.FC<DeckListProps> = ({
             {onOpenImportDeck && (
               <button
                 onClick={onOpenImportDeck}
-                className="px-4 py-2 bg-stone-800 hover:bg-stone-750 text-purple-300 border border-purple-500/40 text-xs font-bold rounded-xl shadow-md cursor-pointer transition-all inline-flex items-center gap-2"
+                className="px-4 py-2 bg-stone-800 hover:bg-stone-750 text-amber-300 border border-amber-500/40 text-xs font-bold rounded-xl shadow-md cursor-pointer transition-all inline-flex items-center gap-2"
               >
-                <Upload className="w-4 h-4 text-purple-400" />
+                <Upload className="w-4 h-4 text-amber-400" />
                 <span>Importuj z pliku .txt</span>
               </button>
             )}
@@ -134,7 +134,7 @@ export const DeckList: React.FC<DeckListProps> = ({
               <div
                 key={deck.id}
                 onClick={() => onSelectDeck(deck)}
-                className="group bg-stone-900 border border-stone-800 hover:border-purple-500/50 rounded-2xl p-5 shadow-xl transition-all cursor-pointer flex flex-col justify-between space-y-4 relative overflow-hidden"
+                className="group bg-stone-900 border border-stone-800 hover:border-amber-500/50 rounded-2xl p-5 shadow-xl transition-all cursor-pointer flex flex-col justify-between space-y-4 relative overflow-hidden"
               >
                 {/* Subtle commander art background glow if present */}
                 {deck.commander && (
@@ -150,16 +150,16 @@ export const DeckList: React.FC<DeckListProps> = ({
                   <div className="flex items-start justify-between gap-2">
                     <div className="space-y-1">
                       <div className="flex items-center gap-2">
-                        <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold uppercase tracking-wider bg-purple-500/20 text-purple-300 border border-purple-500/30">
+                        <span className="px-2 py-0.5 rounded-full text-[11px] tabular-nums font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30">
                           {deck.format || 'EDH Commander'}
                         </span>
                         {deck.isPublic && (
-                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-emerald-500/15 text-emerald-300 border border-emerald-500/30" title="Talia dostępna pod publicznym linkiem">
+                          <span className="px-2 py-0.5 rounded-full text-[11px] font-bold bg-emerald-500/15 text-emerald-300 border border-emerald-500/30" title="Talia dostępna pod publicznym linkiem">
                             Publiczna
                           </span>
                         )}
                       </div>
-                      <h3 className="text-lg font-black text-white group-hover:text-purple-200 transition-colors">
+                      <h3 className="text-lg font-bold text-white group-hover:text-amber-200 transition-colors">
                         {deck.name}
                       </h3>
                     </div>
@@ -169,7 +169,7 @@ export const DeckList: React.FC<DeckListProps> = ({
                       <button
                         type="button"
                         onClick={(e) => handleExportDeckFile(e, deck)}
-                        className="text-stone-400 hover:text-purple-300 p-1.5 rounded-lg hover:bg-stone-800 transition-colors cursor-pointer"
+                        className="text-stone-400 hover:text-amber-300 p-1.5 rounded-lg hover:bg-stone-800 transition-colors cursor-pointer"
                         title="Pobierz talię jako plik .txt (format '1x Karta (kod) nr')"
                       >
                         <Download className="w-4 h-4" />
@@ -179,7 +179,7 @@ export const DeckList: React.FC<DeckListProps> = ({
                       <button
                         type="button"
                         onClick={(e) => handleCopyDeckList(e, deck)}
-                        className="text-stone-400 hover:text-purple-300 p-1.5 rounded-lg hover:bg-stone-800 transition-colors cursor-pointer"
+                        className="text-stone-400 hover:text-amber-300 p-1.5 rounded-lg hover:bg-stone-800 transition-colors cursor-pointer"
                         title="Kopiuj listę talii w formacie .txt do schowka"
                       >
                         {copiedDeckId === deck.id ? (
@@ -236,10 +236,10 @@ export const DeckList: React.FC<DeckListProps> = ({
                         />
                       </div>
                       <div className="min-w-0">
-                        <span className="text-[10px] text-amber-400 font-bold block truncate">
-                          👑 {deck.commander.name}
+                        <span className="text-[11px] text-amber-400 font-bold block truncate">
+                          {deck.commander.name}
                         </span>
-                        <span className="text-[10px] text-stone-400 truncate block">
+                        <span className="text-[11px] text-stone-400 truncate block">
                           {deck.commander.type_line}
                         </span>
                       </div>
@@ -255,7 +255,7 @@ export const DeckList: React.FC<DeckListProps> = ({
                 <div className="relative z-10 pt-3 border-t border-stone-800/80 flex items-center justify-between text-xs">
                   <div className="flex items-center gap-1.5">
                     <span
-                      className={`px-2 py-0.5 rounded font-mono font-bold text-[11px] ${
+                      className={`px-2 py-0.5 rounded tabular-nums font-bold text-[11px] ${
                         count === 100
                           ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
                           : count > 100
@@ -282,11 +282,11 @@ export const DeckList: React.FC<DeckListProps> = ({
                         <span>Edytuj talię</span>
                       </button>
                     )}
-                    <span className="text-[11px] font-semibold text-purple-400/80 group-hover:text-purple-300 transition-colors hidden sm:inline-flex items-center gap-0.5">
+                    <span className="text-[11px] font-semibold text-amber-400/80 group-hover:text-amber-300 transition-colors hidden sm:inline-flex items-center gap-0.5">
                       <span>Otwórz talię</span>
                       <span className="group-hover:translate-x-0.5 transition-transform">→</span>
                     </span>
-                    <span className="font-mono font-bold text-amber-300">
+                    <span className="tabular-nums font-bold text-amber-300">
                       {formatCurrency(deckVal, settings.currency)}
                     </span>
                   </div>

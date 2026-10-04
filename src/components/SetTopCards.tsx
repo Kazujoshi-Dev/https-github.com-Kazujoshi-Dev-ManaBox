@@ -276,7 +276,7 @@ export const SetTopCards: React.FC<SetTopCardsProps> = ({
               <div>
                 <h2 className="text-xl font-bold text-stone-100 flex items-center gap-2">
                   Top z Dodatku
-                  <span className="text-xs font-mono font-bold px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                  <span className="text-xs tabular-nums font-bold px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30">
                     TOP 5 RZADKOŚCI
                   </span>
                 </h2>
@@ -291,10 +291,10 @@ export const SetTopCards: React.FC<SetTopCardsProps> = ({
           <div className="flex items-center gap-2 bg-stone-950/80 px-3.5 py-2 rounded-xl border border-stone-800 text-xs">
             <Coins className="w-4 h-4 text-amber-400 shrink-0" />
             <div>
-              <p className="text-[10px] uppercase font-semibold text-stone-400">Kurs Cardmarket Trend</p>
-              <p className="text-stone-200 font-mono font-semibold">
+              <p className="text-[11px] font-semibold text-stone-400">Kurs Cardmarket Trend</p>
+              <p className="text-stone-200 tabular-nums font-semibold">
                 1 EUR = <strong className="text-amber-400">{settings.eurToPlnRate.toFixed(2)} PLN</strong>
-                <span className="text-stone-400 text-[10px] ml-1 font-normal">(NBP)</span>
+                <span className="text-stone-400 text-[11px] ml-1 font-normal">(NBP)</span>
               </p>
             </div>
           </div>
@@ -305,7 +305,7 @@ export const SetTopCards: React.FC<SetTopCardsProps> = ({
           
           {/* Search / Select Set Dropdown */}
           <div className="md:col-span-7 relative" ref={dropdownRef}>
-            <label className="block text-[11px] font-semibold text-stone-400 uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
+            <label className="block text-[11px] font-semibold text-stone-400 mb-1.5 flex items-center gap-1.5">
               <Search className="w-3.5 h-3.5 text-amber-400" />
               <span>Wybierz lub wyszukaj dodatek MTG:</span>
             </label>
@@ -370,13 +370,13 @@ export const SetTopCards: React.FC<SetTopCardsProps> = ({
                           )}
                           <div className="truncate">
                             <span className="font-medium text-stone-100">{s.name}</span>
-                            <span className="ml-2 font-mono text-[10px] text-amber-400/90 uppercase px-1.5 py-0.5 rounded bg-stone-800 border border-stone-700">
+                            <span className="ml-2 tabular-nums text-[11px] text-amber-400/90 px-1.5 py-0.5 rounded bg-stone-800 border border-stone-700">
                               {s.code}
                             </span>
                           </div>
                         </div>
 
-                        <div className="flex items-center gap-3 text-stone-400 text-[11px] shrink-0 font-mono ml-2">
+                        <div className="flex items-center gap-3 text-stone-400 text-[11px] shrink-0 tabular-nums ml-2">
                           <span>{s.released_at ? s.released_at.substring(0, 4) : ''}</span>
                           <span>• {s.card_count} kart</span>
                           {isSelected && <Check className="w-4 h-4 text-amber-400 ml-1" />}
@@ -391,7 +391,7 @@ export const SetTopCards: React.FC<SetTopCardsProps> = ({
 
           {/* Native Select fallback for quick accessibility */}
           <div className="md:col-span-5">
-            <label className="block text-[11px] font-semibold text-stone-400 uppercase tracking-wider mb-1.5">
+            <label className="block text-[11px] font-semibold text-stone-400 mb-1.5">
               Szybka lista dodatków:
             </label>
             <select
@@ -401,7 +401,7 @@ export const SetTopCards: React.FC<SetTopCardsProps> = ({
             >
               {sets.slice(0, 150).map(s => (
                 <option key={s.code} value={s.code}>
-                  {s.name} ({s.code.toUpperCase()}) — {s.released_at ? s.released_at.substring(0, 4) : ''}
+                  {s.name} ({s.code.toUpperCase()}), {s.released_at ? s.released_at.substring(0, 4) : ''}
                 </option>
               ))}
             </select>
@@ -436,7 +436,7 @@ export const SetTopCards: React.FC<SetTopCardsProps> = ({
 
       {/* Selected Set Details & Statistics Bar */}
       {currentSet && (
-        <div className="bg-gradient-to-r from-stone-900 via-stone-900 to-stone-950 border border-stone-800 rounded-2xl p-5 shadow-lg relative overflow-hidden">
+        <div className="bg-stone-900 border border-stone-800 rounded-2xl p-5 shadow-lg relative overflow-hidden">
           <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 relative z-10">
             {/* Set info */}
             <div className="flex items-center gap-4">
@@ -454,16 +454,16 @@ export const SetTopCards: React.FC<SetTopCardsProps> = ({
               <div>
                 <div className="flex items-center gap-2 flex-wrap">
                   <h3 className="text-xl font-bold text-stone-100">{currentSet.name}</h3>
-                  <span className="font-mono text-xs uppercase px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/40 font-bold">
+                  <span className="tabular-nums text-xs px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/40 font-bold">
                     {currentSet.code}
                   </span>
                   {currentSet.set_type && (
-                    <span className="text-[10px] uppercase font-mono px-2 py-0.5 rounded bg-stone-800 text-stone-300 border border-stone-700">
+                    <span className="text-[11px] tabular-nums px-2 py-0.5 rounded bg-stone-800 text-stone-300 border border-stone-700">
                       {currentSet.set_type}
                     </span>
                   )}
                 </div>
-                <div className="flex items-center gap-4 text-xs text-stone-400 mt-1 font-mono">
+                <div className="flex items-center gap-4 text-xs text-stone-400 mt-1 tabular-nums">
                   {currentSet.released_at && (
                     <span className="flex items-center gap-1">
                       <Calendar className="w-3.5 h-3.5 text-stone-500" />
@@ -495,29 +495,29 @@ export const SetTopCards: React.FC<SetTopCardsProps> = ({
             {setMetrics && (
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 bg-stone-950/70 p-3 rounded-xl border border-stone-800/80">
                 <div>
-                  <p className="text-[10px] uppercase font-semibold text-stone-400">Top 1 Karta</p>
+                  <p className="text-[11px] font-semibold text-stone-400">Top 1 Karta</p>
                   <p className="text-sm font-bold text-amber-400 truncate max-w-[140px]" title={setMetrics.topCard?.name}>
                     {setMetrics.topCard?.name || '—'}
                   </p>
-                  <p className="text-xs font-mono font-semibold text-stone-200">
+                  <p className="text-xs tabular-nums font-semibold text-stone-200">
                     {formatCurrency(setMetrics.topCardPricePln, 'PLN')}
                   </p>
                 </div>
 
                 <div className="border-l border-stone-800/80 pl-3">
-                  <p className="text-[10px] uppercase font-semibold text-stone-400">Suma Top 5 Mythic</p>
-                  <p className="text-sm font-bold text-orange-400 font-mono">
+                  <p className="text-[11px] font-semibold text-stone-400">Suma Top 5 Mythic</p>
+                  <p className="text-sm font-bold text-orange-400 tabular-nums">
                     {formatCurrency(setMetrics.mythicSumPln, 'PLN')}
                   </p>
-                  <p className="text-[10px] text-stone-500">Mythic</p>
+                  <p className="text-[11px] text-stone-500">Mythic</p>
                 </div>
 
                 <div className="border-l border-stone-800/80 pl-3 col-span-2 sm:col-span-1">
-                  <p className="text-[10px] uppercase font-semibold text-stone-400">Suma Top 5 Rare</p>
-                  <p className="text-sm font-bold text-amber-300 font-mono">
+                  <p className="text-[11px] font-semibold text-stone-400">Suma Top 5 Rare</p>
+                  <p className="text-sm font-bold text-amber-300 tabular-nums">
                     {formatCurrency(setMetrics.rareSumPln, 'PLN')}
                   </p>
-                  <p className="text-[10px] text-stone-500">Rare</p>
+                  <p className="text-[11px] text-stone-500">Rare</p>
                 </div>
               </div>
             )}
@@ -553,7 +553,7 @@ export const SetTopCards: React.FC<SetTopCardsProps> = ({
               }`}
             >
               <span>{rc.shortLabel}</span>
-              <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono ${isActive ? 'bg-black/30' : 'bg-stone-800 text-stone-400'}`}>
+              <span className={`text-[11px] px-1.5 py-0.2 rounded-full tabular-nums ${isActive ? 'bg-black/30' : 'bg-stone-800 text-stone-400'}`}>
                 {isLoadingTopCards ? '...' : count}
               </span>
             </button>
@@ -610,15 +610,15 @@ export const SetTopCards: React.FC<SetTopCardsProps> = ({
                   <div className={`px-5 py-3.5 border-b border-stone-800 flex items-center justify-between ${rc.color}`}>
                     <div className="flex items-center gap-2.5">
                       <span className="w-3 h-3 rounded-full bg-current" />
-                      <h4 className="font-bold text-sm tracking-wide uppercase">
+                      <h4 className="font-bold text-sm ">
                         {rc.label}
                       </h4>
-                      <span className="text-[11px] font-mono px-2 py-0.5 rounded-full bg-stone-950/60 text-stone-300 border border-stone-700 font-semibold">
+                      <span className="text-[11px] tabular-nums px-2 py-0.5 rounded-full bg-stone-950/60 text-stone-300 border border-stone-700 font-semibold">
                         Top {cards.length}
                       </span>
                     </div>
 
-                    <div className="text-[11px] font-mono text-stone-400">
+                    <div className="text-[11px] tabular-nums text-stone-400">
                       Wycena: <strong className="text-stone-200">MCM Trend (PLN)</strong>
                     </div>
                   </div>
@@ -627,7 +627,7 @@ export const SetTopCards: React.FC<SetTopCardsProps> = ({
                   <div className="overflow-x-auto">
                     <table className="w-full text-left border-collapse">
                       <thead>
-                        <tr className="border-b border-stone-800/80 bg-stone-950/50 text-[11px] uppercase tracking-wider text-stone-400">
+                        <tr className="border-b border-stone-800/80 bg-stone-950/50 text-[11px] text-stone-400">
                           <th className="py-3 px-4 w-12 text-center font-semibold">#</th>
                           <th className="py-3 px-4 font-semibold">Karta</th>
                           <th className="py-3 px-4 font-semibold hidden md:table-cell">Typ</th>
@@ -649,26 +649,26 @@ export const SetTopCards: React.FC<SetTopCardsProps> = ({
 
                           // Rank medal styling
                           let rankBadge = (
-                            <span className="w-6 h-6 rounded-full bg-stone-800 text-stone-400 flex items-center justify-center font-mono font-bold text-xs mx-auto">
+                            <span className="w-6 h-6 rounded-full bg-stone-800 text-stone-400 flex items-center justify-center tabular-nums font-bold text-xs mx-auto">
                               {index + 1}
                             </span>
                           );
                           if (index === 0) {
                             rankBadge = (
-                              <span className="w-6 h-6 rounded-full bg-amber-500/20 text-amber-400 border border-amber-500/40 flex items-center justify-center font-mono font-bold text-xs shadow-xs mx-auto" title="1. miejsce">
-                                🥇
+                              <span className="w-6 h-6 rounded-full bg-amber-500/20 text-amber-400 border border-amber-500/40 flex items-center justify-center tabular-nums font-bold text-xs shadow-xs mx-auto" title="1. miejsce">
+                                1
                               </span>
                             );
                           } else if (index === 1) {
                             rankBadge = (
-                              <span className="w-6 h-6 rounded-full bg-stone-300/20 text-stone-200 border border-stone-400/40 flex items-center justify-center font-mono font-bold text-xs mx-auto" title="2. miejsce">
-                                🥈
+                              <span className="w-6 h-6 rounded-full bg-stone-300/20 text-stone-200 border border-stone-400/40 flex items-center justify-center tabular-nums font-bold text-xs mx-auto" title="2. miejsce">
+                                2
                               </span>
                             );
                           } else if (index === 2) {
                             rankBadge = (
-                              <span className="w-6 h-6 rounded-full bg-amber-700/20 text-amber-600 border border-amber-700/40 flex items-center justify-center font-mono font-bold text-xs mx-auto" title="3. miejsce">
-                                🥉
+                              <span className="w-6 h-6 rounded-full bg-amber-700/20 text-amber-600 border border-amber-700/40 flex items-center justify-center tabular-nums font-bold text-xs mx-auto" title="3. miejsce">
+                                3
                               </span>
                             );
                           }
@@ -713,7 +713,7 @@ export const SetTopCards: React.FC<SetTopCardsProps> = ({
                                       )}
                                     </div>
 
-                                    <div className="flex items-center gap-2 mt-0.5 text-[11px] text-stone-400 font-mono">
+                                    <div className="flex items-center gap-2 mt-0.5 text-[11px] text-stone-400 tabular-nums">
                                       <span>#{card.collector_number}</span>
                                       <span>•</span>
                                       <span className="capitalize">{card.rarity}</span>
@@ -736,23 +736,23 @@ export const SetTopCards: React.FC<SetTopCardsProps> = ({
                               <td className="py-3 px-4 text-right">
                                 {card.prices?.eur ? (
                                   <div>
-                                    <span className="font-mono font-bold text-sm text-amber-300">
+                                    <span className="tabular-nums font-bold text-sm text-amber-300">
                                       {normalPrice.formattedPln}
                                     </span>
                                     {normalPrice.originalEur && (
-                                      <div className="text-[10px] text-stone-500 font-mono">
+                                      <div className="text-[11px] text-stone-500 tabular-nums">
                                         {normalPrice.originalEur}
                                       </div>
                                     )}
                                   </div>
                                 ) : card.prices?.eur_foil ? (
                                   <div>
-                                    <span className="text-[11px] font-mono font-medium text-amber-400/90 px-1.5 py-0.5 rounded bg-amber-500/10 border border-amber-500/20">
+                                    <span className="text-[11px] tabular-nums font-medium text-amber-400/90 px-1.5 py-0.5 rounded bg-amber-500/10 border border-amber-500/20">
                                       Tylko Foil
                                     </span>
                                   </div>
                                 ) : (
-                                  <span className="text-stone-600 font-mono text-xs">—</span>
+                                  <span className="text-stone-600 tabular-nums text-xs">—</span>
                                 )}
                               </td>
 
@@ -761,18 +761,18 @@ export const SetTopCards: React.FC<SetTopCardsProps> = ({
                                 <div>
                                   {foilPrice.formattedPln !== '—' ? (
                                     <>
-                                      <span className="font-mono font-bold text-xs text-amber-400/90 flex items-center justify-end gap-1">
+                                      <span className="tabular-nums font-bold text-xs text-amber-400/90 flex items-center justify-end gap-1">
                                         <Sparkles className="w-3 h-3 text-amber-400 shrink-0" />
                                         {foilPrice.formattedPln}
                                       </span>
                                       {foilPrice.originalEur && (
-                                        <div className="text-[10px] text-stone-500 font-mono">
+                                        <div className="text-[11px] text-stone-500 tabular-nums">
                                           {foilPrice.originalEur}
                                         </div>
                                       )}
                                     </>
                                   ) : (
-                                    <span className="text-stone-600 font-mono text-xs">—</span>
+                                    <span className="text-stone-600 tabular-nums text-xs">—</span>
                                   )}
                                 </div>
                               </td>
@@ -825,7 +825,7 @@ export const SetTopCards: React.FC<SetTopCardsProps> = ({
                                     target="_blank"
                                     rel="noopener noreferrer"
                                     title="Otwórz ofertę na Cardmarket.com"
-                                    className="p-1.5 rounded-lg bg-stone-800 hover:bg-stone-700 text-stone-400 hover:text-blue-400 transition-colors"
+                                    className="p-1.5 rounded-lg bg-stone-800 hover:bg-stone-700 text-stone-400 hover:text-amber-400 transition-colors"
                                   >
                                     <ExternalLink className="w-3.5 h-3.5" />
                                   </a>

@@ -407,7 +407,7 @@ export default function App() {
 
     setDeckCardIsFoil(isFoil);
     if (deckCardBeingViewed) {
-      showToast(isFoil ? `Ustawiono wersję Foil ✨ dla "${targetCard.name}"!` : `Ustawiono wersję Standard dla "${targetCard.name}"!`);
+      showToast(isFoil ? `Ustawiono wersję Foil dla "${targetCard.name}"!` : `Ustawiono wersję Standard dla "${targetCard.name}"!`);
     }
   }, [deckCardBeingViewed, selectedCardForModal, selectedCollectionItemForModal, selectedDeck, decks, updateDeck, showToast]);
 
@@ -537,11 +537,11 @@ export default function App() {
   if (publicSaleError && !currentUser) {
     return (
       <div className="min-h-screen bg-stone-950 flex flex-col items-center justify-center p-6 text-stone-100">
-        <div className="max-w-md w-full bg-stone-900 border border-stone-800 rounded-3xl p-8 text-center space-y-4 shadow-2xl">
+        <div className="max-w-md w-full bg-stone-900 border border-stone-800 rounded-2xl p-8 text-center space-y-4 shadow-2xl">
           <div className="w-12 h-12 rounded-2xl bg-rose-500/10 border border-rose-500/30 text-rose-400 flex items-center justify-center mx-auto">
             <CircleDollarSign className="w-6 h-6" />
           </div>
-          <h2 className="text-xl font-black text-white">{publicKind === 'deck' ? 'Nie znaleziono talii' : publicKind === 'wishlist' ? 'Nie znaleziono listy życzeń' : 'Nie znaleziono oferty'}</h2>
+          <h2 className="text-xl font-bold text-white">{publicKind === 'deck' ? 'Nie znaleziono talii' : publicKind === 'wishlist' ? 'Nie znaleziono listy życzeń' : 'Nie znaleziono oferty'}</h2>
           <p className="text-xs text-stone-400">{publicSaleError}</p>
           <button
             onClick={() => {
@@ -600,7 +600,7 @@ export default function App() {
                 setPublicDeckData(null);
                 window.history.pushState({}, '', window.location.pathname);
               }}
-              className="px-4 py-2.5 bg-gradient-to-r from-amber-600 to-amber-500 hover:from-amber-500 hover:to-amber-400 text-stone-950 font-black text-xs rounded-xl shadow-xl shadow-amber-950/50 flex items-center gap-2 cursor-pointer transition-all"
+              className="px-4 py-2.5 bg-amber-600 hover:bg-amber-500 text-stone-950 font-bold text-xs rounded-xl shadow-xl shadow-amber-950/50 flex items-center gap-2 cursor-pointer transition-all"
             >
               <span>← Moja Kolekcja ({currentUser.username})</span>
             </button>
@@ -630,7 +630,7 @@ export default function App() {
                 setPublicWishlistData(null);
                 window.history.pushState({}, '', window.location.pathname);
               }}
-              className="px-4 py-2.5 bg-gradient-to-r from-amber-600 to-amber-500 hover:from-amber-500 hover:to-amber-400 text-stone-950 font-black text-xs rounded-xl shadow-xl shadow-amber-950/50 flex items-center gap-2 cursor-pointer transition-all"
+              className="px-4 py-2.5 bg-amber-600 hover:bg-amber-500 text-stone-950 font-bold text-xs rounded-xl shadow-xl shadow-amber-950/50 flex items-center gap-2 cursor-pointer transition-all"
             >
               <span>← Moja Kolekcja ({currentUser.username})</span>
             </button>
@@ -660,7 +660,7 @@ export default function App() {
                 setPublicSaleData(null);
                 window.history.pushState({}, '', window.location.pathname);
               }}
-              className="px-4 py-2.5 bg-gradient-to-r from-amber-600 to-amber-500 hover:from-amber-500 hover:to-amber-400 text-stone-950 font-black text-xs rounded-xl shadow-xl shadow-amber-950/50 flex items-center gap-2 cursor-pointer transition-all"
+              className="px-4 py-2.5 bg-amber-600 hover:bg-amber-500 text-stone-950 font-bold text-xs rounded-xl shadow-xl shadow-amber-950/50 flex items-center gap-2 cursor-pointer transition-all"
             >
               <span>← Moja Kolekcja ({currentUser.username})</span>
             </button>

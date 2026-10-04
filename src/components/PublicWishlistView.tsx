@@ -87,11 +87,11 @@ export const PublicWishlistView: React.FC<PublicWishlistViewProps> = ({
       <header className="bg-stone-900 border-b border-stone-800 sticky top-0 z-30 shadow-md pt-[env(safe-area-inset-top)]">
         <div className="max-w-[1760px] w-full mx-auto px-4 sm:px-6 lg:px-8 xl:px-10 py-3 flex items-center justify-between gap-3">
           <div className="flex items-center gap-3 min-w-0">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-rose-600 to-pink-500 flex items-center justify-center shadow-lg shadow-rose-950/60 ring-1 ring-rose-400/30 shrink-0">
+            <div className="w-10 h-10 rounded-xl bg-rose-600 flex items-center justify-center shadow-lg shadow-rose-950/60 ring-1 ring-rose-400/30 shrink-0">
               <FolderHeart className="w-5 h-5 text-white" />
             </div>
             <div className="min-w-0">
-              <h1 className="text-base sm:text-lg font-black tracking-tight bg-gradient-to-r from-rose-200 to-stone-200 bg-clip-text text-transparent truncate">
+              <h1 className="text-base sm:text-lg font-bold tracking-tight text-rose-200 truncate">
                 <span className="hidden sm:inline">Mana Screw • </span>Lista życzeń
               </h1>
               <p className="text-xs text-stone-400 truncate">
@@ -115,7 +115,7 @@ export const PublicWishlistView: React.FC<PublicWishlistViewProps> = ({
               <button
                 type="button"
                 onClick={onOpenLogin}
-                className="h-10 px-4 bg-gradient-to-r from-amber-600 to-amber-500 hover:from-amber-500 hover:to-amber-400 text-stone-950 font-black text-xs rounded-xl shadow-lg shadow-amber-950/50 flex items-center gap-1.5 cursor-pointer"
+                className="h-10 px-4 bg-amber-600 hover:bg-amber-500 text-stone-950 font-bold text-xs rounded-xl shadow-lg shadow-amber-950/50 flex items-center gap-1.5 cursor-pointer"
               >
                 <LogIn className="w-4 h-4" />
                 <span>Zaloguj się</span>
@@ -127,12 +127,12 @@ export const PublicWishlistView: React.FC<PublicWishlistViewProps> = ({
 
       <main className="max-w-[1760px] w-full mx-auto px-4 sm:px-6 lg:px-8 xl:px-10 pt-6 space-y-6">
         {/* Baner */}
-        <div className="bg-stone-900 border border-stone-800 rounded-3xl p-5 sm:p-6 shadow-2xl flex flex-col md:flex-row md:items-center md:justify-between gap-5">
+        <div className="bg-stone-900 border border-stone-800 rounded-2xl p-5 sm:p-6 shadow-2xl flex flex-col md:flex-row md:items-center md:justify-between gap-5">
           <div className="space-y-2">
-            <span className="px-2.5 py-0.5 rounded-full text-xs font-mono font-bold bg-rose-500/20 text-rose-300 border border-rose-500/40 uppercase">
+            <span className="px-2.5 py-0.5 rounded-full text-xs tabular-nums font-bold bg-rose-500/20 text-rose-300 border border-rose-500/40 ">
               Szukam kart
             </span>
-            <h2 className="text-2xl sm:text-3xl font-black text-white tracking-tight">Lista życzeń gracza @{owner.username}</h2>
+            <h2 className="text-2xl sm:text-3xl font-bold text-white tracking-tight">Lista życzeń gracza @{owner.username}</h2>
             <p className="text-xs text-stone-400 max-w-xl">
               Masz którąś z tych kart? {isLoggedIn ? 'Napisz do gracza w zakładce Wiadomości.' : 'Załóż darmowe konto lub zaloguj się, aby napisać do gracza i wystawić swoje karty.'}{' '}
               Wycena orientacyjna w <strong>{settings.currency}</strong> ({settings.pricingSource === 'CARDMARKET' ? 'Cardmarket trend' : 'TCGPlayer market'}).
@@ -141,12 +141,12 @@ export const PublicWishlistView: React.FC<PublicWishlistViewProps> = ({
 
           <div className="grid grid-cols-2 sm:flex sm:items-center gap-3 sm:flex-wrap">
             <div className="bg-stone-950/80 px-4 py-2.5 rounded-2xl border border-stone-800">
-              <span className="text-[10px] uppercase font-bold text-stone-400 block">Szukanych kart</span>
-              <span className="text-lg font-black text-stone-100 font-mono">{totalCards} szt.</span>
+              <span className="text-[11px] font-bold text-stone-400 block">Szukanych kart</span>
+              <span className="text-lg font-bold text-stone-100 tabular-nums">{totalCards} szt.</span>
             </div>
             <div className="bg-stone-950/80 px-4 py-2.5 rounded-2xl border border-rose-500/30">
-              <span className="text-[10px] uppercase font-bold text-stone-400 block">Wartość rynkowa</span>
-              <span className="text-lg font-black text-rose-200 font-mono">{formatCurrency(totalValue, settings.currency)}</span>
+              <span className="text-[11px] font-bold text-stone-400 block">Wartość rynkowa</span>
+              <span className="text-lg font-bold text-rose-200 tabular-nums">{formatCurrency(totalValue, settings.currency)}</span>
             </div>
             <button
               type="button"
@@ -204,7 +204,7 @@ export const PublicWishlistView: React.FC<PublicWishlistViewProps> = ({
 
         {/* Karty */}
         {displayed.length === 0 ? (
-          <div className="bg-stone-900/60 border border-dashed border-stone-800 rounded-3xl p-12 text-center space-y-3">
+          <div className="bg-stone-900/60 border border-dashed border-stone-800 rounded-2xl p-12 text-center space-y-3">
             <FolderHeart className="w-12 h-12 text-stone-600 mx-auto" />
             <h3 className="text-base font-bold text-white">
               {wishlist.length === 0 ? 'Lista życzeń jest pusta' : 'Brak kart spełniających kryteria'}
@@ -224,7 +224,7 @@ export const PublicWishlistView: React.FC<PublicWishlistViewProps> = ({
                   className="group relative text-left bg-stone-900 rounded-2xl border border-stone-800 hover:border-rose-400/70 transition-colors overflow-hidden flex flex-col shadow-lg cursor-pointer"
                 >
                   {item.isFoil && (
-                    <div className="absolute top-0 right-0 z-10 bg-gradient-to-l from-amber-500 via-purple-500 to-blue-500 text-stone-950 font-extrabold text-[10px] px-2 py-0.5 rounded-bl-lg flex items-center gap-1 uppercase tracking-wider">
+                    <div className="absolute top-0 right-0 z-10 ms-foil-chip font-semibold text-[11px] px-2 py-0.5 rounded-bl-lg flex items-center gap-1 ">
                       <Sparkles className="w-3 h-3 fill-stone-950" />
                       Foil
                     </div>
@@ -243,7 +243,7 @@ export const PublicWishlistView: React.FC<PublicWishlistViewProps> = ({
                         <EdhrecBadge rank={rank} size="xs" />
                       </div>
                     )}
-                    <div className="absolute top-2 left-2 bg-rose-600 text-white text-xs font-black px-2 py-0.5 rounded-lg shadow">
+                    <div className="absolute top-2 left-2 bg-rose-600 text-white text-xs font-bold px-2 py-0.5 rounded-lg shadow">
                       ×{item.targetQuantity}
                     </div>
                   </div>
@@ -254,17 +254,17 @@ export const PublicWishlistView: React.FC<PublicWishlistViewProps> = ({
                         <ManaSymbol cost={item.card.mana_cost} size="sm" />
                       </div>
                       <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
-                        <span className="uppercase font-mono text-[9px] font-bold bg-stone-800 text-stone-300 px-1.5 rounded border border-stone-700">
+                        <span className="tabular-nums text-[11px] font-bold bg-stone-800 text-stone-300 px-1.5 rounded border border-stone-700">
                           {item.card.set}
                         </span>
-                        <span className={`text-[9px] px-1.5 rounded border font-semibold ${getRarityColor(item.card.rarity)}`}>
+                        <span className={`text-[11px] px-1.5 rounded border font-semibold ${getRarityColor(item.card.rarity)}`}>
                           {getRarityLabel(item.card.rarity)}
                         </span>
                       </div>
                     </div>
                     <div className="pt-2 border-t border-stone-800 flex items-center justify-between text-[11px]">
                       <span className="text-stone-400">Rynkowo</span>
-                      <span className="font-black font-mono text-rose-200">{formatCurrency(unitPrice(item), settings.currency)}</span>
+                      <span className="font-bold tabular-nums text-rose-200">{formatCurrency(unitPrice(item), settings.currency)}</span>
                     </div>
                   </div>
                 </button>
@@ -285,7 +285,7 @@ export const PublicWishlistView: React.FC<PublicWishlistViewProps> = ({
         >
           <div
             onClick={(e) => e.stopPropagation()}
-            className="bg-stone-900 border border-stone-800 rounded-3xl max-w-lg w-full p-6 shadow-2xl space-y-4 relative max-sm:rounded-b-none max-sm:max-h-[92dvh] max-sm:overflow-y-auto max-sm:pb-[calc(1.5rem+env(safe-area-inset-bottom))] max-sm:animate-[slideUp_.2s_ease-out]"
+            className="bg-stone-900 border border-stone-800 rounded-2xl max-w-lg w-full p-6 shadow-2xl space-y-4 relative max-sm:rounded-b-none max-sm:max-h-[92dvh] max-sm:overflow-y-auto max-sm:pb-[calc(1.5rem+env(safe-area-inset-bottom))] max-sm:animate-[slideUp_.2s_ease-out]"
           >
             <button
               type="button"
@@ -307,13 +307,13 @@ export const PublicWishlistView: React.FC<PublicWishlistViewProps> = ({
               </div>
               <div className="space-y-3 flex-1 min-w-0">
                 <div>
-                  <h3 className="text-lg font-black text-white pr-10">{preview.card.name}</h3>
+                  <h3 className="text-lg font-bold text-white pr-10">{preview.card.name}</h3>
                   <p className="text-xs text-stone-400">{preview.card.type_line}</p>
                 </div>
                 <div className="bg-stone-950 p-3 rounded-2xl border border-rose-500/30">
-                  <span className="text-[10px] uppercase font-bold text-stone-400 block">Szuka</span>
-                  <p className="text-xl font-black text-rose-200">
-                    {preview.targetQuantity} szt.{preview.isFoil && <span className="text-amber-300 text-sm"> ✨ Foil</span>}
+                  <span className="text-[11px] font-bold text-stone-400 block">Szuka</span>
+                  <p className="text-xl font-bold text-rose-200">
+                    {preview.targetQuantity} szt.{preview.isFoil && <span className="text-amber-300 text-sm"> Foil</span>}
                   </p>
                 </div>
                 <div className="text-xs space-y-1 text-stone-300">
@@ -333,7 +333,7 @@ export const PublicWishlistView: React.FC<PublicWishlistViewProps> = ({
                 <button
                   type="button"
                   onClick={() => { setPreview(null); onOpenLogin(); }}
-                  className="h-10 px-4 bg-amber-500 hover:bg-amber-400 text-stone-950 text-xs font-black rounded-xl cursor-pointer shrink-0"
+                  className="h-10 px-4 bg-amber-500 hover:bg-amber-400 text-stone-950 text-xs font-bold rounded-xl cursor-pointer shrink-0"
                 >
                   Zaloguj się
                 </button>

@@ -366,7 +366,7 @@ export const UsersList: React.FC<UsersListProps> = ({
           item.salePrice !== undefined && item.salePrice !== null
             ? formatCurrency(item.salePrice, effSettings.currency)
             : formatCurrency(getCardPrice(item.card, Boolean(item.quantityFoil > 0), effSettings), effSettings.currency);
-        return `${totalQty}x ${item.card.name} (${item.card.set.toUpperCase()}) #${item.card.collector_number}${foilTag} [${item.condition}, ${item.language}] — ${price}`;
+        return `${totalQty}x ${item.card.name} (${item.card.set.toUpperCase()}) #${item.card.collector_number}${foilTag} [${item.condition}, ${item.language}] - ${price}`;
       })
       .join('\n');
 
@@ -385,7 +385,7 @@ export const UsersList: React.FC<UsersListProps> = ({
       .map((item) => {
         const foilTag = item.isFoil ? ' [FOIL]' : '';
         const price = formatCurrency(getCardPrice(item.card, item.isFoil, effSettings), effSettings.currency);
-        return `${item.targetQuantity || 1}x ${item.card.name} (${item.card.set.toUpperCase()}) #${item.card.collector_number}${foilTag} — ${price}${item.notes ? ` (Notatka: ${item.notes})` : ''}`;
+        return `${item.targetQuantity || 1}x ${item.card.name} (${item.card.set.toUpperCase()}) #${item.card.collector_number}${foilTag} - ${price}${item.notes ? ` (Notatka: ${item.notes})` : ''}`;
       })
       .join('\n');
 
@@ -433,7 +433,7 @@ export const UsersList: React.FC<UsersListProps> = ({
               <button
                 type="button"
                 onClick={() => handleOpenSendMessage(selectedUser)}
-                className="px-3.5 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-md shadow-blue-950/50"
+                className="px-3.5 py-2 bg-amber-500 hover:bg-amber-400 text-stone-950 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-md shadow-amber-950/50"
                 title={`Napisz wiadomość do @${selectedUser.username}`}
               >
                 <Mail className="w-3.5 h-3.5" />
@@ -469,26 +469,25 @@ export const UsersList: React.FC<UsersListProps> = ({
         </div>
 
         {/* Seller Banner */}
-        <div className="bg-stone-900 border border-stone-800 rounded-3xl p-6 shadow-2xl relative overflow-hidden">
-          <div className="absolute top-0 right-0 w-96 h-96 bg-gradient-to-bl from-emerald-500/10 via-rose-500/5 to-transparent rounded-full blur-3xl pointer-events-none" />
+        <div className="bg-stone-900 border border-stone-800 rounded-2xl p-6 shadow-2xl relative overflow-hidden">
 
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 relative z-10">
             <div className="flex items-center gap-4">
-              <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-emerald-600 via-teal-600 to-rose-600 border border-emerald-400/40 flex items-center justify-center text-white text-2xl font-black shadow-xl shadow-emerald-950/60 ring-2 ring-emerald-500/20">
+              <div className="w-16 h-16 rounded-2xl bg-emerald-600 border border-emerald-400/40 flex items-center justify-center text-white text-2xl font-bold shadow-xl shadow-emerald-950/60 ring-2 ring-emerald-500/20">
                 {selectedUser.username.charAt(0).toUpperCase()}
               </div>
 
               <div className="space-y-1">
                 <div className="flex items-center gap-2.5 flex-wrap">
-                  <h2 className="text-2xl font-black text-white tracking-tight">
+                  <h2 className="text-2xl font-bold text-white tracking-tight">
                     @{selectedUser.username}
                   </h2>
                   {currentUser?.id === selectedUser.id && (
-                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40 font-mono">
+                    <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40 tabular-nums">
                       To Twoje konto
                     </span>
                   )}
-                  <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-blue-500/20 text-blue-300 border border-blue-500/40 font-mono">
+                  <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40 tabular-nums">
                     Profil Użytkownika
                   </span>
                 </div>
@@ -502,15 +501,15 @@ export const UsersList: React.FC<UsersListProps> = ({
             {/* Quick Metrics Bar */}
             <div className="flex items-center gap-3 flex-wrap">
               <div className="bg-stone-950/80 px-4 py-2.5 rounded-2xl border border-emerald-500/30 shadow-inner">
-                <span className="text-[10px] uppercase font-bold text-stone-400 block">Karty na sprzedaż</span>
-                <span className="text-lg font-black text-emerald-300 font-mono">
+                <span className="text-[11px] font-bold text-stone-400 block">Karty na sprzedaż</span>
+                <span className="text-lg font-bold text-emerald-300 tabular-nums">
                   {forSaleBadgeCount} szt.
                 </span>
               </div>
 
               <div className="bg-stone-950/80 px-4 py-2.5 rounded-2xl border border-rose-500/30 shadow-inner">
-                <span className="text-[10px] uppercase font-bold text-stone-400 block">Lista życzeń</span>
-                <span className="text-lg font-black text-rose-300 font-mono">
+                <span className="text-[11px] font-bold text-stone-400 block">Lista życzeń</span>
+                <span className="text-lg font-bold text-rose-300 tabular-nums">
                   {wishlistBadgeCount} szt.
                 </span>
               </div>
@@ -530,7 +529,7 @@ export const UsersList: React.FC<UsersListProps> = ({
             >
               <CircleDollarSign className="w-4 h-4" />
               <span>Karty na Sprzedaż</span>
-              <span className={`px-2 py-0.5 rounded-full font-mono text-[10px] ${
+              <span className={`px-2 py-0.5 rounded-full tabular-nums text-[11px] ${
                 profileTab === 'for-sale' ? 'bg-emerald-950 text-emerald-200' : 'bg-stone-900 text-stone-400'
               }`}>
                 {forSaleBadgeCount}
@@ -548,7 +547,7 @@ export const UsersList: React.FC<UsersListProps> = ({
             >
               <FolderHeart className="w-4 h-4" />
               <span>Lista Życzeń</span>
-              <span className={`px-2 py-0.5 rounded-full font-mono text-[10px] ${
+              <span className={`px-2 py-0.5 rounded-full tabular-nums text-[11px] ${
                 profileTab === 'wishlist' ? 'bg-rose-950 text-rose-200' : 'bg-stone-900 text-stone-400'
               }`}>
                 {wishlistBadgeCount}
@@ -580,7 +579,7 @@ export const UsersList: React.FC<UsersListProps> = ({
                 </button>
               </div>
             ) : !sellerOffers || sellerOffers.cards.length === 0 ? (
-              <div className="bg-stone-900/60 border border-dashed border-stone-800 rounded-3xl p-12 text-center space-y-4 shadow-inner">
+              <div className="bg-stone-900/60 border border-dashed border-stone-800 rounded-2xl p-12 text-center space-y-4 shadow-inner">
                 <div className="w-16 h-16 rounded-2xl bg-stone-800/80 text-stone-500 mx-auto flex items-center justify-center">
                   <CircleDollarSign className="w-8 h-8" />
                 </div>
@@ -607,11 +606,11 @@ export const UsersList: React.FC<UsersListProps> = ({
                 <div className="bg-stone-900/80 border border-stone-800 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                   <div className="flex items-center gap-3">
                     <span className="text-xs font-semibold text-stone-400">
-                      Wycena oferty: <strong className="text-emerald-300 font-mono text-sm">{formatCurrency(selectedUserTotalValue, effSettings.currency)}</strong>
+                      Wycena oferty: <strong className="text-emerald-300 tabular-nums text-sm">{formatCurrency(selectedUserTotalValue, effSettings.currency)}</strong>
                     </span>
                     <span className="text-xs text-stone-500">•</span>
                     <span className="text-xs text-stone-400">
-                      Pozycji: <strong className="text-stone-200 font-mono">{sellerOffers.cards.length}</strong>
+                      Pozycji: <strong className="text-stone-200 tabular-nums">{sellerOffers.cards.length}</strong>
                     </span>
                   </div>
 
@@ -645,7 +644,7 @@ export const UsersList: React.FC<UsersListProps> = ({
                       onClick={() => setCardFoilOnly((prev) => !prev)}
                       className={`px-3 py-1.5 rounded-xl text-xs font-bold border transition-all flex items-center gap-1.5 cursor-pointer ${
                         cardFoilOnly
-                          ? 'bg-gradient-to-r from-amber-500/20 to-purple-500/20 text-amber-300 border-amber-500/40 shadow'
+                          ? 'bg-amber-500/20 text-amber-300 border-amber-500/40 shadow'
                           : 'bg-stone-950 text-stone-400 border-stone-800 hover:border-stone-700'
                       }`}
                     >
@@ -701,13 +700,13 @@ export const UsersList: React.FC<UsersListProps> = ({
                         className="group relative bg-stone-900 rounded-2xl border border-stone-800 hover:border-emerald-500/50 transition-all duration-300 overflow-hidden flex flex-col shadow-md hover:shadow-xl hover:shadow-emerald-950/20"
                       >
                         {isFoil && (
-                          <div className="absolute top-0 right-0 z-10 bg-gradient-to-l from-amber-500 via-purple-500 to-blue-500 text-stone-950 font-extrabold text-[10px] px-2 py-0.5 rounded-bl-lg shadow-sm flex items-center gap-1 uppercase tracking-wider">
+                          <div className="absolute top-0 right-0 z-10 ms-foil-chip font-semibold text-[11px] px-2 py-0.5 rounded-bl-lg shadow-sm flex items-center gap-1 ">
                             <Sparkles className="w-3 h-3 fill-stone-950" />
                             <span>Foil</span>
                           </div>
                         )}
 
-                        <div className="absolute top-2 left-2 z-10 bg-stone-950/85 backdrop-blur-md text-stone-200 text-[10px] font-mono font-bold px-2 py-0.5 rounded-full border border-stone-800 shadow">
+                        <div className="absolute top-2 left-2 z-10 bg-stone-950/85 backdrop-blur-md text-stone-200 text-[11px] tabular-nums font-bold px-2 py-0.5 rounded-full border border-stone-800 shadow">
                           {item.condition} • {item.language}
                         </div>
 
@@ -749,26 +748,26 @@ export const UsersList: React.FC<UsersListProps> = ({
                             </h4>
 
                             <div className="flex items-center justify-between gap-1 text-[11px] text-stone-400 mt-1">
-                              <span className="truncate max-w-[110px] uppercase font-mono text-[10px]">
+                              <span className="truncate max-w-[110px] tabular-nums text-[11px]">
                                 {card.set} • #{card.collector_number}
                               </span>
-                              <span className={`capitalize font-semibold text-[10px] ${rarityColor}`}>
+                              <span className={`capitalize font-semibold text-[11px] ${rarityColor}`}>
                                 {getRarityLabel(card.rarity)}
                               </span>
                             </div>
                           </div>
 
                           <div className="pt-2 border-t border-stone-800/80 flex items-center justify-between text-xs">
-                            <span className="font-mono text-stone-400 text-[11px]">
+                            <span className="tabular-nums text-stone-400 text-[11px]">
                               Ilość: <strong className="text-stone-200">{item.quantity + item.quantityFoil}x</strong>
                             </span>
 
                             <div className="text-right">
-                              <span className="font-mono font-black text-emerald-300 text-sm">
+                              <span className="tabular-nums font-bold text-emerald-300 text-sm">
                                 {formatCurrency(effectivePrice, effSettings.currency)}
                               </span>
                               {item.salePrice !== undefined && item.salePrice !== null && (
-                                <span className="block text-[9px] text-emerald-400/80 font-mono">Cena sprzedawcy</span>
+                                <span className="block text-[11px] text-emerald-400/80 tabular-nums">Cena sprzedawcy</span>
                               )}
                             </div>
                           </div>
@@ -805,7 +804,7 @@ export const UsersList: React.FC<UsersListProps> = ({
                 </button>
               </div>
             ) : !userWishlist || userWishlist.length === 0 ? (
-              <div className="bg-stone-900/60 border border-dashed border-stone-800 rounded-3xl p-12 text-center space-y-4 shadow-inner">
+              <div className="bg-stone-900/60 border border-dashed border-stone-800 rounded-2xl p-12 text-center space-y-4 shadow-inner">
                 <div className="w-16 h-16 rounded-2xl bg-stone-800/80 text-rose-400/60 mx-auto flex items-center justify-center">
                   <FolderHeart className="w-8 h-8" />
                 </div>
@@ -832,11 +831,11 @@ export const UsersList: React.FC<UsersListProps> = ({
                 <div className="bg-stone-900/80 border border-stone-800 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                   <div className="flex items-center gap-3">
                     <span className="text-xs font-semibold text-stone-400">
-                      Szacowany koszt rynkowy: <strong className="text-emerald-300 font-mono text-sm">{formatCurrency(selectedUserWishlistCost, effSettings.currency)}</strong>
+                      Szacowany koszt rynkowy: <strong className="text-emerald-300 tabular-nums text-sm">{formatCurrency(selectedUserWishlistCost, effSettings.currency)}</strong>
                     </span>
                     <span className="text-xs text-stone-500">•</span>
                     <span className="text-xs text-stone-400">
-                      Poszukiwanych kart: <strong className="text-rose-300 font-mono">{selectedUserWishlistCount} szt.</strong> ({userWishlist.length} pozycji)
+                      Poszukiwanych kart: <strong className="text-rose-300 tabular-nums">{selectedUserWishlistCount} szt.</strong> ({userWishlist.length} pozycji)
                     </span>
                   </div>
 
@@ -870,7 +869,7 @@ export const UsersList: React.FC<UsersListProps> = ({
                       onClick={() => setWishlistFoilOnly((prev) => !prev)}
                       className={`px-3 py-1.5 rounded-xl text-xs font-bold border transition-all flex items-center gap-1.5 cursor-pointer ${
                         wishlistFoilOnly
-                          ? 'bg-gradient-to-r from-amber-500/20 to-purple-500/20 text-amber-300 border-amber-500/40 shadow'
+                          ? 'bg-amber-500/20 text-amber-300 border-amber-500/40 shadow'
                           : 'bg-stone-950 text-stone-400 border-stone-800 hover:border-stone-700'
                       }`}
                     >
@@ -910,13 +909,13 @@ export const UsersList: React.FC<UsersListProps> = ({
                         className="group relative bg-stone-900 rounded-2xl border border-stone-800 hover:border-rose-500/50 transition-all duration-300 overflow-hidden flex flex-col shadow-md hover:shadow-xl hover:shadow-rose-950/20"
                       >
                         {isFoil && (
-                          <div className="absolute top-0 right-0 z-10 bg-gradient-to-l from-amber-500 via-purple-500 to-blue-500 text-stone-950 font-extrabold text-[10px] px-2 py-0.5 rounded-bl-lg shadow-sm flex items-center gap-1 uppercase tracking-wider">
+                          <div className="absolute top-0 right-0 z-10 ms-foil-chip font-semibold text-[11px] px-2 py-0.5 rounded-bl-lg shadow-sm flex items-center gap-1 ">
                             <Sparkles className="w-3 h-3 fill-stone-950" />
                             <span>Foil</span>
                           </div>
                         )}
 
-                        <div className="absolute top-2 left-2 z-10 bg-rose-950/90 backdrop-blur-md text-rose-300 text-[10px] font-mono font-bold px-2 py-0.5 rounded-full border border-rose-500/40 shadow flex items-center gap-1">
+                        <div className="absolute top-2 left-2 z-10 bg-rose-950/90 backdrop-blur-md text-rose-300 text-[11px] tabular-nums font-bold px-2 py-0.5 rounded-full border border-rose-500/40 shadow flex items-center gap-1">
                           <Heart className="w-2.5 h-2.5 fill-rose-400 text-rose-400" />
                           <span>Szuka: {item.targetQuantity || 1}x</span>
                         </div>
@@ -959,31 +958,31 @@ export const UsersList: React.FC<UsersListProps> = ({
                             </h4>
 
                             <div className="flex items-center justify-between gap-1 text-[11px] text-stone-400 mt-1">
-                              <span className="truncate max-w-[110px] uppercase font-mono text-[10px]">
+                              <span className="truncate max-w-[110px] tabular-nums text-[11px]">
                                 {card.set} • #{card.collector_number}
                               </span>
-                              <span className={`capitalize font-semibold text-[10px] ${rarityColor}`}>
+                              <span className={`capitalize font-semibold text-[11px] ${rarityColor}`}>
                                 {getRarityLabel(card.rarity)}
                               </span>
                             </div>
 
                             {item.notes && (
-                              <p className="text-[10px] text-stone-400 italic line-clamp-1 mt-1 bg-stone-950/50 px-1.5 py-0.5 rounded border border-stone-800">
-                                💬 {item.notes}
+                              <p className="text-[11px] text-stone-400 italic line-clamp-1 mt-1 bg-stone-950/50 px-1.5 py-0.5 rounded border border-stone-800">
+                                {item.notes}
                               </p>
                             )}
                           </div>
 
                           <div className="pt-2 border-t border-stone-800/80 flex items-center justify-between text-xs">
-                            <span className="font-mono text-stone-400 text-[11px]">
+                            <span className="tabular-nums text-stone-400 text-[11px]">
                               Szuka: <strong className="text-rose-300 font-bold">{item.targetQuantity || 1}x</strong>
                             </span>
 
                             <div className="text-right">
-                              <span className="font-mono font-black text-emerald-300 text-sm">
+                              <span className="tabular-nums font-bold text-emerald-300 text-sm">
                                 {formatCurrency(effectivePrice, effSettings.currency)}
                               </span>
-                              <span className="block text-[9px] text-stone-500 font-mono">Cena rynkowa</span>
+                              <span className="block text-[11px] text-stone-500 tabular-nums">Cena rynkowa</span>
                             </div>
                           </div>
                         </div>
@@ -1005,21 +1004,20 @@ export const UsersList: React.FC<UsersListProps> = ({
   return (
     <div className="space-y-6 pb-12">
       {/* 1. Header Banner */}
-      <div className="bg-stone-900 border border-stone-800 rounded-3xl p-6 shadow-2xl relative overflow-hidden">
-        <div className="absolute top-0 right-0 w-96 h-96 bg-gradient-to-bl from-blue-500/10 via-purple-600/5 to-transparent rounded-full blur-3xl pointer-events-none" />
+      <div className="bg-stone-900 border border-stone-800 rounded-2xl p-6 shadow-2xl relative overflow-hidden">
 
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 relative z-10">
           <div className="space-y-2">
             <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-blue-600 via-indigo-600 to-purple-600 border border-blue-400/40 flex items-center justify-center shadow-lg shadow-blue-950/60">
+              <div className="w-12 h-12 rounded-2xl bg-amber-600 border border-amber-400/40 flex items-center justify-center shadow-lg shadow-amber-950/60">
                 <Users className="w-6 h-6 text-white stroke-[2.2]" />
               </div>
               <div>
                 <div className="flex items-center gap-2">
-                  <h2 className="text-xl sm:text-2xl font-black text-white tracking-tight">
+                  <h2 className="text-xl sm:text-2xl font-bold text-white tracking-tight">
                     Społeczność & Użytkownicy
                   </h2>
-                  <span className="px-2.5 py-0.5 rounded-full text-xs font-mono font-bold bg-blue-500/20 text-blue-300 border border-blue-500/40">
+                  <span className="px-2.5 py-0.5 rounded-full text-xs tabular-nums font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40">
                     {stats.totalUsers} graczy
                   </span>
                 </div>
@@ -1031,22 +1029,22 @@ export const UsersList: React.FC<UsersListProps> = ({
 
             <div className="flex items-center gap-3 pt-1 flex-wrap">
               <div className="flex items-baseline gap-1.5 bg-stone-950/80 px-3 py-1.5 rounded-xl border border-stone-800">
-                <span className="text-[11px] uppercase font-bold text-stone-400">Aktywni sprzedawcy:</span>
-                <span className="text-sm font-extrabold font-mono text-emerald-400">
+                <span className="text-[11px] font-bold text-stone-400">Aktywni sprzedawcy:</span>
+                <span className="text-sm font-bold tabular-nums text-emerald-400">
                   {stats.sellersCount}
                 </span>
               </div>
 
               <div className="flex items-baseline gap-1.5 bg-stone-950/80 px-3 py-1.5 rounded-xl border border-stone-800">
-                <span className="text-[11px] uppercase font-bold text-stone-400">Karty na sprzedaż:</span>
-                <span className="text-sm font-extrabold font-mono text-amber-300">
+                <span className="text-[11px] font-bold text-stone-400">Karty na sprzedaż:</span>
+                <span className="text-sm font-bold tabular-nums text-amber-300">
                   {stats.totalCardsOnSale} szt.
                 </span>
               </div>
 
               <div className="flex items-baseline gap-1.5 bg-stone-950/80 px-3 py-1.5 rounded-xl border border-stone-800">
-                <span className="text-[11px] uppercase font-bold text-stone-400">Karty na listach życzeń:</span>
-                <span className="text-sm font-extrabold font-mono text-rose-300">
+                <span className="text-[11px] font-bold text-stone-400">Karty na listach życzeń:</span>
+                <span className="text-sm font-bold tabular-nums text-rose-300">
                   {stats.totalWishlistItems} szt.
                 </span>
               </div>
@@ -1061,7 +1059,7 @@ export const UsersList: React.FC<UsersListProps> = ({
               className="px-3.5 py-2 bg-stone-800 hover:bg-stone-750 text-stone-200 border border-stone-700 text-xs font-semibold rounded-xl transition-all flex items-center gap-1.5 cursor-pointer shadow-sm disabled:opacity-50"
               title="Odśwież listę użytkowników"
             >
-              <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin text-blue-400' : ''}`} />
+              <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin text-amber-400' : ''}`} />
               <span className="hidden sm:inline">Odśwież</span>
             </button>
           </div>
@@ -1078,7 +1076,7 @@ export const UsersList: React.FC<UsersListProps> = ({
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Szukaj gracza po nazwie..."
-            className="w-full bg-stone-950 border border-stone-800 focus:border-blue-500 rounded-xl pl-9 pr-3.5 py-2 text-xs text-stone-100 placeholder-stone-500 focus:outline-none transition-colors"
+            className="w-full bg-stone-950 border border-stone-800 focus:border-amber-500 rounded-xl pl-9 pr-3.5 py-2 text-xs text-stone-100 placeholder-stone-500 focus:outline-none transition-colors"
           />
         </div>
 
@@ -1098,7 +1096,7 @@ export const UsersList: React.FC<UsersListProps> = ({
           </button>
 
           <div className="flex items-center gap-1.5 bg-stone-950 border border-stone-800 rounded-xl px-2.5 py-1.5 text-xs text-stone-300">
-            <ArrowUpDown className="w-3.5 h-3.5 text-blue-400" />
+            <ArrowUpDown className="w-3.5 h-3.5 text-amber-400" />
             <select
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value as any)}
@@ -1118,7 +1116,7 @@ export const UsersList: React.FC<UsersListProps> = ({
       {/* 3. Users List Grid */}
       {isLoading ? (
         <div className="flex flex-col items-center justify-center py-20 space-y-4">
-          <div className="w-12 h-12 rounded-full border-4 border-blue-500/20 border-t-blue-500 animate-spin" />
+          <div className="w-12 h-12 rounded-full border-4 border-amber-500/20 border-t-blue-500 animate-spin" />
           <p className="text-sm font-bold text-stone-400">Ładowanie zarejestrowanych graczy...</p>
         </div>
       ) : error ? (
@@ -1132,7 +1130,7 @@ export const UsersList: React.FC<UsersListProps> = ({
           </button>
         </div>
       ) : filteredUsers.length === 0 ? (
-        <div className="bg-stone-900/60 border border-dashed border-stone-800 rounded-3xl p-12 text-center space-y-3 shadow-inner">
+        <div className="bg-stone-900/60 border border-dashed border-stone-800 rounded-2xl p-12 text-center space-y-3 shadow-inner">
           <div className="w-16 h-16 rounded-2xl bg-stone-800/80 text-stone-500 mx-auto flex items-center justify-center">
             <Users className="w-8 h-8" />
           </div>
@@ -1154,19 +1152,19 @@ export const UsersList: React.FC<UsersListProps> = ({
               <div
                 key={u.id}
                 onClick={() => handleOpenUserProfile(u, hasForSale ? 'for-sale' : 'wishlist')}
-                className="group relative bg-stone-900 rounded-2xl border border-stone-800 hover:border-blue-500/50 p-5 shadow-lg hover:shadow-xl hover:shadow-blue-950/20 transition-all duration-300 flex flex-col justify-between cursor-pointer space-y-4"
+                className="group relative bg-stone-900 rounded-2xl border border-stone-800 hover:border-amber-500/50 p-5 shadow-lg hover:shadow-xl hover:shadow-amber-950/20 transition-all duration-300 flex flex-col justify-between cursor-pointer space-y-4"
               >
                 {/* Top Section: Avatar & Details */}
                 <div className="space-y-3">
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex items-center gap-3">
-                      <div className="w-12 h-12 rounded-xl bg-gradient-to-tr from-blue-600 via-indigo-600 to-purple-600 border border-blue-400/30 flex items-center justify-center text-white text-lg font-black shadow-md shadow-blue-950/50 group-hover:scale-105 transition-transform">
+                      <div className="w-12 h-12 rounded-xl bg-amber-500 border border-amber-400/30 flex items-center justify-center text-stone-950 text-lg font-bold shadow-md shadow-amber-950/50 group-hover:scale-105 transition-transform">
                         {u.username.charAt(0).toUpperCase()}
                       </div>
 
                       <div>
                         <div className="flex items-center gap-1.5 flex-wrap">
-                          <h3 className="font-extrabold text-stone-100 group-hover:text-blue-300 text-sm transition-colors">
+                          <h3 className="font-bold text-stone-100 group-hover:text-amber-300 text-sm transition-colors">
                             @{u.username}
                           </h3>
                         </div>
@@ -1193,7 +1191,7 @@ export const UsersList: React.FC<UsersListProps> = ({
                     </div>
 
                     {isSelf && (
-                      <span className="px-2 py-0.5 rounded-full text-[9px] font-mono font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30 uppercase">
+                      <span className="px-2 py-0.5 rounded-full text-[11px] tabular-nums font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30 ">
                         Ty
                       </span>
                     )}
@@ -1208,11 +1206,11 @@ export const UsersList: React.FC<UsersListProps> = ({
                           : 'bg-stone-950/60 border-stone-800/80 text-stone-500'
                       }`}
                     >
-                      <span className="text-[10px] uppercase font-bold tracking-wider opacity-80 flex items-center justify-center gap-1">
+                      <span className="text-[11px] font-bold opacity-80 flex items-center justify-center gap-1">
                         <CircleDollarSign className="w-3 h-3 text-emerald-400" />
                         <span>Karty na sprzedaż</span>
                       </span>
-                      <span className="text-sm font-black font-mono mt-0.5">
+                      <span className="text-sm font-bold tabular-nums mt-0.5">
                         {hasForSale ? `${u.forSaleCount} szt.` : 'Brak'}
                       </span>
                     </div>
@@ -1224,11 +1222,11 @@ export const UsersList: React.FC<UsersListProps> = ({
                           : 'bg-stone-950/60 border-stone-800/80 text-stone-500'
                       }`}
                     >
-                      <span className="text-[10px] uppercase font-bold tracking-wider opacity-80 flex items-center justify-center gap-1">
+                      <span className="text-[11px] font-bold opacity-80 flex items-center justify-center gap-1">
                         <FolderHeart className="w-3 h-3 text-rose-400" />
                         <span>Lista życzeń</span>
                       </span>
-                      <span className="text-sm font-black font-mono mt-0.5">
+                      <span className="text-sm font-bold tabular-nums mt-0.5">
                         {hasWishlist ? `${u.wishlistCount} szt.` : 'Brak'}
                       </span>
                     </div>
@@ -1278,10 +1276,10 @@ export const UsersList: React.FC<UsersListProps> = ({
                       <button
                         type="button"
                         onClick={(e) => handleOpenSendMessage(u, e)}
-                        className="p-1.5 rounded-lg text-stone-400 hover:text-blue-300 hover:bg-stone-800 transition-colors cursor-pointer border border-transparent hover:border-stone-700"
+                        className="p-1.5 rounded-lg text-stone-400 hover:text-amber-300 hover:bg-stone-800 transition-colors cursor-pointer border border-transparent hover:border-stone-700"
                         title={`Wyślij wiadomość do @${u.username}`}
                       >
-                        <Mail className="w-4 h-4 text-blue-400" />
+                        <Mail className="w-4 h-4 text-amber-400" />
                       </button>
                     )}
 

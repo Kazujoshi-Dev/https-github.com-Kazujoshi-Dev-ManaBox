@@ -63,7 +63,7 @@ export const DeckAddCardModal: React.FC<DeckAddCardModalProps> = ({
               }}
               className={`py-2 rounded-lg flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
                 searchSource === 'collection'
-                  ? 'bg-amber-500 text-stone-950 font-black shadow-sm'
+                  ? 'bg-amber-500 text-stone-950 font-bold shadow-sm'
                   : 'text-stone-400 hover:text-stone-200'
               }`}
             >
@@ -78,7 +78,7 @@ export const DeckAddCardModal: React.FC<DeckAddCardModalProps> = ({
               }}
               className={`py-2 rounded-lg flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
                 searchSource === 'all'
-                  ? 'bg-purple-500 text-white font-black shadow-sm'
+                  ? 'bg-amber-500 text-stone-950 font-bold shadow-sm'
                   : 'text-stone-400 hover:text-stone-200'
               }`}
             >
@@ -107,7 +107,7 @@ export const DeckAddCardModal: React.FC<DeckAddCardModalProps> = ({
         {/* Search Results List */}
         <div className="flex-1 overflow-y-auto p-4 space-y-2">
           {isSearchingScryfall && (
-            <div className="text-center py-4 text-xs text-amber-400 animate-pulse font-mono">
+            <div className="text-center py-4 text-xs text-amber-400 animate-pulse tabular-nums">
               Wyszukiwanie w pełnej bazie Scryfall API...
             </div>
           )}
@@ -158,16 +158,16 @@ export const DeckAddCardModal: React.FC<DeckAddCardModalProps> = ({
                         {card.name}
                       </h4>
                       {card.mana_cost && (
-                        <span className="text-[11px] font-mono text-amber-300">
+                        <span className="text-[11px] tabular-nums text-amber-300">
                           {card.mana_cost}
                         </span>
                       )}
                       {ownedItem ? (
-                        <span className="text-[10px] font-mono text-emerald-300 bg-emerald-950/60 px-1.5 py-0.5 rounded border border-emerald-500/30">
+                        <span className="text-[11px] tabular-nums text-emerald-300 bg-emerald-950/60 px-1.5 py-0.5 rounded border border-emerald-500/30">
                           W kolekcji: {ownedItem.quantity} szt.
                         </span>
                       ) : (
-                        <span className="text-[10px] font-mono text-purple-300 bg-purple-950/40 px-1.5 py-0.5 rounded border border-purple-500/30">
+                        <span className="text-[11px] tabular-nums text-amber-300 bg-amber-950/40 px-1.5 py-0.5 rounded border border-amber-500/30">
                           Scryfall
                         </span>
                       )}
@@ -182,7 +182,7 @@ export const DeckAddCardModal: React.FC<DeckAddCardModalProps> = ({
                   {isLegendary && (
                     <button
                       onClick={() => onAddCard(card, true)}
-                      className="px-2.5 py-1.5 bg-purple-600/30 hover:bg-purple-600 text-purple-200 hover:text-white rounded-lg text-xs font-bold transition-colors flex items-center gap-1 border border-purple-500/40 cursor-pointer"
+                      className="px-2.5 py-1.5 bg-amber-600/30 hover:bg-amber-600 text-amber-200 hover:text-white rounded-lg text-xs font-bold transition-colors flex items-center gap-1 border border-amber-500/40 cursor-pointer"
                     >
                       <Crown className="w-3.5 h-3.5" />
                       <span>Dowódca</span>

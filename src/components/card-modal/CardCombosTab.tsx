@@ -67,7 +67,7 @@ export const CardCombosTab: React.FC<CardCombosTabProps> = ({ cardName }) => {
           <div>
             <h3 className="text-sm font-bold text-stone-100 flex items-center gap-2">
               <span>Kombinacje z kartą {cardName}</span>
-              <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-purple-500/20 text-purple-300 border border-purple-500/30 uppercase font-bold">
+              <span className="text-[11px] tabular-nums px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30 font-bold">
                 Commander Spellbook
               </span>
             </h3>
@@ -132,13 +132,13 @@ export const CardCombosTab: React.FC<CardCombosTabProps> = ({ cardName }) => {
                 {/* Variant outcome pills */}
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pb-2.5 border-b border-stone-800">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <span className="px-2.5 py-0.5 rounded-lg text-xs font-mono font-bold bg-amber-500/15 text-amber-300 border border-amber-500/30">
+                    <span className="px-2.5 py-0.5 rounded-lg text-xs tabular-nums font-bold bg-amber-500/15 text-amber-300 border border-amber-500/30">
                       ID: {variant.id}
                     </span>
                     {variant.produces?.map((p, pIdx) => (
                       <span
                         key={pIdx}
-                        className="px-3 py-1 rounded-full text-xs font-bold bg-purple-500/20 text-purple-200 border border-purple-500/30 flex items-center gap-1.5"
+                        className="px-3 py-1 rounded-full text-xs font-bold bg-amber-500/20 text-amber-200 border border-amber-500/30 flex items-center gap-1.5"
                       >
                         <Zap className="w-3.5 h-3.5 text-amber-400" />
                         <span>{p.feature?.name}</span>
@@ -148,8 +148,8 @@ export const CardCombosTab: React.FC<CardCombosTabProps> = ({ cardName }) => {
 
                   {variant.manaNeeded && (
                     <div className="flex items-center gap-2 text-xs text-stone-300">
-                      <span className="text-stone-400 font-mono">Wymagana mana:</span>
-                      <span className="font-bold text-amber-300 bg-stone-900 px-2.5 py-1 rounded-lg border border-stone-700 font-mono text-sm">
+                      <span className="text-stone-400 tabular-nums">Wymagana mana:</span>
+                      <span className="font-bold text-amber-300 bg-stone-900 px-2.5 py-1 rounded-lg border border-stone-700 tabular-nums text-sm">
                         {variant.manaNeeded}
                       </span>
                     </div>
@@ -158,7 +158,7 @@ export const CardCombosTab: React.FC<CardCombosTabProps> = ({ cardName }) => {
 
                 {/* Cards in combo with thumbnail */}
                 <div>
-                  <span className="text-xs font-bold text-stone-400 uppercase tracking-wider block mb-2 flex items-center gap-1.5">
+                  <span className="text-xs font-bold text-stone-400 block mb-2 flex items-center gap-1.5">
                     <Layers className="w-3.5 h-3.5 text-amber-400" />
                     <span>Wymagane karty w tym combo:</span>
                   </span>
@@ -200,7 +200,7 @@ export const CardCombosTab: React.FC<CardCombosTabProps> = ({ cardName }) => {
                               {isCurrentCard && <ShieldCheck className="w-3.5 h-3.5 text-amber-400 shrink-0" />}
                               <span className="truncate">{cName}</span>
                             </div>
-                            <span className="text-[10px] text-stone-400 block truncate">
+                            <span className="text-[11px] text-stone-400 block truncate">
                               Strefa: {u.zoneLocations?.join(', ') || 'Pole bitwy'}
                             </span>
                           </div>
@@ -213,13 +213,13 @@ export const CardCombosTab: React.FC<CardCombosTabProps> = ({ cardName }) => {
                 {/* Execution Steps - Numbered 1. 2. 3. */}
                 {steps.length > 0 && (
                   <div className="bg-stone-900/90 rounded-xl p-3.5 border border-stone-800 space-y-2">
-                    <span className="text-xs font-bold text-amber-300 uppercase tracking-wider block font-mono">
+                    <span className="text-xs font-bold text-amber-300 block tabular-nums">
                       Kroki wykonania (Instrukcja combo):
                     </span>
                     <div className="space-y-1.5">
                       {steps.map((step, sIdx) => (
                         <div key={sIdx} className="flex items-start gap-2.5 p-2 rounded-lg bg-stone-950/70 border border-stone-800/80">
-                          <span className="w-5 h-5 rounded bg-amber-500/20 text-amber-300 font-mono font-bold text-xs flex items-center justify-center shrink-0 mt-0.5 border border-amber-500/40">
+                          <span className="w-5 h-5 rounded bg-amber-500/20 text-amber-300 tabular-nums font-bold text-xs flex items-center justify-center shrink-0 mt-0.5 border border-amber-500/40">
                             {sIdx + 1}
                           </span>
                           <p className="text-xs text-stone-200 leading-relaxed font-medium">

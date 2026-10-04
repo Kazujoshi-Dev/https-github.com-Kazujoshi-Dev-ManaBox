@@ -18,7 +18,7 @@ export const CardInfoSummary: React.FC<CardInfoSummaryProps> = ({
     <div>
       {/* Active Set, Rarity & Artist */}
       <div className="flex items-center gap-2 flex-wrap">
-        <span className="uppercase font-mono text-xs font-bold bg-amber-500/10 text-amber-300 px-2 py-0.5 rounded border border-amber-500/30">
+        <span className="tabular-nums text-xs font-bold bg-amber-500/10 text-amber-300 px-2 py-0.5 rounded border border-amber-500/30">
           {activeCard.set_name} ({activeCard.set.toUpperCase()}) #{activeCard.collector_number}
         </span>
         <span className={`text-xs px-2 py-0.5 rounded border font-semibold ${getRarityColor(activeCard.rarity)}`}>
@@ -72,7 +72,7 @@ export const CardInfoSummary: React.FC<CardInfoSummaryProps> = ({
       {/* Format Legalities */}
       {activeCard.legalities && (
         <div className="mt-4">
-          <p className="text-[11px] font-semibold uppercase text-stone-400 font-mono mb-1.5 flex items-center gap-1">
+          <p className="text-[11px] font-semibold text-stone-400 tabular-nums mb-1.5 flex items-center gap-1">
             <ShieldCheck className="w-3.5 h-3.5 text-stone-400" />
             <span>Formaty i Legalność</span>
           </p>
@@ -84,7 +84,7 @@ export const CardInfoSummary: React.FC<CardInfoSummaryProps> = ({
               return (
                 <span
                   key={format}
-                  className={`text-[10px] px-2 py-0.5 rounded-full capitalize font-mono border ${
+                  className={`text-[11px] px-2 py-0.5 rounded-full capitalize tabular-nums border ${
                     isLegal
                       ? 'bg-emerald-950/60 text-emerald-300 border-emerald-800/60'
                       : 'bg-stone-900 text-stone-500 border-stone-800 line-through'

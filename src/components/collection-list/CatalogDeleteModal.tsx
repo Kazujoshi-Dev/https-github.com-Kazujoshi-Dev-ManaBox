@@ -29,7 +29,7 @@ export const CatalogDeleteModal: React.FC<CatalogDeleteModalProps> = ({
           </p>
           {catalogToDelete.isDefault && (
             <p className="p-2.5 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-200">
-              ⭐ Ten katalog jest obecnie <strong>domyślny</strong>. Po jego usunięciu katalog{' '}
+              Ten katalog jest obecnie <strong>domyślny</strong>. Po jego usunięciu katalog{' '}
               <strong>"{nextDefaultCatalogName}"</strong> zostanie automatycznie nowym katalogiem domyślnym.
             </p>
           )}

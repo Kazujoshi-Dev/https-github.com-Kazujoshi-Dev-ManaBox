@@ -109,7 +109,7 @@ const getEffectIcon = (effectName: string) => {
     return <Zap className="w-4 h-4 text-amber-400 shrink-0" />;
   }
   if (lower.includes('draw') || lower.includes('card')) {
-    return <BookOpen className="w-4 h-4 text-blue-400 shrink-0" />;
+    return <BookOpen className="w-4 h-4 text-amber-400 shrink-0" />;
   }
   if (lower.includes('life') || lower.includes('gain')) {
     return <Heart className="w-4 h-4 text-rose-400 shrink-0" />;
@@ -124,13 +124,13 @@ const getEffectIcon = (effectName: string) => {
     return <RotateCw className="w-4 h-4 text-emerald-400 shrink-0" />;
   }
   if (lower.includes('token') || lower.includes('creature')) {
-    return <Users className="w-4 h-4 text-indigo-400 shrink-0" />;
+    return <Users className="w-4 h-4 text-amber-400 shrink-0" />;
   }
   if (lower.includes('win') || lower.includes('game')) {
     return <Trophy className="w-4 h-4 text-amber-400 shrink-0" />;
   }
   if (lower.includes('storm') || lower.includes('spell') || lower.includes('magecraft') || lower.includes('cast')) {
-    return <CloudLightning className="w-4 h-4 text-purple-400 shrink-0" />;
+    return <CloudLightning className="w-4 h-4 text-amber-400 shrink-0" />;
   }
   if (lower.includes('mill') || lower.includes('graveyard')) {
     return <Layers className="w-4 h-4 text-stone-400 shrink-0" />;
@@ -295,15 +295,15 @@ export const DeckCombosModal: React.FC<DeckCombosModalProps> = ({
         {/* Header */}
         <div className="px-6 py-4 border-b border-stone-800 bg-stone-950/90 flex items-center justify-between shrink-0">
           <div className="flex items-center gap-3">
-            <div className="p-2.5 bg-gradient-to-br from-amber-500/25 to-purple-500/25 border border-amber-500/40 rounded-xl text-amber-400 shadow-sm">
+            <div className="p-2.5 bg-amber-500/25 border border-amber-500/40 rounded-xl text-amber-400 shadow-sm">
               <Sparkles className="w-5 h-5" />
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h2 className="text-xl font-black text-stone-100 tracking-tight">
+                <h2 className="text-xl font-bold text-stone-100 tracking-tight">
                   Kombinacje Commander Spellbook
                 </h2>
-                <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-purple-500/20 text-purple-300 border border-purple-500/30 uppercase font-bold">
+                <span className="text-[11px] tabular-nums px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30 font-bold">
                   API Spellbook
                 </span>
               </div>
@@ -345,7 +345,7 @@ export const DeckCombosModal: React.FC<DeckCombosModalProps> = ({
                 }}
                 className={`px-4 py-2 rounded-lg text-xs sm:text-sm font-bold transition-all flex items-center gap-2 cursor-pointer ${
                   activeTab === 'included'
-                    ? 'bg-amber-500 text-stone-950 shadow-md font-black'
+                    ? 'bg-amber-500 text-stone-950 shadow-md font-bold'
                     : 'text-stone-400 hover:text-stone-200'
                 }`}
               >
@@ -361,7 +361,7 @@ export const DeckCombosModal: React.FC<DeckCombosModalProps> = ({
                 }}
                 className={`px-4 py-2 rounded-lg text-xs sm:text-sm font-bold transition-all flex items-center gap-2 cursor-pointer ${
                   activeTab === 'almost'
-                    ? 'bg-purple-500 text-white shadow-md font-black'
+                    ? 'bg-amber-500 text-stone-950 shadow-md font-bold'
                     : 'text-stone-400 hover:text-stone-200'
                 }`}
               >
@@ -385,7 +385,7 @@ export const DeckCombosModal: React.FC<DeckCombosModalProps> = ({
 
           {/* Section: 'Filtruj efekt:' - Larger, Clearer Buttons with Dedicated Icons */}
           <div className="space-y-2 pt-1">
-            <div className="flex items-center gap-2 text-xs text-stone-400 font-bold uppercase tracking-wider">
+            <div className="flex items-center gap-2 text-xs text-stone-400 font-bold ">
               <Filter className="w-3.5 h-3.5 text-amber-400" />
               <span>Filtruj efekt:</span>
             </div>
@@ -396,13 +396,13 @@ export const DeckCombosModal: React.FC<DeckCombosModalProps> = ({
                 onClick={() => setSelectedEffectFilter('ALL')}
                 className={`px-4 py-2 rounded-xl text-xs sm:text-sm transition-all cursor-pointer font-bold flex items-center gap-2 border shadow-sm ${
                   selectedEffectFilter === 'ALL'
-                    ? 'bg-amber-500 text-stone-950 border-amber-400 font-black shadow-lg shadow-amber-950/40 ring-2 ring-amber-400/30'
+                    ? 'bg-amber-500 text-stone-950 border-amber-400 font-bold shadow-lg shadow-amber-950/40 ring-2 ring-amber-400/30'
                     : 'bg-stone-950 text-stone-300 hover:text-white hover:bg-stone-850 border-stone-800'
                 }`}
               >
                 {getEffectIcon('ALL')}
                 <span>Wszystkie efekty</span>
-                <span className={`px-2 py-0.5 rounded-full text-xs font-mono font-bold ${
+                <span className={`px-2 py-0.5 rounded-full text-xs tabular-nums font-bold ${
                   selectedEffectFilter === 'ALL' ? 'bg-stone-950/20 text-stone-950' : 'bg-stone-800 text-stone-400'
                 }`}>
                   {activeTab === 'included' ? includedCombos.length : almostIncludedCombos.length}
@@ -418,13 +418,13 @@ export const DeckCombosModal: React.FC<DeckCombosModalProps> = ({
                     onClick={() => setSelectedEffectFilter(effectName)}
                     className={`px-4 py-2 rounded-xl text-xs sm:text-sm transition-all cursor-pointer font-bold flex items-center gap-2 border shadow-sm ${
                       isSelected
-                        ? 'bg-amber-500 text-stone-950 border-amber-400 font-black shadow-lg shadow-amber-950/40 ring-2 ring-amber-400/30'
+                        ? 'bg-amber-500 text-stone-950 border-amber-400 font-bold shadow-lg shadow-amber-950/40 ring-2 ring-amber-400/30'
                         : 'bg-stone-950 text-stone-300 hover:text-white hover:bg-stone-850 border-stone-800'
                     }`}
                   >
                     {getEffectIcon(effectName)}
                     <span>{effectName}</span>
-                    <span className={`px-2 py-0.5 rounded-full text-xs font-mono font-bold ${
+                    <span className={`px-2 py-0.5 rounded-full text-xs tabular-nums font-bold ${
                       isSelected ? 'bg-stone-950/20 text-stone-950' : 'bg-stone-800 text-stone-400'
                     }`}>
                       {count}
@@ -501,13 +501,13 @@ export const DeckCombosModal: React.FC<DeckCombosModalProps> = ({
                 {/* Variant Top Header: ID, Produces badges & Mana needed */}
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-stone-800">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <span className="px-2.5 py-1 rounded-lg text-xs font-mono font-bold bg-amber-500/15 text-amber-300 border border-amber-500/30">
+                    <span className="px-2.5 py-1 rounded-lg text-xs tabular-nums font-bold bg-amber-500/15 text-amber-300 border border-amber-500/30">
                       ID: {variant.id}
                     </span>
                     {variant.produces?.map((p, pIdx) => (
                       <span 
                         key={pIdx}
-                        className="px-3 py-1 rounded-full text-xs font-bold bg-purple-500/20 text-purple-200 border border-purple-500/30 flex items-center gap-1.5 shadow-sm"
+                        className="px-3 py-1 rounded-full text-xs font-bold bg-amber-500/20 text-amber-200 border border-amber-500/30 flex items-center gap-1.5 shadow-sm"
                       >
                         <Zap className="w-3.5 h-3.5 text-amber-400" />
                         <span>{p.feature?.name}</span>
@@ -517,8 +517,8 @@ export const DeckCombosModal: React.FC<DeckCombosModalProps> = ({
 
                   {variant.manaNeeded && (
                     <div className="flex items-center gap-2 text-xs text-stone-300 shrink-0">
-                      <span className="text-stone-400 font-mono">Wymagana mana:</span>
-                      <span className="font-bold text-amber-300 bg-stone-900 px-2.5 py-1 rounded-lg border border-stone-700 font-mono text-sm">
+                      <span className="text-stone-400 tabular-nums">Wymagana mana:</span>
+                      <span className="font-bold text-amber-300 bg-stone-900 px-2.5 py-1 rounded-lg border border-stone-700 tabular-nums text-sm">
                         {variant.manaNeeded}
                       </span>
                     </div>
@@ -527,7 +527,7 @@ export const DeckCombosModal: React.FC<DeckCombosModalProps> = ({
 
                 {/* Section 1: WYMAGANE KARTY W COMBO with Immediate Visual Card Previews */}
                 <div>
-                  <h4 className="text-xs font-bold text-stone-400 uppercase tracking-wider mb-2.5 flex items-center gap-1.5">
+                  <h4 className="text-xs font-bold text-stone-400 mb-2.5 flex items-center gap-1.5">
                     <Layers className="w-3.5 h-3.5 text-amber-400" />
                     <span>Wymagane karty w combo:</span>
                   </h4>
@@ -605,7 +605,7 @@ export const DeckCombosModal: React.FC<DeckCombosModalProps> = ({
                             </div>
 
                             {item.state && (
-                              <div className="text-[10px] text-amber-300/80 truncate">
+                              <div className="text-[11px] text-amber-300/80 truncate">
                                 Stan: {item.state}
                               </div>
                             )}
@@ -646,11 +646,11 @@ export const DeckCombosModal: React.FC<DeckCombosModalProps> = ({
                 {variant.description && (
                   <div className="bg-stone-900/90 rounded-2xl p-4 border border-stone-800 shadow-inner space-y-2.5">
                     <div className="flex items-center justify-between">
-                      <span className="text-xs font-bold text-amber-300 uppercase tracking-wider flex items-center gap-1.5 font-mono">
+                      <span className="text-xs font-bold text-amber-300 flex items-center gap-1.5 tabular-nums">
                         <Sparkles className="w-3.5 h-3.5 text-amber-400" />
                         <span>Kroki wykonania (Instrukcja combo):</span>
                       </span>
-                      <span className="text-[11px] text-stone-500 font-mono">
+                      <span className="text-[11px] text-stone-500 tabular-nums">
                         Liczba kroków: {comboSteps.length}
                       </span>
                     </div>
@@ -661,7 +661,7 @@ export const DeckCombosModal: React.FC<DeckCombosModalProps> = ({
                           key={sIdx}
                           className="flex items-start gap-3 p-3 rounded-xl bg-stone-950/80 border border-stone-800/80 hover:border-amber-500/30 transition-all group"
                         >
-                          <div className="w-6 h-6 rounded-lg bg-amber-500/20 text-amber-300 border border-amber-500/40 flex items-center justify-center font-mono font-bold text-xs shrink-0 mt-0.5 shadow-sm group-hover:scale-105 group-hover:bg-amber-500 group-hover:text-stone-950 transition-all">
+                          <div className="w-6 h-6 rounded-lg bg-amber-500/20 text-amber-300 border border-amber-500/40 flex items-center justify-center tabular-nums font-bold text-xs shrink-0 mt-0.5 shadow-sm group-hover:scale-105 group-hover:bg-amber-500 group-hover:text-stone-950 transition-all">
                             {sIdx + 1}
                           </div>
                           <p className="text-xs sm:text-[13px] text-stone-200 leading-relaxed font-medium pt-0.5">

@@ -123,10 +123,10 @@ export const MobileNav: React.FC<MobileNavProps> = ({
               type="button"
               onClick={onOpenScanner}
               aria-label="Skanuj kartę"
-              className="-mt-5 w-16 h-16 rounded-full bg-gradient-to-tr from-emerald-500 to-emerald-400 text-stone-950 flex flex-col items-center justify-center shadow-lg shadow-emerald-950/60 ring-4 ring-stone-950 active:scale-95 transition-transform"
+              className="-mt-5 w-16 h-16 rounded-full bg-emerald-500 text-stone-950 flex flex-col items-center justify-center shadow-lg shadow-emerald-950/60 ring-4 ring-stone-950 active:scale-95 transition-transform"
             >
               <Camera className="w-6 h-6 stroke-[2.5]" />
-              <span className="text-[10px] font-black leading-none mt-0.5">SKANUJ</span>
+              <span className="text-[11px] font-bold leading-none mt-0.5">SKANUJ</span>
             </button>
           </div>
           <NavButton tab="search" label="Szukaj" icon={Search} />
@@ -142,7 +142,7 @@ export const MobileNav: React.FC<MobileNavProps> = ({
             <Menu className="w-5 h-5" />
             <span>Więcej</span>
             {unreadMessagesCount > 0 && (
-              <span className="absolute top-1.5 right-[calc(50%-18px)] min-w-[18px] h-[18px] px-1 rounded-full bg-blue-500 text-white text-[10px] font-bold flex items-center justify-center">
+              <span className="absolute top-1.5 right-[calc(50%-18px)] min-w-[18px] h-[18px] px-1 rounded-full bg-amber-500 text-stone-950 text-[11px] font-bold flex items-center justify-center">
                 {unreadMessagesCount}
               </span>
             )}
@@ -198,10 +198,10 @@ export const MobileNav: React.FC<MobileNavProps> = ({
                 onClick={run(onOpenMailbox)}
                 className="relative h-20 rounded-2xl border bg-stone-950/60 border-stone-800 text-stone-200 active:bg-stone-800 flex flex-col items-center justify-center gap-1.5 text-xs font-semibold"
               >
-                <Mail className="w-5 h-5 text-blue-400" />
+                <Mail className="w-5 h-5 text-amber-400" />
                 Wiadomości
                 {unreadMessagesCount > 0 && (
-                  <span className="absolute top-2 right-2 min-w-[20px] h-5 px-1.5 rounded-full bg-blue-500 text-white text-[11px] font-bold flex items-center justify-center">
+                  <span className="absolute top-2 right-2 min-w-[20px] h-5 px-1.5 rounded-full bg-amber-500 text-stone-950 text-[11px] font-bold flex items-center justify-center">
                     {unreadMessagesCount}
                   </span>
                 )}

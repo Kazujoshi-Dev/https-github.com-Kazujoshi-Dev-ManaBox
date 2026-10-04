@@ -96,7 +96,7 @@ export const SellQuantityModal: React.FC<SellQuantityModalProps> = ({
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
       <div 
-        className="relative w-full max-w-md bg-stone-900 border border-stone-800 rounded-3xl shadow-2xl overflow-hidden flex flex-col max-sm:w-full max-sm:max-w-none max-sm:rounded-b-none max-sm:rounded-t-3xl max-sm:max-h-[92dvh] max-sm:pb-[env(safe-area-inset-bottom)] max-sm:animate-[slideUp_.2s_ease-out] max-sm:mt-auto max-sm:mb-0 max-sm:overflow-y-auto"
+        className="relative w-full max-w-md bg-stone-900 border border-stone-800 rounded-2xl shadow-2xl overflow-hidden flex flex-col max-sm:w-full max-sm:max-w-none max-sm:rounded-b-none max-sm:rounded-t-3xl max-sm:max-h-[92dvh] max-sm:pb-[env(safe-area-inset-bottom)] max-sm:animate-[slideUp_.2s_ease-out] max-sm:mt-auto max-sm:mb-0 max-sm:overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
@@ -106,7 +106,7 @@ export const SellQuantityModal: React.FC<SellQuantityModalProps> = ({
               <CircleDollarSign className="w-5 h-5 stroke-[2.2]" />
             </div>
             <div>
-              <h3 className="text-base font-extrabold text-white">Wystaw na sprzedaż</h3>
+              <h3 className="text-base font-bold text-white">Wystaw na sprzedaż</h3>
               <p className="text-xs text-stone-400">Wybierz ile sztuk chcesz wystawić</p>
             </div>
           </div>
@@ -135,19 +135,19 @@ export const SellQuantityModal: React.FC<SellQuantityModalProps> = ({
             </div>
 
             <div className="min-w-0 flex-1 space-y-1">
-              <h4 className="font-extrabold text-sm text-stone-100 truncate">
+              <h4 className="font-bold text-sm text-stone-100 truncate">
                 {item.card.name}
               </h4>
               <div className="flex items-center gap-2 text-[11px] text-stone-400 flex-wrap">
-                <span className="uppercase font-mono text-[10px]">{item.card.set} • #{item.card.collector_number}</span>
+                <span className="tabular-nums text-[11px]">{item.card.set} • #{item.card.collector_number}</span>
                 <span>•</span>
-                <span className={`font-semibold capitalize text-[10px] ${rarityColor}`}>{getRarityLabel(item.card.rarity)}</span>
+                <span className={`font-semibold capitalize text-[11px] ${rarityColor}`}>{getRarityLabel(item.card.rarity)}</span>
                 <span>•</span>
-                <span className="font-mono text-stone-300 font-bold">{item.condition} / {item.language}</span>
+                <span className="tabular-nums text-stone-300 font-bold">{item.condition} / {item.language}</span>
               </div>
               <div className="flex items-center gap-1.5 text-xs text-stone-400">
                 <span>Cena rynkowa:</span>
-                <strong className="text-emerald-300 font-mono font-black">{formatCurrency(marketPrice, settings.currency)}</strong>
+                <strong className="text-emerald-300 tabular-nums font-bold">{formatCurrency(marketPrice, settings.currency)}</strong>
               </div>
             </div>
           </div>
@@ -155,7 +155,7 @@ export const SellQuantityModal: React.FC<SellQuantityModalProps> = ({
           {/* Finish selector (if both normal and foil available) */}
           {normalQty > 0 && foilQty > 0 && (
             <div>
-              <label className="block text-xs font-bold text-stone-300 uppercase tracking-wider mb-1.5">
+              <label className="block text-xs font-bold text-stone-300 mb-1.5">
                 Wersja karty
               </label>
               <div className="grid grid-cols-2 gap-2">
@@ -177,7 +177,7 @@ export const SellQuantityModal: React.FC<SellQuantityModalProps> = ({
                   onClick={() => handleFinishChange('foil')}
                   className={`py-2 px-3 rounded-xl text-xs font-bold border transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
                     selectedFinish === 'foil'
-                      ? 'bg-gradient-to-r from-amber-500/20 to-purple-500/20 text-amber-300 border-amber-500/50 shadow-sm'
+                      ? 'bg-amber-500/20 text-amber-300 border-amber-500/50 shadow-sm'
                       : 'bg-stone-950 text-stone-400 border-stone-800 hover:border-stone-700'
                   }`}
                 >
@@ -191,10 +191,10 @@ export const SellQuantityModal: React.FC<SellQuantityModalProps> = ({
           {/* Quantity Stepper */}
           <div>
             <div className="flex items-center justify-between mb-2">
-              <label className="text-xs font-bold text-stone-300 uppercase tracking-wider">
+              <label className="text-xs font-bold text-stone-300 ">
                 Ilość wystawianych sztuk
               </label>
-              <span className="text-xs text-stone-400 font-mono">
+              <span className="text-xs text-stone-400 tabular-nums">
                 W kolekcji: <strong className="text-stone-200">{maxAvailable} szt.</strong>
               </span>
             </div>
@@ -221,7 +221,7 @@ export const SellQuantityModal: React.FC<SellQuantityModalProps> = ({
                       setQuantityToSell(Math.min(maxAvailable, Math.max(1, v)));
                     }
                   }}
-                  className="w-16 bg-transparent text-center font-mono font-black text-lg text-emerald-300 focus:outline-none"
+                  className="w-16 bg-transparent text-center tabular-nums font-bold text-lg text-emerald-300 focus:outline-none"
                 />
 
                 <button
@@ -248,20 +248,20 @@ export const SellQuantityModal: React.FC<SellQuantityModalProps> = ({
           {/* Optional Custom Sale Price */}
           <div>
             <div className="flex items-center justify-between mb-1.5">
-              <label className="text-xs font-bold text-stone-300 uppercase tracking-wider flex items-center gap-1.5">
+              <label className="text-xs font-bold text-stone-300 flex items-center gap-1.5">
                 <Tag className="w-3.5 h-3.5 text-emerald-400" />
                 <span>Własna cena za sztukę (opcjonalnie)</span>
               </label>
-              <span className="text-[11px] font-mono text-stone-500">{settings.currency}</span>
+              <span className="text-[11px] tabular-nums text-stone-500">{settings.currency}</span>
             </div>
             <input
               type="text"
               value={customPriceInput}
               onChange={(e) => setCustomPriceInput(e.target.value)}
               placeholder={`np. ${formatCurrency(marketPrice, settings.currency)} (domyślnie rynkowa)`}
-              className="w-full bg-stone-950 border border-stone-800 focus:border-emerald-500 rounded-xl px-3.5 py-2.5 text-sm text-stone-100 placeholder-stone-600 focus:outline-none transition-colors font-mono"
+              className="w-full bg-stone-950 border border-stone-800 focus:border-emerald-500 rounded-xl px-3.5 py-2.5 text-sm text-stone-100 placeholder-stone-600 focus:outline-none transition-colors tabular-nums"
             />
-            <p className="text-[10px] text-stone-500 mt-1">
+            <p className="text-[11px] text-stone-500 mt-1">
               Pozostaw puste, aby cena była automatycznie pobierana z rynkowych notowań Cardmarket/TCGPlayer.
             </p>
           </div>
@@ -278,7 +278,7 @@ export const SellQuantityModal: React.FC<SellQuantityModalProps> = ({
             <button
               type="submit"
               disabled={isSubmitting || quantityToSell <= 0 || quantityToSell > maxAvailable}
-              className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 disabled:opacity-50 text-white font-extrabold text-xs shadow-lg shadow-emerald-950/60 transition-all flex items-center gap-2 cursor-pointer"
+              className="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white font-bold text-xs shadow-lg shadow-emerald-950/60 transition-all flex items-center gap-2 cursor-pointer"
             >
               <CircleDollarSign className="w-4 h-4 stroke-[2.2]" />
               <span>{isSubmitting ? 'Zapisywanie...' : `Wystaw ${quantityToSell} szt. na sprzedaż`}</span>

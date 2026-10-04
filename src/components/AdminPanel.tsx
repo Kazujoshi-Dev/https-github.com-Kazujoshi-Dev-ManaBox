@@ -106,11 +106,11 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, showToast }
 
   const statTiles = stats
     ? [
-        { label: 'Użytkownicy', value: fmtNum(stats.users), icon: Users, color: 'text-blue-400' },
+        { label: 'Użytkownicy', value: fmtNum(stats.users), icon: Users, color: 'text-amber-400' },
         { label: 'Nowi (7 dni)', value: fmtNum(stats.newUsers7d), icon: UserPlus, color: 'text-emerald-400' },
         { label: 'Aktywni (7 dni)', value: fmtNum(stats.activeUsers7d), icon: Activity, color: 'text-amber-400' },
         { label: 'Zablokowani', value: fmtNum(stats.bannedUsers), icon: Ban, color: 'text-rose-400' },
-        { label: 'Karty w kolekcjach', value: fmtNum(stats.totalCards), icon: Layers, color: 'text-purple-300' },
+        { label: 'Karty w kolekcjach', value: fmtNum(stats.totalCards), icon: Layers, color: 'text-amber-300' },
         { label: 'Karty na sprzedaż', value: fmtNum(stats.forSaleCards), icon: CircleDollarSign, color: 'text-emerald-400' }
       ]
     : [];
@@ -125,7 +125,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, showToast }
               <ShieldCheck className="w-6 h-6" />
             </div>
             <div className="min-w-0">
-              <h2 className="text-xl font-black text-stone-100">Panel administratora</h2>
+              <h2 className="text-xl font-bold text-stone-100">Panel administratora</h2>
               <p className="text-xs text-stone-400 truncate">Zalogowano jako {currentUser?.username} · wszystkie działania trafiają do dziennika</p>
             </div>
           </div>
@@ -143,11 +143,11 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, showToast }
         <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-2.5">
           {statTiles.map(({ label, value, icon: Icon, color }) => (
             <div key={label} className="bg-stone-950 border border-stone-800 rounded-xl p-3">
-              <p className="text-[10px] uppercase font-bold text-stone-400 flex items-center gap-1.5">
+              <p className="text-[11px] font-bold text-stone-400 flex items-center gap-1.5">
                 <Icon className={`w-3.5 h-3.5 ${color}`} />
                 {label}
               </p>
-              <p className="text-lg font-black text-stone-100 mt-0.5">{value}</p>
+              <p className="text-lg font-bold text-stone-100 mt-0.5">{value}</p>
             </div>
           ))}
           {!stats && <p className="col-span-full text-xs text-stone-500">Ładowanie statystyk...</p>}
@@ -221,8 +221,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, showToast }
                   className="w-full text-left bg-stone-900 border border-stone-800 hover:border-rose-500/40 rounded-xl p-3 sm:p-4 flex items-center gap-3 cursor-pointer"
                 >
                   <div
-                    className={`w-10 h-10 rounded-full flex items-center justify-center font-black shrink-0 ${
-                      u.banned ? 'bg-rose-950 text-rose-300' : 'bg-gradient-to-tr from-amber-600 to-orange-500 text-white'
+                    className={`w-10 h-10 rounded-full flex items-center justify-center font-bold shrink-0 ${
+                      u.banned ? 'bg-rose-950 text-rose-300' : 'bg-amber-500 text-stone-950'
                     }`}
                   >
                     {u.username.slice(0, 1).toUpperCase()}
@@ -267,7 +267,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, showToast }
           {audit === null ? (
             <p className="p-4 text-sm text-stone-400">Ładowanie...</p>
           ) : audit.length === 0 ? (
-            <p className="p-4 text-sm text-stone-400">Brak wpisów — tu pojawią się działania administratorów.</p>
+            <p className="p-4 text-sm text-stone-400">Brak wpisów. Tu pojawią się działania administratorów.</p>
           ) : (
             audit.map((e) => (
               <div key={e.id} className="p-3 sm:p-4 text-sm flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-4">
@@ -308,12 +308,12 @@ const Badge: React.FC<{ tone: 'rose' | 'red' | 'amber' | 'stone'; children: Reac
     amber: 'bg-amber-500/15 text-amber-200 border-amber-500/40',
     stone: 'bg-stone-800 text-stone-300 border-stone-700'
   }[tone];
-  return <span className={`text-[10px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded border ${cls}`}>{children}</span>;
+  return <span className={`text-[11px] font-bold px-1.5 py-0.5 rounded border ${cls}`}>{children}</span>;
 };
 
 const Section: React.FC<{ title: string; icon: React.ElementType; danger?: boolean; children: React.ReactNode }> = ({ title, icon: Icon, danger, children }) => (
   <section className={`rounded-xl border p-3.5 space-y-2.5 ${danger ? 'border-rose-900/60 bg-rose-950/20' : 'border-stone-800 bg-stone-950/60'}`}>
-    <h4 className={`text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 ${danger ? 'text-rose-300' : 'text-stone-300'}`}>
+    <h4 className={`text-xs font-bold flex items-center gap-1.5 ${danger ? 'text-rose-300' : 'text-stone-300'}`}>
       <Icon className="w-4 h-4" />
       {title}
     </h4>
@@ -376,7 +376,7 @@ const UserDialog: React.FC<UserDialogProps> = ({ user, isSelf, onClose, onChange
       <div className="w-full sm:max-w-xl max-h-[92dvh] overflow-y-auto bg-stone-900 border border-stone-800 rounded-t-3xl sm:rounded-2xl shadow-2xl pb-[env(safe-area-inset-bottom)] max-sm:animate-[slideUp_.2s_ease-out]">
         <div className="sticky top-0 z-10 bg-stone-900 border-b border-stone-800 px-4 py-3 flex items-center justify-between gap-3">
           <div className="min-w-0">
-            <h3 className="text-base font-black text-stone-100 truncate">{user.username}</h3>
+            <h3 className="text-base font-bold text-stone-100 truncate">{user.username}</h3>
             <p className="text-xs text-stone-400 truncate">{user.email}</p>
           </div>
           <button
@@ -398,7 +398,7 @@ const UserDialog: React.FC<UserDialogProps> = ({ user, isSelf, onClose, onChange
           )}
           {protectedAccount && (
             <p className="text-xs text-amber-200 bg-amber-500/10 border border-amber-500/30 rounded-lg p-2.5">
-              To konto administratora — blokada, reset hasła, ukrycie oferty i usunięcie są niedostępne.
+              To konto administratora: blokada, reset hasła, ukrycie oferty i usunięcie są niedostępne.
             </p>
           )}
 
@@ -524,7 +524,7 @@ const UserDialog: React.FC<UserDialogProps> = ({ user, isSelf, onClose, onChange
           <Section title="Reset hasła" icon={KeyRound}>
             {tempPassword ? (
               <div className="space-y-2">
-                <p className="text-xs text-stone-300">Hasło tymczasowe — przekaż je użytkownikowi. <strong>Pokazujemy je tylko raz.</strong></p>
+                <p className="text-xs text-stone-300">Hasło tymczasowe. Przekaż je użytkownikowi. <strong>Pokazujemy je tylko raz.</strong></p>
                 <div className="flex gap-2">
                   <code className="flex-1 min-w-0 bg-stone-900 border border-amber-500/40 rounded-lg px-3 py-2 text-base font-mono text-amber-200 select-all break-all">
                     {tempPassword}
@@ -609,7 +609,7 @@ const UserDialog: React.FC<UserDialogProps> = ({ user, isSelf, onClose, onChange
                     return user.saleHidden ? 'Oferta znów jest widoczna.' : 'Ukryto ofertę sprzedaży.';
                   })
                 }
-                className={`${btn} ${user.saleHidden ? 'bg-emerald-700 hover:bg-emerald-600' : 'bg-amber-700 hover:bg-amber-600'} text-white`}
+                className={`${btn} ${user.saleHidden ? 'bg-emerald-700 hover:bg-emerald-600' : 'bg-amber-500 hover:bg-amber-400'} text-stone-950`}
               >
                 {spin('sale')}
                 {user.saleHidden ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
