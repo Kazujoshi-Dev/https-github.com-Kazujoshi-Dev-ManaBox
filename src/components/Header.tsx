@@ -192,7 +192,7 @@ export const Header: React.FC<HeaderProps> = ({
     { id: 'set-top', label: 'Top z dodatku', icon: Trophy },
     { id: 'analytics', label: 'Statystyki', icon: BarChart3 },
     { id: 'wishlist', label: 'Lista życzeń', icon: FolderHeart },
-    { id: 'for-sale', label: 'Sprzedam', icon: CircleDollarSign, count: forSaleCount || undefined },
+    { id: 'for-sale', label: 'Sprzedam / Kupię', icon: CircleDollarSign, count: forSaleCount || undefined },
     { id: 'users', label: 'Gracze', icon: Users },
     ...(user?.isAdmin ? [{ id: 'admin' as Tab, label: 'Admin', icon: ShieldCheck }] : [])
   ];
