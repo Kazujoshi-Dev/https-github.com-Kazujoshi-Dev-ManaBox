@@ -2125,6 +2125,21 @@ app.get('/api/public/sale/:userRef', async (req, res) => {
 });
 
 // --- KARTY NA EKRAN LOGOWANIA (popularne karty z lokalnej bazy Scryfall) ---
+// --- TOKENY TWORZONE PRZEZ TALIĘ (lokalna baza kart, bez logowania: używa też publiczny podgląd talii) ---
+const tokensLimiter = rateLimit({ name: 'deck-tokens', windowMs: 60_000, max: 30 });
+app.post('/api/cards/tokens', tokensLimiter, async (req, res) => {
+  try {
+    const ids = Array.isArray(req.body?.ids) ? req.body.ids.filter((x: unknown) => typeof x === 'string').slice(0, 250) : [];
+    const names = Array.isArray(req.body?.names)
+      ? req.body.names.filter((x: unknown) => typeof x === 'string' && x.length <= 200).slice(0, 250)
+      : [];
+    const tokens = await cards.getDeckTokens(ids, names);
+    res.json({ tokens });
+  } catch (err: any) {
+    sendServerError(res, err, '/api/cards/tokens');
+  }
+});
+
 app.get('/api/public/showcase', async (_req, res) => {
   try {
     const list = await cards.getShowcaseCards(16).catch(() => []);

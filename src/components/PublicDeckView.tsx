@@ -5,6 +5,7 @@ import { formatCurrency, getCardImageUri, getCardPrice, handleCardImageError } f
 import { ManaSymbol } from './ManaSymbol';
 import { DeckCategoriesBoard, DeckStatsBar, FloatingCardPreview, useDeckStats } from './deck-builder';
 import { DeckAnalysis } from './deck-builder/DeckAnalysis';
+import { DeckTokens } from './deck-builder/DeckTokens';
 import { deckToText } from './deck-builder/DeckShareModal';
 import { useBackToClose } from '../hooks/useBackButton';
 
@@ -149,6 +150,8 @@ export const PublicDeckView: React.FC<PublicDeckViewProps> = ({ deck, owner, set
         <FloatingCardPreview card={hovered} position={hoverPos} scale={100} />
 
         <DeckAnalysis deck={deck} onViewCardDetails={setPreview} />
+
+        <DeckTokens deck={deck} onViewCardDetails={setPreview} />
 
         {!isLoggedIn && (
           <div className="bg-stone-900 border border-amber-500/30 rounded-2xl p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">

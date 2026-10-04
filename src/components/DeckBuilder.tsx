@@ -17,6 +17,7 @@ import {
 import { DeckImportExportModal } from './DeckImportExportModal';
 import { DeckCombosModal } from './deck-builder/DeckCombosModal';
 import { DeckAnalysis } from './deck-builder/DeckAnalysis';
+import { DeckTokens } from './deck-builder/DeckTokens';
 import { DeckSuggestions } from './deck-builder/DeckSuggestions';
 import { DeckShareModal } from './deck-builder/DeckShareModal';
 import type { EdhrecRecommendation } from '../services/api';
@@ -519,6 +520,9 @@ export const DeckBuilder: React.FC<DeckBuilderProps> = ({
 
       {/* 3b. Statystyki talii: losowa ręka, szanse, wymagania kolorów */}
       <DeckAnalysis deck={deck} onViewCardDetails={onViewCardDetails} />
+
+      {/* 3b'. Tokeny tworzone przez karty talii */}
+      <DeckTokens deck={deck} onViewCardDetails={onViewCardDetails} />
 
       {/* 3c. Sugestie z EDHREC (format Commander) */}
       {(deck.commander || /commander|edh/i.test(deck.format || '')) && (

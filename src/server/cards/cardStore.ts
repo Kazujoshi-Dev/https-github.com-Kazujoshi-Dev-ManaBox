@@ -534,3 +534,108 @@ export function printingsOfName(normName: string): string[] {
   if (!index) return [];
   return (index.byName.get(normName) || []).map((i) => index!.entries[i].id);
 }
+
+export interface DeckToken {
+  key: string;
+  name: string;
+  typeLine: string;
+  power?: string;
+  toughness?: string;
+  oracleText?: string;
+  colors: string[];
+  image: string | null;
+  /** Pełne dane karty tokenu (do okna szczegółów), jeśli są w lokalnej bazie. */
+  card: any | null;
+  /** Karty z talii, które tworzą ten token. */
+  sources: string[];
+}
+
+// Popularne tokeny-artefakty tworzone przez wiele kart (gdy karta nie ma ich w all_parts).
+const COMMON_TOKENS = ['Treasure', 'Food', 'Clue', 'Blood', 'Map', 'Powerstone', 'Incubator', 'Junk', 'Gold', 'Shard'];
+
+/**
+ * Tokeny, które może stworzyć talia: z pola all_parts kart Scryfall (component = token),
+ * uzupełnione o popularne tokeny-artefakty wspomniane w tekście kart. Wyłącznie lokalna baza kart.
+ */
+export async function getDeckTokens(ids: string[], names: string[]): Promise<DeckToken[]> {
+  const p = pool();
+  if (!p) return [];
+  const byId = new Map<string, any>();
+  const validIds = ids.filter((id) => /^[0-9a-f-]{36}$/i.test(id));
+  for (const c of await getCardsByIds(validIds)) byId.set(c.id, c);
+  // Karty bez dopasowania po id szukamy po nazwie
+  const known = new Set([...byId.values()].map((c) => String(c.name).toLowerCase()));
+  const missing = names.filter((n) => n && !known.has(n.toLowerCase()));
+  const byName = missing.length ? await getCardsByNames(missing) : new Map<string, any>();
+  const deckCards = [...byId.values(), ...byName.values()];
+
+  const tokenRefs = new Map<string, { id: string; name: string; typeLine: string; sources: Set<string> }>();
+  const textTokens = new Map<string, Set<string>>();
+  for (const card of deckCards) {
+    const parts: any[] = Array.isArray(card.all_parts) ? card.all_parts : [];
+    let found = false;
+    for (const part of parts) {
+      if (part?.component !== 'token' || !part.id) continue;
+      found = true;
+      const ref = tokenRefs.get(part.id) || { id: part.id, name: part.name, typeLine: part.type_line || '', sources: new Set<string>() };
+      ref.sources.add(card.name);
+      tokenRefs.set(part.id, ref);
+    }
+    if (found) continue;
+    const text = [card.oracle_text, ...(card.card_faces || []).map((f: any) => f?.oracle_text)].filter(Boolean).join('\n');
+    for (const t of COMMON_TOKENS) {
+      if (new RegExp(`\\b${t}\\b[^.]*\\btokens?\\b`, 'i').test(text)) {
+        const set = textTokens.get(t) || new Set<string>();
+        set.add(card.name);
+        textTokens.set(t, set);
+      }
+    }
+  }
+
+  const tokenData = new Map<string, any>();
+  for (const c of await getCardsByIds([...tokenRefs.keys()])) tokenData.set(c.id, c);
+  const textData = textTokens.size
+    ? await p
+        .query(
+          `SELECT DISTINCT ON (name) name, data FROM scryfall_cards
+            WHERE name = ANY($1) AND layout = 'token' AND lang = 'en'
+            ORDER BY name, released_at DESC NULLS LAST`,
+          [[...textTokens.keys()]]
+        )
+        .then((r) => new Map(r.rows.map((row) => [row.name as string, row.data])))
+        .catch(() => new Map<string, any>())
+    : new Map<string, any>();
+
+  const out = new Map<string, DeckToken>();
+  const add = (data: any | null, fallbackName: string, fallbackType: string, sources: Set<string>) => {
+    const face = data?.card_faces?.[0];
+    const name = data?.name || fallbackName;
+    const typeLine = data?.type_line || fallbackType;
+    const power = data?.power ?? face?.power;
+    const toughness = data?.toughness ?? face?.toughness;
+    const oracleText = data?.oracle_text ?? face?.oracle_text ?? '';
+    // Ten sam token z różnych wydań (np. 1/1 Soldier) liczymy raz
+    const key = [name, typeLine, power, toughness, oracleText].join('|').toLowerCase();
+    const prev = out.get(key);
+    if (prev) {
+      sources.forEach((s) => !prev.sources.includes(s) && prev.sources.push(s));
+      return;
+    }
+    out.set(key, {
+      key,
+      name,
+      typeLine,
+      power,
+      toughness,
+      oracleText,
+      colors: data?.colors || face?.colors || [],
+      image: data?.image_uris?.normal || face?.image_uris?.normal || null,
+      card: data || null,
+      sources: [...sources]
+    });
+  };
+  for (const ref of tokenRefs.values()) add(tokenData.get(ref.id) || null, ref.name, ref.typeLine, ref.sources);
+  for (const [name, sources] of textTokens) add(textData.get(name) || null, name, `Token Artifact — ${name}`, sources);
+
+  return [...out.values()].sort((a, b) => b.sources.length - a.sources.length || a.name.localeCompare(b.name));
+}
