@@ -139,7 +139,7 @@ export const AuthView: React.FC<AuthViewProps> = ({ onAuthSuccess }) => {
       <section className="relative max-w-[1320px] mx-auto px-4 sm:px-6 lg:px-10 pt-[calc(1.25rem+env(safe-area-inset-top))] lg:pt-12 pb-12 lg:pb-20 grid lg:grid-cols-12 gap-10 lg:gap-14 items-center lg:min-h-[100dvh]">
         <div className={`${hasCards ? 'lg:col-span-5' : 'lg:col-span-12 lg:max-w-xl lg:mx-auto w-full'} space-y-7 auth-rise`}>
           <div className="flex items-center gap-3">
-            <img src="/icon-192.png" alt="" className="w-10 h-10 rounded-xl" />
+            <img src="/logo.webp" alt="" width={48} height={48} className="w-12 h-12" />
             <span className="text-lg font-bold tracking-tight text-stone-50">Mana Screw</span>
           </div>
 

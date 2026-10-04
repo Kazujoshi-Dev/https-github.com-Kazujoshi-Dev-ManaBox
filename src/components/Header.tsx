@@ -1,6 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
 import {
-  Sparkles,
   Search,
   Layers,
   BarChart3,
@@ -201,9 +200,7 @@ export const Header: React.FC<HeaderProps> = ({
   ];
 
   const logo = (
-    <span className="w-8 h-8 rounded-lg bg-amber-400 text-stone-950 flex items-center justify-center shrink-0">
-      <Sparkles className="w-4 h-4" strokeWidth={2.25} />
-    </span>
+    <img src="/logo.webp" alt="" width={36} height={36} className="w-9 h-9 shrink-0" />
   );
 
   return (
