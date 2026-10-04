@@ -170,9 +170,22 @@ const scannerLimiter = rateLimit({
   message: 'Skanujesz zbyt szybko. Odczekaj chwilę.'
 });
 const messageLimiter = rateLimit({
-  name: 'msg', windowMs: 10 * 60_000, max: 30, key: userKey,
-  message: 'Wysyłasz zbyt wiele wiadomości. Spróbuj ponownie później.'
+  name: 'msg', windowMs: 10 * 60_000, max: 15, key: userKey,
+  message: 'Wysyłasz wiadomości zbyt szybko. Odczekaj kilka minut.'
 });
+
+// Limity wiadomości liczone z bazy (działają też po restarcie serwera i przy wielu kartach przeglądarki).
+const MSG_LIMITS = {
+  subjectMax: 150,
+  bodyMax: 4000,
+  perDay: 60, // wszystkie wiadomości na dobę
+  perDayNewAccount: 15, // konto młodsze niż 24 h
+  newRecipientsPerDay: 20, // nowe rozmowy (odbiorca nigdy nie pisał do nadawcy)
+  newRecipientsPerDayNewAccount: 5,
+  toSilentRecipientPerDay: 3, // do osoby, która jeszcze nie odpisała
+  toRecipientPerDay: 40, // w trwającej rozmowie
+  sameBodyRecipients: 3 // ta sama treść do różnych osób (masowa wysyłka)
+};
 
 // Raporty naruszeń CSP z przeglądarek — tylko logujemy skrót, żeby wykryć zablokowane zasoby.
 app.post('/api/csp-report', (req, res) => {
@@ -2349,6 +2362,45 @@ app.post('/api/messages', authMiddleware, messageLimiter, async (req, res) => {
     if (recipient.id === senderId) {
       return res.status(400).json({ error: 'Nie możesz wysłać wiadomości do samego siebie' });
     }
+    if (String(subject).trim().length > MSG_LIMITS.subjectMax) {
+      return res.status(400).json({ error: `Temat może mieć najwyżej ${MSG_LIMITS.subjectMax} znaków.` });
+    }
+    if (String(body).trim().length > MSG_LIMITS.bodyMax) {
+      return res.status(400).json({ error: `Wiadomość może mieć najwyżej ${MSG_LIMITS.bodyMax} znaków.` });
+    }
+    if (db.isBanActive(recipient)) {
+      return res.status(404).json({ error: 'Nie znaleziono wskazanego odbiorcy wiadomości' });
+    }
+    if (await db.isBlocked(recipient.id, senderId)) {
+      return res.status(403).json({ error: 'Ten użytkownik nie przyjmuje od Ciebie wiadomości.' });
+    }
+
+    // Ochrona przed spamem: limity dzienne, nowe rozmowy, natarczywość i masowa wysyłka
+    const isNewAccount = sender.created_at ? Date.now() - new Date(sender.created_at).getTime() < 24 * 3600 * 1000 : false;
+    const act = await db.getSenderActivity(senderId, recipient.id, String(body).trim());
+    const isAdmin = ADMIN_EMAILS.has(String(sender.email || '').toLowerCase());
+    if (!isAdmin) {
+      const perDay = isNewAccount ? MSG_LIMITS.perDayNewAccount : MSG_LIMITS.perDay;
+      if (act.sentDay >= perDay) {
+        return res.status(429).json({ error: `Dzienny limit wiadomości (${perDay}) został wykorzystany. Spróbuj jutro.` });
+      }
+      const newLimit = isNewAccount ? MSG_LIMITS.newRecipientsPerDayNewAccount : MSG_LIMITS.newRecipientsPerDay;
+      const isNewConversation = !act.recipientReplied && act.toRecipientDay === 0;
+      if (isNewConversation && act.newRecipientsDay >= newLimit) {
+        return res.status(429).json({
+          error: `Możesz zacząć najwyżej ${newLimit} nowych rozmów na dobę${isNewAccount ? ' (nowe konto)' : ''}. Odpowiadać na wiadomości możesz bez tego limitu.`
+        });
+      }
+      if (!act.recipientReplied && act.toRecipientDay >= MSG_LIMITS.toSilentRecipientPerDay) {
+        return res.status(429).json({ error: `Wysłano już ${act.toRecipientDay} wiadomości do tej osoby. Poczekaj, aż odpisze.` });
+      }
+      if (act.recipientReplied && act.toRecipientDay >= MSG_LIMITS.toRecipientPerDay) {
+        return res.status(429).json({ error: 'Za dużo wiadomości do tej osoby w ciągu doby. Spróbuj jutro.' });
+      }
+      if (act.sameBodyRecipientsDay >= MSG_LIMITS.sameBodyRecipients) {
+        return res.status(429).json({ error: 'Tę samą wiadomość wysłano już do kilku osób. Masowa wysyłka jest zablokowana.' });
+      }
+    }
 
     const newMsg = {
       id: `msg-${crypto.randomUUID()}`,
@@ -2387,6 +2439,35 @@ app.put('/api/messages/:id/read', authMiddleware, async (req, res) => {
     res.json({ success, id });
   } catch (err: any) {
     sendServerError(res, err, '/api/messages/:id/read', 'Błąd aktualizacji statusu.');
+  }
+});
+
+// Blokowanie użytkowników (zablokowany nie może wysyłać wiadomości)
+app.get('/api/messages/blocked', authMiddleware, async (req, res) => {
+  try {
+    res.json(await db.listBlocked((req as any).userId));
+  } catch (err: any) {
+    sendServerError(res, err, '/api/messages/blocked');
+  }
+});
+app.post('/api/messages/block', authMiddleware, async (req, res) => {
+  try {
+    const userId = (req as any).userId;
+    const target = req.body?.userId ? await db.getUserById(String(req.body.userId)) : req.body?.username ? await db.getUserByIdOrUsername(String(req.body.username)) : null;
+    if (!target) return res.status(404).json({ error: 'Nie znaleziono użytkownika.' });
+    if (target.id === userId) return res.status(400).json({ error: 'Nie możesz zablokować samego siebie.' });
+    await db.blockUser(userId, target.id);
+    res.json({ success: true, id: target.id, username: target.username });
+  } catch (err: any) {
+    sendServerError(res, err, '/api/messages/block');
+  }
+});
+app.delete('/api/messages/block/:userId', authMiddleware, async (req, res) => {
+  try {
+    await db.unblockUser((req as any).userId, String(req.params.userId));
+    res.json({ success: true });
+  } catch (err: any) {
+    sendServerError(res, err, '/api/messages/block/:userId');
   }
 });
 

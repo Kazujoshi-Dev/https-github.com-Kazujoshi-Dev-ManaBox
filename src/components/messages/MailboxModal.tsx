@@ -17,8 +17,7 @@ import {
   Clock, 
   User, 
   AlertCircle,
-  Plus
-} from 'lucide-react';
+  Plus, Ban } from 'lucide-react';
 
 interface MailboxModalProps {
   isOpen: boolean;
@@ -367,6 +366,26 @@ export const MailboxModal: React.FC<MailboxModalProps> = ({
                         <Reply className="w-3.5 h-3.5" />
                         <span>Odpowiedz</span>
                       </button>
+
+                      {selectedMessage.recipientUsername === currentUser?.username && (
+                        <button
+                          type="button"
+                          onClick={async () => {
+                            if (!window.confirm(`Zablokować @${selectedMessage.senderUsername}? Nie będzie mógł wysyłać Ci wiadomości. Odblokujesz go w Ustawieniach.`)) return;
+                            try {
+                              await messagesApi.block({ userId: selectedMessage.senderId, username: selectedMessage.senderUsername });
+                              showToast?.(`Zablokowano @${selectedMessage.senderUsername}.`);
+                            } catch (e: any) {
+                              showToast?.(e.message);
+                            }
+                          }}
+                          className="px-2.5 py-1.5 text-xs text-stone-400 hover:text-rose-300 hover:bg-stone-800 rounded-xl transition-colors flex items-center gap-1.5 cursor-pointer"
+                          title="Zablokuj nadawcę"
+                        >
+                          <Ban className="w-3.5 h-3.5" />
+                          <span>Zablokuj</span>
+                        </button>
+                      )}
 
                       <button
                         type="button"

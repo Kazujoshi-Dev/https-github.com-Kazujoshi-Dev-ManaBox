@@ -423,6 +423,29 @@ export const messagesApi = {
       throw new Error(err.error || `Błąd usuwania wiadomości (${res.status})`);
     }
     return res.json();
+  },
+
+  /** Zablokowani użytkownicy (nie mogą do mnie pisać). */
+  listBlocked: async (): Promise<Array<{ id: string; username: string; blockedAt: string }>> => {
+    const res = await fetchWithAuth('/api/messages/blocked');
+    if (!res.ok) throw new Error('Nie udało się pobrać listy zablokowanych.');
+    return res.json();
+  },
+
+  block: async (who: { userId?: string; username?: string }): Promise<{ id: string; username: string }> => {
+    const res = await fetchWithAuth('/api/messages/block', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(who)
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || 'Nie udało się zablokować użytkownika.');
+    return data;
+  },
+
+  unblock: async (userId: string): Promise<void> => {
+    const res = await fetchWithAuth(`/api/messages/block/${encodeURIComponent(userId)}`, { method: 'DELETE' });
+    if (!res.ok) throw new Error('Nie udało się odblokować użytkownika.');
   }
 };
 

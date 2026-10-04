@@ -174,9 +174,11 @@ export const SendMessageModal: React.FC<SendMessageModalProps> = ({
               value={body}
               onChange={(e) => setBody(e.target.value)}
               rows={5}
+              maxLength={4000}
               placeholder="Napisz swoją wiadomość..."
               className="w-full bg-stone-950 border border-stone-800 focus:border-amber-500 rounded-xl px-3.5 py-2.5 text-sm text-stone-100 placeholder-stone-500 focus:outline-none transition-colors resize-none"
             />
+            <p className={`mt-1 text-right text-xs tabular-nums ${body.length > 3800 ? 'text-amber-300' : 'text-stone-500'}`}>{body.length} / 4000</p>
           </div>
 
           {/* Buttons */}

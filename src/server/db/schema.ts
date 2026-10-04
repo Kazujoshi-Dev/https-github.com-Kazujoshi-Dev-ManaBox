@@ -182,6 +182,15 @@ export async function initDb(): Promise<void> {
             created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
           );
           CREATE INDEX IF NOT EXISTS idx_admin_audit_created ON admin_audit_log(created_at DESC);
+
+          -- Ochrona przed spamem w wiadomościach: limity liczone z bazy i blokowanie nadawców
+          CREATE INDEX IF NOT EXISTS idx_user_messages_sender_created ON user_messages(sender_id, created_at DESC);
+          CREATE TABLE IF NOT EXISTS user_blocks (
+            user_id VARCHAR(64) NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            blocked_id VARCHAR(64) NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+            PRIMARY KEY (user_id, blocked_id)
+          );
         `);
         setPostgresActive(true);
         console.log('[Storage] PostgreSQL connected & database schema verified successfully');

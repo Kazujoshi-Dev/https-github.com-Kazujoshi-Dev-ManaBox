@@ -6,7 +6,7 @@ import {
 } from 'lucide-react';
 import { AppSettings, AuthUser, CurrencyCode, PricingSource } from '../types';
 import { DEFAULT_SETTINGS, formatCurrency } from '../utils/formatters';
-import { authApi } from '../services/api';
+import { authApi, messagesApi } from '../services/api';
 import { CityPicker } from './CityPicker';
 
 type Section = 'account' | 'pricing' | 'security' | 'sharing' | 'data';
@@ -592,6 +592,55 @@ const SecuritySection: React.FC<{
           </div>
         )}
       </div>
+
+      <BlockedUsersCard showToast={showToast} />
+    </div>
+  );
+};
+
+/** Lista zablokowanych użytkowników: nie mogą wysyłać wiadomości. */
+const BlockedUsersCard: React.FC<{ showToast: (msg: string) => void }> = ({ showToast }) => {
+  const [list, setList] = useState<Array<{ id: string; username: string; blockedAt: string }> | null>(null);
+  React.useEffect(() => {
+    messagesApi.listBlocked().then(setList).catch(() => setList([]));
+  }, []);
+  return (
+    <div className="bg-stone-900 border border-stone-800 rounded-xl p-4 sm:p-5 space-y-3">
+      <div>
+        <h4 className="text-sm font-semibold text-stone-100">Zablokowani użytkownicy</h4>
+        <p className="text-sm text-stone-400">Nie mogą wysyłać Ci wiadomości. Zablokujesz kogoś przyciskiem „Zablokuj” w otwartej wiadomości.</p>
+      </div>
+      {list === null ? (
+        <p className="text-sm text-stone-500">Wczytywanie…</p>
+      ) : list.length === 0 ? (
+        <p className="text-sm text-stone-500">Nikogo nie zablokowano.</p>
+      ) : (
+        <ul className="divide-y divide-stone-800">
+          {list.map((u) => (
+            <li key={u.id} className="py-2 flex items-center justify-between gap-3">
+              <span className="text-sm text-stone-200">
+                {u.username}
+                <span className="ml-2 text-xs text-stone-500">od {new Date(u.blockedAt).toLocaleDateString('pl-PL')}</span>
+              </span>
+              <button
+                type="button"
+                onClick={async () => {
+                  try {
+                    await messagesApi.unblock(u.id);
+                    setList((l) => (l || []).filter((x) => x.id !== u.id));
+                    showToast(`Odblokowano ${u.username}.`);
+                  } catch (e: any) {
+                    showToast(e.message);
+                  }
+                }}
+                className="btn btn-ghost h-8 px-3"
+              >
+                Odblokuj
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   );
 };
