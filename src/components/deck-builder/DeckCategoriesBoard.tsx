@@ -2,6 +2,7 @@ import React, { useMemo } from 'react';
 import { DeckCategoriesBoardProps } from './types';
 import { DECK_CATEGORIES } from './constants';
 import { DeckCategoryColumn } from './DeckCategoryColumn';
+import { sortDeckEntries, type DeckCardSort } from './cardSort';
 
 export const DeckCategoriesBoard: React.FC<DeckCategoriesBoardProps> = ({
   categorizedCards,
@@ -13,12 +14,13 @@ export const DeckCategoriesBoard: React.FC<DeckCategoriesBoardProps> = ({
   onSetCommander,
   onViewCardDetails,
   issuesById,
+  sortMode = 'name',
 }) => {
   // Sort categories from the one with the most cards to the one with the fewest cards
   const sortedCategories = useMemo(() => {
     return [...DECK_CATEGORIES]
       .map(category => {
-        const cardsInCat = categorizedCards.get(category.id) || [];
+        const cardsInCat = sortDeckEntries(categorizedCards.get(category.id) || [], sortMode as DeckCardSort);
         const totalQty = cardsInCat.reduce((sum, e) => sum + (e.quantity || 1), 0);
         return {
           category,
@@ -39,13 +41,13 @@ export const DeckCategoriesBoard: React.FC<DeckCategoriesBoardProps> = ({
         // 3. Fallback to default categories order
         return DECK_CATEGORIES.indexOf(a.category) - DECK_CATEGORIES.indexOf(b.category);
       });
-  }, [categorizedCards]);
+  }, [categorizedCards, sortMode]);
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 items-start">
+    <div className="columns-1 md:columns-2 lg:columns-3 xl:columns-4 gap-4">
       {sortedCategories.map(({ category, cards }) => (
+        <div key={category.id} className="break-inside-avoid mb-4">
         <DeckCategoryColumn
-          key={category.id}
           category={category}
           cards={cards}
           settings={settings}
@@ -57,6 +59,7 @@ export const DeckCategoriesBoard: React.FC<DeckCategoriesBoardProps> = ({
           onViewCardDetails={onViewCardDetails}
           issuesById={issuesById}
         />
+        </div>
       ))}
     </div>
   );

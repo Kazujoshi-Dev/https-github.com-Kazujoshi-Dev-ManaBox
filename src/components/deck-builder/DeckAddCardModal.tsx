@@ -70,6 +70,8 @@ export const DeckAddCardModal: React.FC<DeckAddCardModalProps> = ({
             onConfirm={(card, isFoil, asCommander) => {
               onAddCard(card, asCommander, isFoil);
               setPicking(null);
+              // Puste pole wyszukiwania, gotowe na następną kartę
+              onSearchChange('');
             }}
           />
         ) : (

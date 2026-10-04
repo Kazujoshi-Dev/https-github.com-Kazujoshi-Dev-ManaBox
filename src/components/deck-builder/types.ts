@@ -86,6 +86,8 @@ export interface DeckCategoryColumnProps {
 }
 
 export interface DeckCategoriesBoardProps {
+  /** Kolejność kart w kategoriach (domyślnie alfabetycznie). */
+  sortMode?: import('./cardSort').DeckCardSort;
   /** Problemy z legalnością po id karty. */
   issuesById?: Map<string, string[]>;
   categorizedCards: Map<string, DeckCardEntry[]>;

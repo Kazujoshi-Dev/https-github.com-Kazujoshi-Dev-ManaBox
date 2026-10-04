@@ -20,6 +20,7 @@ import { DeckAnalysis } from './deck-builder/DeckAnalysis';
 import { DeckTokens } from './deck-builder/DeckTokens';
 import { DeckLegalityNotice } from './deck-builder/DeckLegalityNotice';
 import { checkCommanderLegality } from './deck-builder/legality';
+import { DECK_SORT_OPTIONS, loadDeckSort, saveDeckSort, type DeckCardSort } from './deck-builder/cardSort';
 import { DeckSuggestions } from './deck-builder/DeckSuggestions';
 import { DeckShareModal } from './deck-builder/DeckShareModal';
 import type { EdhrecRecommendation } from '../services/api';
@@ -221,6 +222,11 @@ export const DeckBuilder: React.FC<DeckBuilderProps> = ({
   });
   const [basicsBusy, setBasicsBusy] = useState<string | null>(null);
   const legality = React.useMemo(() => checkCommanderLegality(deck), [deck]);
+  const [sortMode, setSortMode] = useState<DeckCardSort>(loadDeckSort);
+  const handleSortChange = useCallback((mode: DeckCardSort) => {
+    setSortMode(mode);
+    saveDeckSort(mode);
+  }, []);
 
   const handleSetBasicCount = useCallback(
     async (name: string, rawTarget: number) => {
@@ -447,14 +453,25 @@ export const DeckBuilder: React.FC<DeckBuilderProps> = ({
       />
 
       {/* 2b. Board Toolbar: Categories Sorting Info & Card Preview Size Slider */}
-      <div className="bg-stone-900/90 border border-stone-800 rounded-2xl px-4 py-3 flex flex-col sm:flex-row items-center justify-between gap-3 shadow-lg backdrop-blur-md">
-        <div className="flex items-center gap-2.5 text-xs text-stone-300">
-          <div className="p-1.5 rounded-lg bg-amber-500/15 border border-amber-500/30 text-amber-400">
-            <ArrowDownWideNarrow className="w-4 h-4" />
-          </div>
-          <div>
-            <span className="font-bold text-stone-100 block">Kategorie posortowane od najliczniejszych</span>
-            <span className="text-[11px] text-stone-400">Typy kart z największą liczbą sztuk wyświetlane są na początku planszy</span>
+      <div className="bg-stone-900 border border-stone-800 rounded-xl px-4 py-3 flex flex-col sm:flex-row items-center justify-between gap-3">
+        <div className="flex items-center gap-3 w-full sm:w-auto">
+          <span className="text-sm text-stone-400 shrink-0">Sortuj karty</span>
+          <div className="inline-grid grid-cols-3 p-1 rounded-lg bg-stone-950 ring-1 ring-stone-800" role="radiogroup" aria-label="Kolejność kart w kategoriach">
+            {DECK_SORT_OPTIONS.map((o) => (
+              <button
+                key={o.id}
+                type="button"
+                role="radio"
+                aria-checked={sortMode === o.id}
+                title={o.title}
+                onClick={() => handleSortChange(o.id)}
+                className={`h-8 px-3.5 rounded-md text-sm cursor-pointer ${
+                  sortMode === o.id ? 'bg-stone-800 text-stone-50 font-medium' : 'text-stone-400 hover:text-stone-200'
+                }`}
+              >
+                {o.label}
+              </button>
+            ))}
           </div>
         </div>
 
@@ -519,6 +536,7 @@ export const DeckBuilder: React.FC<DeckBuilderProps> = ({
       {/* 3. Main Stacked Categories Board */}
       <DeckCategoriesBoard
         issuesById={legality.byCardId}
+        sortMode={sortMode}
         categorizedCards={categorizedCards}
         settings={settings}
         previewScale={previewScale}
