@@ -1,7 +1,8 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { AdminChangelog } from './admin/AdminChangelog';
 import {
   ShieldCheck, Users, UserPlus, Activity, Ban, Layers, CircleDollarSign, Database, Search, Loader2, X,
-  KeyRound, LogOut, EyeOff, Eye, Trash2, Pencil, Copy, Check, ScrollText, AlertTriangle, RefreshCw, ChevronRight
+  KeyRound, LogOut, EyeOff, Eye, Trash2, Pencil, Copy, Check, ScrollText, Newspaper, AlertTriangle, RefreshCw, ChevronRight
 } from 'lucide-react';
 import { adminApi } from '../services/api';
 import { useBackToClose } from '../hooks/useBackButton';
@@ -54,7 +55,7 @@ function auditDetails(e: AdminAuditEntry): string {
 }
 
 export const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, showToast }) => {
-  const [view, setView] = useState<'users' | 'audit'>('users');
+  const [view, setView] = useState<'users' | 'audit' | 'changelog'>('users');
   const [stats, setStats] = useState<AdminStats | null>(null);
   const [query, setQuery] = useState('');
   const [users, setUsers] = useState<AdminUser[]>([]);
@@ -170,10 +171,11 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, showToast }
       </div>
 
       {/* Przełącznik widoku */}
-      <div className="flex gap-2">
+      <div className="flex flex-wrap gap-2">
         {[
           { id: 'users' as const, label: 'Użytkownicy', icon: Users },
-          { id: 'audit' as const, label: 'Dziennik działań', icon: ScrollText }
+          { id: 'audit' as const, label: 'Dziennik działań', icon: ScrollText },
+          { id: 'changelog' as const, label: 'Dziennik zmian', icon: Newspaper }
         ].map(({ id, label, icon: Icon }) => (
           <button
             key={id}
@@ -191,7 +193,9 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, showToast }
 
       {error && <p className="text-sm text-rose-300 bg-rose-500/10 border border-rose-500/30 rounded-xl p-3">{error}</p>}
 
-      {view === 'users' ? (
+      {view === 'changelog' ? (
+        <AdminChangelog showToast={showToast} />
+      ) : view === 'users' ? (
         <div className="space-y-3">
           <div className="relative">
             <Search className="w-4 h-4 text-stone-500 absolute left-3.5 top-1/2 -translate-y-1/2" />

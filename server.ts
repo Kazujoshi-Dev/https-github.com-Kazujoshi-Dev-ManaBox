@@ -1,4 +1,5 @@
 import { collectionTotals } from './src/utils/collectionValue';
+import { registerChangelogRoutes, startChangelog } from './src/server/changelog';
 import { registerSeoRoutes, readTemplate as readSeoTemplate, clearSeoCache } from './src/server/seo';
 import express from 'express';
 import crypto from 'crypto';
@@ -2143,6 +2144,9 @@ admin.delete('/users/:id', async (req, res) => {
   }
 });
 
+// Dziennik zmian (publiczny odczyt + zarządzanie w panelu admina)
+registerChangelogRoutes(app, admin, sendServerError);
+
 app.use('/api/admin', admin);
 
 // --- PUBLIC SALE ENDPOINT (NO AUTH REQUIRED) ---
@@ -2827,6 +2831,7 @@ app.get('/api/spellbook/status', (_req, res) => {
 
 async function startServer() {
   await db.initDb();
+  startChangelog().catch(() => {});
   // Lokalna baza kart dla skanera (import w tle, nie blokuje startu).
   cards.startCardDb().catch((err) => console.warn('[Karty] Start nieudany:', err?.message || err));
   // Porządki w tabeli sesji: przy starcie i raz na dobę.

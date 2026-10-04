@@ -201,6 +201,24 @@ export async function initDb(): Promise<void> {
             created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
             PRIMARY KEY (user_id, blocked_id)
           );
+
+          CREATE TABLE IF NOT EXISTS changelog_drafts (
+            id VARCHAR(100) PRIMARY KEY,
+            day DATE NOT NULL,
+            type VARCHAR(12) NOT NULL,
+            area VARCHAR(60),
+            text TEXT NOT NULL,
+            source VARCHAR(10) NOT NULL DEFAULT 'repo',
+            created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+            published_at TIMESTAMPTZ
+          );
+          ALTER TABLE changelog_drafts ADD COLUMN IF NOT EXISTS seq INT NOT NULL DEFAULT 1000000;
+          CREATE INDEX IF NOT EXISTS idx_changelog_drafts_day ON changelog_drafts(day);
+          CREATE TABLE IF NOT EXISTS changelog_releases (
+            day DATE PRIMARY KEY,
+            published_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+            updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+          );
         `);
         setPostgresActive(true);
         console.log('[Storage] PostgreSQL connected & database schema verified successfully');

@@ -1,4 +1,5 @@
 import { langFromCard } from './utils/formatters';
+import { useChangelogBadge } from './hooks/useChangelogBadge';
 import { parsePublicLink } from './utils/publicLinks';
 import React, { useState, useCallback, useEffect } from 'react';
 import { ScryfallCard, CollectionItem, DeckItem, CardCondition, CardLanguage, AppSettings, RegisteredUserSummary, WishlistItem } from './types';
@@ -195,6 +196,8 @@ export default function App() {
   // Mailbox State
   const [isMailboxOpen, setIsMailboxOpen] = useState<boolean>(false);
   const [isHistoryOpen, setIsHistoryOpen] = useState<boolean>(false);
+  // Kropka „nowe” przy zakładce Dziennik zmian
+  const changelogBadge = useChangelogBadge(Boolean(currentUser));
   const [unreadMessagesCount, setUnreadMessagesCount] = useState<number>(0);
   const [registeredUsers, setRegisteredUsers] = useState<RegisteredUserSummary[]>([]);
 
@@ -711,6 +714,7 @@ export default function App() {
         settings={settings}
         decksCount={decks.length}
         forSaleCount={forSaleCount}
+        hasNewChangelog={changelogBadge.hasNew}
         onOpenSettings={() => setActiveTab('settings')}
         onRefreshPrices={refreshPrices}
         isRefreshing={isRefreshingPrices}
@@ -755,6 +759,7 @@ export default function App() {
             />
           ) : (
           <TabContent
+            onChangelogSeen={changelogBadge.markSeen}
             activeTab={activeTab}
             setActiveTab={setActiveTab}
             collection={collection}
@@ -847,6 +852,7 @@ export default function App() {
         onLogout={handleLogout}
         unreadMessagesCount={unreadMessagesCount}
         user={currentUser}
+        hasNewChangelog={changelogBadge.hasNew}
       />
 
       {/* Settings Modal */}

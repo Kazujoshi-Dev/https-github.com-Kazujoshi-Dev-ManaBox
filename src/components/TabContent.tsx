@@ -1,4 +1,5 @@
 import React, { Suspense, lazy } from 'react';
+import { Changelog } from './Changelog';
 
 // Panel administratora ładowany tylko, gdy ktoś go otworzy
 const AdminPanel = lazy(() => import('./AdminPanel'));
@@ -21,9 +22,11 @@ import { Wishlist } from './Wishlist';
 import { ForSaleList } from './ForSaleList';
 import { UsersList } from './UsersList';
 
-export type NavigationTab = 'collection' | 'decks' | 'search' | 'set-top' | 'analytics' | 'wishlist' | 'for-sale' | 'users' | 'admin' | 'settings';
+export type NavigationTab = 'collection' | 'decks' | 'search' | 'set-top' | 'analytics' | 'wishlist' | 'for-sale' | 'users' | 'changelog' | 'admin' | 'settings';
 
 interface TabContentProps {
+  /** Zakładka „Dziennik zmian” została obejrzana (gasi kropkę „nowe”). */
+  onChangelogSeen?: (latestDay: string) => void;
   activeTab: NavigationTab;
   setActiveTab: (tab: NavigationTab) => void;
   collection: CollectionItem[];
@@ -80,6 +83,7 @@ interface TabContentProps {
 }
 
 export const TabContent: React.FC<TabContentProps> = ({
+  onChangelogSeen,
   activeTab,
   setActiveTab,
   collection,
@@ -237,6 +241,9 @@ export const TabContent: React.FC<TabContentProps> = ({
           onOpenSellerProfile={onOpenSellerProfile}
         />
       );
+
+    case 'changelog':
+      return <Changelog onSeen={onChangelogSeen} />;
 
     case 'admin':
       if (!currentUser?.isAdmin) return null;

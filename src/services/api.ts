@@ -456,3 +456,40 @@ export const messagesApi = {
 };
 
 
+
+// --- Dziennik zmian ---
+export type ChangelogType = 'new' | 'improved' | 'fixed';
+export interface ChangelogItem {
+  id: string;
+  type: ChangelogType;
+  area: string | null;
+  text: string;
+}
+export interface ChangelogRelease {
+  day: string;
+  publishedAt: string;
+  items: ChangelogItem[];
+}
+export interface ChangelogPendingDraft extends ChangelogItem {
+  day: string;
+  source: string;
+}
+
+export const changelogApi = {
+  list: async (limit = 60): Promise<{ releases: ChangelogRelease[]; publishTime: string }> => {
+    const res = await fetch(`/api/changelog?limit=${limit}`);
+    return jsonOrThrow(res, 'Nie udało się pobrać dziennika zmian.');
+  },
+  pending: async (): Promise<{ drafts: ChangelogPendingDraft[]; cutoff: string }> =>
+    jsonOrThrow(await fetchWithAuth('/api/admin/changelog/pending'), 'Nie udało się pobrać zmian do publikacji.'),
+  add: async (draft: { type: ChangelogType; area?: string; text: string; day?: string }): Promise<{ id: string }> =>
+    jsonOrThrow(
+      await fetchWithAuth('/api/admin/changelog/drafts', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(draft) }),
+      'Nie udało się dodać zmiany.'
+    ),
+  remove: async (id: string): Promise<void> => {
+    await jsonOrThrow(await fetchWithAuth(`/api/admin/changelog/drafts/${encodeURIComponent(id)}`, { method: 'DELETE' }), 'Nie udało się usunąć wpisu.');
+  },
+  publishNow: async (): Promise<{ published: number }> =>
+    jsonOrThrow(await fetchWithAuth('/api/admin/changelog/publish', { method: 'POST' }), 'Nie udało się opublikować zmian.')
+};

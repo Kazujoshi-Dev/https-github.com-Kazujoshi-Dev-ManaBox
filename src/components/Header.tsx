@@ -18,15 +18,18 @@ import {
   CircleDollarSign,
   Users,
   Mail,
+  ScrollText,
   ChevronDown
 } from 'lucide-react';
 import { formatCurrency } from '../utils/formatters';
 import { SupportButton } from './ui/SupportButton';
 import { AppSettings, AuthUser } from '../types';
 
-type Tab = 'collection' | 'search' | 'set-top' | 'analytics' | 'wishlist' | 'decks' | 'for-sale' | 'users' | 'admin' | 'settings';
+type Tab = 'collection' | 'search' | 'set-top' | 'analytics' | 'wishlist' | 'decks' | 'for-sale' | 'users' | 'changelog' | 'admin' | 'settings';
 
 interface HeaderProps {
+  /** Nowe wpisy w dzienniku zmian, których użytkownik nie widział. */
+  hasNewChangelog?: boolean;
   activeTab: Tab;
   setActiveTab: (tab: Tab) => void;
   totalCards: number;
@@ -150,6 +153,7 @@ const AccountMenu: React.FC<{
 };
 
 export const Header: React.FC<HeaderProps> = ({
+  hasNewChangelog = false,
   activeTab,
   setActiveTab,
   totalCards,
@@ -188,7 +192,7 @@ export const Header: React.FC<HeaderProps> = ({
     : 'Kliknij „Odśwież ceny”, aby zobaczyć zmianę wartości kolekcji';
   const sourceLabel = settings.pricingSource === 'CARDMARKET' ? 'Cardmarket Trend' : 'TCGPlayer Market';
 
-  const tabs: Array<{ id: Tab; label: string; icon: React.ElementType; count?: number }> = [
+  const tabs: Array<{ id: Tab; label: string; icon: React.ElementType; count?: number; dot?: boolean }> = [
     { id: 'collection', label: 'Kolekcja', icon: Layers, count: totalCards },
     { id: 'decks', label: 'Talie', icon: Swords, count: decksCount || undefined },
     { id: 'search', label: 'Szukaj kart', icon: Search },
@@ -197,6 +201,7 @@ export const Header: React.FC<HeaderProps> = ({
     { id: 'wishlist', label: 'Lista życzeń', icon: FolderHeart },
     { id: 'for-sale', label: 'Sprzedam', icon: CircleDollarSign, count: forSaleCount || undefined },
     { id: 'users', label: 'Gracze', icon: Users },
+    { id: 'changelog', label: 'Dziennik zmian', icon: ScrollText, dot: hasNewChangelog },
     ...(user?.isAdmin ? [{ id: 'admin' as Tab, label: 'Admin', icon: ShieldCheck }] : [])
   ];
 
@@ -330,7 +335,7 @@ export const Header: React.FC<HeaderProps> = ({
 
         {/* Zakładki: jedna linia, aktywna podkreślona */}
         <nav aria-label="Zakładki" className="-mb-px flex items-center gap-1 overflow-x-auto no-scrollbar">
-          {tabs.map(({ id, label, icon: Icon, count }) => {
+          {tabs.map(({ id, label, icon: Icon, count, dot }) => {
             const active = activeTab === id;
             return (
               <button
@@ -347,6 +352,7 @@ export const Header: React.FC<HeaderProps> = ({
                 <Icon className={`w-4 h-4 ${active ? 'text-amber-400' : 'text-stone-500'}`} />
                 {label}
                 {count !== undefined && <span className="text-xs text-stone-500 tabular-nums">{count}</span>}
+                {dot && <span className="w-1.5 h-1.5 rounded-full bg-amber-400" aria-label="nowe wpisy" />}
               </button>
             );
           })}

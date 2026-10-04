@@ -18,7 +18,8 @@ import {
   LogOut,
   X,
   User,
-  ShieldCheck
+  ShieldCheck,
+  ScrollText
 } from 'lucide-react';
 import type { NavigationTab } from './TabContent';
 import { useBackToClose } from '../hooks/useBackButton';
@@ -36,6 +37,7 @@ interface MobileNavProps {
   onLogout: () => void;
   unreadMessagesCount: number;
   user: AuthUser;
+  hasNewChangelog?: boolean;
 }
 
 /** Zakładki dostępne pod „Więcej” — na telefonie nie mieszczą się w dolnym pasku. */
@@ -44,7 +46,8 @@ const MORE_TABS: Array<{ tab: NavigationTab; label: string; icon: React.ElementT
   { tab: 'analytics', label: 'Statystyki', icon: BarChart3 },
   { tab: 'wishlist', label: 'Lista życzeń', icon: FolderHeart },
   { tab: 'for-sale', label: 'Sprzedam', icon: CircleDollarSign },
-  { tab: 'users', label: 'Gracze', icon: Users }
+  { tab: 'users', label: 'Gracze', icon: Users },
+  { tab: 'changelog', label: 'Dziennik zmian', icon: ScrollText }
 ];
 
 /**
@@ -63,7 +66,8 @@ export const MobileNav: React.FC<MobileNavProps> = ({
   isRefreshing,
   onLogout,
   unreadMessagesCount,
-  user
+  user,
+  hasNewChangelog = false
 }) => {
   const [isMoreOpen, setIsMoreOpen] = useState(false);
   useBackToClose(isMoreOpen, () => setIsMoreOpen(false));
@@ -141,6 +145,9 @@ export const MobileNav: React.FC<MobileNavProps> = ({
           >
             <Menu className="w-5 h-5" />
             <span>Więcej</span>
+            {unreadMessagesCount === 0 && hasNewChangelog && (
+              <span className="absolute top-2 right-[calc(50%-14px)] w-2 h-2 rounded-full bg-amber-400" aria-hidden="true" />
+            )}
             {unreadMessagesCount > 0 && (
               <span className="absolute top-1.5 right-[calc(50%-18px)] min-w-[18px] h-[18px] px-1 rounded-full bg-amber-500 text-stone-950 text-[11px] font-bold flex items-center justify-center">
                 {unreadMessagesCount}
@@ -183,7 +190,7 @@ export const MobileNav: React.FC<MobileNavProps> = ({
                   key={tab}
                   type="button"
                   onClick={() => go(tab)}
-                  className={`h-20 rounded-2xl border flex flex-col items-center justify-center gap-1.5 text-xs font-semibold ${
+                  className={`relative h-20 rounded-2xl border flex flex-col items-center justify-center gap-1.5 text-xs font-semibold ${
                     activeTab === tab
                       ? 'bg-amber-500/15 border-amber-500/40 text-amber-300'
                       : 'bg-stone-950/60 border-stone-800 text-stone-200 active:bg-stone-800'
@@ -191,6 +198,9 @@ export const MobileNav: React.FC<MobileNavProps> = ({
                 >
                   <Icon className="w-5 h-5" />
                   {label}
+                  {tab === 'changelog' && hasNewChangelog && (
+                    <span className="absolute top-2.5 right-2.5 w-2 h-2 rounded-full bg-amber-400" aria-label="nowe wpisy" />
+                  )}
                 </button>
               ))}
               <button
