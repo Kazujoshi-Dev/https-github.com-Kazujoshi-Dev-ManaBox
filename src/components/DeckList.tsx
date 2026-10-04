@@ -1,4 +1,5 @@
 import { PageHeader } from './ui/PageHeader';
+import { computeDeckValue } from './deck-builder/useDeckStats';
 import React, { useState } from 'react';
 import { DeckItem, AppSettings } from '../types';
 import { getCardPrice, formatCurrency } from '../utils/formatters';
@@ -106,11 +107,7 @@ export const DeckList: React.FC<DeckListProps> = ({
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-4">
           {decks.map(deck => {
             const count = (deck.commander ? 1 : 0) + (deck.cards?.reduce((s, c) => s + c.quantity, 0) || 0);
-            let deckVal = 0;
-            if (deck.commander) deckVal += getCardPrice(deck.commander, false, settings);
-            deck.cards?.forEach(c => {
-              deckVal += getCardPrice(c.card, false, settings) * c.quantity;
-            });
+            const deckVal = computeDeckValue(deck, settings);
 
             const art = deck.commander?.image_uris?.art_crop || deck.commander?.card_faces?.[0]?.image_uris?.art_crop || '';
             const iconBtn = 'w-8 h-8 rounded-md flex items-center justify-center text-stone-400 hover:text-stone-100 hover:bg-stone-800 cursor-pointer';

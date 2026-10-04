@@ -3,6 +3,15 @@ import { DeckItem, DeckCardEntry, AppSettings } from '../../types';
 import { getCardPrice } from '../../utils/formatters';
 import { DECK_CATEGORIES, getCardCategory } from './constants';
 
+/** Wartość talii: dowódca i karty, każda w swojej wersji (foil liczony po cenie foil). */
+export function computeDeckValue(deck: DeckItem, settings: AppSettings): number {
+  let val = deck.commander ? getCardPrice(deck.commander, Boolean(deck.commanderIsFoil), settings) : 0;
+  for (const entry of deck.cards) {
+    if (!entry.isCommander) val += getCardPrice(entry.card, Boolean(entry.isFoil), settings) * entry.quantity;
+  }
+  return val;
+}
+
 interface UseDeckStatsProps {
   deck: DeckItem;
   settings: AppSettings;
@@ -21,18 +30,7 @@ export function useDeckStats({ deck, settings }: UseDeckStatsProps) {
   }, [deck]);
 
   // Total estimated value
-  const totalDeckValue = useMemo(() => {
-    let val = 0;
-    if (deck.commander) {
-      val += getCardPrice(deck.commander, Boolean(deck.commanderIsFoil), settings);
-    }
-    deck.cards.forEach(entry => {
-      if (!entry.isCommander) {
-        val += getCardPrice(entry.card, Boolean(entry.isFoil), settings) * entry.quantity;
-      }
-    });
-    return val;
-  }, [deck, settings]);
+  const totalDeckValue = useMemo(() => computeDeckValue(deck, settings), [deck, settings]);
 
   // Group cards by category (excluding commander so it is never duplicated)
   const categorizedCards = useMemo(() => {
