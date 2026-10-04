@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Shuffle, Plus, Hand, Percent, Droplets, Lightbulb, AlertTriangle, CheckCircle2, Info } from 'lucide-react';
+import { Shuffle, Plus, Hand, Percent, Droplets, Lightbulb, CheckCircle2, Info, Mountain } from 'lucide-react';
 import type { DeckItem, ScryfallCard } from '../../types';
 import { getCardImageUri, handleCardImageError } from '../../utils/formatters';
 import { ManaSymbol } from '../ManaSymbol';
@@ -28,9 +28,10 @@ const COLOR_DOT: Record<Color, string> = {
   G: 'bg-emerald-500 text-white'
 };
 const COLOR_BAR: Record<Color, string> = {
-  W: 'bg-amber-100',
+  W: 'bg-[#f4ecd2]',
   U: 'bg-blue-500',
-  B: 'bg-stone-500',
+  // czarny jak w symbolu many; jasna obwódka, żeby był widoczny na ciemnym tle
+  B: 'bg-[#0b0908] ring-1 ring-inset ring-stone-500',
   R: 'bg-red-500',
   G: 'bg-emerald-500'
 };
@@ -38,16 +39,14 @@ const COLOR_BAR: Record<Color, string> = {
 const Panel: React.FC<{ title: string; subtitle: string; icon: React.ElementType; actions?: React.ReactNode; children: React.ReactNode }> = ({
   title, subtitle, icon: Icon, actions, children
 }) => (
-  <section className="bg-stone-900 border border-stone-800 rounded-2xl p-4 sm:p-5 shadow-lg">
+  <section className="bg-stone-900 border border-stone-800 rounded-xl p-4 sm:p-5">
     <div className="flex flex-wrap items-start justify-between gap-3 mb-4">
-      <div className="flex items-start gap-2.5 min-w-0">
-        <div className="w-9 h-9 rounded-xl bg-amber-500/10 border border-amber-500/25 text-amber-400 flex items-center justify-center shrink-0">
-          <Icon className="w-4.5 h-4.5" />
-        </div>
-        <div className="min-w-0">
-          <h3 className="text-sm font-bold text-stone-100">{title}</h3>
-          <p className="text-xs text-stone-400">{subtitle}</p>
-        </div>
+      <div className="min-w-0">
+        <h3 className="text-base font-semibold text-stone-50 flex items-center gap-2">
+          <Icon className="w-4 h-4 text-stone-400" />
+          {title}
+        </h3>
+        <p className="text-sm text-stone-400 mt-0.5">{subtitle}</p>
       </div>
       {actions}
     </div>
@@ -210,86 +209,120 @@ export const DeckAnalysis: React.FC<DeckAnalysisProps> = ({ deck, onViewCardDeta
 
       {/* 3. Kolory many */}
       <Panel
-        title="Rozkład i wymagania kolorów"
-        subtitle={`Lands: ${mana.lands} z ${mana.deckSize} kart · średni koszt pozostałych kart ${mana.avgManaValue.toFixed(2).replace('.', ',')}${
-          mana.recommendedLands !== null ? ` · zalecane ok. ${mana.recommendedLands} Lands` : ''
+        title="Kolory many"
+        subtitle={`${mana.lands} Lands na ${mana.deckSize} kart, średni koszt pozostałych ${mana.avgManaValue.toFixed(2).replace('.', ',')}${
+          mana.recommendedLands !== null ? `, zalecane ok. ${mana.recommendedLands} Lands` : ''
         }`}
         icon={Droplets}
       >
         {mana.colors.length === 0 ? (
           <p className="text-sm text-stone-400">Talia jest bezbarwna, więc nie ma wymagań kolorystycznych.</p>
         ) : (
-          <div className="space-y-4">
-            {/* Udział kolorów: koszty vs źródła */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div className="space-y-6">
+            {/* Udział kolorów: koszty kart nad źródłami z Lands */}
+            <div className="space-y-2.5">
               {[
-                { label: 'Kolory w kosztach kart', key: 'pipShare' as const },
-                { label: 'Kolory produkowane przez Lands', key: 'sourceShare' as const }
+                { label: 'Koszty kart', hint: 'Udział symboli many w kosztach kart', key: 'pipShare' as const },
+                { label: 'Lands dają', hint: 'Udział kolorów, które produkują Lands', key: 'sourceShare' as const }
               ].map((row) => (
-                <div key={row.key}>
-                  <p className="text-[11px] font-bold text-stone-500 mb-1.5">{row.label}</p>
-                  <div className="flex h-4 rounded-full overflow-hidden bg-stone-800">
+                <div key={row.key} className="grid grid-cols-[5.5rem_1fr] sm:grid-cols-[6.5rem_1fr] items-center gap-3">
+                  <span className="text-sm text-stone-400" title={row.hint}>{row.label}</span>
+                  <div className="flex h-3 gap-0.5" role="img" aria-label={`${row.label}: ${mana.colors.map((c) => `${COLOR_NAMES[c.color]} ${pct(c[row.key])}`).join(', ')}`}>
                     {mana.colors.map((c) =>
                       c[row.key] > 0 ? (
-                        <div key={c.color} className={COLOR_BAR[c.color]} style={{ width: `${c[row.key] * 100}%` }} title={`${COLOR_NAMES[c.color]}: ${pct(c[row.key])}`} />
+                        <div
+                          key={c.color}
+                          className={`h-full first:rounded-l-full last:rounded-r-full ${COLOR_BAR[c.color]}`}
+                          style={{ width: `${c[row.key] * 100}%` }}
+                          title={`${COLOR_NAMES[c.color]}: ${pct(c[row.key])}`}
+                        />
                       ) : null
                     )}
                   </div>
-                  <div className="flex flex-wrap gap-x-3 gap-y-0.5 mt-1.5 text-xs text-stone-400">
-                    {mana.colors.map((c) => (
-                      <span key={c.color}>
-                        {COLOR_NAMES[c.color]} <strong className="text-stone-200">{pct(c[row.key])}</strong>
-                      </span>
-                    ))}
-                  </div>
                 </div>
               ))}
+              <div className="sm:grid sm:grid-cols-[6.5rem_1fr] gap-3">
+                <span className="hidden sm:block" />
+                <ul className="flex flex-wrap gap-x-5 gap-y-1 text-sm">
+                  {mana.colors.map((c) => (
+                    <li key={c.color} className="flex items-center gap-1.5 text-stone-400">
+                      <span className={`w-2.5 h-2.5 rounded-full ${COLOR_BAR[c.color]}`} aria-hidden="true" />
+                      {COLOR_NAMES[c.color]}:
+                      <span className="text-stone-200 tabular-nums">{pct(c.pipShare)}</span> kosztów,
+                      <span className="text-stone-200 tabular-nums">{pct(c.sourceShare)}</span> z Lands
+                    </li>
+                  ))}
+                </ul>
+              </div>
             </div>
 
-            {/* Tabela wymagań */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-2.5">
+            {/* Wymagania każdego koloru */}
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
               {mana.colors.map((c) => {
                 const ok = c.landSources >= c.needed;
+                const scale = Math.max(c.needed, c.landSources, 1);
+                const art = c.hardestCard ? getCardImageUri(c.hardestCard, 'art_crop') : '';
                 return (
-                  <div key={c.color} className={`rounded-xl border p-3 bg-stone-950 ${ok ? 'border-stone-800' : 'border-rose-500/40'}`}>
+                  <div key={c.color} className="rounded-xl bg-stone-950/60 ring-1 ring-stone-800 p-4 space-y-3">
                     <div className="flex items-center justify-between gap-2">
-                      <span className="flex items-center gap-2 text-sm font-bold text-stone-100">
-                        <span className={`w-6 h-6 rounded-full text-[11px] font-bold flex items-center justify-center ${COLOR_DOT[c.color]}`}>{c.color}</span>
+                      <span className="flex items-center gap-2 text-sm font-medium text-stone-100">
+                        <ManaSymbol cost={`{${c.color}}`} size="md" />
                         {COLOR_NAMES[c.color]}
                       </span>
-                      {ok ? (
-                        <CheckCircle2 className="w-4.5 h-4.5 text-emerald-400" aria-label="Wystarczająco źródeł" />
-                      ) : (
-                        <AlertTriangle className="w-4.5 h-4.5 text-rose-400" aria-label="Za mało źródeł" />
+                      <span
+                        className={`text-xs font-medium px-2 py-0.5 rounded-md ${
+                          ok ? 'bg-emerald-500/10 text-emerald-300' : 'bg-rose-500/10 text-rose-300'
+                        }`}
+                      >
+                        {ok ? 'Wystarczy' : `Brakuje ${c.needed - c.landSources}`}
+                      </span>
+                    </div>
+
+                    <div>
+                      <p className="text-sm text-stone-400">
+                        <span className="text-2xl font-semibold text-stone-50 tabular-nums">{c.landSources}</span>
+                        {c.hardestCard ? (
+                          <> / {c.needed} źródeł z Lands</>
+                        ) : (
+                          <> źródeł z Lands</>
+                        )}
+                        {c.otherSources > 0 && (
+                          <span className="ml-1.5 text-stone-500" title="Artifacts i Creatures dające manę (nie liczone do wymagań)">
+                            +{c.otherSources} inne
+                          </span>
+                        )}
+                      </p>
+                      {c.hardestCard && (
+                        <div className="relative mt-2 h-1.5 rounded-full bg-stone-800" aria-hidden="true">
+                          <div
+                            className={`absolute inset-y-0 left-0 rounded-full ${ok ? 'bg-emerald-400' : 'bg-rose-400'}`}
+                            style={{ width: `${Math.min(100, (c.landSources / scale) * 100)}%` }}
+                          />
+                          <div className="absolute -top-1 -bottom-1 w-0.5 bg-stone-300" style={{ left: `calc(${(c.needed / scale) * 100}% - 1px)` }} />
+                        </div>
                       )}
                     </div>
-                    <dl className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1 text-xs">
-                      <dt className="text-stone-500">Źródła (Lands)</dt>
-                      <dd className={`text-right tabular-nums font-bold ${ok ? 'text-stone-100' : 'text-rose-300'}`}>{c.landSources}</dd>
-                      <dt className="text-stone-500">Potrzebne</dt>
-                      <dd className="text-right tabular-nums font-bold text-stone-100">{c.hardestCard ? c.needed : '—'}</dd>
-                      {c.otherSources > 0 && (
-                        <>
-                          <dt className="text-stone-500">Inne źródła</dt>
-                          <dd className="text-right tabular-nums text-stone-300" title="Artifacts i Creatures dające manę (nie liczone do wymagań)">+{c.otherSources}</dd>
-                        </>
-                      )}
-                      {c.hardestCard && (
-                        <>
-                          <dt className="text-stone-500">Szansa na czas</dt>
-                          <dd className={`text-right tabular-nums font-bold ${c.probability >= TARGET_PROBABILITY ? 'text-emerald-400' : 'text-amber-300'}`}>{pct(c.probability)}</dd>
-                        </>
-                      )}
-                    </dl>
+
                     {c.hardestCard && (
-                      <p className="mt-2 text-[11px] text-stone-400 flex items-center gap-1 flex-wrap">
-                        Najtrudniejsza:
-                        <button type="button" onClick={() => onViewCardDetails(c.hardestCard!)} className="text-stone-200 hover:text-amber-300 font-semibold cursor-pointer truncate max-w-[10rem]">
-                          {c.hardestCard.name}
-                        </button>
-                        <ManaSymbol cost={c.hardestCard.mana_cost || c.hardestCard.card_faces?.[0]?.mana_cost} size="sm" />
-                        <span>w {c.hardestTurn}. turze</span>
-                      </p>
+                      <button
+                        type="button"
+                        onClick={() => onViewCardDetails(c.hardestCard!)}
+                        className="w-full flex items-center gap-3 text-left rounded-lg -mx-1 px-1 py-1 hover:bg-stone-900 cursor-pointer"
+                      >
+                        <span className="w-12 h-9 rounded-md overflow-hidden bg-stone-800 shrink-0">
+                          {art && <img src={art} alt="" loading="lazy" referrerPolicy="no-referrer" className="w-full h-full object-cover" />}
+                        </span>
+                        <span className="min-w-0 flex-1">
+                          <span className="flex items-center gap-1.5">
+                            <span className="text-sm text-stone-100 truncate">{c.hardestCard.name}</span>
+                            <ManaSymbol cost={c.hardestCard.mana_cost || c.hardestCard.card_faces?.[0]?.mana_cost} size="sm" />
+                          </span>
+                          <span className="block text-xs text-stone-400">
+                            Najbardziej wymagająca: tura {c.hardestTurn}, szansa{' '}
+                            <span className={c.probability >= TARGET_PROBABILITY ? 'text-emerald-400' : 'text-amber-300'}>{pct(c.probability)}</span>
+                          </span>
+                        </span>
+                      </button>
                     )}
                   </div>
                 );
@@ -297,23 +330,59 @@ export const DeckAnalysis: React.FC<DeckAnalysisProps> = ({ deck, onViewCardDeta
             </div>
 
             {/* Sugestie */}
-            <div className="rounded-xl border border-amber-500/25 bg-amber-500/5 p-3.5 space-y-2">
-              <p className="text-xs font-bold text-amber-300 flex items-center gap-1.5">
-                <Lightbulb className="w-4 h-4" />
+            <div className="space-y-2">
+              <h4 className="text-sm font-medium text-stone-200 flex items-center gap-1.5">
+                <Lightbulb className="w-4 h-4 text-amber-400" />
                 Sugestie
-              </p>
-              <ul className="space-y-1.5 text-sm text-stone-200 list-disc pl-5">
-                {mana.suggestions.map((s, i) => (
-                  <li key={i}>{s}</li>
-                ))}
+              </h4>
+              <ul className="divide-y divide-stone-800 rounded-xl ring-1 ring-stone-800 overflow-hidden">
+                {mana.suggestions.map((sug, i) => {
+                  const img = sug.card ? getCardImageUri(sug.card, 'normal') : '';
+                  return (
+                    <li key={i} className="flex items-start gap-3.5 p-3.5 bg-stone-950/40">
+                      {sug.card ? (
+                        <button
+                          type="button"
+                          onClick={() => onViewCardDetails(sug.card!)}
+                          className="w-14 shrink-0 aspect-[63/88] rounded-md overflow-hidden bg-stone-800 ring-1 ring-stone-700 hover:ring-amber-400 cursor-pointer"
+                          title={`Szczegóły: ${sug.card.name}`}
+                        >
+                          {img && (
+                            <img src={img} alt={sug.card.name} loading="lazy" referrerPolicy="no-referrer" onError={(e) => handleCardImageError(e, img)} className="w-full h-full object-cover" />
+                          )}
+                        </button>
+                      ) : (
+                        <span
+                          className={`w-14 shrink-0 aspect-[63/88] rounded-md flex items-center justify-center ${
+                            sug.kind === 'ok' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-stone-800 text-stone-300'
+                          }`}
+                          aria-hidden="true"
+                        >
+                          {sug.kind === 'ok' ? <CheckCircle2 className="w-5 h-5" /> : <Mountain className="w-5 h-5" />}
+                        </span>
+                      )}
+                      <div className="min-w-0 pt-0.5">
+                        <p className="text-sm font-medium text-stone-100">
+                          {sug.color && (
+                            <span className="inline-block align-[-3px] mr-1.5">
+                              <ManaSymbol cost={`{${sug.color}}`} size="sm" />
+                            </span>
+                          )}
+                          {sug.title}
+                        </p>
+                        {sug.card && <p className="text-sm text-stone-300 mt-0.5">{sug.card.name}</p>}
+                        <p className="text-sm text-stone-400 mt-0.5">{sug.text}</p>
+                      </div>
+                    </li>
+                  );
+                })}
               </ul>
             </div>
 
-            <p className="text-[11px] text-stone-500 flex items-start gap-1.5">
-              <Info className="w-3.5 h-3.5 shrink-0 mt-px" />
-              „Potrzebne” to liczba Lands danego koloru, przy której kartę wymagającą najwięcej symboli tego koloru zagrasz w turze równej jej
-              kosztowi z szansą ok. 90% (gra na wyjściu, przy zagrywaniu Land co turę). Metoda Franka Karstena. Hybrydy i koszty phyrexian
-              liczą się do rozkładu po 0,5 i nie są wymaganiem.
+            <p className="text-xs text-stone-500 flex items-start gap-1.5 max-w-[90ch]">
+              <Info className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+              Liczba potrzebnych źródeł to tyle Lands danego koloru, by najbardziej wymagającą kartę zagrać w turze równej jej kosztowi z szansą
+              ok. 90% (gra na wyjściu, Land co turę), według metody Franka Karstena. Hybrydy i koszty phyrexian liczą się do rozkładu po 0,5.
             </p>
           </div>
         )}

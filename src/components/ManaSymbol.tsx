@@ -31,7 +31,7 @@ export const ManaSymbol: React.FC<ManaSymbolProps> = ({ cost, size = 'md' }) => 
     switch (sym.toUpperCase()) {
       case 'W': return 'bg-amber-100 text-stone-900 border-amber-300 shadow-sm';
       case 'U': return 'bg-blue-600 text-white border-blue-400';
-      case 'B': return 'bg-stone-800 text-stone-200 border-stone-600';
+      case 'B': return 'bg-stone-950 text-stone-100 border-stone-500';
       case 'R': return 'bg-red-600 text-white border-red-400';
       case 'G': return 'bg-emerald-600 text-white border-emerald-400';
       case 'C': return 'bg-stone-400 text-stone-900 border-stone-300';
