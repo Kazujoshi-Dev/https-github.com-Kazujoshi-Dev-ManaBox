@@ -18,6 +18,7 @@ import { MailboxModal } from './components/messages/MailboxModal';
 import { SellQuantityModal } from './components/SellQuantityModal';
 import { Toast } from './components/Toast';
 import { MobileNav } from './components/MobileNav';
+import { CollectionHistoryModal } from './components/CollectionHistoryModal';
 import { CircleDollarSign } from 'lucide-react';
 import { useAuth } from './hooks/useAuth';
 import { useBackToClose, useHistoryTabs } from './hooks/useBackButton';
@@ -201,6 +202,7 @@ export default function App() {
 
   // Mailbox State
   const [isMailboxOpen, setIsMailboxOpen] = useState<boolean>(false);
+  const [isHistoryOpen, setIsHistoryOpen] = useState<boolean>(false);
   const [unreadMessagesCount, setUnreadMessagesCount] = useState<number>(0);
   const [registeredUsers, setRegisteredUsers] = useState<RegisteredUserSummary[]>([]);
 
@@ -728,7 +730,9 @@ export default function App() {
         onLogout={handleLogout}
         unreadMessagesCount={unreadMessagesCount}
         onOpenMailbox={() => setIsMailboxOpen(true)}
+        onOpenHistory={() => setIsHistoryOpen(true)}
       />
+      {isHistoryOpen && <CollectionHistoryModal currency={settings.currency} onClose={() => setIsHistoryOpen(false)} />}
 
       {/* Main View Container */}
       <main className="max-w-[1760px] w-full mx-auto px-3 sm:px-6 lg:px-8 xl:px-10 pt-4 md:pt-6">

@@ -12,3 +12,4 @@ export * from './repositories/messageRepository';
 export * from './repositories/sessionRepository';
 export * from './repositories/profileRepository';
 export * from './repositories/adminRepository';
+export * from './repositories/snapshotRepository';

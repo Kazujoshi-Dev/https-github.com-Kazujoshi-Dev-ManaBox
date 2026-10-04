@@ -1,6 +1,8 @@
 import { useMemo } from 'react';
 import { CollectionItem, AppSettings } from '../types';
 import { getCardPrice } from '../utils/formatters';
+import { itemValue } from '../utils/collectionValue';
+export { itemValue };
 
 export interface CollectionTotals {
   totalCards: number;
@@ -14,11 +16,6 @@ export interface CollectionTotals {
 }
 
 /** Wartość pozycji kolekcji: zwykłe + foil, według bieżącego źródła cen i waluty. */
-export function itemValue(item: CollectionItem, settings: AppSettings, prices = item.card?.prices): number {
-  if (!item.card) return 0;
-  const card = prices === item.card.prices ? item.card : { ...item.card, prices: prices || {} };
-  return item.quantity * getCardPrice(card, false, settings) + item.quantityFoil * getCardPrice(card, true, settings);
-}
 
 /**
  * Zmiana wartości: dla każdej karty różnica między bieżącą ceną a ceną sprzed

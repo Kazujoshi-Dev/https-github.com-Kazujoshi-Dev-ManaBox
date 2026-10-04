@@ -49,6 +49,8 @@ interface HeaderProps {
   onLogout?: () => void;
   unreadMessagesCount?: number;
   onOpenMailbox?: () => void;
+  /** Otwiera wykres historii kolekcji. */
+  onOpenHistory?: () => void;
 }
 
 /** Menu konta: rzadziej używane akcje (ustawienia, import/eksport, okno OBS, wylogowanie). */
@@ -168,7 +170,8 @@ export const Header: React.FC<HeaderProps> = ({
   user,
   onLogout,
   unreadMessagesCount = 0,
-  onOpenMailbox
+  onOpenMailbox,
+  onOpenHistory
 }) => {
   const hasChange = valueChange !== null;
   const changeSign = !hasChange || Math.abs(valueChange!) < 0.005 ? 0 : valueChange! > 0 ? 1 : -1;
@@ -211,7 +214,12 @@ export const Header: React.FC<HeaderProps> = ({
           {logo}
           <h1 className="text-base font-semibold tracking-tight text-stone-100 truncate">Mana Screw</h1>
         </div>
-        <div className="text-right leading-tight shrink-0">
+        <button
+          type="button"
+          onClick={onOpenHistory}
+          aria-label="Historia wartości i liczby kart kolekcji"
+          className="text-right leading-tight shrink-0 rounded-lg -mr-1.5 px-1.5 py-0.5 active:bg-stone-800 cursor-pointer"
+        >
           <p className="text-sm font-semibold text-stone-100 tabular-nums">{formatCurrency(totalValue, settings.currency)}</p>
           <p className="text-xs text-stone-400 tabular-nums">
             {totalCards} kart
@@ -221,7 +229,7 @@ export const Header: React.FC<HeaderProps> = ({
               </span>
             )}
           </p>
-        </div>
+        </button>
       </div>
 
       {/* Tablet i komputer */}
@@ -234,14 +242,21 @@ export const Header: React.FC<HeaderProps> = ({
 
           {/* Wartość kolekcji */}
           <div className="hidden lg:flex items-center gap-4 ml-4 pl-4 border-l border-stone-800 text-sm tabular-nums">
-            <div title={`Wycena: ${sourceLabel}, waluta ${settings.currency}`}>
-              <span className="text-stone-400">Wartość </span>
-              <span className="font-semibold text-stone-100">{formatCurrency(totalValue, settings.currency)}</span>
-            </div>
-            <div title={changeTitle} className={changeColor}>
-              {changeText ?? <span className="text-stone-500">brak zmiany</span>}
-              {percentText && <span className="ml-1 opacity-80">({percentText})</span>}
-            </div>
+            <button
+              type="button"
+              onClick={onOpenHistory}
+              title={`Historia kolekcji (wycena: ${sourceLabel}, ${settings.currency})`}
+              className="flex items-center gap-4 rounded-lg -mx-2 px-2 py-1 hover:bg-stone-800/70 cursor-pointer"
+            >
+              <span>
+                <span className="text-stone-400">Wartość </span>
+                <span className="font-semibold text-stone-100">{formatCurrency(totalValue, settings.currency)}</span>
+              </span>
+              <span title={changeTitle} className={changeColor}>
+                {changeText ?? <span className="text-stone-500">brak zmiany</span>}
+                {percentText && <span className="ml-1 opacity-80">({percentText})</span>}
+              </span>
+            </button>
             <button
               type="button"
               onClick={onRefreshPrices}

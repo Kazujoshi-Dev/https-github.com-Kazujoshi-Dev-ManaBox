@@ -97,6 +97,12 @@ export const adminApi = {
 export const collectionApi = {
   getAll: (onUnauthorized?: () => void) =>
     fetchWithAuth('/api/collection', {}, onUnauthorized),
+  /** Dzienna historia wartości i liczby kart kolekcji. */
+  history: async (days: number): Promise<{ currency: string; points: Array<{ day: string; value: number; cards: number; currency: string }> }> => {
+    const res = await fetchWithAuth(`/api/collection/history?days=${days}`);
+    if (!res.ok) throw new Error('Nie udało się pobrać historii kolekcji.');
+    return res.json();
+  },
   create: (data: unknown, onUnauthorized?: () => void) =>
     fetchWithAuth('/api/collection', {
       method: 'POST',

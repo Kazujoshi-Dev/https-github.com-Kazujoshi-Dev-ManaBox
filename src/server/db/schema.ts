@@ -185,6 +185,16 @@ export async function initDb(): Promise<void> {
 
           -- Ochrona przed spamem w wiadomościach: limity liczone z bazy i blokowanie nadawców
           CREATE INDEX IF NOT EXISTS idx_user_messages_sender_created ON user_messages(sender_id, created_at DESC);
+          -- Dzienna historia wartości i liczby kart kolekcji (wykres w nagłówku)
+          CREATE TABLE IF NOT EXISTS collection_snapshots (
+            user_id VARCHAR(64) NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            day DATE NOT NULL,
+            total_value NUMERIC(14, 2) NOT NULL,
+            total_cards INTEGER NOT NULL,
+            currency VARCHAR(4) NOT NULL,
+            updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+            PRIMARY KEY (user_id, day)
+          );
           CREATE TABLE IF NOT EXISTS user_blocks (
             user_id VARCHAR(64) NOT NULL REFERENCES users(id) ON DELETE CASCADE,
             blocked_id VARCHAR(64) NOT NULL REFERENCES users(id) ON DELETE CASCADE,

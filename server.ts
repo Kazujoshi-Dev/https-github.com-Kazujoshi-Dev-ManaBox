@@ -1,3 +1,4 @@
+import { collectionTotals } from './src/utils/collectionValue';
 import express from 'express';
 import crypto from 'crypto';
 import path from 'path';
@@ -1441,6 +1442,40 @@ app.delete('/api/collection/:id', authMiddleware, async (req, res) => {
     sendServerError(res, err, '/api/collection/:id');
   }
 });
+
+// --- HISTORIA KOLEKCJI (wartość i liczba kart dzień po dniu) ---
+async function snapshotCollection(userId: string): Promise<{ value: number; cards: number; currency: string }> {
+  const [collection, settings] = await Promise.all([db.getCollection(userId), db.getSettings(userId)]);
+  const { value, cards } = collectionTotals(collection as any, settings as any);
+  await db.upsertCollectionSnapshot(userId, value, cards, (settings as any).currency || 'PLN');
+  return { value, cards, currency: (settings as any).currency || 'PLN' };
+}
+
+app.get('/api/collection/history', authMiddleware, async (req, res) => {
+  try {
+    const userId = (req as any).userId;
+    const days = Math.max(2, Math.min(400, Number(req.query.days) || 30));
+    // Dzisiejszy punkt zawsze aktualny (po zmianach w kolekcji lub cenach)
+    const now = await snapshotCollection(userId);
+    const points = await db.getCollectionSnapshots(userId, days);
+    res.json({ currency: now.currency, points });
+  } catch (err: any) {
+    sendServerError(res, err, '/api/collection/history');
+  }
+});
+
+// Raz na godzinę: dzienny zapis dla użytkowników, którzy dziś jeszcze nie otworzyli aplikacji
+async function snapshotMissingUsers() {
+  try {
+    const ids = await db.usersMissingTodaySnapshot();
+    for (const id of ids) await snapshotCollection(id).catch(() => undefined);
+    if (ids.length) console.log(`[Historia] Zapisano stan kolekcji ${ids.length} użytkowników.`);
+  } catch (err: any) {
+    console.warn('[Historia] Błąd dziennego zapisu:', err?.message || err);
+  }
+}
+setTimeout(snapshotMissingUsers, 60_000).unref?.();
+setInterval(snapshotMissingUsers, 60 * 60_000).unref?.();
 
 app.post('/api/collection/bulk-import', authMiddleware, async (req, res) => {
   try {
