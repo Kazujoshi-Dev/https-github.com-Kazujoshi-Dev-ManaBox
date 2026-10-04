@@ -118,14 +118,11 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, showToast }
   return (
     <div className="space-y-5">
       {/* Nagłówek i statystyki */}
-      <div className="bg-stone-900 border border-stone-800 rounded-2xl p-4 sm:p-6 space-y-4">
+      <div className="space-y-4">
         <div className="flex items-start justify-between gap-3">
           <div className="flex items-center gap-3 min-w-0">
-            <div className="w-11 h-11 rounded-xl bg-rose-500/15 border border-rose-500/30 text-rose-300 flex items-center justify-center shrink-0">
-              <ShieldCheck className="w-6 h-6" />
-            </div>
             <div className="min-w-0">
-              <h2 className="text-xl font-bold text-stone-100">Panel administratora</h2>
+              <h2 className="text-2xl font-semibold tracking-tight text-stone-50">Panel administratora</h2>
               <p className="text-xs text-stone-400 truncate">Zalogowano jako {currentUser?.username} · wszystkie działania trafiają do dziennika</p>
             </div>
           </div>
@@ -140,14 +137,13 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, showToast }
           </button>
         </div>
 
-        <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-2.5">
+        <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-px rounded-xl overflow-hidden border border-stone-800 bg-stone-800">
           {statTiles.map(({ label, value, icon: Icon, color }) => (
-            <div key={label} className="bg-stone-950 border border-stone-800 rounded-xl p-3">
-              <p className="text-[11px] font-bold text-stone-400 flex items-center gap-1.5">
-                <Icon className={`w-3.5 h-3.5 ${color}`} />
+            <div key={label} className="bg-stone-900 p-3.5">
+              <p className="text-sm text-stone-400 flex items-center gap-1.5">
                 {label}
               </p>
-              <p className="text-lg font-bold text-stone-100 mt-0.5">{value}</p>
+              <p className="text-xl font-semibold text-stone-50 mt-0.5 tabular-nums">{value}</p>
             </div>
           ))}
           {!stats && <p className="col-span-full text-xs text-stone-500">Ładowanie statystyk...</p>}
@@ -183,8 +179,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, showToast }
             key={id}
             type="button"
             onClick={() => setView(id)}
-            className={`h-10 px-4 rounded-xl text-sm font-semibold flex items-center gap-2 border cursor-pointer ${
-              view === id ? 'bg-rose-500/15 border-rose-500/40 text-rose-200' : 'bg-stone-900 border-stone-800 text-stone-400 hover:text-stone-200'
+            className={`h-9 px-3 rounded-lg text-sm font-medium flex items-center gap-2 border cursor-pointer ${
+              view === id ? 'bg-stone-800 border-stone-700 text-stone-50' : 'bg-transparent border-transparent text-stone-400 hover:text-stone-200 hover:bg-stone-900'
             }`}
           >
             <Icon className="w-4 h-4" />
@@ -221,8 +217,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, showToast }
                   className="w-full text-left bg-stone-900 border border-stone-800 hover:border-rose-500/40 rounded-xl p-3 sm:p-4 flex items-center gap-3 cursor-pointer"
                 >
                   <div
-                    className={`w-10 h-10 rounded-full flex items-center justify-center font-bold shrink-0 ${
-                      u.banned ? 'bg-rose-950 text-rose-300' : 'bg-amber-500 text-stone-950'
+                    className={`w-10 h-10 rounded-lg flex items-center justify-center font-semibold shrink-0 ${
+                      u.banned ? 'bg-rose-950 text-rose-300' : 'bg-stone-800 text-stone-200'
                     }`}
                   >
                     {u.username.slice(0, 1).toUpperCase()}

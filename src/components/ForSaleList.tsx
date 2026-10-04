@@ -1,3 +1,4 @@
+import { PageHeader } from './ui/PageHeader';
 import React, { useState, useMemo, Suspense, lazy } from 'react';
 import { CollectionItem, AppSettings, AuthUser } from '../types';
 import { formatCurrency, getCardPrice, getCardImageUri, getRarityColor, getRarityLabel, getCardEdhrecRank, handleCardImageError } from '../utils/formatters';
@@ -168,108 +169,50 @@ export const ForSaleList: React.FC<ForSaleListProps> = ({
   return (
     <div className="space-y-6">
       
-      {/* 1. Header Banner & Public Share Link Box */}
-      <div className="bg-stone-900 border border-stone-800 rounded-2xl p-6 shadow-2xl relative overflow-hidden">
+      <PageHeader
+        title="Sprzedam"
+        description="Karty oznaczone na sprzedaż. Kupujący widzą je pod Twoim publicznym linkiem, bez zakładania konta."
+        meta={
+          <>
+            <span><span className="text-stone-100 font-medium tabular-nums">{totalCardsCount}</span> kart</span>
+            <span>Wartość oferty <span className="text-stone-100 font-medium tabular-nums">{formatCurrency(totalValue, settings.currency)}</span></span>
+          </>
+        }
+        actions={
+          <button type="button" onClick={() => setIsMapOpen(true)} className="btn btn-secondary">
+            <MapIcon className="w-4 h-4" />
+            Mapa sprzedawców
+          </button>
+        }
+      />
 
-        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6 relative z-10">
-          
-          {/* Left Title & Metrics */}
-          <div className="space-y-2">
-            <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-2xl bg-emerald-600 border border-emerald-400/40 flex items-center justify-center shadow-lg shadow-emerald-950/60">
-                <CircleDollarSign className="w-6 h-6 text-white stroke-[2.2]" />
-              </div>
-              <div>
-                <div className="flex items-center gap-2">
-                  <h2 className="text-xl sm:text-2xl font-bold text-white tracking-tight">
-                    Karty na Sprzedaż
-                  </h2>
-                  <span className="px-2.5 py-0.5 rounded-full text-xs tabular-nums font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">
-                    {totalCardsCount} szt.
-                  </span>
-                </div>
-                <p className="text-xs text-stone-400">
-                  Udostępnij swoją ofertę kupującym za pomocą jednego publicznego linku
-                </p>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-4 pt-1">
-              <div className="flex items-baseline gap-1.5 bg-stone-950/80 px-3.5 py-1.5 rounded-xl border border-stone-800">
-                <span className="text-[11px] font-bold text-stone-400">Wartość oferty:</span>
-                <span className="text-base font-bold tabular-nums text-emerald-300">
-                  {formatCurrency(totalValue, settings.currency)}
-                </span>
-              </div>
-              <div className="text-xs text-stone-400 hidden sm:block">
-                Waluta bazowa: <strong className="text-stone-200">{settings.currency}</strong>
-              </div>
-            </div>
-
-            <button
-              type="button"
-              onClick={() => setIsMapOpen(true)}
-              className="mt-1 h-11 px-4 rounded-xl bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/40 text-emerald-300 font-bold text-sm flex items-center gap-2 cursor-pointer"
-            >
-              <MapIcon className="w-4 h-4" />
-              Pokaż mapę sprzedawców
-            </button>
-          </div>
-
-          {/* Right: Public Share Link Card */}
-          <div className="bg-stone-950/90 border border-emerald-500/30 rounded-2xl p-4 shadow-xl max-w-md w-full space-y-3">
-            <div className="flex items-center justify-between gap-2">
-              <span className="text-xs font-bold text-emerald-300 flex items-center gap-1.5">
-                <Share2 className="w-4 h-4 text-emerald-400" />
-                <span>Twój unikalny publiczny link</span>
-              </span>
-              <span className="text-[11px] text-stone-400 font-medium bg-stone-900 px-2 py-0.5 rounded-full border border-stone-800">
-                Dostępny bez logowania
-              </span>
-            </div>
-
-            <div className="flex items-center gap-2 bg-stone-900/90 p-2 rounded-xl border border-stone-800">
-              <input
-                type="text"
-                readOnly
-                value={publicShareUrl}
-                className="bg-transparent text-xs text-stone-300 tabular-nums w-full focus:outline-none select-all truncate"
-                title={publicShareUrl}
-              />
-              <button
-                type="button"
-                onClick={handleCopyLink}
-                className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-bold transition-all shadow-md flex items-center gap-1.5 shrink-0 cursor-pointer"
-                title="Kopiuj link"
-              >
-                {copiedLink ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
-                <span>{copiedLink ? 'Skopiowano!' : 'Kopiuj'}</span>
-              </button>
-            </div>
-
-            <div className="flex items-center justify-between gap-2 pt-1">
-              <a
-                href={publicShareUrl}
-                target="_blank"
-                rel="noreferrer"
-                className="text-[11px] text-stone-400 hover:text-emerald-300 transition-colors flex items-center gap-1 font-medium"
-              >
-                <ExternalLink className="w-3 h-3" />
-                <span>Otwórz podgląd kupującego</span>
-              </a>
-
-              <button
-                type="button"
-                onClick={handleCopyTextList}
-                className="text-[11px] text-stone-400 hover:text-amber-300 transition-colors flex items-center gap-1 font-medium cursor-pointer"
-                title="Skopiuj sformatowany tekst listy kart do schowka"
-              >
-                {copiedText ? <Check className="w-3 h-3 text-emerald-400" /> : <FileText className="w-3 h-3" />}
-                <span>{copiedText ? 'Skopiowano listę .txt!' : 'Kopiuj listę (.txt)'}</span>
-              </button>
-            </div>
-          </div>
-
+      {/* Publiczny link do oferty */}
+      <div className="rounded-xl border border-stone-800 bg-stone-900 p-3 flex flex-col md:flex-row md:items-center gap-3">
+        <div className="flex items-center gap-2 text-sm text-stone-300 shrink-0">
+          <Share2 className="w-4 h-4 text-stone-400" />
+          Twój link do oferty
+        </div>
+        <input
+          type="text"
+          readOnly
+          value={publicShareUrl}
+          onFocus={(e) => e.currentTarget.select()}
+          aria-label="Publiczny link do oferty"
+          className="flex-1 min-w-0 h-9 bg-stone-950 border border-stone-800 rounded-lg px-3 text-sm text-stone-300 focus:outline-none focus:border-stone-600"
+        />
+        <div className="flex items-center gap-1 shrink-0">
+          <button type="button" onClick={handleCopyLink} className="btn btn-primary">
+            {copiedLink ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+            {copiedLink ? 'Skopiowano' : 'Kopiuj link'}
+          </button>
+          <a href={publicShareUrl} target="_blank" rel="noreferrer" className="btn btn-ghost" title="Zobacz, jak widzą ofertę kupujący">
+            <ExternalLink className="w-4 h-4" />
+            <span className="hidden lg:inline">Podgląd</span>
+          </a>
+          <button type="button" onClick={handleCopyTextList} className="btn btn-ghost" title="Kopiuj listę kart jako tekst">
+            {copiedText ? <Check className="w-4 h-4 text-emerald-400" /> : <FileText className="w-4 h-4" />}
+            <span className="hidden lg:inline">{copiedText ? 'Skopiowano' : 'Lista .txt'}</span>
+          </button>
         </div>
       </div>
 
@@ -285,7 +228,7 @@ export const ForSaleList: React.FC<ForSaleListProps> = ({
               Nie masz jeszcze żadnych kart na sprzedaż
             </h3>
             <p className="text-xs text-stone-400 leading-relaxed">
-              Przejdź do zakładki <strong className="text-stone-200">„Moja Kolekcja”</strong> i kliknij zieloną ikonkę dolara (<span className="text-emerald-400 font-bold">$</span>) na kafelku dowolnej karty w klaserze obok opcji <strong className="text-stone-200">„Edytuj pozycję”</strong>.
+              Przejdź do zakładki <strong className="text-stone-200">„Kolekcja”</strong> i kliknij zieloną ikonkę dolara (<span className="text-emerald-400 font-bold">$</span>) na kafelku dowolnej karty w klaserze obok opcji <strong className="text-stone-200">„Edytuj pozycję”</strong>.
             </p>
           </div>
 
@@ -295,7 +238,7 @@ export const ForSaleList: React.FC<ForSaleListProps> = ({
             className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-xl shadow-lg shadow-emerald-950/60 transition-all cursor-pointer inline-flex items-center gap-2"
           >
             <Folder className="w-4 h-4" />
-            <span>Przejdź do Mojej Kolekcji i oznacz karty</span>
+            <span>Przejdź do kolekcji</span>
           </button>
         </div>
       ) : (
@@ -330,7 +273,7 @@ export const ForSaleList: React.FC<ForSaleListProps> = ({
                 }`}
               >
                 <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-                <span>Tylko Foil</span>
+                <span>Tylko foil</span>
               </button>
 
               {/* Condition */}
@@ -440,7 +383,7 @@ export const ForSaleList: React.FC<ForSaleListProps> = ({
 
                       <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
                         <span className="tabular-nums text-[11px] font-bold bg-stone-800 text-stone-300 px-1.5 py-0.2 rounded border border-stone-700">
-                          {item.card.set}
+                          {item.card.set.toUpperCase()}
                         </span>
                         <span className={`text-[11px] px-1.5 py-0.2 rounded border font-semibold ${getRarityColor(item.card.rarity)}`}>
                           {getRarityLabel(item.card.rarity)}

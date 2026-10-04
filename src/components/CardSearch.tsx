@@ -1,3 +1,4 @@
+import { PageHeader } from './ui/PageHeader';
 import React, { useState, useEffect, useRef } from 'react';
 import { ScryfallCard, AppSettings } from '../types';
 import { formatCurrency, getCardImageUri, getCardPrice, getRarityColor, getRarityLabel, handleCardImageError, getCardEdhrecRank } from '../utils/formatters';
@@ -92,18 +93,15 @@ export const CardSearch: React.FC<CardSearchProps> = ({ onSelectCard, settings }
     <div className="space-y-6">
       
       {/* Search Header Banner */}
-      <div className="bg-stone-900 to-amber-950/40 border border-stone-800 rounded-2xl p-6 shadow-xl space-y-4">
-        <div>
-          <div className="flex items-center gap-2">
-            <h2 className="text-xl font-bold text-stone-100">Przeszukuj Scryfall API</h2>
-            <span className="text-[11px] tabular-nums px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-300 border border-amber-500/30">
-              Ponad 80 000 kart
-            </span>
-          </div>
-          <p className="text-xs text-stone-400 mt-1">
-            Wpisz nazwę karty, dodatek lub wykorzystaj zaawansowane filtry Scryfall (np. <code className="text-amber-300">c:blue t:instant</code>, <code className="text-amber-300">rarity:mythic cmc&lt;3</code>).
-          </p>
-        </div>
+      <div className="space-y-4">
+        <PageHeader
+          title="Szukaj kart"
+          description={
+            <>
+              Nazwa karty, dodatek albo zapytanie Scryfall, np. <code className="text-stone-200">c:blue t:instant</code> lub <code className="text-stone-200">rarity:mythic cmc&lt;3</code>.
+            </>
+          }
+        />
 
         {/* Input Bar */}
         <div className="relative">
@@ -256,7 +254,7 @@ export const CardSearch: React.FC<CardSearchProps> = ({ onSelectCard, settings }
 
                       <div className="flex items-center gap-1.5 mt-2">
                         <span className="tabular-nums text-[11px] font-bold bg-stone-800 text-stone-300 px-1.5 py-0.5 rounded border border-stone-700">
-                          {card.set}
+                          {card.set.toUpperCase()}
                         </span>
                         <span className={`text-[11px] px-1.5 py-0.5 rounded border font-semibold ${getRarityColor(card.rarity)}`}>
                           {getRarityLabel(card.rarity)}

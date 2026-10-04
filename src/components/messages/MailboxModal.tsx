@@ -238,7 +238,7 @@ export const MailboxModal: React.FC<MailboxModalProps> = ({
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h3 className="text-base font-bold text-white">Skrzynka Wiadomości</h3>
+                <h3 className="text-base font-bold text-white">Wiadomości</h3>
                 {unreadCount > 0 && (
                   <span className="px-2 py-0.5 rounded-full text-[11px] font-bold bg-amber-500 text-stone-950 tabular-nums shadow-sm">
                     {unreadCount} nowych

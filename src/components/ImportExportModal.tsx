@@ -231,7 +231,7 @@ export const ImportExportModal: React.FC<ImportExportModalProps> = ({
             }`}
           >
             <Download className="w-4 h-4" />
-            <span>Eksportuj Kolekcję (.txt / .json)</span>
+            <span>Eksportuj kolekcję (.txt / .json)</span>
           </button>
 
           <button

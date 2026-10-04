@@ -1,3 +1,4 @@
+import { PageHeader } from './ui/PageHeader';
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { ScryfallCard, AppSettings, MTGSet, SetTopCardsResponse } from '../types';
 import { formatCurrency, getCardImageUri, handleCardImageError, getCardEdhrecRank } from '../utils/formatters';
@@ -266,38 +267,17 @@ export const SetTopCards: React.FC<SetTopCardsProps> = ({
   return (
     <div className="space-y-6 animate-fadeIn pb-12">
       {/* Header & Controls Panel */}
-      <div className="bg-stone-900 border border-stone-800 rounded-2xl p-5 shadow-xl">
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-          <div>
-            <div className="flex items-center gap-2">
-              <span className="p-2 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-400">
-                <Trophy className="w-5 h-5" />
-              </span>
-              <div>
-                <h2 className="text-xl font-bold text-stone-100 flex items-center gap-2">
-                  Top z Dodatku
-                  <span className="text-xs tabular-nums font-bold px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30">
-                    TOP 5 RZADKOŚCI
-                  </span>
-                </h2>
-                <p className="text-xs text-stone-400">
-                  Zestawienie 5 najdroższych kart z każdej rzadkości według aktualnego <strong>Cardmarket Price Trend (MCM)</strong> w polskich złotych (PLN).
-                </p>
-              </div>
-            </div>
-          </div>
+      <div>
+        <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-4">
+          <PageHeader
+            title="Top z dodatku"
+            description="Pięć najdroższych kart każdej rzadkości w wybranym dodatku, według Cardmarket Trend w złotówkach."
+          />
 
           {/* Currency / NBP rate reminder badge */}
-          <div className="flex items-center gap-2 bg-stone-950/80 px-3.5 py-2 rounded-xl border border-stone-800 text-xs">
-            <Coins className="w-4 h-4 text-amber-400 shrink-0" />
-            <div>
-              <p className="text-[11px] font-semibold text-stone-400">Kurs Cardmarket Trend</p>
-              <p className="text-stone-200 tabular-nums font-semibold">
-                1 EUR = <strong className="text-amber-400">{settings.eurToPlnRate.toFixed(2)} PLN</strong>
-                <span className="text-stone-400 text-[11px] ml-1 font-normal">(NBP)</span>
-              </p>
-            </div>
-          </div>
+          <p className="text-sm text-stone-400 tabular-nums shrink-0">
+            1 EUR = <span className="text-stone-100 font-medium">{settings.eurToPlnRate.toFixed(2)} PLN</span> (NBP)
+          </p>
         </div>
 
         {/* Set Selection Bar */}
@@ -371,7 +351,7 @@ export const SetTopCards: React.FC<SetTopCardsProps> = ({
                           <div className="truncate">
                             <span className="font-medium text-stone-100">{s.name}</span>
                             <span className="ml-2 tabular-nums text-[11px] text-amber-400/90 px-1.5 py-0.5 rounded bg-stone-800 border border-stone-700">
-                              {s.code}
+                              {s.code.toUpperCase()}
                             </span>
                           </div>
                         </div>
@@ -455,7 +435,7 @@ export const SetTopCards: React.FC<SetTopCardsProps> = ({
                 <div className="flex items-center gap-2 flex-wrap">
                   <h3 className="text-xl font-bold text-stone-100">{currentSet.name}</h3>
                   <span className="tabular-nums text-xs px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/40 font-bold">
-                    {currentSet.code}
+                    {currentSet.code.toUpperCase()}
                   </span>
                   {currentSet.set_type && (
                     <span className="text-[11px] tabular-nums px-2 py-0.5 rounded bg-stone-800 text-stone-300 border border-stone-700">
@@ -505,7 +485,7 @@ export const SetTopCards: React.FC<SetTopCardsProps> = ({
                 </div>
 
                 <div className="border-l border-stone-800/80 pl-3">
-                  <p className="text-[11px] font-semibold text-stone-400">Suma Top 5 Mythic</p>
+                  <p className="text-[11px] font-semibold text-stone-400">Suma top 5 Mythic</p>
                   <p className="text-sm font-bold text-orange-400 tabular-nums">
                     {formatCurrency(setMetrics.mythicSumPln, 'PLN')}
                   </p>
@@ -513,7 +493,7 @@ export const SetTopCards: React.FC<SetTopCardsProps> = ({
                 </div>
 
                 <div className="border-l border-stone-800/80 pl-3 col-span-2 sm:col-span-1">
-                  <p className="text-[11px] font-semibold text-stone-400">Suma Top 5 Rare</p>
+                  <p className="text-[11px] font-semibold text-stone-400">Suma top 5 Rare</p>
                   <p className="text-sm font-bold text-amber-300 tabular-nums">
                     {formatCurrency(setMetrics.rareSumPln, 'PLN')}
                   </p>

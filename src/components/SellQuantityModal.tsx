@@ -139,7 +139,7 @@ export const SellQuantityModal: React.FC<SellQuantityModalProps> = ({
                 {item.card.name}
               </h4>
               <div className="flex items-center gap-2 text-[11px] text-stone-400 flex-wrap">
-                <span className="tabular-nums text-[11px]">{item.card.set} • #{item.card.collector_number}</span>
+                <span className="tabular-nums text-[11px]">{item.card.set.toUpperCase()} • #{item.card.collector_number}</span>
                 <span>•</span>
                 <span className={`font-semibold capitalize text-[11px] ${rarityColor}`}>{getRarityLabel(item.card.rarity)}</span>
                 <span>•</span>

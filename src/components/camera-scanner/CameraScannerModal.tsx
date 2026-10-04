@@ -1394,7 +1394,7 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
                   <div>
                     <label className="block text-[11px] font-bold text-amber-300 mb-1 flex items-center gap-1.5">
                       <FolderPlus className="w-3.5 h-3.5 text-amber-400" />
-                      <span>Docelowy Klaser / Katalog:</span>
+                      <span>Docelowy klaser lub katalog</span>
                     </label>
                     <select
                       value={selectedBinder}

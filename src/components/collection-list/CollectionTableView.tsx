@@ -41,7 +41,7 @@ export const CollectionTableView: React.FC<CollectionTableViewProps> = ({
                 <div className="min-w-0 flex-1">
                   <p className="text-sm font-semibold text-stone-100 truncate">{card.name}</p>
                   <p className="text-xs text-stone-400 truncate">
-                    <span className="tabular-nums">{card.set}</span>
+                    <span className="tabular-nums">{card.set.toUpperCase()}</span>
                     {card.collector_number ? ` #${card.collector_number}` : ''} · {item.condition} · {item.language}
                   </p>
                   <div className="flex items-center gap-1.5 mt-0.5">

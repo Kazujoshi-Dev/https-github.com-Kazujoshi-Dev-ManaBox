@@ -1,3 +1,4 @@
+import { PageHeader } from './ui/PageHeader';
 import React, { useMemo } from 'react';
 import { CollectionItem, AppSettings } from '../types';
 import { formatCurrency, getCardImageUri, getCardPrice, handleCardImageError } from '../utils/formatters';
@@ -154,86 +155,57 @@ export const Analytics: React.FC<AnalyticsProps> = ({ collection, settings, onVi
   return (
     <div className="space-y-6">
       
-      {/* Top Banner Overview */}
-      <div className="bg-stone-900 border border-stone-800 rounded-2xl p-6 shadow-xl space-y-6">
-        <div>
-          <h2 className="text-xl font-bold text-stone-100 flex items-center gap-2">
-            <BarChart3 className="w-5 h-5 text-amber-400" />
-            <span>Statystyki i Analiza Kolekcji</span>
-          </h2>
-          <p className="text-xs text-stone-400 mt-1">
-            Szczegółowa analityka wartości, struktury kolorów, krzywej many oraz rzadkości kart w Twoim klaserze.
+      <PageHeader title="Statystyki" description="Wartość kolekcji, kolory, krzywa many i rzadkość kart." />
+
+      <div className="grid grid-cols-2 lg:grid-cols-4 rounded-xl border border-stone-800 bg-stone-900 divide-stone-800 [&>*]:p-4 [&>*:nth-child(n+3)]:border-t lg:[&>*:nth-child(n+3)]:border-t-0 [&>*:nth-child(even)]:border-l lg:[&>*:not(:first-child)]:border-l">
+        <div className="space-y-1 border-stone-800">
+          <p className="text-sm text-stone-400">Karty</p>
+          <p className="text-2xl font-semibold text-stone-50 tabular-nums">{stats.totalCards}</p>
+          <p className="text-xs text-stone-500">{stats.uniqueCards} różnych pozycji</p>
+        </div>
+        <div className="space-y-1 border-stone-800">
+          <p className="text-sm text-stone-400">Wartość</p>
+          <p className="text-2xl font-semibold text-stone-50 tabular-nums">{formatCurrency(stats.totalValue, settings.currency)}</p>
+          <p className="text-xs text-stone-500">{settings.pricingSource === 'CARDMARKET' ? 'Cardmarket Trend' : 'TCGPlayer Market'}</p>
+        </div>
+        <div className="space-y-1 border-stone-800">
+          <p className="text-sm text-stone-400 flex items-center gap-1.5">
+            <ChangeIcon className={`w-4 h-4 ${changeColor}`} />
+            Zmiana wartości
+          </p>
+          <p className={`text-2xl font-semibold tabular-nums ${hasChange ? changeColor : 'text-stone-500'}`}>
+            {hasChange ? fmtDelta(change.valueChange!) : '—'}
+            {change.valueChangePercent !== null && changeSign !== 0 && (
+              <span className="ml-1.5 text-sm font-medium opacity-80">
+                ({change.valueChangePercent > 0 ? '+' : ''}{change.valueChangePercent.toFixed(1).replace('.', ',')}%)
+              </span>
+            )}
+          </p>
+          <p className="text-xs text-stone-500">
+            {hasChange
+              ? `Od poprzednich cen${change.lastPriceChangeAt ? ` (${new Date(change.lastPriceChangeAt).toLocaleDateString('pl-PL')})` : ''}`
+              : 'Pojawi się po odświeżeniu cen'}
           </p>
         </div>
-
-        {/* 4 Metric Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          
-          <div className="bg-stone-950 p-4 rounded-xl border border-stone-800 space-y-1">
-            <p className="text-[11px] font-bold text-stone-400 flex items-center gap-1">
-              <Layers className="w-3.5 h-3.5 text-amber-400" />
-              <span>Łączna Liczba Kart</span>
-            </p>
-            <p className="text-2xl font-bold text-amber-200">{stats.totalCards} <span className="text-xs font-normal text-stone-400">szt.</span></p>
-            <p className="text-[11px] text-stone-500">{stats.uniqueCards} unikalnych wpisów</p>
-          </div>
-
-          <div className="bg-stone-950 p-4 rounded-xl border border-stone-800 space-y-1">
-            <p className="text-[11px] font-bold text-stone-400 flex items-center gap-1">
-              <Coins className="w-3.5 h-3.5 text-emerald-400" />
-              <span>Wartość Rynkowa ({settings.currency})</span>
-            </p>
-            <p className="text-2xl font-bold text-emerald-400">{formatCurrency(stats.totalValue, settings.currency)}</p>
-            <p className="text-[11px] text-stone-500">
-              Wycena wg: {settings.pricingSource === 'CARDMARKET' ? 'Cardmarket Trend' : 'TCGPlayer Market'}
-            </p>
-          </div>
-
-          <div className="bg-stone-950 p-4 rounded-xl border border-stone-800 space-y-1">
-            <p className="text-[11px] font-bold text-stone-400 flex items-center gap-1">
-              <ChangeIcon className={`w-3.5 h-3.5 ${changeColor}`} />
-              <span>Zmiana wartości</span>
-            </p>
-            <p className={`text-2xl font-bold ${changeColor}`}>
-              {hasChange ? fmtDelta(change.valueChange!) : '—'}
-              {change.valueChangePercent !== null && changeSign !== 0 && (
-                <span className="ml-1.5 text-sm font-bold opacity-80">
-                  ({change.valueChangePercent > 0 ? '+' : ''}{change.valueChangePercent.toFixed(1).replace('.', ',')}%)
-                </span>
-              )}
-            </p>
-            <p className="text-[11px] text-stone-500">
-              {hasChange
-                ? `Względem cen sprzed ostatniej aktualizacji${change.lastPriceChangeAt ? ` (${new Date(change.lastPriceChangeAt).toLocaleDateString('pl-PL')})` : ''}`
-                : 'Pojawi się po odświeżeniu cen, gdy ceny się zmienią'}
-            </p>
-          </div>
-
-          <div className="bg-stone-950 p-4 rounded-xl border border-stone-800 space-y-2">
-            <p className="text-[11px] font-bold text-stone-400 flex items-center gap-1">
-              <TrendingUp className="w-3.5 h-3.5 text-amber-400" />
-              <span>Największe zmiany</span>
-            </p>
-            {movers.up || movers.down ? (
-              <div className="space-y-1.5">
-                {[movers.up, movers.down].filter(Boolean).map(m => (
-                  <button
-                    key={m!.item.id}
-                    type="button"
-                    onClick={() => onViewCardDetails(m!.item)}
-                    className="w-full flex items-center justify-between gap-2 text-left text-sm hover:bg-stone-900 rounded-lg -mx-1 px-1 py-0.5 cursor-pointer"
-                  >
-                    <span className="truncate text-stone-200">{m!.item.card.name}</span>
-                    <span className={`shrink-0 font-bold ${m!.delta > 0 ? 'text-emerald-400' : 'text-rose-400'}`}>{fmtDelta(m!.delta)}</span>
-                  </button>
-                ))}
-              </div>
-            ) : (
-              <p className="text-2xl font-bold text-stone-200">—</p>
-            )}
-            <p className="text-[11px] text-stone-500">Karty, których wartość zmieniła się najbardziej</p>
-          </div>
-
+        <div className="space-y-1 border-stone-800 min-w-0">
+          <p className="text-sm text-stone-400">Największe zmiany</p>
+          {movers.up || movers.down ? (
+            <div className="space-y-0.5">
+              {[movers.up, movers.down].filter(Boolean).map((m) => (
+                <button
+                  key={m!.item.id}
+                  type="button"
+                  onClick={() => onViewCardDetails(m!.item)}
+                  className="w-full flex items-center justify-between gap-2 text-left text-sm hover:bg-stone-800 rounded-md -mx-1.5 px-1.5 py-1 cursor-pointer"
+                >
+                  <span className="truncate text-stone-200">{m!.item.card.name}</span>
+                  <span className={`shrink-0 font-medium tabular-nums ${m!.delta > 0 ? 'text-emerald-400' : 'text-rose-400'}`}>{fmtDelta(m!.delta)}</span>
+                </button>
+              ))}
+            </div>
+          ) : (
+            <p className="text-2xl font-semibold text-stone-500">—</p>
+          )}
         </div>
       </div>
 
@@ -245,9 +217,8 @@ export const Analytics: React.FC<AnalyticsProps> = ({ collection, settings, onVi
           <div className="flex items-center justify-between">
             <h3 className="text-sm font-bold text-stone-200 flex items-center gap-1.5">
               <Flame className="w-4 h-4 text-amber-400" />
-              <span>Krzywa Many (Mana Value / CMC)</span>
+              <span>Krzywa many</span>
             </h3>
-            <span className="text-[11px] text-stone-400">Rozkład według kosztu</span>
           </div>
 
           <div className="h-64 w-full pt-4">
@@ -270,9 +241,8 @@ export const Analytics: React.FC<AnalyticsProps> = ({ collection, settings, onVi
           <div className="flex items-center justify-between">
             <h3 className="text-sm font-bold text-stone-200 flex items-center gap-1.5">
               <PieIcon className="w-4 h-4 text-amber-400" />
-              <span>Rozkład Kolorów Kart</span>
+              <span>Kolory kart</span>
             </h3>
-            <span className="text-[11px] text-stone-400">Udział w kolekcji</span>
           </div>
 
           <div className="h-64 w-full">
@@ -308,9 +278,8 @@ export const Analytics: React.FC<AnalyticsProps> = ({ collection, settings, onVi
         <div className="flex items-center justify-between">
           <h3 className="text-sm font-bold text-stone-200 flex items-center gap-2">
             <Award className="w-5 h-5 text-amber-400" />
-            <span>Top 5 Najcenniejszych Kart w Kolekcji</span>
+            <span>Najcenniejsze karty</span>
           </h3>
-          <span className="text-xs text-stone-400">Rynkowa wycena rynkowa</span>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-5 gap-4 pt-2">
@@ -342,7 +311,7 @@ export const Analytics: React.FC<AnalyticsProps> = ({ collection, settings, onVi
                     {card.name}
                   </h4>
                   <p className="text-[11px] text-stone-400 tabular-nums mt-0.5">
-                    {card.set} • {item.quantity + item.quantityFoil} szt.
+                    {card.set.toUpperCase()} • {item.quantity + item.quantityFoil} szt.
                   </p>
                   <p className="text-xs tabular-nums font-bold text-emerald-400 mt-1">
                     {formatCurrency(totalValue, settings.currency)}

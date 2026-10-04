@@ -1,3 +1,4 @@
+import { PageHeader } from './ui/PageHeader';
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { RegisteredUserSummary, AppSettings, AuthUser, CollectionItem, ScryfallCard, WishlistItem, WishlistMatches } from '../types';
 import { usersApi, publicSaleApi, sellersApi } from '../services/api';
@@ -422,10 +423,10 @@ export const UsersList: React.FC<UsersListProps> = ({
           <button
             type="button"
             onClick={handleBackToList}
-            className="px-4 py-2 bg-stone-900 hover:bg-stone-850 text-stone-200 hover:text-white border border-stone-800 rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer shadow-sm group"
+            className="btn btn-ghost -ml-3 group"
           >
             <ArrowLeft className="w-4 h-4 group-hover:-translate-x-0.5 transition-transform" />
-            <span>Wróć do listy użytkowników</span>
+            <span>Wszyscy gracze</span>
           </button>
 
           <div className="flex items-center gap-2">
@@ -433,7 +434,7 @@ export const UsersList: React.FC<UsersListProps> = ({
               <button
                 type="button"
                 onClick={() => handleOpenSendMessage(selectedUser)}
-                className="px-3.5 py-2 bg-amber-500 hover:bg-amber-400 text-stone-950 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-md shadow-amber-950/50"
+                className="btn btn-primary"
                 title={`Napisz wiadomość do @${selectedUser.username}`}
               >
                 <Mail className="w-3.5 h-3.5" />
@@ -444,13 +445,13 @@ export const UsersList: React.FC<UsersListProps> = ({
             <button
               type="button"
               onClick={() => handleCopyUserLink(selectedUser.username)}
-              className="px-3.5 py-2 bg-stone-900 hover:bg-stone-800 text-stone-200 border border-stone-700/80 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer shadow-sm"
+              className="btn btn-secondary"
               title="Kopiuj publiczny link do oferty tego użytkownika"
             >
               {copiedLinkUser === selectedUser.username ? (
                 <Check className="w-3.5 h-3.5 text-emerald-400" />
               ) : (
-                <Share2 className="w-3.5 h-3.5 text-emerald-400" />
+                <Share2 className="w-4 h-4" />
               )}
               <span>{copiedLinkUser === selectedUser.username ? 'Skopiowano link!' : 'Udostępnij ofertę'}</span>
             </button>
@@ -459,7 +460,7 @@ export const UsersList: React.FC<UsersListProps> = ({
               href={publicUrl}
               target="_blank"
               rel="noreferrer"
-              className="px-3.5 py-2 bg-stone-900 hover:bg-stone-800 text-stone-300 hover:text-emerald-300 border border-stone-700/80 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer shadow-sm"
+              className="btn btn-secondary"
               title="Otwórz publiczny podgląd kupującego w nowej karcie"
             >
               <ExternalLink className="w-3.5 h-3.5" />
@@ -468,91 +469,46 @@ export const UsersList: React.FC<UsersListProps> = ({
           </div>
         </div>
 
-        {/* Seller Banner */}
-        <div className="bg-stone-900 border border-stone-800 rounded-2xl p-6 shadow-2xl relative overflow-hidden">
-
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 relative z-10">
-            <div className="flex items-center gap-4">
-              <div className="w-16 h-16 rounded-2xl bg-emerald-600 border border-emerald-400/40 flex items-center justify-center text-white text-2xl font-bold shadow-xl shadow-emerald-950/60 ring-2 ring-emerald-500/20">
-                {selectedUser.username.charAt(0).toUpperCase()}
-              </div>
-
-              <div className="space-y-1">
-                <div className="flex items-center gap-2.5 flex-wrap">
-                  <h2 className="text-2xl font-bold text-white tracking-tight">
-                    @{selectedUser.username}
-                  </h2>
-                  {currentUser?.id === selectedUser.id && (
-                    <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40 tabular-nums">
-                      To Twoje konto
-                    </span>
-                  )}
-                  <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40 tabular-nums">
-                    Profil Użytkownika
-                  </span>
-                </div>
-                <p className="text-xs text-stone-400 flex items-center gap-2">
-                  <Calendar className="w-3.5 h-3.5 text-stone-500" />
-                  <span>Konto zarejestrowane: {formatJoinDate(selectedUser.createdAt)}</span>
-                </p>
-              </div>
+        <div className="space-y-5">
+          <div className="flex items-center gap-4">
+            <div className="w-14 h-14 rounded-xl bg-stone-800 text-stone-100 text-xl font-semibold flex items-center justify-center shrink-0">
+              {selectedUser.username.charAt(0).toUpperCase()}
             </div>
-
-            {/* Quick Metrics Bar */}
-            <div className="flex items-center gap-3 flex-wrap">
-              <div className="bg-stone-950/80 px-4 py-2.5 rounded-2xl border border-emerald-500/30 shadow-inner">
-                <span className="text-[11px] font-bold text-stone-400 block">Karty na sprzedaż</span>
-                <span className="text-lg font-bold text-emerald-300 tabular-nums">
-                  {forSaleBadgeCount} szt.
-                </span>
-              </div>
-
-              <div className="bg-stone-950/80 px-4 py-2.5 rounded-2xl border border-rose-500/30 shadow-inner">
-                <span className="text-[11px] font-bold text-stone-400 block">Lista życzeń</span>
-                <span className="text-lg font-bold text-rose-300 tabular-nums">
-                  {wishlistBadgeCount} szt.
-                </span>
-              </div>
+            <div className="min-w-0">
+              <h2 className="text-2xl font-semibold tracking-tight text-stone-50 truncate">
+                {selectedUser.username}
+                {currentUser?.id === selectedUser.id && <span className="ml-2 text-sm font-normal text-stone-500">(Twoje konto)</span>}
+              </h2>
+              <p className="text-sm text-stone-400 flex items-center gap-1.5">
+                <Calendar className="w-3.5 h-3.5" />
+                Na Mana Screw od {formatJoinDate(selectedUser.createdAt)}
+              </p>
             </div>
           </div>
 
-          {/* Profile Navigation Tabs: Karty na sprzedaż vs Lista życzeń */}
-          <div className="flex items-center gap-2 pt-6 mt-6 border-t border-stone-800/80">
-            <button
-              type="button"
-              onClick={() => setProfileTab('for-sale')}
-              className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
-                profileTab === 'for-sale'
-                  ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-950/50'
-                  : 'bg-stone-950 text-stone-400 hover:text-stone-200 hover:bg-stone-850 border border-stone-800'
-              }`}
-            >
-              <CircleDollarSign className="w-4 h-4" />
-              <span>Karty na Sprzedaż</span>
-              <span className={`px-2 py-0.5 rounded-full tabular-nums text-[11px] ${
-                profileTab === 'for-sale' ? 'bg-emerald-950 text-emerald-200' : 'bg-stone-900 text-stone-400'
-              }`}>
-                {forSaleBadgeCount}
-              </span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setProfileTab('wishlist')}
-              className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
-                profileTab === 'wishlist'
-                  ? 'bg-rose-600 text-white shadow-lg shadow-rose-950/50'
-                  : 'bg-stone-950 text-stone-400 hover:text-stone-200 hover:bg-stone-850 border border-stone-800'
-              }`}
-            >
-              <FolderHeart className="w-4 h-4" />
-              <span>Lista Życzeń</span>
-              <span className={`px-2 py-0.5 rounded-full tabular-nums text-[11px] ${
-                profileTab === 'wishlist' ? 'bg-rose-950 text-rose-200' : 'bg-stone-900 text-stone-400'
-              }`}>
-                {wishlistBadgeCount}
-              </span>
-            </button>
+          <div role="tablist" aria-label="Profil gracza" className="flex items-center gap-1 border-b border-stone-800">
+            {([
+              { id: 'for-sale', label: 'Na sprzedaż', icon: CircleDollarSign, count: forSaleBadgeCount, tone: 'text-emerald-400' },
+              { id: 'wishlist', label: 'Lista życzeń', icon: FolderHeart, count: wishlistBadgeCount, tone: 'text-rose-400' }
+            ] as const).map((t) => {
+              const active = profileTab === t.id;
+              return (
+                <button
+                  key={t.id}
+                  type="button"
+                  role="tab"
+                  aria-selected={active}
+                  onClick={() => setProfileTab(t.id)}
+                  className={`-mb-px h-11 px-3 flex items-center gap-2 text-sm border-b-2 cursor-pointer ${
+                    active ? 'border-amber-400 text-stone-50 font-medium' : 'border-transparent text-stone-400 hover:text-stone-200'
+                  }`}
+                >
+                  <t.icon className={`w-4 h-4 ${active ? t.tone : 'text-stone-500'}`} />
+                  {t.label}
+                  <span className="text-xs text-stone-500 tabular-nums">{t.count}</span>
+                </button>
+              );
+            })}
           </div>
         </div>
 
@@ -649,7 +605,7 @@ export const UsersList: React.FC<UsersListProps> = ({
                       }`}
                     >
                       <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-                      <span>Tylko Foil</span>
+                      <span>Tylko foil</span>
                     </button>
 
                     <select
@@ -749,7 +705,7 @@ export const UsersList: React.FC<UsersListProps> = ({
 
                             <div className="flex items-center justify-between gap-1 text-[11px] text-stone-400 mt-1">
                               <span className="truncate max-w-[110px] tabular-nums text-[11px]">
-                                {card.set} • #{card.collector_number}
+                                {card.set.toUpperCase()} • #{card.collector_number}
                               </span>
                               <span className={`capitalize font-semibold text-[11px] ${rarityColor}`}>
                                 {getRarityLabel(card.rarity)}
@@ -874,7 +830,7 @@ export const UsersList: React.FC<UsersListProps> = ({
                       }`}
                     >
                       <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-                      <span>Tylko Foil</span>
+                      <span>Tylko foil</span>
                     </button>
 
                     <div className="flex items-center gap-1.5 bg-stone-950 border border-stone-800 rounded-xl px-2.5 py-1.5 text-xs text-stone-300">
@@ -959,7 +915,7 @@ export const UsersList: React.FC<UsersListProps> = ({
 
                             <div className="flex items-center justify-between gap-1 text-[11px] text-stone-400 mt-1">
                               <span className="truncate max-w-[110px] tabular-nums text-[11px]">
-                                {card.set} • #{card.collector_number}
+                                {card.set.toUpperCase()} • #{card.collector_number}
                               </span>
                               <span className={`capitalize font-semibold text-[11px] ${rarityColor}`}>
                                 {getRarityLabel(card.rarity)}
@@ -1003,120 +959,72 @@ export const UsersList: React.FC<UsersListProps> = ({
   // -------------------------------------------------------------
   return (
     <div className="space-y-6 pb-12">
-      {/* 1. Header Banner */}
-      <div className="bg-stone-900 border border-stone-800 rounded-2xl p-6 shadow-2xl relative overflow-hidden">
+      <PageHeader
+        title="Gracze"
+        description="Zarejestrowani gracze, ich karty na sprzedaż i listy życzeń."
+        meta={
+          <>
+            <span><span className="text-stone-100 font-medium tabular-nums">{stats.totalUsers}</span> graczy</span>
+            <span><span className="text-stone-100 font-medium tabular-nums">{stats.sellersCount}</span> sprzedaje</span>
+            <span><span className="text-stone-100 font-medium tabular-nums">{stats.totalCardsOnSale}</span> kart na sprzedaż</span>
+            <span><span className="text-stone-100 font-medium tabular-nums">{stats.totalWishlistItems}</span> kart na listach życzeń</span>
+          </>
+        }
+        actions={
+          <button type="button" onClick={loadUsers} disabled={isLoading} className="btn btn-secondary" title="Odśwież listę graczy">
+            <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
+            Odśwież
+          </button>
+        }
+      />
 
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 relative z-10">
-          <div className="space-y-2">
-            <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-2xl bg-amber-600 border border-amber-400/40 flex items-center justify-center shadow-lg shadow-amber-950/60">
-                <Users className="w-6 h-6 text-white stroke-[2.2]" />
-              </div>
-              <div>
-                <div className="flex items-center gap-2">
-                  <h2 className="text-xl sm:text-2xl font-bold text-white tracking-tight">
-                    Społeczność & Użytkownicy
-                  </h2>
-                  <span className="px-2.5 py-0.5 rounded-full text-xs tabular-nums font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40">
-                    {stats.totalUsers} graczy
-                  </span>
-                </div>
-                <p className="text-xs text-stone-400">
-                  Przeglądaj zarejestrowanych graczy, ich karty na sprzedaż oraz poszukiwane karty z listy życzeń
-                </p>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-3 pt-1 flex-wrap">
-              <div className="flex items-baseline gap-1.5 bg-stone-950/80 px-3 py-1.5 rounded-xl border border-stone-800">
-                <span className="text-[11px] font-bold text-stone-400">Aktywni sprzedawcy:</span>
-                <span className="text-sm font-bold tabular-nums text-emerald-400">
-                  {stats.sellersCount}
-                </span>
-              </div>
-
-              <div className="flex items-baseline gap-1.5 bg-stone-950/80 px-3 py-1.5 rounded-xl border border-stone-800">
-                <span className="text-[11px] font-bold text-stone-400">Karty na sprzedaż:</span>
-                <span className="text-sm font-bold tabular-nums text-amber-300">
-                  {stats.totalCardsOnSale} szt.
-                </span>
-              </div>
-
-              <div className="flex items-baseline gap-1.5 bg-stone-950/80 px-3 py-1.5 rounded-xl border border-stone-800">
-                <span className="text-[11px] font-bold text-stone-400">Karty na listach życzeń:</span>
-                <span className="text-sm font-bold tabular-nums text-rose-300">
-                  {stats.totalWishlistItems} szt.
-                </span>
-              </div>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2 shrink-0">
-            <button
-              type="button"
-              onClick={loadUsers}
-              disabled={isLoading}
-              className="px-3.5 py-2 bg-stone-800 hover:bg-stone-750 text-stone-200 border border-stone-700 text-xs font-semibold rounded-xl transition-all flex items-center gap-1.5 cursor-pointer shadow-sm disabled:opacity-50"
-              title="Odśwież listę użytkowników"
-            >
-              <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin text-amber-400' : ''}`} />
-              <span className="hidden sm:inline">Odśwież</span>
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* 2. Search & Filter Bar */}
-      <div className="bg-stone-900 border border-stone-800 rounded-2xl p-4 shadow-md flex flex-col md:flex-row md:items-center md:justify-between gap-3">
-        {/* Search */}
+      <div className="flex flex-col md:flex-row md:items-center gap-2">
         <div className="relative flex-1 max-w-md">
           <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-500" />
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Szukaj gracza po nazwie..."
-            className="w-full bg-stone-950 border border-stone-800 focus:border-amber-500 rounded-xl pl-9 pr-3.5 py-2 text-xs text-stone-100 placeholder-stone-500 focus:outline-none transition-colors"
+            placeholder="Szukaj gracza po nazwie"
+            aria-label="Szukaj gracza po nazwie"
+            className="w-full h-10 bg-stone-900 border border-stone-800 focus:border-amber-500 rounded-lg pl-10 pr-3.5 text-sm text-stone-100 placeholder-stone-500 focus:outline-none"
           />
         </div>
-
-        {/* Filters */}
-        <div className="flex items-center gap-2.5 flex-wrap">
+        <div className="flex items-center gap-2 flex-wrap md:ml-auto">
           <button
             type="button"
             onClick={() => setFilterForSaleOnly((prev) => !prev)}
-            className={`px-3 py-1.5 rounded-xl text-xs font-bold border transition-all flex items-center gap-1.5 cursor-pointer ${
-              filterForSaleOnly
-                ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40 shadow'
-                : 'bg-stone-950 text-stone-400 border-stone-800 hover:border-stone-700'
+            aria-pressed={filterForSaleOnly}
+            className={`h-10 px-3 rounded-lg text-sm border flex items-center gap-2 cursor-pointer ${
+              filterForSaleOnly ? 'bg-stone-800 text-stone-50 border-stone-600' : 'bg-stone-900 text-stone-300 border-stone-800 hover:border-stone-700'
             }`}
           >
-            <CircleDollarSign className="w-3.5 h-3.5 text-emerald-400" />
-            <span>Tylko z kartami na sprzedaż</span>
+            <CircleDollarSign className="w-4 h-4 text-emerald-400" />
+            Tylko sprzedający
           </button>
-
-          <div className="flex items-center gap-1.5 bg-stone-950 border border-stone-800 rounded-xl px-2.5 py-1.5 text-xs text-stone-300">
-            <ArrowUpDown className="w-3.5 h-3.5 text-amber-400" />
+          <label className="h-10 flex items-center gap-2 bg-stone-900 border border-stone-800 rounded-lg px-3 text-sm text-stone-400">
+            <ArrowUpDown className="w-4 h-4" />
+            <span className="sr-only">Sortuj</span>
             <select
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value as any)}
-              className="bg-transparent text-xs text-stone-200 focus:outline-none cursor-pointer"
+              className="bg-transparent text-sm text-stone-200 focus:outline-none cursor-pointer"
             >
-              <option value="matches-desc">Karty z mojej listy życzeń (najwięcej)</option>
-              <option value="sale-desc">Karty na sprzedaż (najwięcej)</option>
-              <option value="wishlist-desc">Lista życzeń (najwięcej)</option>
-              <option value="created-desc">Data dołączenia (najnowsi)</option>
+              <option value="matches-desc">Najwięcej kart z mojej listy życzeń</option>
+              <option value="sale-desc">Najwięcej kart na sprzedaż</option>
+              <option value="wishlist-desc">Najdłuższa lista życzeń</option>
+              <option value="created-desc">Najnowsi gracze</option>
               <option value="name">Nazwa gracza (A-Z)</option>
-              <option value="cards-desc">Wielkość kolekcji (ogółem)</option>
+              <option value="cards-desc">Największa kolekcja</option>
             </select>
-          </div>
+          </label>
         </div>
       </div>
 
       {/* 3. Users List Grid */}
       {isLoading ? (
         <div className="flex flex-col items-center justify-center py-20 space-y-4">
-          <div className="w-12 h-12 rounded-full border-4 border-amber-500/20 border-t-blue-500 animate-spin" />
+          <div className="w-12 h-12 rounded-full border-4 border-amber-500/20 border-t-amber-400 animate-spin" />
           <p className="text-sm font-bold text-stone-400">Ładowanie zarejestrowanych graczy...</p>
         </div>
       ) : error ? (
@@ -1142,162 +1050,91 @@ export const UsersList: React.FC<UsersListProps> = ({
           </p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
           {filteredUsers.map((u) => {
             const isSelf = currentUser?.id === u.id;
             const hasForSale = u.forSaleCount > 0;
             const hasWishlist = (u.wishlistCount || 0) > 0;
 
+            const wishMatch = !isSelf ? matches[u.id]?.collection || 0 : 0;
+            const iconBtn = 'w-8 h-8 rounded-md flex items-center justify-center text-stone-400 hover:text-stone-100 hover:bg-stone-800 cursor-pointer';
             return (
-              <div
+              <article
                 key={u.id}
                 onClick={() => handleOpenUserProfile(u, hasForSale ? 'for-sale' : 'wishlist')}
-                className="group relative bg-stone-900 rounded-2xl border border-stone-800 hover:border-amber-500/50 p-5 shadow-lg hover:shadow-xl hover:shadow-amber-950/20 transition-all duration-300 flex flex-col justify-between cursor-pointer space-y-4"
+                className="group bg-stone-900 rounded-xl border border-stone-800 hover:border-stone-700 p-4 flex flex-col gap-4 cursor-pointer"
               >
-                {/* Top Section: Avatar & Details */}
-                <div className="space-y-3">
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="flex items-center gap-3">
-                      <div className="w-12 h-12 rounded-xl bg-amber-500 border border-amber-400/30 flex items-center justify-center text-stone-950 text-lg font-bold shadow-md shadow-amber-950/50 group-hover:scale-105 transition-transform">
-                        {u.username.charAt(0).toUpperCase()}
-                      </div>
-
-                      <div>
-                        <div className="flex items-center gap-1.5 flex-wrap">
-                          <h3 className="font-bold text-stone-100 group-hover:text-amber-300 text-sm transition-colors">
-                            @{u.username}
-                          </h3>
-                        </div>
-                        <p className="text-[11px] text-stone-400 flex items-center gap-1 mt-0.5">
-                          <Calendar className="w-3 h-3 text-stone-500" />
-                          <span>Dołączył: {formatJoinDate(u.createdAt)}</span>
-                        </p>
-                        {u.city && (
-                          <p className="text-[11px] text-stone-400 flex items-center gap-1 mt-0.5">
-                            <MapPin className="w-3 h-3 text-stone-500" />
-                            <span>{u.city}</span>
-                          </p>
-                        )}
-                        {!isSelf && (matches[u.id]?.collection || 0) > 0 && (
-                          <p className="text-[11px] font-semibold text-rose-300 flex items-center gap-1 mt-1">
-                            <Heart className="w-3 h-3 fill-rose-400 text-rose-400" />
-                            <span>
-                              {matches[u.id].collection} z Twojej listy życzeń
-                              {matches[u.id].forSale > 0 ? ` (${matches[u.id].forSale} na sprzedaż)` : ''}
-                            </span>
-                          </p>
-                        )}
-                      </div>
-                    </div>
-
-                    {isSelf && (
-                      <span className="px-2 py-0.5 rounded-full text-[11px] tabular-nums font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30 ">
-                        Ty
-                      </span>
-                    )}
+                <div className="flex items-start gap-3">
+                  <div className="w-10 h-10 rounded-lg bg-stone-800 text-stone-200 text-base font-semibold flex items-center justify-center shrink-0">
+                    {u.username.charAt(0).toUpperCase()}
                   </div>
-
-                  {/* Badges & Metrics */}
-                  <div className="grid grid-cols-2 gap-2.5 pt-1">
-                    <div
-                      className={`p-2.5 rounded-xl border flex flex-col justify-center text-center ${
-                        hasForSale
-                          ? 'bg-emerald-950/40 border-emerald-500/40 text-emerald-300'
-                          : 'bg-stone-950/60 border-stone-800/80 text-stone-500'
-                      }`}
-                    >
-                      <span className="text-[11px] font-bold opacity-80 flex items-center justify-center gap-1">
-                        <CircleDollarSign className="w-3 h-3 text-emerald-400" />
-                        <span>Karty na sprzedaż</span>
-                      </span>
-                      <span className="text-sm font-bold tabular-nums mt-0.5">
-                        {hasForSale ? `${u.forSaleCount} szt.` : 'Brak'}
-                      </span>
-                    </div>
-
-                    <div
-                      className={`p-2.5 rounded-xl border flex flex-col justify-center text-center ${
-                        hasWishlist
-                          ? 'bg-rose-950/40 border-rose-500/40 text-rose-300'
-                          : 'bg-stone-950/60 border-stone-800/80 text-stone-500'
-                      }`}
-                    >
-                      <span className="text-[11px] font-bold opacity-80 flex items-center justify-center gap-1">
-                        <FolderHeart className="w-3 h-3 text-rose-400" />
-                        <span>Lista życzeń</span>
-                      </span>
-                      <span className="text-sm font-bold tabular-nums mt-0.5">
-                        {hasWishlist ? `${u.wishlistCount} szt.` : 'Brak'}
-                      </span>
-                    </div>
+                  <div className="min-w-0 flex-1">
+                    <h3 className="text-sm font-semibold text-stone-50 truncate">
+                      {u.username}
+                      {isSelf && <span className="ml-2 text-xs font-normal text-stone-500">(Ty)</span>}
+                    </h3>
+                    <p className="text-xs text-stone-400 truncate">
+                      {u.city ? `${u.city}, ` : ''}od {formatJoinDate(u.createdAt)}
+                    </p>
                   </div>
                 </div>
 
-                {/* Bottom Action Footer */}
-                <div className="pt-3 border-t border-stone-800/80 flex items-center justify-between gap-1.5 flex-wrap">
-                  <div className="flex items-center gap-1.5">
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleOpenUserProfile(u, 'for-sale');
-                      }}
-                      className={`px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1 cursor-pointer ${
-                        hasForSale
-                          ? 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-sm shadow-emerald-950/50'
-                          : 'bg-stone-800 hover:bg-stone-750 text-stone-400'
-                      }`}
-                      title="Zobacz karty wystawione na sprzedaż"
-                    >
-                      <ShoppingBag className="w-3.5 h-3.5" />
-                      <span>Sprzedam</span>
-                    </button>
+                {wishMatch > 0 && (
+                  <p className="text-sm text-rose-300 flex items-center gap-1.5 -mt-1">
+                    <Heart className="w-3.5 h-3.5 fill-rose-400 text-rose-400 shrink-0" />
+                    {wishMatch} z Twojej listy życzeń
+                    {matches[u.id].forSale > 0 ? `, ${matches[u.id].forSale} na sprzedaż` : ''}
+                  </p>
+                )}
 
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleOpenUserProfile(u, 'wishlist');
-                      }}
-                      className={`px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1 cursor-pointer ${
-                        hasWishlist
-                          ? 'bg-rose-950/60 hover:bg-rose-900/60 text-rose-300 border border-rose-500/40'
-                          : 'bg-stone-800 hover:bg-stone-750 text-stone-400'
-                      }`}
-                      title="Zobacz listę życzeń użytkownika"
-                    >
-                      <FolderHeart className="w-3.5 h-3.5 text-rose-400" />
-                      <span>Życzenia</span>
-                    </button>
-                  </div>
-
-                  <div className="flex items-center gap-1">
-                    {currentUser && currentUser.id !== u.id && (
-                      <button
-                        type="button"
-                        onClick={(e) => handleOpenSendMessage(u, e)}
-                        className="p-1.5 rounded-lg text-stone-400 hover:text-amber-300 hover:bg-stone-800 transition-colors cursor-pointer border border-transparent hover:border-stone-700"
-                        title={`Wyślij wiadomość do @${u.username}`}
-                      >
-                        <Mail className="w-4 h-4 text-amber-400" />
-                      </button>
-                    )}
-
-                    <button
-                      type="button"
-                      onClick={(e) => handleCopyUserLink(u.username, e)}
-                      className="p-1.5 rounded-lg text-stone-400 hover:text-emerald-300 hover:bg-stone-800 transition-colors cursor-pointer border border-transparent hover:border-stone-700"
-                      title={`Kopiuj publiczny link do oferty użytkownika @${u.username}`}
-                    >
-                      {copiedLinkUser === u.username ? (
-                        <Check className="w-4 h-4 text-emerald-400" />
-                      ) : (
-                        <Share2 className="w-4 h-4" />
-                      )}
-                    </button>
-                  </div>
+                <div className="grid grid-cols-2 gap-px rounded-lg overflow-hidden bg-stone-800 text-sm">
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleOpenUserProfile(u, 'for-sale');
+                    }}
+                    className="bg-stone-900 hover:bg-stone-850 px-3 py-2 text-left cursor-pointer"
+                    title="Zobacz karty na sprzedaż"
+                  >
+                    <span className="block text-xs text-stone-400">Sprzedaje</span>
+                    <span className={`block tabular-nums font-medium ${hasForSale ? 'text-emerald-300' : 'text-stone-500'}`}>
+                      {hasForSale ? `${u.forSaleCount} kart` : 'nic'}
+                    </span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleOpenUserProfile(u, 'wishlist');
+                    }}
+                    className="bg-stone-900 hover:bg-stone-850 px-3 py-2 text-left cursor-pointer"
+                    title="Zobacz listę życzeń"
+                  >
+                    <span className="block text-xs text-stone-400">Szuka</span>
+                    <span className={`block tabular-nums font-medium ${hasWishlist ? 'text-stone-100' : 'text-stone-500'}`}>
+                      {hasWishlist ? `${u.wishlistCount} kart` : 'nic'}
+                    </span>
+                  </button>
                 </div>
-              </div>
+
+                <div className="flex items-center justify-end -mr-1.5 -mt-1" onClick={(e) => e.stopPropagation()}>
+                  {currentUser && currentUser.id !== u.id && (
+                    <button type="button" onClick={(e) => handleOpenSendMessage(u, e)} className={iconBtn} title={`Napisz do ${u.username}`} aria-label={`Napisz do ${u.username}`}>
+                      <Mail className="w-4 h-4" />
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={(e) => handleCopyUserLink(u.username, e)}
+                    className={iconBtn}
+                    title="Kopiuj publiczny link do oferty"
+                    aria-label="Kopiuj publiczny link do oferty"
+                  >
+                    {copiedLinkUser === u.username ? <Check className="w-4 h-4 text-emerald-400" /> : <Share2 className="w-4 h-4" />}
+                  </button>
+                </div>
+              </article>
             );
           })}
         </div>

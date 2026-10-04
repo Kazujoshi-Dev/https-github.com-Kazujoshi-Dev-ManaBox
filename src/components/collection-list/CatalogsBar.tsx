@@ -1,3 +1,4 @@
+import { PageHeader } from '../ui/PageHeader';
 import { FOR_SALE_BINDER } from './constants';
 import React from 'react';
 import { 
@@ -30,227 +31,90 @@ export const CatalogsBar: React.FC<CatalogsBarProps> = ({
 }) => {
   const activeCatalogObj = catalogs.find(c => c.name === activeBinder);
 
+  const chip = (selected: boolean) =>
+    `h-9 px-3 rounded-lg text-sm shrink-0 flex items-center gap-2 cursor-pointer whitespace-nowrap ${
+      selected ? 'bg-stone-800 text-stone-50 ring-1 ring-stone-700' : 'text-stone-400 hover:text-stone-100 hover:bg-stone-900'
+    }`;
+  const count = (n: number) => <span className="text-xs text-stone-500 tabular-nums">{n}</span>;
+  const activeStats = activeCatalogObj ? catalogStats.get(activeCatalogObj.name) : undefined;
+
   return (
-    <div className="bg-stone-900 border border-stone-800 rounded-2xl p-3 md:p-4 shadow-xl space-y-3">
-      {/* Top Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-stone-800/80 pb-3">
-        <div className="flex items-center gap-2">
-          <div className="p-1.5 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-400">
-            <Folder className="w-4 h-4" />
-          </div>
-          <div>
-            <h2 className="text-sm font-bold text-stone-100 flex items-center gap-2">
-              <span>Katalogi i Klasery Kolekcji</span>
-              <span className="text-[11px] bg-stone-800 text-stone-400 px-2 py-0.5 rounded-full tabular-nums font-normal">
-                {catalogs.length} katalogów
-              </span>
-            </h2>
-            <p className="hidden md:block text-[11px] text-stone-400">
-              Wybierz katalog, aby filtrować karty lub utwórz nowy do organizacji swoich klaserów.
-            </p>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-2 flex-wrap shrink-0">
-          {onOpenImportExport && (
-            <button
-              onClick={() => onOpenImportExport('export')}
-              className="px-3 py-1.5 rounded-xl bg-stone-800 hover:bg-stone-750 text-amber-300 hover:text-amber-200 border border-amber-500/30 font-bold text-xs flex items-center justify-center gap-1.5 shadow-sm transition-all cursor-pointer shrink-0"
-              title="Eksportuj lub importuj kolekcję jako plik .txt (format '1x Talisman of Impulse (tdc) 332')"
-            >
-              <FileText className="w-4 h-4 text-amber-400" />
-              <span>Plik .txt (Kolekcja)</span>
+    <div className="space-y-4">
+      <PageHeader
+        title="Kolekcja"
+        actions={
+          <>
+            {onOpenImportExport && (
+              <button type="button" onClick={() => onOpenImportExport('export')} className="btn btn-secondary" title="Import i eksport kolekcji (.txt)">
+                <FileText className="w-4 h-4" />
+                Import / eksport
+              </button>
+            )}
+            <button type="button" onClick={onOpenCreateCatalog} className="btn btn-secondary">
+              <FolderPlus className="w-4 h-4" />
+              Nowy katalog
             </button>
-          )}
+          </>
+        }
+      />
 
-          <button
-            onClick={onOpenCreateCatalog}
-            className="px-3.5 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-stone-950 font-bold text-xs flex items-center justify-center gap-1.5 shadow-md shadow-amber-950/40 transition-all cursor-pointer shrink-0"
-          >
-            <FolderPlus className="w-4 h-4 stroke-[2.5]" />
-            <span>+ Utwórz nowy katalog</span>
-          </button>
-        </div>
-      </div>
-
-      {/* Catalog Navigation Tabs */}
-      <div className="flex items-center gap-2 overflow-x-auto pb-1 pt-1 scrollbar-thin">
-        {/* All Cards Tab */}
-        <button
-          onClick={() => onSelectBinder('ALL')}
-          className={`px-3 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer shrink-0 flex items-center gap-2 border ${
-            activeBinder === 'ALL'
-              ? 'bg-amber-500 text-stone-950 border-amber-400 shadow-md font-bold'
-              : 'bg-stone-950 text-stone-300 border-stone-800 hover:border-stone-700 hover:bg-stone-850'
-          }`}
-        >
-          <FolderOpen className="w-3.5 h-3.5" />
-          <span>Wszystkie karty</span>
-          <span className={`px-1.5 py-0.2 rounded-full tabular-nums text-[11px] ${
-            activeBinder === 'ALL' ? 'bg-stone-950 text-amber-300' : 'bg-stone-800 text-stone-400'
-          }`}>
-            {totalCollectionCount}
-          </span>
+      {/* Katalogi */}
+      <div className="flex items-center gap-1 overflow-x-auto no-scrollbar -mx-1 px-1 py-0.5">
+        <button type="button" onClick={() => onSelectBinder('ALL')} className={chip(activeBinder === 'ALL')}>
+          Wszystkie {count(totalCollectionCount)}
         </button>
-
-        {/* Kategoria „Sprzedam” — karty oznaczone na sprzedaż */}
         <button
           type="button"
           onClick={() => onSelectBinder(FOR_SALE_BINDER)}
-          className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer shrink-0 flex items-center gap-2 border ${
-            activeBinder === FOR_SALE_BINDER
-              ? 'bg-emerald-500/20 text-emerald-200 border-emerald-500/50 ring-1 ring-emerald-500/40 shadow-md'
-              : 'bg-stone-950 text-stone-300 border-stone-800 hover:border-stone-700 hover:bg-stone-850'
-          }`}
+          className={chip(activeBinder === FOR_SALE_BINDER)}
           title="Karty oznaczone na sprzedaż. Nie ma ich w klaserach, dopóki ich nie wycofasz"
         >
-          <CircleDollarSign className="w-3.5 h-3.5 text-emerald-400" />
-          <span>Sprzedam</span>
-          <span className={`px-1.5 py-0.2 rounded-full tabular-nums text-[11px] ${
-            activeBinder === FOR_SALE_BINDER ? 'bg-stone-950/80 text-emerald-300' : 'bg-stone-800 text-stone-400'
-          }`}>
-            {forSaleCount}
-          </span>
+          <CircleDollarSign className="w-4 h-4 text-emerald-400" />
+          Sprzedam {count(forSaleCount)}
         </button>
-
-        {/* Individual Catalog Tabs */}
-        {catalogs.map(cat => {
-          const isSelected = activeBinder === cat.name;
+        <span className="w-px h-5 bg-stone-800 mx-1 shrink-0" aria-hidden="true" />
+        {catalogs.map((cat) => {
           const stats = catalogStats.get(cat.name) || { count: 0, totalCards: 0, totalValue: 0 };
           const colorStyle = COLOR_MAP[cat.color || 'amber'] || COLOR_MAP.amber;
-
           return (
-            <div
-              key={cat.id}
-              onClick={() => onSelectBinder(cat.name)}
-              className={`group px-3 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer shrink-0 flex items-center gap-2 border ${
-                isSelected
-                  ? `${colorStyle.bg} ${colorStyle.border} ${colorStyle.text} ring-1 ring-amber-500/40 shadow-md`
-                  : 'bg-stone-950 text-stone-300 border-stone-800 hover:border-stone-700 hover:bg-stone-850'
-              }`}
-            >
-              <span className={`w-2.5 h-2.5 rounded-full ${colorStyle.dot}`} />
-              <span className="truncate max-w-[140px]">{cat.name}</span>
-
-              {cat.isDefault && (
-                <span title="Domyślny katalog">
-                  <Star className="w-3.5 h-3.5 text-amber-400 fill-amber-400 shrink-0" />
-                </span>
-              )}
-
-              <span className={`px-1.5 py-0.2 rounded-full tabular-nums text-[11px] ${
-                isSelected ? 'bg-stone-950/80 text-stone-200' : 'bg-stone-800 text-stone-400'
-              }`}>
-                {stats.count}
-              </span>
-
-              {/* Quick Action Buttons for Catalog */}
-              <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 pointer-coarse:opacity-100 transition-opacity ml-1">
-                {!cat.isDefault && onSetDefaultCatalog && (
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onSetDefaultCatalog(cat.id);
-                    }}
-                    title="Oznacz ten katalog jako domyślny"
-                    className="p-1 hover:text-amber-400 text-stone-500 rounded transition-colors"
-                  >
-                    <Star className="w-3 h-3" />
-                  </button>
-                )}
-
-                <button
-                  type="button"
-                  onClick={(e) => onOpenEditCatalog(cat, e)}
-                  title={`Edytuj katalog ${cat.name}`}
-                  className="p-1 hover:text-amber-300 text-stone-500 rounded transition-colors"
-                >
-                  <Edit2 className="w-3 h-3" />
-                </button>
-
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onRequestDeleteCatalog(cat);
-                  }}
-                  title={`Usuń katalog ${cat.name}`}
-                  className="p-1 hover:text-rose-400 text-stone-500 rounded transition-colors"
-                >
-                  <Trash2 className="w-3 h-3" />
-                </button>
-              </div>
-            </div>
+            <button key={cat.id} type="button" onClick={() => onSelectBinder(cat.name)} className={chip(activeBinder === cat.name)}>
+              <span className={`w-2 h-2 rounded-full ${colorStyle.dot}`} aria-hidden="true" />
+              <span className="truncate max-w-[160px]">{cat.name}</span>
+              {cat.isDefault && <Star className="w-3.5 h-3.5 text-amber-400 fill-amber-400" aria-label="Domyślny katalog" />}
+              {count(stats.count)}
+            </button>
           );
         })}
       </div>
 
-      {/* Selected Catalog Detailed Banner (when a specific catalog is active) */}
+      {/* Szczegóły wybranego katalogu */}
       {activeCatalogObj && (
-        <div className="mt-2 p-3 bg-stone-950/70 border border-stone-800/80 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
-          <div className="flex items-center gap-3">
-            <div className={`p-2 rounded-xl border ${COLOR_MAP[activeCatalogObj.color || 'amber']?.bg || 'bg-amber-500/10'} ${COLOR_MAP[activeCatalogObj.color || 'amber']?.border || 'border-amber-500/30'} ${COLOR_MAP[activeCatalogObj.color || 'amber']?.text || 'text-amber-400'}`}>
-              <Folder className="w-5 h-5" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h3 className="text-sm font-bold text-stone-100">{activeCatalogObj.name}</h3>
-                {activeCatalogObj.isDefault && (
-                  <span className="text-[11px] tabular-nums bg-amber-500/20 text-amber-300 border border-amber-500/30 px-1.5 py-0.2 rounded-full flex items-center gap-1 font-bold">
-                    <Star className="w-3 h-3 fill-amber-400 text-amber-400" />
-                    Domyślny
-                  </span>
-                )}
-              </div>
-              <p className="text-[11px] text-stone-400 mt-0.5">
-                {activeCatalogObj.description || 'Katalog kart kolekcji'}
-              </p>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-3 shrink-0">
-            <div className="text-right">
-              <p className="text-[11px] tabular-nums text-stone-400">Wartość katalogu</p>
-              <p className="tabular-nums font-bold text-emerald-400 text-sm">
-                {formatCurrency(catalogStats.get(activeCatalogObj.name)?.totalValue || 0, currency)}
-              </p>
-            </div>
-
-            <div className="flex items-center gap-1.5 border-l border-stone-800 pl-3">
-              {activeCatalogObj.isDefault ? (
-                <span className="px-2.5 py-1.5 bg-amber-500/10 text-amber-300 rounded-lg border border-amber-500/30 font-bold text-xs flex items-center gap-1.5">
-                  <Star className="w-3.5 h-3.5 text-amber-400 fill-amber-400" />
-                  <span>Domyślny katalog</span>
-                </span>
-              ) : onSetDefaultCatalog ? (
-                <button
-                  onClick={() => onSetDefaultCatalog(activeCatalogObj.id)}
-                  className="px-2.5 py-1.5 bg-stone-900 hover:bg-amber-500/20 text-stone-300 hover:text-amber-300 rounded-lg border border-stone-800 hover:border-amber-500/40 font-semibold text-xs flex items-center gap-1.5 transition-colors cursor-pointer"
-                  title="Ustaw ten katalog jako domyślny (nowo dodawane karty będą trafiać do niego)"
-                >
-                  <Star className="w-3.5 h-3.5 text-amber-400" />
-                  <span>Ustaw jako domyślny</span>
-                </button>
-              ) : null}
-
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-sm">
+          <p className="text-stone-400 min-w-0">
+            {activeCatalogObj.description || 'Katalog kart kolekcji'}
+            <span className="text-stone-600 mx-2">/</span>
+            Wartość <span className="text-stone-100 font-medium tabular-nums">{formatCurrency(activeStats?.totalValue || 0, currency)}</span>
+          </p>
+          <div className="flex items-center gap-1 shrink-0 -ml-2 sm:ml-0">
+            {!activeCatalogObj.isDefault && onSetDefaultCatalog && (
               <button
-                onClick={(e) => onOpenEditCatalog(activeCatalogObj, e)}
-                className="px-2.5 py-1.5 bg-stone-900 hover:bg-stone-800 text-stone-300 hover:text-amber-300 rounded-lg border border-stone-800 font-semibold text-xs flex items-center gap-1 transition-colors cursor-pointer"
+                type="button"
+                onClick={() => onSetDefaultCatalog(activeCatalogObj.id)}
+                className="btn btn-ghost h-8 px-2.5"
+                title="Nowo dodawane karty będą trafiać do tego katalogu"
               >
-                <Edit2 className="w-3.5 h-3.5" />
-                <span>Edytuj</span>
+                <Star className="w-4 h-4" />
+                Ustaw jako domyślny
               </button>
-
-              <button
-                onClick={() => onRequestDeleteCatalog(activeCatalogObj)}
-                className="px-2.5 py-1.5 bg-stone-900 hover:bg-rose-950/60 text-stone-400 hover:text-rose-400 rounded-lg border border-stone-800 font-semibold text-xs flex items-center gap-1 transition-colors cursor-pointer"
-                title="Usuń ten katalog"
-              >
-                <Trash2 className="w-3.5 h-3.5" />
-                <span>Usuń katalog</span>
-              </button>
-            </div>
+            )}
+            <button type="button" onClick={(e) => onOpenEditCatalog(activeCatalogObj, e)} className="btn btn-ghost h-8 px-2.5">
+              <Edit2 className="w-4 h-4" />
+              Edytuj
+            </button>
+            <button type="button" onClick={() => onRequestDeleteCatalog(activeCatalogObj)} className="btn btn-ghost h-8 px-2.5 hover:text-rose-300">
+              <Trash2 className="w-4 h-4" />
+              Usuń
+            </button>
           </div>
         </div>
       )}

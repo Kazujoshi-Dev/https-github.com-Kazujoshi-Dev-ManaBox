@@ -123,10 +123,10 @@ export const MobileNav: React.FC<MobileNavProps> = ({
               type="button"
               onClick={onOpenScanner}
               aria-label="Skanuj kartę"
-              className="-mt-5 w-16 h-16 rounded-full bg-emerald-500 text-stone-950 flex flex-col items-center justify-center shadow-lg shadow-emerald-950/60 ring-4 ring-stone-950 active:scale-95 transition-transform"
+              className="-mt-5 w-16 h-16 rounded-full bg-amber-400 text-stone-950 flex flex-col items-center justify-center shadow-lg shadow-black/40 ring-4 ring-stone-950 active:scale-95 transition-transform"
             >
               <Camera className="w-6 h-6 stroke-[2.5]" />
-              <span className="text-[11px] font-bold leading-none mt-0.5">SKANUJ</span>
+              <span className="text-[11px] font-semibold leading-none mt-0.5">Skanuj</span>
             </button>
           </div>
           <NavButton tab="search" label="Szukaj" icon={Search} />

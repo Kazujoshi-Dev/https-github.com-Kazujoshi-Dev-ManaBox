@@ -114,7 +114,7 @@ const SellersMapModal: React.FC<SellersMapModalProps> = ({ onClose, onOpenSeller
         }}
         className="w-full flex items-center gap-3 px-3 py-2.5 min-h-14 rounded-xl bg-stone-950/70 border border-stone-800 hover:border-emerald-500/40 active:bg-stone-800 text-left cursor-pointer"
       >
-        <div className="w-9 h-9 rounded-full bg-emerald-600 text-white font-bold flex items-center justify-center shrink-0">
+        <div className="w-9 h-9 rounded-lg bg-stone-800 text-stone-200 font-semibold flex items-center justify-center shrink-0">
           {s.username.slice(0, 1).toUpperCase()}
         </div>
         <div className="min-w-0 flex-1">

@@ -255,7 +255,7 @@ export const PublicWishlistView: React.FC<PublicWishlistViewProps> = ({
                       </div>
                       <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
                         <span className="tabular-nums text-[11px] font-bold bg-stone-800 text-stone-300 px-1.5 rounded border border-stone-700">
-                          {item.card.set}
+                          {item.card.set.toUpperCase()}
                         </span>
                         <span className={`text-[11px] px-1.5 rounded border font-semibold ${getRarityColor(item.card.rarity)}`}>
                           {getRarityLabel(item.card.rarity)}

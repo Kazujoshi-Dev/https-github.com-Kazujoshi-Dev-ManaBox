@@ -59,7 +59,7 @@ export const CardCollectionForm: React.FC<CardCollectionFormProps> = ({
         <div className="flex items-center justify-between">
           <label className="block text-[11px] font-bold text-amber-300 flex items-center gap-1.5">
             <Folder className="w-3.5 h-3.5 text-amber-400" />
-            <span>Wybierz Katalog dla tej karty:</span>
+            <span>Katalog dla tej karty</span>
           </label>
 
           {!isCreatingCatalog && (

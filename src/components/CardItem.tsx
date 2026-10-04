@@ -94,7 +94,7 @@ export const CardItem: React.FC<CardItemProps> = ({
         <td className="py-2.5 px-3">
           <div className="flex items-center gap-1.5">
             <span className="tabular-nums text-[11px] bg-stone-800 text-stone-300 px-1.5 py-0.5 rounded border border-stone-700">
-              {card.set}
+              {card.set.toUpperCase()}
             </span>
             <span className={`text-[11px] px-1.5 py-0.5 rounded border font-semibold ${getRarityColor(card.rarity)}`}>
               {getRarityLabel(card.rarity)}
@@ -288,7 +288,7 @@ export const CardItem: React.FC<CardItemProps> = ({
 
           <div className="flex items-center gap-1.5 mt-2 flex-wrap">
             <span className="tabular-nums text-[11px] font-bold bg-stone-800 text-stone-300 px-1.5 py-0.5 rounded border border-stone-700">
-              {card.set}
+              {card.set.toUpperCase()}
             </span>
             <span className={`text-[11px] px-1.5 py-0.5 rounded border font-semibold ${getRarityColor(card.rarity)}`}>
               {getRarityLabel(card.rarity)}

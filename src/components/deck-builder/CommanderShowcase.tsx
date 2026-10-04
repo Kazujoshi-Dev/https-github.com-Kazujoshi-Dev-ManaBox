@@ -112,7 +112,7 @@ export const CommanderShowcase: React.FC<CommanderShowcaseProps> = ({
         className="px-4 py-2 bg-amber-500 hover:bg-amber-400 text-stone-950 font-bold text-xs rounded-xl shadow-md flex items-center gap-2 transition-all cursor-pointer shrink-0"
       >
         <Crown className="w-4 h-4" />
-        <span>Wybierz Dowódcę</span>
+        <span>Wybierz dowódcę</span>
       </button>
     </div>
   );

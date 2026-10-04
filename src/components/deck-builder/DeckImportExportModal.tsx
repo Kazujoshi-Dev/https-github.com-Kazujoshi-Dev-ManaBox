@@ -227,7 +227,7 @@ export const DeckImportExportModal: React.FC<DeckImportExportModalProps> = ({
             }`}
           >
             <Download className="w-4 h-4" />
-            <span>Eksportuj Talię (.txt)</span>
+            <span>Eksportuj talię (.txt)</span>
           </button>
 
           <button
@@ -240,7 +240,7 @@ export const DeckImportExportModal: React.FC<DeckImportExportModalProps> = ({
             }`}
           >
             <Upload className="w-4 h-4" />
-            <span>Importuj Karty do Talii</span>
+            <span>Importuj karty do talii</span>
           </button>
         </div>
 
@@ -421,7 +421,7 @@ export const DeckImportExportModal: React.FC<DeckImportExportModalProps> = ({
                     <div className="p-2 rounded-lg bg-amber-500/10 border border-amber-500/30 flex items-center justify-between text-xs">
                       <div className="flex items-center gap-2">
                         <Crown className="w-4 h-4 text-amber-400 shrink-0" />
-                        <span>Wykryty Dowódca: <strong className="text-amber-300">{detectedCommander.name}</strong></span>
+                        <span>Wykryty dowódca: <strong className="text-amber-300">{detectedCommander.name}</strong></span>
                       </div>
                       <span className="text-[11px] text-amber-300 tabular-nums">Commander</span>
                     </div>

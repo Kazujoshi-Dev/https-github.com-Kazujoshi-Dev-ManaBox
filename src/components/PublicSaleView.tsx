@@ -248,7 +248,7 @@ export const PublicSaleView: React.FC<PublicSaleViewProps> = ({
               }`}
             >
               <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-              <span>Tylko Foil</span>
+              <span>Tylko foil</span>
             </button>
 
             <select
@@ -345,7 +345,7 @@ export const PublicSaleView: React.FC<PublicSaleViewProps> = ({
 
                       <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
                         <span className="tabular-nums text-[11px] font-bold bg-stone-800 text-stone-300 px-1.5 py-0.2 rounded border border-stone-700">
-                          {item.card.set}
+                          {item.card.set.toUpperCase()}
                         </span>
                         <span className={`text-[11px] px-1.5 py-0.2 rounded border font-semibold ${getRarityColor(item.card.rarity)}`}>
                           {getRarityLabel(item.card.rarity)}

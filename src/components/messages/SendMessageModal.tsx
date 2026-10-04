@@ -92,7 +92,7 @@ export const SendMessageModal: React.FC<SendMessageModalProps> = ({
               <Mail className="w-5 h-5" />
             </div>
             <div>
-              <h3 className="text-base font-bold text-white">Nowa Wiadomość</h3>
+              <h3 className="text-base font-bold text-white">Nowa wiadomość</h3>
               <p className="text-xs text-stone-400">Wewnętrzna komunikacja z graczem</p>
             </div>
           </div>

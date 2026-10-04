@@ -1,3 +1,4 @@
+import { PageHeader } from './ui/PageHeader';
 import React, { useMemo, useState } from 'react';
 import {
   Settings, User, Coins, ShieldCheck, Share2, Database, Check, RefreshCw, Euro, DollarSign, LogOut, Loader2,
@@ -50,15 +51,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = (props) => {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center gap-3">
-        <div className="w-11 h-11 rounded-xl bg-amber-500/10 border border-amber-500/25 text-amber-400 flex items-center justify-center">
-          <Settings className="w-5 h-5" />
-        </div>
-        <div>
-          <h2 className="text-xl font-bold text-stone-100">Ustawienia</h2>
-          <p className="text-xs text-stone-400">Zarządzaj kontem, wyceną kolekcji i bezpieczeństwem</p>
-        </div>
-      </div>
+      <PageHeader title="Ustawienia" description="Konto, wycena kolekcji i bezpieczeństwo." className="mb-2" />
 
       <div className="grid grid-cols-1 md:grid-cols-[240px_1fr] gap-4 md:gap-6 items-start">
         {/* Kategorie: na telefonie przewijany pasek, na komputerze menu boczne */}

@@ -1,3 +1,4 @@
+import { PageHeader } from './ui/PageHeader';
 import React, { useState } from 'react';
 import { WishlistItem, ScryfallCard, AppSettings, AuthUser } from '../types';
 import { formatCurrency, getCardImageUri, getCardPrice, handleCardImageError, getCardEdhrecRank } from '../utils/formatters';
@@ -85,85 +86,49 @@ export const Wishlist: React.FC<WishlistProps> = ({
   return (
     <div className="space-y-6">
       
-      {/* Wishlist Header Banner */}
-      <div className="bg-stone-900 border border-stone-800 rounded-2xl p-6 shadow-xl flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2">
-            <FolderHeart className="w-6 h-6 text-rose-400" />
-            <h2 className="text-xl font-bold text-stone-100">Lista Życzeń (Wishlist)</h2>
-          </div>
-          <p className="text-xs text-stone-400 mt-1">
-            Karty, które chcesz w przyszłości zdobyć do swoich talii lub klasera.
-          </p>
-        </div>
-
-        <div className="flex items-center gap-4 bg-stone-950 p-3 rounded-xl border border-stone-800">
-          <div>
-            <p className="text-[11px] font-bold text-stone-400">Szacowany koszt</p>
-            <p className="text-lg font-bold tabular-nums text-emerald-400">{formatCurrency(totalWishlistCost, settings.currency)}</p>
-          </div>
-          <button
-            onClick={onOpenSearchTab}
-            className="px-3.5 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-stone-950 font-bold text-xs flex items-center gap-1.5 transition-all shadow-md cursor-pointer"
-          >
-            <Plus className="w-4 h-4 stroke-[2.5]" />
-            <span>Dodaj kolejne</span>
+      <PageHeader
+        title="Lista życzeń"
+        description="Karty, których szukasz do talii lub klasera."
+        meta={
+          <>
+            <span><span className="text-stone-100 font-medium tabular-nums">{wishlist.length}</span> pozycji</span>
+            <span>Szacowany koszt <span className="text-stone-100 font-medium tabular-nums">{formatCurrency(totalWishlistCost, settings.currency)}</span></span>
+          </>
+        }
+        actions={
+          <button type="button" onClick={onOpenSearchTab} className="btn btn-primary">
+            <Plus className="w-4 h-4" strokeWidth={2.5} />
+            Dodaj karty
           </button>
-        </div>
-      </div>
+        }
+      />
 
-      {/* Publiczny link do listy */}
       {publicShareSlug && (
-        <div className="bg-stone-900 border border-rose-500/30 rounded-2xl p-4 shadow-xl flex flex-col lg:flex-row lg:items-center gap-3 lg:gap-5">
-          <div className="lg:w-72 shrink-0 space-y-0.5">
-            <p className="text-xs font-bold text-rose-300 flex items-center gap-1.5">
-              <Share2 className="w-4 h-4 text-rose-400" />
-              <span>Publiczny link do listy życzeń</span>
-            </p>
-            <p className="text-[11px] text-stone-400">
-              Wyślij go sprzedającym. Zobaczą, jakich kart szukasz, bez zakładania konta.
-            </p>
+        <div className="rounded-xl border border-stone-800 bg-stone-900 p-3 flex flex-col md:flex-row md:items-center gap-3">
+          <div className="flex items-center gap-2 text-sm text-stone-300 shrink-0" title="Wyślij go sprzedającym. Zobaczą, jakich kart szukasz, bez zakładania konta.">
+            <Share2 className="w-4 h-4 text-stone-400" />
+            Link do Twojej listy
           </div>
-
-          <div className="flex-1 min-w-0 flex items-center gap-2 bg-stone-950 p-2 rounded-xl border border-stone-800">
-            <input
-              type="text"
-              readOnly
-              value={publicShareUrl}
-              onFocus={(e) => e.currentTarget.select()}
-              aria-label="Publiczny link do listy życzeń"
-              className="bg-transparent text-xs text-stone-300 tabular-nums w-full min-w-0 focus:outline-none truncate px-1"
-              title={publicShareUrl}
-            />
-            <button
-              type="button"
-              onClick={handleCopyLink}
-              className="h-9 px-3 bg-rose-600 hover:bg-rose-500 text-white rounded-lg text-xs font-bold transition-all shadow-md flex items-center gap-1.5 shrink-0 cursor-pointer"
-            >
-              {copiedLink ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
-              <span>{copiedLink ? 'Skopiowano!' : 'Kopiuj'}</span>
+          <input
+            type="text"
+            readOnly
+            value={publicShareUrl}
+            onFocus={(e) => e.currentTarget.select()}
+            aria-label="Publiczny link do listy życzeń"
+            className="flex-1 min-w-0 h-9 bg-stone-950 border border-stone-800 rounded-lg px-3 text-sm text-stone-300 focus:outline-none focus:border-stone-600"
+          />
+          <div className="flex items-center gap-1 shrink-0">
+            <button type="button" onClick={handleCopyLink} className="btn btn-primary">
+              {copiedLink ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+              {copiedLink ? 'Skopiowano' : 'Kopiuj link'}
             </button>
-          </div>
-
-          <div className="flex items-center gap-4 shrink-0">
-            <a
-              href={publicShareUrl}
-              target="_blank"
-              rel="noreferrer"
-              className="text-xs text-stone-400 hover:text-rose-300 transition-colors flex items-center gap-1 font-medium min-h-9"
-            >
-              <ExternalLink className="w-3.5 h-3.5" />
-              <span>Podgląd</span>
+            <a href={publicShareUrl} target="_blank" rel="noreferrer" className="btn btn-ghost" title="Zobacz, jak widzą listę inni">
+              <ExternalLink className="w-4 h-4" />
+              <span className="hidden lg:inline">Podgląd</span>
             </a>
-            <button
-              type="button"
-              onClick={handleCopyTextList}
-              disabled={wishlist.length === 0}
-              className="text-xs text-stone-400 hover:text-amber-300 transition-colors flex items-center gap-1 font-medium cursor-pointer min-h-9 disabled:opacity-40 disabled:cursor-default"
-              title="Skopiuj listę kart jako tekst"
-            >
-              {copiedText ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <FileText className="w-3.5 h-3.5" />}
-              <span>{copiedText ? 'Skopiowano!' : 'Kopiuj listę (.txt)'}</span>
+            <button type="button" onClick={handleCopyTextList} disabled={wishlist.length === 0} className="btn btn-ghost" title="Kopiuj listę kart jako tekst">
+              {copiedText ? <Check className="w-4 h-4 text-emerald-400" /> : <FileText className="w-4 h-4" />}
+              <span className="hidden lg:inline">{copiedText ? 'Skopiowano' : 'Lista .txt'}</span>
             </button>
           </div>
         </div>
@@ -176,7 +141,7 @@ export const Wishlist: React.FC<WishlistProps> = ({
             <FolderHeart className="w-8 h-8" />
           </div>
           <div>
-            <h3 className="text-lg font-bold text-stone-200">Twoja Lista Życzeń jest pusta</h3>
+            <h3 className="text-lg font-bold text-stone-200">Twoja lista życzeń jest pusta</h3>
             <p className="text-xs text-stone-400 mt-1 max-w-md mx-auto">
               Możesz dodawać upatrzone karty bezpośrednio z poziomu wyszukiwarki Scryfall API.
             </p>
@@ -242,7 +207,7 @@ export const Wishlist: React.FC<WishlistProps> = ({
 
                     <div className="flex items-center gap-1.5 mt-2 text-xs">
                       <span className="tabular-nums text-[11px] font-bold bg-stone-800 text-stone-300 px-1.5 py-0.5 rounded border border-stone-700">
-                        {card.set}
+                        {card.set.toUpperCase()}
                       </span>
                       {item.isFoil && (
                         <span className="text-[11px] text-amber-300 bg-amber-500/10 px-1.5 py-0.5 rounded border border-amber-500/30 flex items-center gap-1">
