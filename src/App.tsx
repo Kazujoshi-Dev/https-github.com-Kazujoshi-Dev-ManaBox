@@ -214,6 +214,31 @@ export default function App() {
     }
   }, [currentUser]);
 
+  // Licznik nieprzeczytanych odświeżany w tle (co 45 s, gdy karta jest widoczna, i po powrocie do karty)
+  useEffect(() => {
+    if (!currentUser || currentUser.mustChangePassword) return;
+    const check = () => {
+      if (document.visibilityState !== 'visible') return;
+      messagesApi.getUnreadCount()
+        .then((res) => setUnreadMessagesCount(res.unreadCount))
+        .catch(() => {});
+    };
+    const t = window.setInterval(check, 45_000);
+    document.addEventListener('visibilitychange', check);
+    window.addEventListener('focus', check);
+    return () => {
+      window.clearInterval(t);
+      document.removeEventListener('visibilitychange', check);
+      window.removeEventListener('focus', check);
+    };
+  }, [currentUser]);
+
+  // Liczba nieprzeczytanych w tytule karty przeglądarki, np. „(2) Mana Screw”
+  useEffect(() => {
+    const base = document.title.replace(/^\(\d+\) /, '');
+    document.title = unreadMessagesCount > 0 ? `(${unreadMessagesCount}) ${base}` : base;
+  }, [unreadMessagesCount]);
+
   const handleOpenCollectionImportExport = useCallback((tab: 'export' | 'import' = 'export') => {
     setCollectionImportExportTab(tab);
     setIsCollectionImportExportOpen(true);

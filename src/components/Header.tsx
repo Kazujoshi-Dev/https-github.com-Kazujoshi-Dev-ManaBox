@@ -217,6 +217,19 @@ export const Header: React.FC<HeaderProps> = ({
           {logo}
           <h1 className="text-base font-semibold tracking-tight text-stone-100 truncate">Mana Screw</h1>
           <SupportButton variant="icon" className="-ml-1 shrink-0" />
+          {user && onOpenMailbox && unreadMessagesCount > 0 && (
+            <button
+              type="button"
+              onClick={onOpenMailbox}
+              aria-label={`Wiadomości, nieprzeczytane: ${unreadMessagesCount}`}
+              className="relative -ml-1 w-9 h-9 shrink-0 rounded-lg flex items-center justify-center text-amber-300 bg-amber-400/10 ring-1 ring-amber-400/30"
+            >
+              <Mail className="w-[18px] h-[18px]" />
+              <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full bg-amber-400 text-stone-950 text-[11px] font-semibold flex items-center justify-center tabular-nums">
+                {unreadMessagesCount}
+              </span>
+            </button>
+          )}
         </div>
         <button
           type="button"
@@ -291,7 +304,11 @@ export const Header: React.FC<HeaderProps> = ({
                 onClick={onOpenMailbox}
                 title="Wiadomości"
                 aria-label={unreadMessagesCount ? `Wiadomości, nieprzeczytane: ${unreadMessagesCount}` : 'Wiadomości'}
-                className="relative w-9 h-9 rounded-lg flex items-center justify-center text-stone-300 hover:text-stone-100 hover:bg-stone-800 cursor-pointer"
+                className={`relative w-9 h-9 rounded-lg flex items-center justify-center cursor-pointer ${
+                  unreadMessagesCount > 0
+                    ? 'text-amber-300 bg-amber-400/10 ring-1 ring-amber-400/30 hover:bg-amber-400/20'
+                    : 'text-stone-300 hover:text-stone-100 hover:bg-stone-800'
+                }`}
               >
                 <Mail className="w-[18px] h-[18px]" />
                 {unreadMessagesCount > 0 && (
