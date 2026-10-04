@@ -376,31 +376,58 @@ export async function getShowcaseCards(limit = 12): Promise<ShowcaseCard[]> {
   if (showcaseCache && Date.now() - showcaseCache.at < 6 * 60 * 60 * 1000) return showcaseCache.cards;
   const p = pool();
   if (!p) return [];
-  const res = await p.query(
-    `SELECT DISTINCT ON (name) name, data->'image_uris'->>'normal' AS image, data->'image_uris'->>'art_crop' AS art,
-            COALESCE(data->>'type_line', '') ILIKE '%legendary creature%' AS legendary, released_at
-       FROM scryfall_cards
-      WHERE lang = 'en'
+  const base = `lang = 'en'
         AND data->'image_uris'->>'normal' IS NOT NULL
-        AND (data->>'edhrec_rank') ~ '^[0-9]+$' AND (data->>'edhrec_rank')::int <= 400
         AND COALESCE(data->>'type_line', '') NOT ILIKE '%land%'
         AND COALESCE(data->>'border_color', 'black') = 'black'
         AND COALESCE(data->>'full_art', 'false') = 'false'
         AND COALESCE(data->>'promo', 'false') = 'false'
-        AND COALESCE(data->>'digital', 'false') = 'false'
-      ORDER BY name, released_at DESC NULLS LAST`
-  );
+        AND COALESCE(data->>'digital', 'false') = 'false'`;
+  const select = `SELECT DISTINCT ON (name) name, data->'image_uris'->>'normal' AS image, data->'image_uris'->>'art_crop' AS art,
+            COALESCE(data->>'type_line', '') ILIKE '%legendary creature%' AS legendary
+       FROM scryfall_cards`;
+  let rows: any[] = [];
+  try {
+    // Najpopularniejsze karty wg EDHREC (rank jako liczba w JSON)
+    const res = await p.query(
+      `${select}
+        WHERE ${base}
+          AND jsonb_typeof(data->'edhrec_rank') = 'number'
+          AND (data->'edhrec_rank')::numeric <= 400
+        ORDER BY name, released_at DESC NULLS LAST`
+    );
+    rows = res.rows;
+    if (rows.length < limit) {
+      // Zapas: najnowsze karty rzadkie / mityczne
+      const more = await p.query(
+        `SELECT * FROM (
+           ${select}
+            WHERE ${base} AND data->>'rarity' IN ('rare', 'mythic')
+            ORDER BY name, released_at DESC NULLS LAST
+         ) x ORDER BY random() LIMIT 200`
+      );
+      const seen = new Set(rows.map((r) => r.name));
+      rows = rows.concat(more.rows.filter((r) => !seen.has(r.name)));
+    }
+  } catch (err: any) {
+    console.warn('[Karty] Nie udało się wybrać kart na ekran logowania:', err?.message || err);
+    return [];
+  }
   // Losowanie zależne od dnia: każdego dnia inny zestaw, ale stały w ciągu dnia
   const day = Math.floor(Date.now() / 86_400_000);
-  const rows = res.rows
-    .map((r, i) => ({ r, k: Math.sin((i + 1) * 12.9898 + day * 78.233) * 43758.5453 }))
-    .map(({ r, k }) => ({ r, k: k - Math.floor(k) }))
+  const shuffled = rows
+    .map((r, i) => {
+      const k = Math.sin((i + 1) * 12.9898 + day * 78.233) * 43758.5453;
+      return { r, k: k - Math.floor(k) };
+    })
     .sort((a, b) => a.k - b.k)
     .map(({ r }) => r);
-  const legendary = rows.filter((r) => r.legendary).slice(0, 3);
-  const others = rows.filter((r) => !legendary.includes(r)).slice(0, Math.max(0, limit - legendary.length));
+  const legendary = shuffled.filter((r) => r.legendary).slice(0, 3);
+  const others = shuffled.filter((r) => !legendary.includes(r)).slice(0, Math.max(0, limit - legendary.length));
   const cards = [...others, ...legendary].map((r) => ({ name: r.name, image: r.image, artCrop: r.art || null, legendary: Boolean(r.legendary) }));
-  showcaseCache = { at: Date.now(), cards };
+  // Pustego wyniku nie zapamiętujemy (np. baza kart jeszcze się synchronizuje)
+  if (cards.length) showcaseCache = { at: Date.now(), cards };
+  else console.warn('[Karty] Brak kart na ekran logowania — czy lokalna baza kart Scryfall jest zsynchronizowana?');
   return cards;
 }
 

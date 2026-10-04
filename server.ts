@@ -2121,7 +2121,7 @@ app.get('/api/public/sale/:userRef', async (req, res) => {
 app.get('/api/public/showcase', async (_req, res) => {
   try {
     const list = await cards.getShowcaseCards(16).catch(() => []);
-    res.setHeader('Cache-Control', 'public, max-age=3600');
+    res.setHeader('Cache-Control', list.length ? 'public, max-age=1800' : 'no-store');
     res.json({ cards: list });
   } catch (err: any) {
     sendServerError(res, err, '/api/public/showcase');

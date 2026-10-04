@@ -105,6 +105,8 @@ export const AuthView: React.FC<AuthViewProps> = ({ onAuthSuccess }) => {
   };
 
   const cards = useShowcaseCards();
+  // Bez kart (np. baza kart jeszcze się synchronizuje) formularz stoi na środku, bez pustej kolumny
+  const hasCards = cards.length >= 3;
   const switchMode = (m: AuthMode) => {
     setMode(m);
     setError(null);
@@ -118,7 +120,7 @@ export const AuthView: React.FC<AuthViewProps> = ({ onAuthSuccess }) => {
     <div className="auth-page min-h-dvh bg-stone-950 text-stone-100 overflow-x-clip">
       {/* 1. Hero: logowanie + strona klasera */}
       <section className="max-w-[1320px] mx-auto px-4 sm:px-6 lg:px-10 pt-[calc(1.25rem+env(safe-area-inset-top))] lg:pt-12 pb-12 lg:pb-20 grid lg:grid-cols-12 gap-10 lg:gap-14 items-center lg:min-h-[100dvh]">
-        <div className="lg:col-span-5 space-y-7 auth-rise">
+        <div className={`${hasCards ? 'lg:col-span-5' : 'lg:col-span-12 lg:max-w-xl lg:mx-auto w-full'} space-y-7 auth-rise`}>
           <div className="flex items-center gap-3">
             <img src="/icon-192.png" alt="" className="w-10 h-10 rounded-xl" />
             <span className="text-lg font-bold tracking-tight text-stone-50">Mana Screw</span>
@@ -243,6 +245,7 @@ export const AuthView: React.FC<AuthViewProps> = ({ onAuthSuccess }) => {
           </div>
         </div>
 
+        {hasCards && (
         <div className="lg:col-span-7 auth-rise auth-rise-late">
           <div className="hidden sm:block lg:pl-6 w-full max-w-[min(36rem,calc((100dvh-6rem)/1.45))] mx-auto">
             <BinderShowcase cards={cards} />
@@ -251,6 +254,7 @@ export const AuthView: React.FC<AuthViewProps> = ({ onAuthSuccess }) => {
             <BinderShowcase cards={cards} compact />
           </div>
         </div>
+        )}
       </section>
 
       {/* 2. Funkcje */}

@@ -7,8 +7,10 @@ import type { ShowcaseCard } from './useShowcaseCards';
  * rozróżnia wersje foil. Przy prefers-reduced-motion refleks stoi w miejscu.
  */
 export const BinderShowcase: React.FC<{ cards: ShowcaseCard[]; compact?: boolean }> = ({ cards, compact = false }) => {
-  const page = cards.slice(0, compact ? 6 : 9);
-  if (page.length < (compact ? 6 : 9)) return null;
+  // Pełne rzędy po 3 karty (najwyżej 2 rzędy na telefonie, 3 na większym ekranie)
+  const max = compact ? 6 : 9;
+  const page = cards.slice(0, Math.min(max, Math.floor(cards.length / 3) * 3));
+  if (page.length < 3) return null;
   const foil = new Set([1, compact ? 5 : 7]);
   const tilt = ['-rotate-[1.2deg]', 'rotate-[0.6deg]', '-rotate-[0.4deg]', 'rotate-[1deg]', '-rotate-[0.8deg]', 'rotate-[0.3deg]', 'rotate-[1.1deg]', '-rotate-[0.5deg]', 'rotate-[0.7deg]'];
 
