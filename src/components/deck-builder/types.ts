@@ -68,9 +68,13 @@ export interface DeckCardRowProps {
   onViewDetails: (card: ScryfallCard) => void;
   /** Powody, dla których karta łamie zasady formatu (puste = karta w porządku). */
   issues?: string[];
+  /** Karta z listy Game Changers (wpływa na bracket). */
+  gameChanger?: boolean;
 }
 
 export interface DeckCategoryColumnProps {
+  /** Nazwy kart z listy Game Changers. */
+  gameChangers?: Set<string>;
   /** Problemy z legalnością po id karty. */
   issuesById?: Map<string, string[]>;
   category: DeckCategoryConfig;
@@ -86,6 +90,8 @@ export interface DeckCategoryColumnProps {
 }
 
 export interface DeckCategoriesBoardProps {
+  /** Nazwy kart z listy Game Changers. */
+  gameChangers?: Set<string>;
   /** Kolejność kart w kategoriach (domyślnie alfabetycznie). */
   sortMode?: import('./cardSort').DeckCardSort;
   /** Problemy z legalnością po id karty. */

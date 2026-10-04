@@ -2503,7 +2503,7 @@ app.delete('/api/decks/:id', authMiddleware, async (req, res) => {
 });
 
 // --- COMMANDER SPELLBOOK API PROXY & CACHE ---
-const SPELLBOOK_BASE = 'https://backend.commanderspellbook.com';
+const SPELLBOOK_BASE = process.env.SPELLBOOK_BASE_URL || 'https://backend.commanderspellbook.com';
 const spellbookCache = new Map<string, { data: any; timestamp: number }>();
 const SPELLBOOK_CACHE_TTL_MS = 1000 * 60 * 60; // 1 hour cache
 let lastSpellbookRequestTime = 0;
@@ -2591,6 +2591,69 @@ app.post('/api/spellbook/find-my-combos', async (req, res) => {
   } catch (err: any) {
     console.error('Error in /api/spellbook/find-my-combos:', err);
     res.status(500).json({ error: 'Nie udało się pobrać kombinacji: ' + err.message });
+  }
+});
+
+// 1b. Szacowanie bracketu talii (Commander Spellbook /estimate-bracket): Game Changers,
+// mass land denial, dodatkowe tury i szybkie kombinacje dwóch kart.
+const bracketLimiter = rateLimit({ name: 'spellbook-bracket', windowMs: 60_000, max: 20 });
+app.post('/api/spellbook/estimate-bracket', bracketLimiter, async (req, res) => {
+  try {
+    const norm = (list: unknown) =>
+      (Array.isArray(list) ? list : [])
+        .map((c: any) => (typeof c === 'string' ? { card: c.trim(), quantity: 1 } : { card: String(c?.card || c?.name || '').trim(), quantity: Math.max(1, Math.min(99, Number(c?.quantity) || 1)) }))
+        .filter((c) => c.card && c.card.length <= 200)
+        .slice(0, 250);
+    const commanders = norm(req.body?.commanders);
+    const main = norm(req.body?.main);
+    if (!commanders.length && !main.length) return res.status(400).json({ error: 'Talia jest pusta.' });
+
+    const cacheKey = `bracket:${commanders.map((c) => c.card).sort().join('|')}::${main.map((c) => `${c.quantity}x${c.card}`).sort().join('|')}`;
+    const cached = spellbookCache.get(cacheKey);
+    if (cached && Date.now() - cached.timestamp < SPELLBOOK_CACHE_TTL_MS) return res.json(cached.data);
+
+    const sbRes = await fetchSpellbookThrottled(`${SPELLBOOK_BASE}/estimate-bracket/`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ commanders, main })
+    });
+    if (!sbRes.ok) {
+      console.warn('[Spellbook] estimate-bracket HTTP', sbRes.status, (await sbRes.text()).slice(0, 300));
+      return res.status(502).json({ error: 'Commander Spellbook jest chwilowo niedostępny. Spróbuj później.' });
+    }
+    const raw: any = await sbRes.json();
+    // Odsyłamy tylko to, co pokazujemy (odpowiedź Spellbook zawiera pełne dane kart i kombinacji)
+    const flagged = (raw.cards || [])
+      .filter((c: any) => c.banned || c.gameChanger || c.massLandDenial || c.extraTurn)
+      .map((c: any) => ({
+        name: c.card?.name,
+        quantity: c.quantity,
+        banned: Boolean(c.banned),
+        gameChanger: Boolean(c.gameChanger),
+        massLandDenial: Boolean(c.massLandDenial),
+        extraTurn: Boolean(c.extraTurn)
+      }));
+    const combos = (raw.combos || [])
+      .filter((c: any) => c.relevant || c.borderlineRelevant || c.massLandDenial || c.extraTurn || c.lock || c.controlAllOpponents)
+      .slice(0, 40)
+      .map((c: any) => ({
+        id: c.combo?.id,
+        cards: (c.combo?.uses || []).map((u: any) => u.card?.name).filter(Boolean),
+        results: (c.combo?.produces || []).map((p: any) => p.feature?.name).filter(Boolean).slice(0, 3),
+        relevant: Boolean(c.relevant),
+        definitelyTwoCard: Boolean(c.definitelyTwoCard),
+        arguablyTwoCard: Boolean(c.arguablyTwoCard),
+        speed: Number(c.speed) || 0,
+        massLandDenial: Boolean(c.massLandDenial),
+        extraTurn: Boolean(c.extraTurn),
+        lock: Boolean(c.lock),
+        controlAllOpponents: Boolean(c.controlAllOpponents)
+      }));
+    const data = { bracketTag: raw.bracketTag || null, cards: flagged, combos };
+    spellbookCache.set(cacheKey, { data, timestamp: Date.now() });
+    res.json(data);
+  } catch (err: any) {
+    sendServerError(res, err, '/api/spellbook/estimate-bracket', 'Nie udało się oszacować bracketu.');
   }
 });
 

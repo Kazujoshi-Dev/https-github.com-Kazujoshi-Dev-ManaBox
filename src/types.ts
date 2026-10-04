@@ -17,6 +17,8 @@ export interface ScryfallCardFace {
 }
 
 export interface ScryfallCard {
+  /** Karta z listy Commander Game Changers (pole Scryfall). */
+  game_changer?: boolean;
   /** Kod języka wydania Scryfall, np. "en", "ja". */
   lang?: string;
   printed_name?: string;

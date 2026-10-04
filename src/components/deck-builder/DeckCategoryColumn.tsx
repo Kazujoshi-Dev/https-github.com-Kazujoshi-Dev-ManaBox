@@ -13,6 +13,7 @@ export const DeckCategoryColumn: React.FC<DeckCategoryColumnProps> = ({
   onSetCommander,
   onViewCardDetails,
   issuesById,
+  gameChangers,
 }) => {
   if (cards.length === 0) return null;
 
@@ -46,6 +47,7 @@ export const DeckCategoryColumn: React.FC<DeckCategoryColumnProps> = ({
             onSetCommander={onSetCommander}
             onViewDetails={onViewCardDetails}
             issues={issuesById?.get(entry.card.id)}
+            gameChanger={gameChangers?.has(entry.card.name)}
           />
         ))}
       </div>

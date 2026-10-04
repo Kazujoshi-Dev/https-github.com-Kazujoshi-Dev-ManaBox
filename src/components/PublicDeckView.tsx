@@ -7,6 +7,7 @@ import { DeckCategoriesBoard, DeckStatsBar, FloatingCardPreview, useDeckStats } 
 import { DeckAnalysis } from './deck-builder/DeckAnalysis';
 import { DeckTokens } from './deck-builder/DeckTokens';
 import { checkCommanderLegality } from './deck-builder/legality';
+import { DeckBracketPanel, useDeckBracket } from './deck-builder/DeckBracket';
 import { deckToText } from './deck-builder/DeckShareModal';
 import { useBackToClose } from '../hooks/useBackButton';
 
@@ -24,6 +25,11 @@ export const PublicDeckView: React.FC<PublicDeckViewProps> = ({ deck, owner, set
   const { totalCardsCount, totalDeckValue, categorizedCards, manaCurve, colorIdentity } = useDeckStats({ deck, settings });
   const [preview, setPreview] = useState<ScryfallCard | null>(null);
   const legality = React.useMemo(() => checkCommanderLegality(deck), [deck]);
+  const bracket = useDeckBracket(deck);
+  const viewByName = (name: string) => {
+    const c = deck.commander?.name === name ? deck.commander : deck.cards.find((e) => e.card.name === name)?.card;
+    if (c) setPreview(c);
+  };
   const [copied, setCopied] = useState<'link' | 'txt' | null>(null);
   useBackToClose(Boolean(preview), () => setPreview(null));
 
@@ -140,8 +146,11 @@ export const PublicDeckView: React.FC<PublicDeckViewProps> = ({ deck, owner, set
 
         <DeckStatsBar manaCurve={manaCurve} colorIdentity={colorIdentity} />
 
+        <DeckBracketPanel deck={deck} bracket={bracket} onViewCardByName={viewByName} />
+
         {/* Karty według typów — ten sam wygląd co w edytorze talii (bez edycji) */}
         <DeckCategoriesBoard
+          gameChangers={bracket.gameChangers}
           issuesById={legality.byCardId}
           categorizedCards={categorizedCards}
           settings={settings}

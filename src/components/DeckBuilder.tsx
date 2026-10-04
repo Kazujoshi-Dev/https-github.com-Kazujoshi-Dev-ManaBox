@@ -20,6 +20,7 @@ import { DeckAnalysis } from './deck-builder/DeckAnalysis';
 import { DeckTokens } from './deck-builder/DeckTokens';
 import { DeckLegalityNotice } from './deck-builder/DeckLegalityNotice';
 import { checkCommanderLegality } from './deck-builder/legality';
+import { DeckBracketPanel, useDeckBracket } from './deck-builder/DeckBracket';
 import { DECK_SORT_OPTIONS, loadDeckSort, saveDeckSort, type DeckCardSort } from './deck-builder/cardSort';
 import { DeckSuggestions } from './deck-builder/DeckSuggestions';
 import { DeckShareModal } from './deck-builder/DeckShareModal';
@@ -222,6 +223,7 @@ export const DeckBuilder: React.FC<DeckBuilderProps> = ({
   });
   const [basicsBusy, setBasicsBusy] = useState<string | null>(null);
   const legality = React.useMemo(() => checkCommanderLegality(deck), [deck]);
+  const bracket = useDeckBracket(deck);
   const [sortMode, setSortMode] = useState<DeckCardSort>(loadDeckSort);
   const handleSortChange = useCallback((mode: DeckCardSort) => {
     setSortMode(mode);
@@ -452,6 +454,9 @@ export const DeckBuilder: React.FC<DeckBuilderProps> = ({
         basicsBusy={basicsBusy}
       />
 
+      {/* Bracket talii i Game Changers */}
+      <DeckBracketPanel deck={deck} bracket={bracket} onViewCardByName={handleViewCardDetailsByName} />
+
       {/* 2b. Board Toolbar: Categories Sorting Info & Card Preview Size Slider */}
       <div className="bg-stone-900 border border-stone-800 rounded-xl px-4 py-3 flex flex-col sm:flex-row items-center justify-between gap-3">
         <div className="flex items-center gap-3 w-full sm:w-auto">
@@ -535,6 +540,7 @@ export const DeckBuilder: React.FC<DeckBuilderProps> = ({
 
       {/* 3. Main Stacked Categories Board */}
       <DeckCategoriesBoard
+        gameChangers={bracket.gameChangers}
         issuesById={legality.byCardId}
         sortMode={sortMode}
         categorizedCards={categorizedCards}

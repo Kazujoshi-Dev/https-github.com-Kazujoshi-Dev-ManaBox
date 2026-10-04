@@ -1,5 +1,5 @@
 import React from 'react';
-import { PlusCircle, MinusCircle, Crown, ExternalLink, AlertTriangle } from 'lucide-react';
+import { PlusCircle, MinusCircle, Crown, ExternalLink, AlertTriangle, Gem } from 'lucide-react';
 import { DeckCardRowProps } from './types';
 import { formatCurrency, getCardPrice } from '../../utils/formatters';
 
@@ -13,6 +13,7 @@ export const DeckCardRow: React.FC<DeckCardRowProps> = ({
   onSetCommander,
   onViewDetails,
   issues,
+  gameChanger = false,
 }) => {
   const card = entry.card;
   const isLegendary = (card.type_line || '').toLowerCase().includes('legendary');
@@ -61,6 +62,11 @@ export const DeckCardRow: React.FC<DeckCardRowProps> = ({
         {entry.isFoil && (
           <span className="px-1.5 py-0.2 rounded bg-amber-500/30 text-amber-300 tabular-nums text-[11px] font-bold border border-amber-400/40 shrink-0 flex items-center gap-0.5">
             FOIL
+          </span>
+        )}
+        {gameChanger && (
+          <span title="Game Changer: liczy się do limitu bracketu (w bracket 3 najwyżej 3 takie karty)" aria-label="Game Changer" className="shrink-0">
+            <Gem className="w-3.5 h-3.5 text-amber-300 drop-shadow" strokeWidth={2.25} />
           </span>
         )}
         {illegal && <AlertTriangle className="w-3.5 h-3.5 text-rose-400 shrink-0" aria-label="Karta niezgodna z zasadami" />}
