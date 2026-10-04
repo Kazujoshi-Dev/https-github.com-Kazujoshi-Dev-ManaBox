@@ -1,5 +1,5 @@
 import React from 'react';
-import { PlusCircle, MinusCircle, Crown, ExternalLink } from 'lucide-react';
+import { PlusCircle, MinusCircle, Crown, ExternalLink, AlertTriangle } from 'lucide-react';
 import { DeckCardRowProps } from './types';
 import { formatCurrency, getCardPrice } from '../../utils/formatters';
 
@@ -12,11 +12,13 @@ export const DeckCardRow: React.FC<DeckCardRowProps> = ({
   onUpdateQuantity,
   onSetCommander,
   onViewDetails,
+  issues,
 }) => {
   const card = entry.card;
   const isLegendary = (card.type_line || '').toLowerCase().includes('legendary');
   const singlePrice = settings ? getCardPrice(card, Boolean(entry.isFoil), settings) : 0;
   const totalPrice = singlePrice * entry.quantity;
+  const illegal = Boolean(issues && issues.length);
 
   // Scale row height smoothly with user scale preference (36px to 54px)
   const rowHeight = Math.max(36, Math.min(54, Math.round(40 * (previewScale / 100))));
@@ -27,8 +29,12 @@ export const DeckCardRow: React.FC<DeckCardRowProps> = ({
       onMouseLeave={onLeave}
       onClick={() => onViewDetails(card)}
       style={{ height: `${rowHeight}px` }}
+      title={illegal ? `Niezgodna z zasadami Commandera:\n${issues!.join('\n')}` : undefined}
+      aria-invalid={illegal || undefined}
       className={`group relative w-full rounded-xl overflow-hidden border transition-all shadow-md cursor-pointer flex items-center justify-between px-2.5 pointer-coarse:min-h-11 ${
-        entry.isFoil
+        illegal
+          ? 'border-rose-500 ring-1 ring-rose-500/60 hover:border-rose-400'
+          : entry.isFoil
           ? 'border-amber-400/60 hover:border-amber-300 shadow-amber-500/10'
           : 'border-stone-700/80 hover:border-amber-400/80 hover:shadow-amber-500/10'
       }`}
@@ -41,6 +47,8 @@ export const DeckCardRow: React.FC<DeckCardRowProps> = ({
           backgroundPosition: 'center 25%'
         }}
       />
+
+      {illegal && <div className="absolute inset-0 bg-rose-950/50" aria-hidden="true" />}
 
       {/* High-legibility text gradient overlay */}
       <div className="absolute inset-0 bg-gradient-to-r from-stone-950/95 via-stone-950/70 to-stone-950/40 group-hover:from-stone-950/90 group-hover:via-stone-950/50 transition-colors" />
@@ -55,7 +63,14 @@ export const DeckCardRow: React.FC<DeckCardRowProps> = ({
             FOIL
           </span>
         )}
-        <span className="font-bold text-xs text-stone-100 truncate group-hover:text-amber-200 transition-colors drop-shadow-md">
+        {illegal && <AlertTriangle className="w-3.5 h-3.5 text-rose-400 shrink-0" aria-label="Karta niezgodna z zasadami" />}
+        <span
+          className={`font-bold text-xs truncate transition-colors drop-shadow-md ${
+            illegal
+              ? 'text-rose-200 underline decoration-rose-500 decoration-2 underline-offset-2'
+              : 'text-stone-100 group-hover:text-amber-200'
+          }`}
+        >
           {card.name}
         </span>
       </div>

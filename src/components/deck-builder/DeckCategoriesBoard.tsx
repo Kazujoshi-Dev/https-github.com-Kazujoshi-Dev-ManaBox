@@ -12,6 +12,7 @@ export const DeckCategoriesBoard: React.FC<DeckCategoriesBoardProps> = ({
   onUpdateQuantity,
   onSetCommander,
   onViewCardDetails,
+  issuesById,
 }) => {
   // Sort categories from the one with the most cards to the one with the fewest cards
   const sortedCategories = useMemo(() => {
@@ -54,6 +55,7 @@ export const DeckCategoriesBoard: React.FC<DeckCategoriesBoardProps> = ({
           onUpdateQuantity={onUpdateQuantity}
           onSetCommander={onSetCommander}
           onViewCardDetails={onViewCardDetails}
+          issuesById={issuesById}
         />
       ))}
     </div>

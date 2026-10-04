@@ -66,9 +66,13 @@ export interface DeckCardRowProps {
   onUpdateQuantity?: (cardId: string, delta: number) => void;
   onSetCommander?: (card: ScryfallCard) => void;
   onViewDetails: (card: ScryfallCard) => void;
+  /** Powody, dla których karta łamie zasady formatu (puste = karta w porządku). */
+  issues?: string[];
 }
 
 export interface DeckCategoryColumnProps {
+  /** Problemy z legalnością po id karty. */
+  issuesById?: Map<string, string[]>;
   category: DeckCategoryConfig;
   cards: DeckCardEntry[];
   settings?: AppSettings;
@@ -82,6 +86,8 @@ export interface DeckCategoryColumnProps {
 }
 
 export interface DeckCategoriesBoardProps {
+  /** Problemy z legalnością po id karty. */
+  issuesById?: Map<string, string[]>;
   categorizedCards: Map<string, DeckCardEntry[]>;
   settings?: AppSettings;
   previewScale?: number;

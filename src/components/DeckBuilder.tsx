@@ -18,6 +18,8 @@ import { DeckImportExportModal } from './DeckImportExportModal';
 import { DeckCombosModal } from './deck-builder/DeckCombosModal';
 import { DeckAnalysis } from './deck-builder/DeckAnalysis';
 import { DeckTokens } from './deck-builder/DeckTokens';
+import { DeckLegalityNotice } from './deck-builder/DeckLegalityNotice';
+import { checkCommanderLegality } from './deck-builder/legality';
 import { DeckSuggestions } from './deck-builder/DeckSuggestions';
 import { DeckShareModal } from './deck-builder/DeckShareModal';
 import type { EdhrecRecommendation } from '../services/api';
@@ -214,6 +216,7 @@ export const DeckBuilder: React.FC<DeckBuilderProps> = ({
     return { color, name, count };
   });
   const [basicsBusy, setBasicsBusy] = useState<string | null>(null);
+  const legality = React.useMemo(() => checkCommanderLegality(deck), [deck]);
 
   const handleSetBasicCount = useCallback(
     async (name: string, rawTarget: number) => {
@@ -506,8 +509,12 @@ export const DeckBuilder: React.FC<DeckBuilderProps> = ({
         </div>
       </div>
 
+      {/* Zgodność z zasadami Commandera */}
+      <DeckLegalityNotice deck={deck} report={legality} onViewCardDetails={onViewCardDetails} />
+
       {/* 3. Main Stacked Categories Board */}
       <DeckCategoriesBoard
+        issuesById={legality.byCardId}
         categorizedCards={categorizedCards}
         settings={settings}
         previewScale={previewScale}

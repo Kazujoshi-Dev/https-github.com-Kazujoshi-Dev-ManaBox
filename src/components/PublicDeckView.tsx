@@ -6,6 +6,7 @@ import { ManaSymbol } from './ManaSymbol';
 import { DeckCategoriesBoard, DeckStatsBar, FloatingCardPreview, useDeckStats } from './deck-builder';
 import { DeckAnalysis } from './deck-builder/DeckAnalysis';
 import { DeckTokens } from './deck-builder/DeckTokens';
+import { checkCommanderLegality } from './deck-builder/legality';
 import { deckToText } from './deck-builder/DeckShareModal';
 import { useBackToClose } from '../hooks/useBackButton';
 
@@ -22,6 +23,7 @@ interface PublicDeckViewProps {
 export const PublicDeckView: React.FC<PublicDeckViewProps> = ({ deck, owner, settings, isLoggedIn = false, onOpenLogin, showToast }) => {
   const { totalCardsCount, totalDeckValue, categorizedCards, manaCurve, colorIdentity } = useDeckStats({ deck, settings });
   const [preview, setPreview] = useState<ScryfallCard | null>(null);
+  const legality = React.useMemo(() => checkCommanderLegality(deck), [deck]);
   const [copied, setCopied] = useState<'link' | 'txt' | null>(null);
   useBackToClose(Boolean(preview), () => setPreview(null));
 
@@ -140,6 +142,7 @@ export const PublicDeckView: React.FC<PublicDeckViewProps> = ({ deck, owner, set
 
         {/* Karty według typów — ten sam wygląd co w edytorze talii (bez edycji) */}
         <DeckCategoriesBoard
+          issuesById={legality.byCardId}
           categorizedCards={categorizedCards}
           settings={settings}
           previewScale={100}
