@@ -1,7 +1,7 @@
 import React from 'react';
 import { Crown, X, Coins } from 'lucide-react';
 import { CommanderShowcaseProps } from './types';
-import { formatCurrency, getCardPrice, getCardEdhrecRank } from '../../utils/formatters';
+import { formatCurrency, getCardPrice, getCardEdhrecRank, getCardImageUri } from '../../utils/formatters';
 import { EdhrecBadge } from '../EdhrecBadge';
 
 export const CommanderShowcase: React.FC<CommanderShowcaseProps> = ({
@@ -26,7 +26,7 @@ export const CommanderShowcase: React.FC<CommanderShowcaseProps> = ({
           onClick={() => onViewDetails(commander)}
           >
             <img
-              src={commander.image_uris?.art_crop || commander.image_uris?.normal}
+              src={getCardImageUri(commander, 'art_crop')}
               alt={commander.name}
               className="w-full h-full object-cover"
             />

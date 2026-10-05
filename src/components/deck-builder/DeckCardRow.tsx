@@ -1,7 +1,7 @@
 import React from 'react';
 import { PlusCircle, MinusCircle, Crown, ExternalLink, AlertTriangle, Gem } from 'lucide-react';
 import { DeckCardRowProps } from './types';
-import { formatCurrency, getCardPrice } from '../../utils/formatters';
+import { formatCurrency, getCardPrice, getCardImageUri } from '../../utils/formatters';
 
 export const DeckCardRow: React.FC<DeckCardRowProps> = ({
   entry,
@@ -44,7 +44,7 @@ export const DeckCardRow: React.FC<DeckCardRowProps> = ({
       <div
         className="absolute inset-0 bg-cover bg-center brightness-70 group-hover:brightness-95 transition-all scale-100 group-hover:scale-105"
         style={{
-          backgroundImage: `url(${card.image_uris?.art_crop || card.image_uris?.normal || ''})`,
+          backgroundImage: `url(${getCardImageUri(card, 'art_crop')})`,
           backgroundPosition: 'center 25%'
         }}
       />

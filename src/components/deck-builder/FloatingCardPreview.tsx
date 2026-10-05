@@ -1,7 +1,7 @@
 import React from 'react';
 import { FloatingCardPreviewProps } from './types';
 import { EdhrecBadge } from '../EdhrecBadge';
-import { getCardEdhrecRank } from '../../utils/formatters';
+import { getCardEdhrecRank, getCardImageUri } from '../../utils/formatters';
 
 export const FloatingCardPreview: React.FC<FloatingCardPreviewProps> = ({
   card,
@@ -33,7 +33,7 @@ export const FloatingCardPreview: React.FC<FloatingCardPreviewProps> = ({
         style={{ width: `${cardWidth}px` }}
       >
         <img
-          src={card.image_uris?.normal || card.image_uris?.large}
+          src={getCardImageUri(card, 'normal')}
           alt={card.name}
           className="w-full h-auto object-cover"
         />

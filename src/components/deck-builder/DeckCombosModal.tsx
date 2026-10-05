@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { getCardImageUri } from '../../utils/formatters';
 import { 
   X, 
   Sparkles, 
@@ -262,12 +263,12 @@ export const DeckCombosModal: React.FC<DeckCombosModalProps> = ({
   // Compute best image URL for a card
   const getCardImageUrl = (cardName: string, spellbookCard?: SpellbookCard) => {
     if (deck.commander && deck.commander.name.toLowerCase() === cardName.toLowerCase()) {
-      const uri = deck.commander.image_uris?.normal || deck.commander.image_uris?.small || deck.commander.image_uris?.art_crop;
+      const uri = getCardImageUri(deck.commander, 'normal');
       if (uri) return uri;
     }
     const inDeckCard = deck.cards.find(c => c.card?.name?.toLowerCase() === cardName.toLowerCase());
-    if (inDeckCard?.card?.image_uris) {
-      const uri = inDeckCard.card.image_uris.normal || inDeckCard.card.image_uris.small || inDeckCard.card.image_uris.art_crop;
+    if (inDeckCard?.card) {
+      const uri = getCardImageUri(inDeckCard.card, 'normal');
       if (uri) return uri;
     }
     if (spellbookCard) {

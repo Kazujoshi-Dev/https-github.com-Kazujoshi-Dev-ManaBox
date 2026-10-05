@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { getCardImageUri } from '../utils/formatters';
 import { ScryfallCard, DeckItem, CollectionItem } from '../types';
 import { Crown, Swords, X, Sparkles, Check, Search, Layers, Globe } from 'lucide-react';
 
@@ -302,7 +303,7 @@ export const DeckCreateModal: React.FC<DeckCreateModalProps> = ({
                 <div className="flex items-center gap-2.5">
                   <div className="w-9 h-11 rounded overflow-hidden border border-amber-500/50">
                     <img
-                      src={selectedCommander.image_uris?.art_crop || selectedCommander.image_uris?.small}
+                      src={getCardImageUri(selectedCommander, 'art_crop')}
                       alt={selectedCommander.name}
                       className="w-full h-full object-cover"
                     />
@@ -357,7 +358,7 @@ export const DeckCreateModal: React.FC<DeckCreateModalProps> = ({
                       >
                         <div className="w-6 h-8 rounded overflow-hidden border border-stone-700 shrink-0">
                           <img
-                            src={c.image_uris?.art_crop || c.image_uris?.small}
+                            src={getCardImageUri(c, 'art_crop')}
                             alt={c.name}
                             className="w-full h-full object-cover"
                           />

@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { getCardImageUri } from '../../utils/formatters';
 import { AddCardVersionPicker } from './AddCardVersionPicker';
 import { Plus, X, Layers, Globe, Search, Crown } from 'lucide-react';
 import { DeckAddCardModalProps } from './types';
@@ -172,7 +173,7 @@ export const DeckAddCardModal: React.FC<DeckAddCardModalProps> = ({
                 <div className="flex items-center gap-3 min-w-0">
                   <div className="w-10 h-14 rounded overflow-hidden border border-stone-700 shrink-0">
                     <img
-                      src={card.image_uris?.art_crop || card.image_uris?.small}
+                      src={getCardImageUri(card, 'art_crop')}
                       alt={card.name}
                       className="w-full h-full object-cover"
                     />

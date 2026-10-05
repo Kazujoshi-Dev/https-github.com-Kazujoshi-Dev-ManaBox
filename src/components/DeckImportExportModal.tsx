@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { DeckItem, DeckCardEntry, ScryfallCard } from '../types';
 import { useBackToClose } from '../hooks/useBackButton';
+import { getCardImageUri } from '../utils/formatters';
 import { 
   parseTxtDeckOrCollection, 
   resolveCardsFromScryfall, 
@@ -534,9 +535,9 @@ export const DeckImportExportModal: React.FC<DeckImportExportModalProps> = ({
                   {/* Commander Candidate Box */}
                   {detectedCommander && (
                     <div className="p-2.5 bg-amber-950/30 border border-amber-500/30 rounded-xl flex items-center gap-3">
-                      {detectedCommander.image_uris?.art_crop && (
+                      {getCardImageUri(detectedCommander, 'art_crop') && (
                         <img
-                          src={detectedCommander.image_uris.art_crop}
+                          src={getCardImageUri(detectedCommander, 'art_crop')}
                           alt={detectedCommander.name}
                           className="w-10 h-10 object-cover rounded-lg border border-amber-500/40"
                         />
