@@ -1123,7 +1123,7 @@ app.get('/api/scryfall/named', async (req, res) => {
 
 // 3c. Scryfall Batch Collection Lookup (/cards/collection)
 const scryfallCollectionLimiter = rateLimit({
-  name: 'scryfall-collection', windowMs: 10 * 60_000, max: 20,
+  name: 'scryfall-collection', windowMs: 10 * 60_000, max: 40,
   message: 'Zbyt wiele importów w krótkim czasie. Spróbuj ponownie za kilka minut.'
 });
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;

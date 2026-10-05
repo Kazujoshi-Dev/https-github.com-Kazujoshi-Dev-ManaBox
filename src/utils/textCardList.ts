@@ -199,66 +199,68 @@ export async function resolveCardsFromScryfall(
   });
 
   const resolvedItems: ResolvedImportItem[] = [];
+  const total = parsedLines.length;
 
-  try {
-    onProgress?.(parsedLines.length / 2, parsedLines.length, 'Pobieranie danych kart z bazy Scryfall...');
+  // Paczki po 500 linii: przy dużych importach widać postęp, a pojedyncze zapytanie nie trwa długo
+  const CHUNK = 500;
+  for (let start = 0; start < total; start += CHUNK) {
+    const chunkLines = parsedLines.slice(start, start + CHUNK);
+    const chunkIdents = identifiers.slice(start, start + CHUNK);
+    onProgress?.(start, total, `Dopasowywanie kart: ${start} z ${total}`);
 
-    const res = await fetch('/api/scryfall/collection', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ identifiers }),
-    });
+    let foundCards: ScryfallCard[] = [];
+    try {
+      const res = await fetch('/api/scryfall/collection', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ identifiers: chunkIdents }),
+      });
+      if (res.status === 429) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || 'Za dużo importów w krótkim czasie. Spróbuj za kilka minut.');
+      }
+      if (res.ok) {
+        const data = await res.json();
+        foundCards = Array.isArray(data.data) ? data.data : [];
+      }
+    } catch (err: any) {
+      if (/Spróbuj|limit|Za dużo/i.test(String(err?.message))) throw err;
+      console.error('Błąd pobierania zbiorczego ze Scryfall:', err);
+    }
 
-    if (res.ok) {
-      const data = await res.json();
-      const foundCards: ScryfallCard[] = Array.isArray(data.data) ? data.data : [];
+    for (const p of chunkLines) {
+      let matched: ScryfallCard | undefined;
+      const cleanPNum = (p.collectorNumber || '').toLowerCase().replace(/^0+/, '');
+      const cleanPName = p.name.toLowerCase();
 
-      // Map found cards to parsed lines
-      for (const p of parsedLines) {
-        let matched: ScryfallCard | undefined;
-
-        const cleanPNum = (p.collectorNumber || '').toLowerCase().replace(/^0+/, '');
-        const cleanPName = p.name.toLowerCase();
-
-        // Match 1: exact set + collector_number (allowing stripped leading zeros)
-        if (p.set && p.collectorNumber) {
-          matched = foundCards.find((c) => {
-            const cleanCNum = (c.collector_number || '').toLowerCase().replace(/^0+/, '');
-            return (
-              c.set?.toLowerCase() === p.set?.toLowerCase() &&
-              cleanCNum === cleanPNum
-            );
-          });
-        }
-
-        // Match 2: name + set
-        if (!matched && p.set) {
-          matched = foundCards.find(
-            (c) =>
-              (c.name?.toLowerCase() === cleanPName ||
-               c.name?.toLowerCase().startsWith(cleanPName + ' //')) &&
-              c.set?.toLowerCase() === p.set?.toLowerCase()
-          );
-        }
-
-        // Match 3: name only
-        if (!matched) {
-          matched = foundCards.find(
-            (c) =>
-              c.name?.toLowerCase() === cleanPName ||
-              c.name?.toLowerCase().startsWith(cleanPName + ' //')
-          );
-        }
-
-        resolvedItems.push({
-          parsed: p,
-          card: matched || null,
-          error: matched ? undefined : 'Nie znaleziono w Scryfall',
+      // 1: dokładny set + numer kolekcjonerski (bez zer z przodu)
+      if (p.set && p.collectorNumber) {
+        matched = foundCards.find((c) => {
+          const cleanCNum = (c.collector_number || '').toLowerCase().replace(/^0+/, '');
+          return c.set?.toLowerCase() === p.set?.toLowerCase() && cleanCNum === cleanPNum;
         });
       }
+      // 2: nazwa + set
+      if (!matched && p.set) {
+        matched = foundCards.find(
+          (c) =>
+            (c.name?.toLowerCase() === cleanPName || c.name?.toLowerCase().startsWith(cleanPName + ' //')) &&
+            c.set?.toLowerCase() === p.set?.toLowerCase()
+        );
+      }
+      // 3: sama nazwa
+      if (!matched) {
+        matched = foundCards.find(
+          (c) => c.name?.toLowerCase() === cleanPName || c.name?.toLowerCase().startsWith(cleanPName + ' //')
+        );
+      }
+
+      resolvedItems.push({
+        parsed: p,
+        card: matched || null,
+        error: matched ? undefined : 'Nie znaleziono w Scryfall',
+      });
     }
-  } catch (err: any) {
-    console.error('Błąd pobierania zbiorczego ze Scryfall:', err);
   }
 
   // Fallback for any cards not found in batch collection: try fuzzy named lookup
@@ -272,6 +274,13 @@ export async function resolveCardsFromScryfall(
 
     for (let i = 0; i < missingItems.length; i++) {
       const item = missingItems[i];
+      if (i % 5 === 0) {
+        onProgress?.(
+          total - missingItems.length + i,
+          total,
+          `Wyszukiwanie uzupełniające: ${i} z ${missingItems.length} kart`
+        );
+      }
       try {
         const queryUrl = item.parsed.set
           ? `/api/scryfall/named?fuzzy=${encodeURIComponent(item.parsed.name)}&set=${encodeURIComponent(item.parsed.set)}`

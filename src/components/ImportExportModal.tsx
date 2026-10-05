@@ -15,7 +15,7 @@ interface ImportExportModalProps {
   onClose: () => void;
   collection: CollectionItem[];
   catalogs: Catalog[];
-  onImportBulk: (items: any[]) => Promise<void>;
+  onImportBulk: (items: any[], onProgress?: (done: number, total: number) => void) => Promise<void>;
   showToast: (message: string) => void;
   initialTab?: 'export' | 'import';
 }
@@ -29,9 +29,6 @@ export const ImportExportModal: React.FC<ImportExportModalProps> = ({
   showToast,
   initialTab = 'export',
 }) => {
-  // „Wstecz” na telefonie zamyka to okno zamiast opuszczać stronę
-  useBackToClose(isOpen, onClose);
-
   const [activeTab, setActiveTab] = useState<'export' | 'import'>(initialTab);
   const [copied, setCopied] = useState<boolean>(false);
 
@@ -52,6 +49,19 @@ export const ImportExportModal: React.FC<ImportExportModalProps> = ({
   const [resolveProgress, setResolveProgress] = useState<string>('');
   const [resolvedCards, setResolvedCards] = useState<ResolvedImportItem[] | null>(null);
   const [isImporting, setIsImporting] = useState<boolean>(false);
+  // Postęp dużych importów (dopasowanie kart i zapis w paczkach)
+  const [progress, setProgress] = useState<{ label: string; done: number; total: number } | null>(null);
+  const busy = isResolving || isImporting;
+  // Zamknięcie w trakcie importu przerwałoby dodawanie kart
+  const safeClose = React.useCallback(() => {
+    if (busy) {
+      showToast('Poczekaj chwilę, trwa import. Zamknięcie okna przerwie dodawanie kart.');
+      return;
+    }
+    onClose();
+  }, [busy, onClose, showToast]);
+  // „Wstecz” na telefonie zamyka to okno zamiast opuszczać stronę
+  useBackToClose(isOpen, safeClose);
 
   if (!isOpen) return null;
 
@@ -99,14 +109,15 @@ export const ImportExportModal: React.FC<ImportExportModalProps> = ({
           const json = JSON.parse(content);
           if (Array.isArray(json)) {
             setIsImporting(true);
-            await onImportBulk(json);
+            await onImportBulk(json, (done, total) => setProgress({ label: 'Zapisywanie kart w kolekcji', done, total }));
             showToast(`Pomyślnie zaimportowano ${json.length} pozycji z pliku JSON!`);
             onClose();
           }
-        } catch (_) {
-          showToast('Nieprawidłowy format pliku JSON.');
+        } catch (err: any) {
+          showToast(err instanceof SyntaxError ? 'Nieprawidłowy format pliku JSON.' : err?.message || 'Import nie powiódł się.');
         } finally {
           setIsImporting(false);
+          setProgress(null);
         }
       } else {
         // Text file
@@ -132,9 +143,10 @@ export const ImportExportModal: React.FC<ImportExportModalProps> = ({
         return;
       }
 
-      setResolveProgress(`Dopasowywanie ${parsed.allLines.length} kart w Scryfall...`);
-      const resolved = await resolveCardsFromScryfall(parsed.allLines, (_curr, _tot, msg) => {
+      setResolveProgress(`Dopasowywanie ${parsed.allLines.length} kart...`);
+      const resolved = await resolveCardsFromScryfall(parsed.allLines, (curr, tot, msg) => {
         setResolveProgress(msg);
+        setProgress({ label: 'Rozpoznawanie kart', done: curr, total: tot });
       });
 
       setResolvedCards(resolved);
@@ -142,9 +154,10 @@ export const ImportExportModal: React.FC<ImportExportModalProps> = ({
       showToast(`Pomyślnie dopasowano ${foundCount} z ${resolved.length} kart ze Scryfall!`);
     } catch (err: any) {
       console.error('Błąd parsowania:', err);
-      showToast('Wystąpił błąd podczas analizowania listy.');
+      showToast(err?.message && /Spróbuj|limit|Za dużo/i.test(err.message) ? err.message : 'Wystąpił błąd podczas analizowania listy.');
     } finally {
       setIsResolving(false);
+      setProgress(null);
     }
   };
 
@@ -170,14 +183,15 @@ export const ImportExportModal: React.FC<ImportExportModalProps> = ({
         return;
       }
 
-      await onImportBulk(validItems);
+      await onImportBulk(validItems, (done, total) => setProgress({ label: 'Zapisywanie kart w kolekcji', done, total }));
       showToast(`Zaimportowano ${validItems.length} kart do klasera "${selectedCatalog}"!`);
       onClose();
     } catch (err: any) {
       console.error('Błąd importu:', err);
-      showToast('Wystąpił błąd podczas dodawania kart do kolekcji.');
+      showToast(err?.message || 'Wystąpił błąd podczas dodawania kart do kolekcji.');
     } finally {
       setIsImporting(false);
+      setProgress(null);
     }
   };
 
@@ -187,7 +201,7 @@ export const ImportExportModal: React.FC<ImportExportModalProps> = ({
   return (
     <div
       onClick={(e) => {
-        if (e.target === e.currentTarget) onClose();
+        if (e.target === e.currentTarget) safeClose();
       }}
       className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/85 backdrop-blur-md overflow-y-auto animate-fade-in"
     >
@@ -212,7 +226,8 @@ export const ImportExportModal: React.FC<ImportExportModalProps> = ({
           </div>
 
           <button
-            onClick={onClose}
+            onClick={safeClose}
+            aria-label="Zamknij"
             className="p-1.5 text-stone-400 hover:text-stone-100 hover:bg-stone-800 rounded-lg transition-colors cursor-pointer"
           >
             <X className="w-5 h-5" />
@@ -247,6 +262,9 @@ export const ImportExportModal: React.FC<ImportExportModalProps> = ({
             <span>Importuj z Pliku .txt / Listy</span>
           </button>
         </div>
+
+        {/* Pasek postępu dużego importu */}
+        {progress && <ImportProgressBar {...progress} />}
 
         {/* Modal Body */}
         <div className="p-6 overflow-y-auto space-y-5 text-xs text-stone-300">
@@ -488,6 +506,29 @@ export const ImportExportModal: React.FC<ImportExportModalProps> = ({
           )}
         </div>
       </div>
+    </div>
+  );
+};
+
+/** Pasek postępu importu: etap, liczba przetworzonych pozycji i procent. */
+const ImportProgressBar: React.FC<{ label: string; done: number; total: number }> = ({ label, done, total }) => {
+  const pct = total > 0 ? Math.min(100, Math.round((done / total) * 100)) : 0;
+  const fmt = (n: number) => n.toLocaleString('pl-PL');
+  return (
+    <div className="px-6 py-3.5 border-b border-stone-800 bg-stone-950/60 space-y-2" role="status" aria-live="polite">
+      <div className="flex items-center justify-between gap-3 text-sm">
+        <span className="text-stone-200 flex items-center gap-2">
+          <RefreshCw className="w-4 h-4 animate-spin text-amber-400" />
+          {label}
+        </span>
+        <span className="text-stone-400 tabular-nums">
+          {fmt(done)} / {fmt(total)} <span className="text-stone-200 font-medium ml-1">{pct}%</span>
+        </span>
+      </div>
+      <div className="h-2 rounded-full bg-stone-800 overflow-hidden" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={pct} aria-label={label}>
+        <div className="h-full rounded-full bg-amber-400 transition-[width] duration-300 ease-out" style={{ width: `${Math.max(pct, 2)}%` }} />
+      </div>
+      <p className="text-xs text-stone-500">Nie zamykaj tego okna, dopóki import się nie zakończy.</p>
     </div>
   );
 };

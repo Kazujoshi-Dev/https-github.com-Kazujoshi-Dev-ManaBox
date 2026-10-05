@@ -921,8 +921,9 @@ export default function App() {
           initialTab={collectionImportExportTab}
           collection={collection}
           catalogs={catalogs}
-          onImportBulk={async (items) => {
-            await bulkAddToCollection(items);
+          onImportBulk={async (items, onProgress) => {
+            const ok = await bulkAddToCollection(items, onProgress);
+            if (!ok) throw new Error('Nie udało się zapisać wszystkich kart. Część mogła zostać dodana, sprawdź kolekcję.');
           }}
           onClose={() => setIsCollectionImportExportOpen(false)}
           showToast={showToast}

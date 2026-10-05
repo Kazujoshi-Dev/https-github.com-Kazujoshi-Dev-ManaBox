@@ -628,17 +628,27 @@ export function useAppData({ userId, onUnauthorized, showToast, onSettingsLoaded
     reader.readAsText(file);
   }, [onUnauthorized, showToast]);
 
-  const bulkAddToCollection = useCallback(async (items: any[]) => {
+  /**
+   * Dodaje wiele kart naraz. Duże listy idą paczkami po 250 (serwer scala je z istniejącymi pozycjami),
+   * a `onProgress` dostaje liczbę zapisanych pozycji, żeby można było pokazać pasek postępu.
+   */
+  const bulkAddToCollection = useCallback(async (items: any[], onProgress?: (done: number, total: number) => void) => {
+    const CHUNK = 250;
+    let ok = true;
     try {
-      const res = await collectionApi.bulkAdd(items, onUnauthorized);
-      if (res.ok) {
-        const colRes = await collectionApi.getAll(onUnauthorized);
-        if (colRes.ok) {
-          const fresh = await colRes.json();
-          setCollection(fresh);
-          return true;
+      onProgress?.(0, items.length);
+      for (let i = 0; i < items.length; i += CHUNK) {
+        const res = await collectionApi.bulkAdd(items.slice(i, i + CHUNK), onUnauthorized);
+        if (!res.ok) {
+          ok = false;
+          break;
         }
+        onProgress?.(Math.min(i + CHUNK, items.length), items.length);
       }
+      // Kolekcję odświeżamy raz, na końcu (także po częściowym błędzie, żeby pokazać to, co się zapisało)
+      const colRes = await collectionApi.getAll(onUnauthorized);
+      if (colRes.ok) setCollection(await colRes.json());
+      return ok;
     } catch (err) {
       console.error('Failed to bulk add to collection:', err);
     }
