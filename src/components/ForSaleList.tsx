@@ -22,11 +22,13 @@ import {
   Share2,
   DollarSign,
   Map as MapIcon,
-  Loader2
+  Loader2,
+  Plus
 } from 'lucide-react';
 
 // Mapa (Leaflet) ładowana dopiero po otwarciu — nie spowalnia reszty aplikacji
 const SellersMapModal = lazy(() => import('./SellersMapModal'));
+const ForSaleAddModal = lazy(() => import('./for-sale/ForSaleAddModal'));
 
 interface ForSaleListProps {
   collection: CollectionItem[];
@@ -38,6 +40,7 @@ interface ForSaleListProps {
   onGoToCollection: () => void;
   showToast?: (message: string) => void;
   onOpenSellerProfile?: (username: string) => void;
+  onAddCardForSale?: (data: import('./for-sale/ForSaleAddModal').ForSaleAddData) => Promise<boolean>;
 }
 
 export const ForSaleList: React.FC<ForSaleListProps> = ({
@@ -50,8 +53,10 @@ export const ForSaleList: React.FC<ForSaleListProps> = ({
   onGoToCollection,
   showToast,
   onOpenSellerProfile,
+  onAddCardForSale,
 }) => {
   const [isMapOpen, setIsMapOpen] = useState(false);
+  const [isAddOpen, setIsAddOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterCondition, setFilterCondition] = useState<string>('all');
   const [filterFoilOnly, setFilterFoilOnly] = useState<boolean>(false);
@@ -180,12 +185,25 @@ export const ForSaleList: React.FC<ForSaleListProps> = ({
           </>
         }
         actions={
-          <button type="button" onClick={() => setIsMapOpen(true)} className="btn btn-secondary">
-            <MapIcon className="w-4 h-4" />
-            Mapa sprzedawców
-          </button>
+          <>
+            <button type="button" onClick={() => setIsMapOpen(true)} className="btn btn-secondary">
+              <MapIcon className="w-4 h-4" />
+              Mapa sprzedawców
+            </button>
+            {onAddCardForSale && (
+              <button type="button" onClick={() => setIsAddOpen(true)} className="btn btn-primary">
+                <Plus className="w-4 h-4" strokeWidth={2.5} />
+                Dodaj kartę na sprzedaż
+              </button>
+            )}
+          </>
         }
       />
+      {isAddOpen && onAddCardForSale && (
+        <Suspense fallback={null}>
+          <ForSaleAddModal collection={collection} settings={settings} onAdd={onAddCardForSale} onClose={() => setIsAddOpen(false)} />
+        </Suspense>
+      )}
 
       {/* Publiczny link do oferty */}
       <div className="rounded-xl border border-stone-800 bg-stone-900 p-3 flex flex-col md:flex-row md:items-center gap-3">

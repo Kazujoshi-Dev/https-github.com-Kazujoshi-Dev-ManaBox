@@ -445,6 +445,26 @@ export async function getCardsByIds(ids: string[]): Promise<any[]> {
   return ids.map((id) => byId.get(id)).filter(Boolean);
 }
 
+/**
+ * Wyszukiwanie po nazwie w lokalnej bazie (zapas, gdy Scryfall nie odpowiada):
+ * nazwy zaczynające się od zapytania najpierw, po jednym (najnowszym) wydaniu na kartę.
+ */
+export async function searchCardsLocal(query: string, limit = 30): Promise<any[]> {
+  if (!index) return [];
+  const q = normalizeName(query);
+  if (q.length < 2) return [];
+  const starts: string[] = [];
+  const contains: string[] = [];
+  for (const name of index.byName.keys()) {
+    if (name.startsWith(q)) starts.push(name);
+    else if (name.includes(q)) contains.push(name);
+    if (starts.length >= limit) break;
+  }
+  const names = [...starts.sort(), ...contains.sort()].slice(0, limit);
+  const ids = names.map((n) => index!.entries[index!.byName.get(n)![0]].id);
+  return getCardsByIds(ids);
+}
+
 export interface ShowcaseCard {
   name: string;
   image: string;

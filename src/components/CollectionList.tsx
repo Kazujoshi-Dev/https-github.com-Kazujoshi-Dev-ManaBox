@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, Suspense, lazy } from 'react';
+import { CircleDollarSign, Plus } from 'lucide-react';
 import {
   CollectionListProps,
   CatalogsBar,
@@ -11,7 +12,10 @@ import {
   CatalogDeleteModal,
   useCollectionFilters,
   useCatalogManager,
+  FOR_SALE_BINDER,
 } from './collection-list';
+
+const ForSaleAddModal = lazy(() => import('./for-sale/ForSaleAddModal'));
 
 export const CollectionList: React.FC<CollectionListProps> = ({
   collection,
@@ -32,7 +36,9 @@ export const CollectionList: React.FC<CollectionListProps> = ({
   onOpenAddModal,
   onOpenScannerModal,
   onOpenImportExport,
+  onAddCardForSale,
 }) => {
+  const [isForSaleAddOpen, setIsForSaleAddOpen] = useState(false);
   // Na telefonie domyślnie lista (więcej kart na ekranie), na większych ekranach siatka.
   const [viewMode, setViewMode] = useState<'grid' | 'table'>(() =>
     typeof window !== 'undefined' && window.matchMedia?.('(max-width: 767px)').matches ? 'table' : 'grid'
@@ -99,6 +105,23 @@ export const CollectionList: React.FC<CollectionListProps> = ({
         onSetDefaultCatalog={onSetDefaultCatalog}
         onOpenImportExport={onOpenImportExport}
       />
+
+      {/* Kategoria „Sprzedam”: wystawianie kart prosto z wyszukiwarki */}
+      {filters.binder === FOR_SALE_BINDER && onAddCardForSale && (
+        <div className="flex flex-col sm:flex-row sm:items-center gap-3 rounded-xl border border-emerald-900/50 bg-emerald-950/20 p-3.5">
+          <CircleDollarSign className="w-5 h-5 text-emerald-400 shrink-0 max-sm:hidden" />
+          <p className="text-sm text-stone-300 flex-1">Wystaw dowolną kartę na sprzedaż, także taką, której nie masz jeszcze w kolekcji.</p>
+          <button type="button" onClick={() => setIsForSaleAddOpen(true)} className="btn btn-primary shrink-0">
+            <Plus className="w-4 h-4" strokeWidth={2.5} />
+            Dodaj kartę na sprzedaż
+          </button>
+        </div>
+      )}
+      {isForSaleAddOpen && onAddCardForSale && (
+        <Suspense fallback={null}>
+          <ForSaleAddModal collection={collection} settings={settings} onAdd={onAddCardForSale} onClose={() => setIsForSaleAddOpen(false)} />
+        </Suspense>
+      )}
 
       {/* 2. Search & Advanced Filters Bar */}
       <CollectionFiltersBar

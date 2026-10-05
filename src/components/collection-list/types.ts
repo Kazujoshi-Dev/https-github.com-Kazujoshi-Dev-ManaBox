@@ -20,6 +20,8 @@ export interface CollectionListProps {
   onOpenAddModal: () => void;
   onOpenScannerModal?: () => void;
   onOpenImportExport?: (tab: 'export' | 'import') => void;
+  /** Wystawienie karty na sprzedaż prosto z wyszukiwarki wszystkich kart. */
+  onAddCardForSale?: (data: import('../for-sale/ForSaleAddModal').ForSaleAddData) => Promise<boolean>;
 }
 
 export interface CatalogStatItem {

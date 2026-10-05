@@ -1050,11 +1050,19 @@ app.get(['/api/scryfall/search', '/api/scryfall/cards/search'], async (req, res)
     }
 
     let data;
+    let scryfallDown = false;
     try {
       data = await fetchScryfall(`/cards/search?q=${encodeURIComponent(query)}&page=${page}`);
     } catch (searchErr: any) {
-      // Try fuzzy search fallback if search returned 404 or syntax error
+      // 400 = błędna składnia zapytania; każdy inny błąd (sieć, limit, blokada, awaria) = Scryfall niedostępny
+      scryfallDown = !/Scryfall API error \(400\)/.test(String(searchErr?.message || ''));
       data = { object: 'list', total_cards: 0, data: [] };
+    }
+
+    // Scryfall niedostępny: szukamy po nazwie w lokalnej bazie kart
+    if (scryfallDown) {
+      const local = await cards.searchCardsLocal(query).catch(() => []);
+      if (local.length) return res.json({ object: 'list', total_cards: local.length, data: local, source: 'local' });
     }
 
     // If search returned 0 results, try fuzzy lookup for card name

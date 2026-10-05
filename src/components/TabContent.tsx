@@ -73,6 +73,7 @@ interface TabContentProps {
   onUpdateSettings?: (newSettings: AppSettings) => Promise<void> | void;
   onEditDeck?: (deck: DeckItem) => void;
   onToggleForSale?: (item: CollectionItem, customPrice?: number | null) => Promise<void> | void;
+  onAddCardForSale?: (data: import('./for-sale/ForSaleAddModal').ForSaleAddData) => Promise<boolean>;
   onUpdateCollectionItem?: (id: string, updates: Partial<CollectionItem>) => Promise<CollectionItem | null> | void;
   /** Otwiera profil sprzedawcy (z mapy sprzedawców). */
   onOpenSellerProfile?: (username: string) => void;
@@ -120,6 +121,7 @@ export const TabContent: React.FC<TabContentProps> = ({
   onUpdateSettings,
   onEditDeck,
   onToggleForSale,
+  onAddCardForSale,
   onUpdateCollectionItem,
   showToast,
   onOpenSellerProfile,
@@ -148,6 +150,7 @@ export const TabContent: React.FC<TabContentProps> = ({
           onEditItem={onEditCollectionItem}
           onViewCardDetails={onViewCollectionItemDetails}
           onToggleForSale={onToggleForSale}
+          onAddCardForSale={onAddCardForSale}
           onOpenAddModal={() => setActiveTab('search')}
           onOpenScannerModal={onOpenScannerModal}
           onOpenImportExport={onOpenCollectionImportExport}
@@ -239,6 +242,7 @@ export const TabContent: React.FC<TabContentProps> = ({
           onGoToCollection={() => setActiveTab('collection')}
           showToast={showToast}
           onOpenSellerProfile={onOpenSellerProfile}
+          onAddCardForSale={onAddCardForSale}
         />
       );
 

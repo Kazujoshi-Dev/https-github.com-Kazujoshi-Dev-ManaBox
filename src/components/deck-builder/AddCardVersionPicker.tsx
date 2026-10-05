@@ -14,6 +14,8 @@ interface AddCardVersionPickerProps {
   collectionOnly: boolean;
   onBack: () => void;
   onConfirm: (card: ScryfallCard, isFoil: boolean, asCommander: boolean) => void;
+  /** Własny napis na przycisku potwierdzenia (poza talią). */
+  confirmLabel?: string;
 }
 
 const hasFinish = (c: ScryfallCard, finish: 'foil' | 'nonfoil') => {
@@ -33,7 +35,8 @@ export const AddCardVersionPicker: React.FC<AddCardVersionPickerProps> = ({
   settings,
   collectionOnly,
   onBack,
-  onConfirm
+  onConfirm,
+  confirmLabel
 }) => {
   const owned = useMemo(
     () => collection.filter((c) => c.card.name.toLowerCase() === card.name.toLowerCase()),
@@ -208,7 +211,7 @@ export const AddCardVersionPicker: React.FC<AddCardVersionPickerProps> = ({
         </p>
         <button type="button" onClick={() => onConfirm(selected, foil, asCommander)} className="btn btn-primary">
           {asCommander ? <Crown className="w-4 h-4" /> : <Plus className="w-4 h-4" strokeWidth={2.5} />}
-          {asCommander ? 'Ustaw jako dowódcę' : replacing ? 'Zmień wersję' : 'Dodaj do talii'}
+          {confirmLabel || (asCommander ? 'Ustaw jako dowódcę' : replacing ? 'Zmień wersję' : 'Dodaj do talii')}
         </button>
       </div>
     </div>

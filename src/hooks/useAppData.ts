@@ -291,6 +291,71 @@ export function useAppData({ userId, onUnauthorized, showToast, onSettingsLoaded
     return null;
   }, [collection, onUnauthorized, showToast]);
 
+  /**
+   * Dodaje kartę od razu na sprzedaż (bez szukania jej w kolekcji). Ta sama karta w tym samym
+   * stanie i języku, już wystawiona, dostaje dodatkowe sztuki; inaczej powstaje nowa pozycja.
+   */
+  const addCardForSale = useCallback(async (data: {
+    card: ScryfallCard;
+    quantity: number;
+    isFoil: boolean;
+    condition: CardCondition;
+    language: CardLanguage;
+    salePrice: number | null;
+  }): Promise<boolean> => {
+    const qty = Math.max(1, Math.floor(data.quantity || 1));
+    const existing = collection.find(
+      (c) =>
+        c.isForSale &&
+        (c.card.id === data.card.id || c.cardId === data.card.id) &&
+        c.condition === data.condition &&
+        c.language === data.language &&
+        (data.isFoil ? c.quantityFoil > 0 && c.quantity === 0 : c.quantity > 0 && c.quantityFoil === 0)
+    );
+    try {
+      if (existing) {
+        const res = await collectionApi.update(existing.id, {
+          cardId: existing.cardId || existing.card.id,
+          card: existing.card,
+          quantity: existing.quantity + (data.isFoil ? 0 : qty),
+          quantityFoil: existing.quantityFoil + (data.isFoil ? qty : 0),
+          condition: existing.condition,
+          language: existing.language,
+          purchasePrice: existing.purchasePrice,
+          notes: existing.notes,
+          binder: existing.binder,
+          isForSale: true,
+          salePrice: data.salePrice ?? existing.salePrice ?? null
+        }, onUnauthorized);
+        if (!res.ok) throw new Error();
+        const updated: CollectionItem = await res.json();
+        setCollection((prev) => prev.map((c) => (c.id === updated.id ? updated : c)));
+        showToast(`Dodano ${qty} szt. „${data.card.name}” do oferty, wystawione: ${updated.quantity + updated.quantityFoil} szt.`);
+        return true;
+      }
+      const binder = catalogs.find((c) => c.isDefault)?.name || catalogs[0]?.name || 'Klaser Główny';
+      const res = await collectionApi.create({
+        cardId: data.card.id,
+        card: data.card,
+        quantity: data.isFoil ? 0 : qty,
+        quantityFoil: data.isFoil ? qty : 0,
+        condition: data.condition,
+        language: data.language,
+        binder,
+        isForSale: true,
+        salePrice: data.salePrice
+      }, onUnauthorized);
+      if (!res.ok) throw new Error();
+      const created: CollectionItem = await res.json();
+      setCollection((prev) => [created, ...prev]);
+      showToast(`Wystawiono na sprzedaż: ${qty} szt. „${data.card.name}”`);
+      return true;
+    } catch {
+      showToast('Nie udało się dodać karty na sprzedaż. Spróbuj ponownie.');
+      return false;
+    }
+  }, [collection, catalogs, onUnauthorized, showToast]);
+
   const quickAddToCollection = useCallback((card: ScryfallCard) => {
     const defaultBinder = (catalogs && catalogs.length > 0)
       ? (catalogs.find(c => c.isDefault)?.name || catalogs[0].name)
@@ -603,6 +668,7 @@ export function useAppData({ userId, onUnauthorized, showToast, onSettingsLoaded
     bulkAddToCollection,
     updateCollectionItemData,
     toggleForSale,
-    sellItemQuantity
+    sellItemQuantity,
+    addCardForSale
   };
 }

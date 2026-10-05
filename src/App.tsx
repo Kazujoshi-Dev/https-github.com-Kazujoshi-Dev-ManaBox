@@ -62,7 +62,8 @@ export default function App() {
     bulkAddToCollection,
     updateCollectionItemData,
     toggleForSale,
-    sellItemQuantity
+    sellItemQuantity,
+    addCardForSale
   } = useAppData({
     // Przy wymuszonej zmianie hasła nie ładujemy danych (serwer i tak by odmówił)
     userId: currentUser?.mustChangePassword ? undefined : currentUser?.id,
@@ -854,6 +855,7 @@ export default function App() {
             onUpdateSettings={updateSettings}
             currentUser={currentUser}
             onToggleForSale={handleRequestToggleForSale}
+            onAddCardForSale={addCardForSale}
             onUpdateCollectionItem={updateCollectionItemData}
             showToast={showToast}
             onOpenSellerProfile={handleOpenSellerProfile}
