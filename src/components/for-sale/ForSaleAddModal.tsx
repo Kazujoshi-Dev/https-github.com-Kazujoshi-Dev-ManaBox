@@ -37,6 +37,7 @@ const LANGUAGES: Array<{ id: CardLanguage; label: string }> = [
   { id: 'IT', label: 'Włoski' },
   { id: 'ES', label: 'Hiszpański' },
   { id: 'JP', label: 'Japoński' },
+  { id: 'PH', label: 'Phyrexian' },
   { id: 'OTHER', label: 'Inny' }
 ];
 

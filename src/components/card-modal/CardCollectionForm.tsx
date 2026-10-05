@@ -19,6 +19,7 @@ const LANGUAGES: { value: CardLanguage; label: string }[] = [
   { value: 'JP', label: 'Japoński (JP)' },
   { value: 'IT', label: 'Włoski (IT)' },
   { value: 'ES', label: 'Hiszpański (ES)' },
+  { value: 'PH', label: 'Phyrexian (PH)' },
   { value: 'OTHER', label: 'Inny' },
 ];
 

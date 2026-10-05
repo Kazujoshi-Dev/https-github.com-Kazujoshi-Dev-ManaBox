@@ -79,7 +79,7 @@ export interface SetTopCardsResponse {
 }
 
 export type CardCondition = 'NM' | 'EX' | 'GD' | 'LP' | 'PL';
-export type CardLanguage = 'EN' | 'PL' | 'DE' | 'FR' | 'JP' | 'IT' | 'ES' | 'OTHER';
+export type CardLanguage = 'EN' | 'PL' | 'DE' | 'FR' | 'JP' | 'IT' | 'ES' | 'PH' | 'OTHER';
 
 export type PricingSource = 'CARDMARKET' | 'TCGPLAYER';
 export type CurrencyCode = 'PLN' | 'EUR' | 'USD';

@@ -25,7 +25,7 @@ const ALL_CARDS_META_URL = process.env.SCRYFALL_ALL_CARDS_META_URL || 'https://a
  * angielskie, więc te języki dobieramy z pełnego pliku all_cards (strumieniowo, bez zapisu na dysk).
  * Pusta wartość wyłącza pobieranie.
  */
-export const EXTRA_LANGS = (process.env.CARD_EXTRA_LANGS ?? 'ja')
+export const EXTRA_LANGS = (process.env.CARD_EXTRA_LANGS ?? 'ja,ph')
   .split(',')
   .map((x) => x.trim().toLowerCase())
   .filter((x) => /^[a-z]{2,3}$/.test(x) && x !== 'en');
