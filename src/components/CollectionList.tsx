@@ -199,13 +199,19 @@ export const CollectionList: React.FC<CollectionListProps> = ({
       {/* 6. Delete Catalog Confirmation Modal */}
       {catalogToDelete && (() => {
         const otherCatalogs = catalogs.filter(c => c.id !== catalogToDelete.id);
-        const nextDefaultName = otherCatalogs.find(c => c.isDefault)?.name || otherCatalogs[0]?.name || 'Klaser Główny';
-        const cardCount = catalogStats.get(catalogToDelete.name)?.count || 0;
+        const nextDefaultName = otherCatalogs.find(c => c.isDefault)?.name || otherCatalogs[0]?.name || null;
+        const inCatalog = collection.filter(i => i.binder === catalogToDelete.name);
+        const kept = inCatalog.filter(i => !i.isForSale);
+        const cardCount = kept.length;
+        const cardQuantity = kept.reduce((s, i) => s + (i.quantity || 0) + (i.quantityFoil || 0), 0);
+        const forSaleCount = inCatalog.length - kept.length;
 
         return (
           <CatalogDeleteModal
             catalogToDelete={catalogToDelete}
             cardCount={cardCount}
+            cardQuantity={cardQuantity}
+            forSaleCount={forSaleCount}
             nextDefaultCatalogName={nextDefaultName}
             onClose={() => setCatalogToDelete(null)}
             onConfirmDelete={handleDeleteCatalogConfirm}

@@ -70,5 +70,6 @@ export const CHANGELOG_DRAFTS: ChangelogDraft[] = [
   { id: '2026-10-05-wishlist-match-label', day: '2026-10-05', type: 'fixed', area: 'Gracze', text: 'Kafelek gracza jasno rozróżnia karty z Twojej listy życzeń, które sprzedaje, od tych, które ma tylko w kolekcji.' },
   { id: '2026-10-05-set-share', day: '2026-10-05', type: 'improved', area: 'Kolekcja', text: 'Lista dodatków w filtrze kolekcji pokazuje, jaki procent wartości kolekcji przypada na dany dodatek, i jest ułożona od najnowszego dodatku.' },
   { id: '2026-10-05-for-sale-add', day: '2026-10-05', type: 'new', area: 'Sprzedam', text: 'Przycisk „Dodaj kartę na sprzedaż”: wyszukaj dowolną kartę, wybierz wydanie, foil, ilość, stan i cenę, a trafi od razu do Twojej oferty.' },
-  { id: '2026-10-05-print-filter', day: '2026-10-05', type: 'improved', area: 'Karty', text: 'Przy wyborze wydania karty możesz wpisać kod dodatku i numer z dołu karty (np. DSC 114), aby od razu znaleźć właściwą wersję.' }
+  { id: '2026-10-05-print-filter', day: '2026-10-05', type: 'improved', area: 'Karty', text: 'Przy wyborze wydania karty możesz wpisać kod dodatku i numer z dołu karty (np. DSC 114), aby od razu znaleźć właściwą wersję.' },
+  { id: '2026-10-05-delete-main-binder', day: '2026-10-05', type: 'fixed', area: 'Kolekcja', text: 'Jasne ostrzeżenie przy usuwaniu klasera: usunięcie głównego klasera usuwa jego karty (poza wystawionymi na sprzedaż), a usunięcie innego przenosi karty do głównego.' }
 ];

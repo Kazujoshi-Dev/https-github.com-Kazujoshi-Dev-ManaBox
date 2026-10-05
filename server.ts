@@ -1682,7 +1682,7 @@ app.delete('/api/catalogs/:id', authMiddleware, async (req, res) => {
     const userId = (req as any).userId;
     const { id } = req.params;
     const result = await db.deleteCatalog(userId, id);
-    res.json({ success: true, id, reassignedTo: result.reassignedTo, catalogs: result.catalogs });
+    res.json({ success: true, id, reassignedTo: result.reassignedTo, deletedItems: result.deletedItems, catalogs: result.catalogs });
   } catch (err: any) {
     if (err?.message === 'Nie znaleziono katalogu do usunięcia.') {
       return res.status(404).json({ error: err.message });

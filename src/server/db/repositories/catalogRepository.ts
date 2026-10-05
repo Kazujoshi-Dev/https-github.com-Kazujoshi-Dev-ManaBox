@@ -80,15 +80,22 @@ export async function setDefaultCatalog(userId: string, catalogId: string): Prom
   );
 }
 
+/**
+ * Usuwa katalog.
+ * - Zwykły katalog: jego karty trafiają do katalogu domyślnego (głównego).
+ * - Katalog domyślny (główny): jego karty są usuwane z kolekcji, poza wystawionymi na sprzedaż,
+ *   które trafiają do nowego katalogu domyślnego. Gdy inny katalog ma tę samą nazwę, karty zostają.
+ */
 export async function deleteCatalog(
   userId: string,
   catalogId: string
-): Promise<{ catalogs: Catalog[]; reassignedTo: string }> {
+): Promise<{ catalogs: Catalog[]; reassignedTo: string; deletedItems: number }> {
   let catalogs = await getCatalogs(userId);
   const target = catalogs.find((c) => c.id === catalogId);
   if (!target) throw new Error('Nie znaleziono katalogu do usunięcia.');
 
   const remaining = catalogs.filter((c) => c.id !== catalogId);
+  const deleteCards = Boolean(target.isDefault) && !remaining.some((c) => c.name === target.name);
   let defaultCatalog = remaining.find((c) => c.isDefault);
   if (!defaultCatalog) {
     if (remaining.length > 0) {
@@ -113,13 +120,21 @@ export async function deleteCatalog(
       await p.query('UPDATE user_catalogs SET is_default = FALSE WHERE user_id = $1', [userId]);
       await p.query('UPDATE user_catalogs SET is_default = TRUE WHERE id = $1 AND user_id = $2', [defaultCatalog!.id, userId]);
 
-      // Reassign collection items from deleted catalog to default catalog
+      let deletedItems = 0;
+      if (deleteCards) {
+        const del = await p.query(
+          'DELETE FROM user_collections WHERE user_id = $1 AND binder = $2 AND NOT COALESCE(is_for_sale, FALSE)',
+          [userId, target.name]
+        );
+        deletedItems = del.rowCount ?? 0;
+      }
+      // Pozostałe karty (wszystkie albo tylko te na sprzedaż) trafiają do katalogu domyślnego
       await p.query(
         'UPDATE user_collections SET binder = $1 WHERE user_id = $2 AND binder = $3',
         [defaultCatalog!.name, userId, target.name]
       );
 
-      return { catalogs: await getCatalogs(userId), reassignedTo: defaultCatalog!.name };
+      return { catalogs: await getCatalogs(userId), reassignedTo: defaultCatalog!.name, deletedItems };
     },
     () => {
       const userDir = getUserDir(userId);
@@ -127,8 +142,15 @@ export async function deleteCatalog(
 
       // Reassign binder in local collection
       const colFile = path.join(userDir, 'collection.json');
-      const collection = readJsonFile<CollectionItem[]>(colFile, []);
+      let collection = readJsonFile<CollectionItem[]>(colFile, []);
       let colChanged = false;
+      let deletedItems = 0;
+      if (deleteCards) {
+        const before = collection.length;
+        collection = collection.filter((item) => item.binder !== target.name || Boolean(item.isForSale));
+        deletedItems = before - collection.length;
+        colChanged = deletedItems > 0;
+      }
       collection.forEach((item) => {
         if (item.binder === target.name) {
           item.binder = defaultCatalog!.name;
@@ -137,7 +159,7 @@ export async function deleteCatalog(
       });
       if (colChanged) writeJsonAtomic(colFile, collection);
 
-      return { catalogs: remaining, reassignedTo: defaultCatalog!.name };
+      return { catalogs: remaining, reassignedTo: defaultCatalog!.name, deletedItems };
     }
   );
 }

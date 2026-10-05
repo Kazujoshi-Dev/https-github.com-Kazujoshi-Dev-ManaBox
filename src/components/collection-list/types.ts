@@ -114,8 +114,14 @@ export interface CatalogFormModalProps {
 
 export interface CatalogDeleteModalProps {
   catalogToDelete: Catalog;
+  /** Pozycje w katalogu (bez kart na sprzedaż). */
   cardCount: number;
-  nextDefaultCatalogName: string;
+  /** Liczba sztuk w tych pozycjach. */
+  cardQuantity: number;
+  /** Pozycje w katalogu wystawione na sprzedaż (zostają przy usuwaniu głównego klasera). */
+  forSaleCount: number;
+  /** Katalog, który przejmie karty lub zostanie głównym; null = powstanie nowy „Klaser Główny”. */
+  nextDefaultCatalogName: string | null;
   onClose: () => void;
   onConfirmDelete: () => void;
 }

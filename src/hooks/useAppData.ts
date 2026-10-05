@@ -505,7 +505,11 @@ export function useAppData({ userId, onUnauthorized, showToast, onSettingsLoaded
         }
         const colRes = await collectionApi.getAll(onUnauthorized);
         if (colRes.ok) setCollection(await colRes.json());
-        showToast(`Usunięto katalog. Karty przypisano do: ${data.reassignedTo}`);
+        showToast(
+          data.deletedItems > 0
+            ? `Usunięto klaser i ${data.deletedItems} pozycji z kolekcji. Głównym klaserem jest teraz: ${data.reassignedTo}`
+            : `Usunięto klaser. Karty przeniesiono do: ${data.reassignedTo}`
+        );
       }
     } catch (err) {
       console.error('Failed to delete catalog:', err);
