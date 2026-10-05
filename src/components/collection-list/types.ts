@@ -49,7 +49,8 @@ export interface CatalogsBarProps {
 
 export interface CollectionFiltersBarProps {
   filters: FilterOptions;
-  sets: [string, string][];
+  /** [kod, nazwa, udział w wartości kolekcji w %] */
+  sets: [string, string, number][];
   catalogs: Catalog[];
   viewMode: 'grid' | 'table';
   onFilterChange: (newFilters: Partial<FilterOptions>) => void;

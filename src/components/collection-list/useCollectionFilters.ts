@@ -2,6 +2,7 @@ import { FOR_SALE_BINDER } from './constants';
 import { useState, useMemo, useCallback } from 'react';
 import { CollectionItem, FilterOptions, AppSettings } from '../../types';
 import { getCardPrice } from '../../utils/formatters';
+import { itemValue } from '../../utils/collectionValue';
 import { DEFAULT_FILTERS } from './constants';
 
 interface UseCollectionFiltersProps {
@@ -12,16 +13,23 @@ interface UseCollectionFiltersProps {
 export function useCollectionFilters({ collection, settings }: UseCollectionFiltersProps) {
   const [filters, setFilters] = useState<FilterOptions>(DEFAULT_FILTERS);
 
-  // Unique sets list for dropdown: [code, displayName]
+  // Dodatki do listy: [kod, nazwa, udział w wartości kolekcji w %], od najcenniejszego
   const sets = useMemo(() => {
-    const list = new Map<string, string>();
+    const list = new Map<string, { name: string; value: number }>();
+    let total = 0;
     collection.forEach(item => {
       if (item.card && item.card.set) {
-        list.set(item.card.set, item.card.set_name || item.card.set.toUpperCase());
+        const v = itemValue(item, settings);
+        total += v;
+        const cur = list.get(item.card.set);
+        if (cur) cur.value += v;
+        else list.set(item.card.set, { name: item.card.set_name || item.card.set.toUpperCase(), value: v });
       }
     });
-    return Array.from(list.entries());
-  }, [collection]);
+    return Array.from(list.entries())
+      .map(([code, { name, value }]): [string, string, number] => [code, name, total > 0 ? (value / total) * 100 : 0])
+      .sort((a, b) => b[2] - a[2] || a[1].localeCompare(b[1]));
+  }, [collection, settings]);
 
   // Filter & Sort Logic
   const filteredCollection = useMemo(() => {
