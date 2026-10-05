@@ -19,6 +19,7 @@ import {
   Users,
   Mail,
   ScrollText,
+  Bug,
   ChevronDown
 } from 'lucide-react';
 import { formatCurrency } from '../utils/formatters';
@@ -54,6 +55,8 @@ interface HeaderProps {
   onOpenMailbox?: () => void;
   /** Otwiera wykres historii kolekcji. */
   onOpenHistory?: () => void;
+  /** Okno „Zgłoś błąd”. */
+  onOpenBugReport?: () => void;
 }
 
 /** Menu konta: rzadziej używane akcje (ustawienia, import/eksport, okno OBS, wylogowanie). */
@@ -64,7 +67,8 @@ const AccountMenu: React.FC<{
   onOpenImportExport?: (tab: 'export' | 'import') => void;
   onExportCollection?: () => void;
   onLogout?: () => void;
-}> = ({ user, settingsActive, onOpenSettings, onOpenImportExport, onExportCollection, onLogout }) => {
+  onOpenBugReport?: () => void;
+}> = ({ user, settingsActive, onOpenSettings, onOpenImportExport, onExportCollection, onLogout, onOpenBugReport }) => {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
@@ -138,6 +142,11 @@ const AccountMenu: React.FC<{
           <a href={obsHref} target="_blank" rel="noopener noreferrer" role="menuitem" onClick={() => setOpen(false)} className={item}>
             <ExternalLink className="w-4 h-4 text-stone-400" /> Skaner w osobnym oknie (OBS)
           </a>
+          {onOpenBugReport && (
+            <button type="button" role="menuitem" onClick={run(onOpenBugReport)} className={item}>
+              <Bug className="w-4 h-4 text-stone-400" /> Zgłoś błąd
+            </button>
+          )}
           {onLogout && (
             <>
               <div className="my-1 border-t border-stone-800" />
@@ -175,7 +184,8 @@ export const Header: React.FC<HeaderProps> = ({
   onLogout,
   unreadMessagesCount = 0,
   onOpenMailbox,
-  onOpenHistory
+  onOpenHistory,
+  onOpenBugReport
 }) => {
   const hasChange = valueChange !== null;
   const changeSign = !hasChange || Math.abs(valueChange!) < 0.005 ? 0 : valueChange! > 0 ? 1 : -1;
@@ -345,6 +355,7 @@ export const Header: React.FC<HeaderProps> = ({
                 onOpenImportExport={onOpenImportExport}
                 onExportCollection={onExportCollection}
                 onLogout={onLogout}
+                onOpenBugReport={onOpenBugReport}
               />
             )}
           </div>

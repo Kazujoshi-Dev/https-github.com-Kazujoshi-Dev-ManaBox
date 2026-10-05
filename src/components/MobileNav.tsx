@@ -19,7 +19,8 @@ import {
   X,
   User,
   ShieldCheck,
-  ScrollText
+  ScrollText,
+  Bug
 } from 'lucide-react';
 import type { NavigationTab } from './TabContent';
 import { useBackToClose } from '../hooks/useBackButton';
@@ -38,6 +39,7 @@ interface MobileNavProps {
   unreadMessagesCount: number;
   user: AuthUser;
   hasNewChangelog?: boolean;
+  onOpenBugReport?: () => void;
 }
 
 /** Zakładki dostępne pod „Więcej” — na telefonie nie mieszczą się w dolnym pasku. */
@@ -67,7 +69,8 @@ export const MobileNav: React.FC<MobileNavProps> = ({
   onLogout,
   unreadMessagesCount,
   user,
-  hasNewChangelog = false
+  hasNewChangelog = false,
+  onOpenBugReport
 }) => {
   const [isMoreOpen, setIsMoreOpen] = useState(false);
   useBackToClose(isMoreOpen, () => setIsMoreOpen(false));
@@ -223,7 +226,8 @@ export const MobileNav: React.FC<MobileNavProps> = ({
                 { label: 'Odśwież ceny', icon: RefreshCw, onClick: onRefreshPrices, spin: isRefreshing },
                 { label: 'Import kolekcji', icon: Upload, onClick: () => onOpenImportExport('import') },
                 { label: 'Eksport kolekcji', icon: Download, onClick: () => onOpenImportExport('export') },
-                { label: 'Ustawienia', icon: Settings, onClick: onOpenSettings }
+                { label: 'Ustawienia', icon: Settings, onClick: onOpenSettings },
+                ...(onOpenBugReport ? [{ label: 'Zgłoś błąd', icon: Bug, onClick: onOpenBugReport }] : [])
               ].map(({ label, icon: Icon, onClick, spin }) => (
                 <button
                   key={label}

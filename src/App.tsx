@@ -21,6 +21,12 @@ import { SellQuantityModal } from './components/SellQuantityModal';
 import { Toast } from './components/Toast';
 import { MobileNav } from './components/MobileNav';
 import { CollectionHistoryModal } from './components/CollectionHistoryModal';
+const BugReportModal = React.lazy(() => import('./components/BugReportModal'));
+
+const TAB_LABELS: Record<string, string> = {
+  collection: 'Kolekcja', decks: 'Talie', search: 'Szukaj kart', 'set-top': 'Top z dodatku', analytics: 'Statystyki',
+  wishlist: 'Lista życzeń', 'for-sale': 'Sprzedam', users: 'Gracze', changelog: 'Dziennik zmian', admin: 'Admin', settings: 'Ustawienia'
+};
 import { CircleDollarSign } from 'lucide-react';
 import { useAuth } from './hooks/useAuth';
 import { useBackToClose, useHistoryTabs } from './hooks/useBackButton';
@@ -197,6 +203,7 @@ export default function App() {
   // Mailbox State
   const [isMailboxOpen, setIsMailboxOpen] = useState<boolean>(false);
   const [isHistoryOpen, setIsHistoryOpen] = useState<boolean>(false);
+  const [isBugReportOpen, setIsBugReportOpen] = useState<boolean>(false);
   // Kropka „nowe” przy zakładce Dziennik zmian
   const changelogBadge = useChangelogBadge(Boolean(currentUser));
   const [unreadMessagesCount, setUnreadMessagesCount] = useState<number>(0);
@@ -754,8 +761,18 @@ export default function App() {
         unreadMessagesCount={unreadMessagesCount}
         onOpenMailbox={() => setIsMailboxOpen(true)}
         onOpenHistory={() => setIsHistoryOpen(true)}
+        onOpenBugReport={() => setIsBugReportOpen(true)}
       />
       {isHistoryOpen && <CollectionHistoryModal currency={settings.currency} onClose={() => setIsHistoryOpen(false)} />}
+      {isBugReportOpen && (
+        <React.Suspense fallback={null}>
+          <BugReportModal
+            page={`${TAB_LABELS[activeTab] || activeTab}${activeTab === 'decks' && selectedDeck ? `: ${selectedDeck.name}` : ''}`}
+            onClose={() => setIsBugReportOpen(false)}
+            showToast={showToast}
+          />
+        </React.Suspense>
+      )}
 
       {/* Main View Container */}
       <main className="max-w-[1760px] w-full mx-auto px-3 sm:px-6 lg:px-8 xl:px-10 pt-4 md:pt-6">
@@ -880,6 +897,7 @@ export default function App() {
         unreadMessagesCount={unreadMessagesCount}
         user={currentUser}
         hasNewChangelog={changelogBadge.hasNew}
+        onOpenBugReport={() => setIsBugReportOpen(true)}
       />
 
       {/* Settings Modal */}

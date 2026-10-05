@@ -15,3 +15,4 @@ export * from './repositories/adminRepository';
 export * from './repositories/snapshotRepository';
 export * from './repositories/seoRepository';
 export * from './repositories/changelogRepository';
+export * from './repositories/bugReportRepository';

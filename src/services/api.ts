@@ -493,3 +493,43 @@ export const changelogApi = {
   publishNow: async (): Promise<{ published: number }> =>
     jsonOrThrow(await fetchWithAuth('/api/admin/changelog/publish', { method: 'POST' }), 'Nie udało się opublikować zmian.')
 };
+
+// --- Zgłoszenia błędów ---
+export type BugReportStatus = 'new' | 'in_progress' | 'resolved' | 'rejected';
+export interface BugReport {
+  id: number;
+  userId: string | null;
+  username: string | null;
+  description: string;
+  page: string | null;
+  userAgent: string | null;
+  hasScreenshot: boolean;
+  status: BugReportStatus;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export const bugReportsApi = {
+  send: async (data: { description: string; page?: string; screenshot?: string | null }): Promise<{ id: number }> =>
+    jsonOrThrow(
+      await fetchWithAuth('/api/bug-reports', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) }),
+      'Nie udało się wysłać zgłoszenia.'
+    ),
+  list: async (status: BugReportStatus | 'open' | 'all' = 'open'): Promise<{ reports: BugReport[]; newCount: number }> =>
+    jsonOrThrow(await fetchWithAuth(`/api/admin/bug-reports?status=${status}`), 'Nie udało się pobrać zgłoszeń.'),
+  setStatus: async (id: number, status: BugReportStatus): Promise<void> => {
+    await jsonOrThrow(
+      await fetchWithAuth(`/api/admin/bug-reports/${id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status }) }),
+      'Nie udało się zmienić statusu.'
+    );
+  },
+  remove: async (id: number): Promise<void> => {
+    await jsonOrThrow(await fetchWithAuth(`/api/admin/bug-reports/${id}`, { method: 'DELETE' }), 'Nie udało się usunąć zgłoszenia.');
+  },
+  /** Zrzut ekranu jako adres blob: (wymaga nagłówka autoryzacji, więc nie da się go podać wprost w <img>). */
+  screenshotUrl: async (id: number): Promise<string> => {
+    const res = await fetchWithAuth(`/api/admin/bug-reports/${id}/screenshot`);
+    if (!res.ok) throw new Error('Nie udało się wczytać zrzutu ekranu.');
+    return URL.createObjectURL(await res.blob());
+  }
+};

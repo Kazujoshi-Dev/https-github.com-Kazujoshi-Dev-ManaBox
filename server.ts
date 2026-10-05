@@ -2152,6 +2152,124 @@ admin.delete('/users/:id', async (req, res) => {
   }
 });
 
+// --- ZGŁOSZENIA BŁĘDÓW ---
+const bugReportLimiter = rateLimit({ name: 'bug-report', windowMs: 60 * 60_000, max: 10 });
+const BUG_STATUSES = new Set(['new', 'in_progress', 'resolved', 'rejected']);
+const BUG_IMAGE_TYPES: Record<string, (b: Buffer) => boolean> = {
+  'image/jpeg': (b) => b[0] === 0xff && b[1] === 0xd8,
+  'image/png': (b) => b[0] === 0x89 && b[1] === 0x50 && b[2] === 0x4e && b[3] === 0x47,
+  'image/webp': (b) => b.slice(0, 4).toString('ascii') === 'RIFF' && b.slice(8, 12).toString('ascii') === 'WEBP'
+};
+
+app.post('/api/bug-reports', authMiddleware, bugReportLimiter, async (req, res) => {
+  try {
+    const userId = (req as any).userId;
+    const user = await db.getUserById(userId);
+    if (!user) return res.status(401).json({ error: 'Zaloguj się ponownie.' });
+    const description = String(req.body?.description || '').trim();
+    if (description.length < 10) return res.status(400).json({ error: 'Opisz błąd w kilku słowach (co najmniej 10 znaków).' });
+    if (description.length > 3000) return res.status(400).json({ error: 'Opis może mieć najwyżej 3000 znaków.' });
+    if ((await db.countUserBugReportsDay(userId)) >= 15) {
+      return res.status(429).json({ error: 'Wysłano już dużo zgłoszeń w ciągu doby. Spróbuj jutro.' });
+    }
+
+    // Zrzut ekranu jako data URL (JPEG, PNG lub WebP, do 4 MB)
+    let screenshot: Buffer | null = null;
+    let screenshotType: string | null = null;
+    const raw = req.body?.screenshot;
+    if (raw) {
+      const m = /^data:(image\/(?:jpeg|png|webp));base64,([A-Za-z0-9+/=]+)$/.exec(String(raw));
+      if (!m) return res.status(400).json({ error: 'Nieobsługiwany format zrzutu ekranu. Użyj JPG, PNG lub WebP.' });
+      const buf = Buffer.from(m[2], 'base64');
+      if (buf.length > 4 * 1024 * 1024) return res.status(400).json({ error: 'Zrzut ekranu jest za duży (maks. 4 MB).' });
+      if (!BUG_IMAGE_TYPES[m[1]](buf)) return res.status(400).json({ error: 'Plik nie wygląda na obraz.' });
+      screenshot = buf;
+      screenshotType = m[1];
+    }
+
+    const page = String(req.body?.page || '').slice(0, 300) || null;
+    const userAgent = String(req.headers['user-agent'] || '').slice(0, 400) || null;
+    const report = await db.createBugReport({ userId, username: user.username, description, page, userAgent, screenshot, screenshotType });
+
+    // Prywatna wiadomość od zgłaszającego do każdego administratora (admin może od razu odpisać)
+    const body = [
+      description,
+      '',
+      `Zgłoszenie #${report.id}${page ? `, widok: ${page}` : ''}`,
+      screenshot ? 'Zrzut ekranu: w panelu admina, zakładka „Zgłoszenia”.' : 'Bez zrzutu ekranu.',
+      userAgent ? `Przeglądarka: ${userAgent.slice(0, 200)}` : ''
+    ].filter((l, i) => i === 1 || l !== '').join('\n').slice(0, MSG_LIMITS.bodyMax);
+    for (const email of ADMIN_EMAILS) {
+      try {
+        const admin = await db.getUserByEmail(email);
+        if (!admin || admin.id === user.id) continue;
+        await db.sendMessage({
+          id: `msg-${crypto.randomUUID()}`,
+          senderId: user.id,
+          senderUsername: user.username,
+          recipientId: admin.id,
+          recipientUsername: admin.username,
+          subject: `Zgłoszenie błędu #${report.id}`,
+          body,
+          isRead: false,
+          createdAt: new Date().toISOString()
+        });
+      } catch (msgErr: any) {
+        console.warn('[Zgłoszenia] Nie udało się powiadomić admina:', msgErr?.message || msgErr);
+      }
+    }
+
+    res.status(201).json({ success: true, id: report.id });
+  } catch (err: any) {
+    sendServerError(res, err, '/api/bug-reports', 'Nie udało się wysłać zgłoszenia.');
+  }
+});
+
+admin.get('/bug-reports', async (req, res) => {
+  try {
+    const status = String(req.query.status || 'open');
+    const list = await db.listBugReports((['open', 'all', ...BUG_STATUSES].includes(status) ? status : 'open') as any);
+    res.json({ reports: list, newCount: await db.countOpenBugReports() });
+  } catch (err) {
+    sendServerError(res, err, '/api/admin/bug-reports');
+  }
+});
+
+admin.get('/bug-reports/:id/screenshot', async (req, res) => {
+  try {
+    const shot = await db.getBugReportScreenshot(Number(req.params.id));
+    if (!shot) return res.status(404).json({ error: 'Brak zrzutu ekranu.' });
+    res.setHeader('Content-Type', shot.type);
+    res.setHeader('Cache-Control', 'private, max-age=3600');
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.send(shot.data);
+  } catch (err) {
+    sendServerError(res, err, '/api/admin/bug-reports/:id/screenshot');
+  }
+});
+
+admin.patch('/bug-reports/:id', async (req, res) => {
+  try {
+    const status = String(req.body?.status || '');
+    if (!BUG_STATUSES.has(status)) return res.status(400).json({ error: 'Nieprawidłowy status.' });
+    const ok = await db.setBugReportStatus(Number(req.params.id), status as any);
+    if (!ok) return res.status(404).json({ error: 'Nie znaleziono zgłoszenia.' });
+    res.json({ success: true });
+  } catch (err) {
+    sendServerError(res, err, '/api/admin/bug-reports/:id');
+  }
+});
+
+admin.delete('/bug-reports/:id', async (req, res) => {
+  try {
+    const ok = await db.deleteBugReport(Number(req.params.id));
+    if (!ok) return res.status(404).json({ error: 'Nie znaleziono zgłoszenia.' });
+    res.json({ success: true });
+  } catch (err) {
+    sendServerError(res, err, '/api/admin/bug-reports/:id');
+  }
+});
+
 // Dziennik zmian (publiczny odczyt + zarządzanie w panelu admina)
 registerChangelogRoutes(app, admin, sendServerError);
 

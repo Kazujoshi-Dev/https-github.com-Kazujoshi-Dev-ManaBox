@@ -202,6 +202,20 @@ export async function initDb(): Promise<void> {
             PRIMARY KEY (user_id, blocked_id)
           );
 
+          CREATE TABLE IF NOT EXISTS bug_reports (
+            id SERIAL PRIMARY KEY,
+            user_id VARCHAR(64) REFERENCES users(id) ON DELETE SET NULL,
+            username VARCHAR(100),
+            description TEXT NOT NULL,
+            page VARCHAR(300),
+            user_agent VARCHAR(400),
+            screenshot BYTEA,
+            screenshot_type VARCHAR(40),
+            status VARCHAR(20) NOT NULL DEFAULT 'new',
+            created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+            updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+          );
+          CREATE INDEX IF NOT EXISTS idx_bug_reports_status ON bug_reports(status, created_at DESC);
           CREATE TABLE IF NOT EXISTS changelog_drafts (
             id VARCHAR(100) PRIMARY KEY,
             day DATE NOT NULL,

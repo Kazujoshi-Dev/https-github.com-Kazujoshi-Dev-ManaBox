@@ -1,8 +1,10 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { AdminBugReports } from './admin/AdminBugReports';
+import { bugReportsApi } from '../services/api';
 import { AdminChangelog } from './admin/AdminChangelog';
 import {
   ShieldCheck, Users, UserPlus, Activity, Ban, Layers, CircleDollarSign, Database, Search, Loader2, X,
-  KeyRound, LogOut, EyeOff, Eye, Trash2, Pencil, Copy, Check, ScrollText, Newspaper, AlertTriangle, RefreshCw, ChevronRight
+  KeyRound, LogOut, EyeOff, Eye, Trash2, Pencil, Copy, Check, ScrollText, Newspaper, Bug, AlertTriangle, RefreshCw, ChevronRight
 } from 'lucide-react';
 import { adminApi } from '../services/api';
 import { useBackToClose } from '../hooks/useBackButton';
@@ -55,7 +57,11 @@ function auditDetails(e: AdminAuditEntry): string {
 }
 
 export const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, showToast }) => {
-  const [view, setView] = useState<'users' | 'audit' | 'changelog'>('users');
+  const [view, setView] = useState<'users' | 'audit' | 'changelog' | 'bugs'>('users');
+  const [bugCount, setBugCount] = useState(0);
+  useEffect(() => {
+    bugReportsApi.list('new').then((d) => setBugCount(d.newCount)).catch(() => {});
+  }, []);
   const [stats, setStats] = useState<AdminStats | null>(null);
   const [query, setQuery] = useState('');
   const [users, setUsers] = useState<AdminUser[]>([]);
@@ -175,6 +181,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, showToast }
         {[
           { id: 'users' as const, label: 'Użytkownicy', icon: Users },
           { id: 'audit' as const, label: 'Dziennik działań', icon: ScrollText },
+          { id: 'bugs' as const, label: bugCount ? `Zgłoszenia (${bugCount})` : 'Zgłoszenia', icon: Bug },
           { id: 'changelog' as const, label: 'Dziennik zmian', icon: Newspaper }
         ].map(({ id, label, icon: Icon }) => (
           <button
@@ -193,7 +200,9 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, showToast }
 
       {error && <p className="text-sm text-rose-300 bg-rose-500/10 border border-rose-500/30 rounded-xl p-3">{error}</p>}
 
-      {view === 'changelog' ? (
+      {view === 'bugs' ? (
+        <AdminBugReports showToast={showToast} onCountChange={setBugCount} />
+      ) : view === 'changelog' ? (
         <AdminChangelog showToast={showToast} />
       ) : view === 'users' ? (
         <div className="space-y-3">
