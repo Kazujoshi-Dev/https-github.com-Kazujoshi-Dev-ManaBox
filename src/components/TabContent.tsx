@@ -169,6 +169,8 @@ export const TabContent: React.FC<TabContentProps> = ({
             onViewCardDetails={onViewDeckCardDetails || onSelectCard}
             onUpdateSettings={onUpdateSettings}
             showToast={showToast}
+            wishlist={wishlist}
+            onAddToWishlist={onAddToWishlist}
           />
         );
       }

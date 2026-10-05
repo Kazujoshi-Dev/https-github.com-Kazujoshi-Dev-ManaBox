@@ -11,6 +11,9 @@ export interface DeckBuilderProps {
   onViewCardDetails: (card: ScryfallCard) => void;
   onUpdateSettings?: (newSettings: AppSettings) => void;
   showToast?: (message: string) => void;
+  /** Lista życzeń (do oznaczania kart z sugestii, które już na niej są). */
+  wishlist?: import('../../types').WishlistItem[];
+  onAddToWishlist?: (card: ScryfallCard) => Promise<void>;
 }
 
 export interface DeckHeaderProps {

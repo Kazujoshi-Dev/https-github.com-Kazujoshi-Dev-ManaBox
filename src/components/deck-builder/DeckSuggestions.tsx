@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Sparkles, Loader2, ExternalLink, Plus, ArrowRight, Repeat, Library, AlertCircle, TrendingUp } from 'lucide-react';
+import { Sparkles, Loader2, ExternalLink, Plus, ArrowRight, Repeat, Library, AlertCircle, TrendingUp, Heart } from 'lucide-react';
 import type { CollectionItem, DeckItem, ScryfallCard } from '../../types';
 import { getCardImageUri, handleCardImageError } from '../../utils/formatters';
 import { edhrecApi, type EdhrecCommanderData, type EdhrecRecommendation } from '../../services/api';
@@ -14,6 +14,9 @@ interface DeckSuggestionsProps {
   onAddCard: (rec: EdhrecRecommendation) => void;
   /** Zamienia kartę z talii na rekomendowaną. */
   onReplaceCard: (oldCard: ScryfallCard, rec: EdhrecRecommendation) => void;
+  /** Nazwy kart z listy życzeń (małe litery, przednia strona). */
+  wishlistNames?: Set<string>;
+  onAddToWishlist?: (rec: EdhrecRecommendation) => Promise<void>;
 }
 
 const LIST_TO_CATEGORY: Record<string, string> = {
@@ -42,7 +45,8 @@ function categoryOf(rec: EdhrecRecommendation): string {
 const isBasicLand = (card: ScryfallCard) => /\bbasic\b/i.test(card.type_line || '') && /\bland\b/i.test(card.type_line || '');
 
 /** Sugestie z EDHREC: popularne karty dla dowódcy, których brak w talii, i lepsze odpowiedniki. */
-export const DeckSuggestions: React.FC<DeckSuggestionsProps> = ({ deck, collection, onViewCardDetails, onAddCard, onReplaceCard }) => {
+export const DeckSuggestions: React.FC<DeckSuggestionsProps> = ({ deck, collection, onViewCardDetails, onAddCard, onReplaceCard, wishlistNames, onAddToWishlist }) => {
+  const [wishBusy, setWishBusy] = useState<string | null>(null);
   const commanderName = deck.commander?.name || '';
   const [data, setData] = useState<EdhrecCommanderData | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -280,7 +284,7 @@ export const DeckSuggestions: React.FC<DeckSuggestionsProps> = ({ deck, collecti
                             </span>
                           )}
                         </p>
-                        <div className="mt-auto grid grid-cols-2 gap-1.5">
+                        <div className={`mt-auto grid gap-1.5 ${onAddToWishlist ? 'grid-cols-[1fr_1fr_auto]' : 'grid-cols-2'}`}>
                           <button
                             type="button"
                             onClick={() => onAddCard(rec)}
@@ -299,6 +303,31 @@ export const DeckSuggestions: React.FC<DeckSuggestionsProps> = ({ deck, collecti
                           >
                             <Repeat className="w-3.5 h-3.5" /> Zastąp
                           </button>
+                          {onAddToWishlist && (() => {
+                            const onList = wishlistNames?.has(frontName(rec.name));
+                            return (
+                              <button
+                                type="button"
+                                onClick={async () => {
+                                  if (onList || wishBusy) return;
+                                  setWishBusy(rec.name);
+                                  try {
+                                    await onAddToWishlist(rec);
+                                  } finally {
+                                    setWishBusy(null);
+                                  }
+                                }}
+                                disabled={onList || wishBusy === rec.name}
+                                aria-label={onList ? `${rec.name} jest na liście życzeń` : `Dodaj ${rec.name} do listy życzeń`}
+                                title={onList ? 'Już na liście życzeń' : 'Dodaj do listy życzeń'}
+                                className={`h-8 w-8 rounded-md ring-1 flex items-center justify-center cursor-pointer disabled:cursor-default ${
+                                  onList ? 'ring-rose-500/40 bg-rose-500/10 text-rose-400' : 'ring-stone-700 text-stone-300 hover:bg-stone-800 hover:text-rose-300'
+                                }`}
+                              >
+                                {wishBusy === rec.name ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Heart className={`w-3.5 h-3.5 ${onList ? 'fill-rose-400' : ''}`} />}
+                              </button>
+                            );
+                          })()}
                         </div>
                       </div>
                     </div>

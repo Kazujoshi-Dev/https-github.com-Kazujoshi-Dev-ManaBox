@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect, useRef } from 'react';
+import React, { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import { ZoomIn, ZoomOut, Sliders, ArrowDownWideNarrow } from 'lucide-react';
 import { ScryfallCard, DeckCardEntry, DeckItem } from '../types';
 import {
@@ -39,6 +39,8 @@ export const DeckBuilder: React.FC<DeckBuilderProps> = ({
   onViewCardDetails,
   onUpdateSettings,
   showToast = (_msg: string) => {},
+  wishlist = [],
+  onAddToWishlist,
 }) => {
   // Hover preview state
   const [hoveredCard, setHoveredCard] = useState<ScryfallCard | null>(null);
@@ -192,6 +194,21 @@ export const DeckBuilder: React.FC<DeckBuilderProps> = ({
     handleAddCardToDeck(card);
     showToast(`Dodano "${card.name}" do talii.`);
   }, [resolveRecommendedCard, handleAddCardToDeck, showToast]);
+
+  const wishlistNames = useMemo(
+    () => new Set(wishlist.map((w) => (w.card?.name || '').split('//')[0].trim().toLowerCase()).filter(Boolean)),
+    [wishlist]
+  );
+
+  const handleWishlistRecommended = useCallback(async (rec: EdhrecRecommendation) => {
+    if (!onAddToWishlist) return;
+    const card = await resolveRecommendedCard(rec);
+    if (!card) {
+      showToast(`Nie udało się pobrać karty "${rec.name}".`);
+      return;
+    }
+    await onAddToWishlist(card);
+  }, [resolveRecommendedCard, onAddToWishlist, showToast]);
 
   const handleReplaceWithRecommended = useCallback(async (oldCard: ScryfallCard, rec: EdhrecRecommendation) => {
     const card = await resolveRecommendedCard(rec);
@@ -567,6 +584,8 @@ export const DeckBuilder: React.FC<DeckBuilderProps> = ({
         onViewCardDetails={onViewCardDetails}
         onAddCard={handleAddRecommended}
         onReplaceCard={handleReplaceWithRecommended}
+        wishlistNames={wishlistNames}
+        onAddToWishlist={onAddToWishlist ? handleWishlistRecommended : undefined}
       />
       )}
 
