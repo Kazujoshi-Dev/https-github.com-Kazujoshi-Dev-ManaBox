@@ -13,22 +13,26 @@ interface UseCollectionFiltersProps {
 export function useCollectionFilters({ collection, settings }: UseCollectionFiltersProps) {
   const [filters, setFilters] = useState<FilterOptions>(DEFAULT_FILTERS);
 
-  // Dodatki do listy: [kod, nazwa, udział w wartości kolekcji w %], od najcenniejszego
+  // Dodatki do listy: [kod, nazwa, udział w wartości kolekcji w %], od najnowszej premiery
   const sets = useMemo(() => {
-    const list = new Map<string, { name: string; value: number }>();
+    const list = new Map<string, { name: string; value: number; released: string }>();
     let total = 0;
     collection.forEach(item => {
       if (item.card && item.card.set) {
         const v = itemValue(item, settings);
         total += v;
         const cur = list.get(item.card.set);
-        if (cur) cur.value += v;
-        else list.set(item.card.set, { name: item.card.set_name || item.card.set.toUpperCase(), value: v });
+        // Data premiery dodatku: najwcześniejsza data wydania kart z tego dodatku w kolekcji
+        const released = item.card.released_at || '';
+        if (cur) {
+          cur.value += v;
+          if (released && (!cur.released || released < cur.released)) cur.released = released;
+        } else list.set(item.card.set, { name: item.card.set_name || item.card.set.toUpperCase(), value: v, released });
       }
     });
     return Array.from(list.entries())
-      .map(([code, { name, value }]): [string, string, number] => [code, name, total > 0 ? (value / total) * 100 : 0])
-      .sort((a, b) => b[2] - a[2] || a[1].localeCompare(b[1]));
+      .sort(([, a], [, b]) => (b.released || '').localeCompare(a.released || '') || a.name.localeCompare(b.name))
+      .map(([code, { name, value }]): [string, string, number] => [code, name, total > 0 ? (value / total) * 100 : 0]);
   }, [collection, settings]);
 
   // Filter & Sort Logic
