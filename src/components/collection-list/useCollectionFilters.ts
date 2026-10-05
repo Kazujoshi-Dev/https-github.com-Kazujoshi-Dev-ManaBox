@@ -1,9 +1,18 @@
 import { FOR_SALE_BINDER } from './constants';
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useEffect } from 'react';
 import { CollectionItem, FilterOptions, AppSettings } from '../../types';
 import { getCardPrice } from '../../utils/formatters';
-import { itemValue } from '../../utils/collectionValue';
 import { DEFAULT_FILTERS } from './constants';
+
+/** Dodatek na liście filtra: ile różnych kart z niego masz i ile kart liczy cały dodatek. */
+export interface SetOption {
+  code: string;
+  name: string;
+  owned: number;
+  total: number | null;
+}
+
+let setSizesMemo: Record<string, number> | null = null;
 
 interface UseCollectionFiltersProps {
   collection: CollectionItem[];
@@ -13,27 +22,45 @@ interface UseCollectionFiltersProps {
 export function useCollectionFilters({ collection, settings }: UseCollectionFiltersProps) {
   const [filters, setFilters] = useState<FilterOptions>(DEFAULT_FILTERS);
 
-  // Dodatki do listy: [kod, nazwa, udział w wartości kolekcji w %], od najnowszej premiery
-  const sets = useMemo(() => {
-    const list = new Map<string, { name: string; value: number; released: string }>();
-    let total = 0;
+  // Liczba kart w dodatkach (z bazy kart, raz na sesję)
+  const [setSizes, setSetSizes] = useState<Record<string, number>>(() => setSizesMemo || {});
+  useEffect(() => {
+    if (setSizesMemo) return;
+    let cancelled = false;
+    fetch('/api/cards/set-sizes')
+      .then((r) => (r.ok ? r.json() : { sizes: {} }))
+      .then((d) => {
+        const sizes = d?.sizes && typeof d.sizes === 'object' ? d.sizes : {};
+        if (Object.keys(sizes).length) setSizesMemo = sizes;
+        if (!cancelled) setSetSizes(sizes);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // Dodatki do listy: skompletowanie (różne karty z dodatku / wszystkie karty dodatku), od najnowszej premiery
+  const sets = useMemo((): SetOption[] => {
+    const list = new Map<string, { name: string; numbers: Set<string>; released: string }>();
     collection.forEach(item => {
-      if (item.card && item.card.set) {
-        const v = itemValue(item, settings);
-        total += v;
-        const cur = list.get(item.card.set);
-        // Data premiery dodatku: najwcześniejsza data wydania kart z tego dodatku w kolekcji
-        const released = item.card.released_at || '';
-        if (cur) {
-          cur.value += v;
-          if (released && (!cur.released || released < cur.released)) cur.released = released;
-        } else list.set(item.card.set, { name: item.card.set_name || item.card.set.toUpperCase(), value: v, released });
-      }
+      if (!item.card || !item.card.set || (item.quantity || 0) + (item.quantityFoil || 0) <= 0) return;
+      const code = item.card.set;
+      let cur = list.get(code);
+      if (!cur) list.set(code, (cur = { name: item.card.set_name || code.toUpperCase(), numbers: new Set(), released: '' }));
+      cur.numbers.add(String(item.card.collector_number || item.card.name).toLowerCase());
+      // Data premiery dodatku: najwcześniejsza data wydania kart z tego dodatku w kolekcji
+      const released = item.card.released_at || '';
+      if (released && (!cur.released || released < cur.released)) cur.released = released;
     });
     return Array.from(list.entries())
       .sort(([, a], [, b]) => (b.released || '').localeCompare(a.released || '') || a.name.localeCompare(b.name))
-      .map(([code, { name, value }]): [string, string, number] => [code, name, total > 0 ? (value / total) * 100 : 0]);
-  }, [collection, settings]);
+      .map(([code, { name, numbers }]) => {
+        const total = setSizes[code.toLowerCase()] || null;
+        // Gdy baza zna mniej kart niż masz (np. niepełne dane), nie pokazujemy mylącego procentu
+        return { code, name, owned: numbers.size, total: total && total >= numbers.size ? total : null };
+      });
+  }, [collection, setSizes]);
 
   // Filter & Sort Logic
   const filteredCollection = useMemo(() => {

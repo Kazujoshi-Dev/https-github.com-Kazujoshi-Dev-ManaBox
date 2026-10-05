@@ -465,6 +465,22 @@ export async function searchCardsLocal(query: string, limit = 30): Promise<any[]
   return getCardsByIds(ids);
 }
 
+let setSizesCache: { at: number; sizes: Record<string, number> } | null = null;
+
+/** Liczba różnych kart (numerów kolekcjonerskich, wersje angielskie) w każdym dodatku. */
+export async function getSetSizes(): Promise<Record<string, number>> {
+  if (setSizesCache && Date.now() - setSizesCache.at < 6 * 60 * 60 * 1000) return setSizesCache.sizes;
+  const p = pool();
+  if (!p) return {};
+  const res = await p.query(
+    `SELECT set_code, COUNT(DISTINCT collector_number)::int AS n FROM scryfall_cards WHERE lang = 'en' GROUP BY set_code`
+  );
+  const sizes: Record<string, number> = {};
+  for (const r of res.rows) sizes[String(r.set_code).toLowerCase()] = r.n;
+  if (Object.keys(sizes).length) setSizesCache = { at: Date.now(), sizes };
+  return sizes;
+}
+
 export interface ShowcaseCard {
   name: string;
   image: string;

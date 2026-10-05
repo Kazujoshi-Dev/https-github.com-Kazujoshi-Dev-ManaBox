@@ -152,11 +152,16 @@ export const CollectionFiltersBar: React.FC<CollectionFiltersBarProps> = ({
             className="w-full h-9 bg-stone-900 border border-stone-800 rounded-lg px-2.5 text-stone-200 focus:outline-none focus:border-amber-500 truncate cursor-pointer"
           >
             <option value="ALL">Wszystkie dodatki</option>
-            {sets.map(([code, name, share]) => (
-              <option key={code} value={code}>
-                [{code.toUpperCase()}] {name} ({share > 0 && share < 1 ? '<1' : Math.round(share)}%)
-              </option>
-            ))}
+            {sets.map(({ code, name, owned, total }) => {
+              // Zaokrąglenie w dół, żeby niekompletny dodatek nie pokazywał 100%
+              const pct = total ? (owned / total) * 100 : null;
+              const pctText = pct === null ? '' : pct > 0 && pct < 1 ? ' (<1%)' : ` (${Math.floor(pct)}%)`;
+              return (
+                <option key={code} value={code}>
+                  [{code.toUpperCase()}] {name} {total ? `${owned}/${total}${pctText}` : `(${owned === 1 ? '1 karta' : `${owned} ${owned % 10 >= 2 && owned % 10 <= 4 && (owned % 100 < 12 || owned % 100 > 14) ? 'karty' : 'kart'}`})`}
+                </option>
+              );
+            })}
           </select>
         </div>
 

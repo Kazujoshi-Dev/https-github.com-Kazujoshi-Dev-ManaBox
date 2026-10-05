@@ -2212,6 +2212,17 @@ app.post('/api/cards/tokens', tokensLimiter, async (req, res) => {
   }
 });
 
+// Liczba kart w każdym dodatku (do skompletowania dodatków w kolekcji)
+app.get('/api/cards/set-sizes', async (_req, res) => {
+  try {
+    const sizes = await cards.getSetSizes().catch(() => ({}));
+    res.setHeader('Cache-Control', Object.keys(sizes).length ? 'public, max-age=21600' : 'no-store');
+    res.json({ sizes });
+  } catch (err: any) {
+    sendServerError(res, err, '/api/cards/set-sizes');
+  }
+});
+
 app.get('/api/public/showcase', async (_req, res) => {
   try {
     const list = await cards.getShowcaseCards(16).catch(() => []);

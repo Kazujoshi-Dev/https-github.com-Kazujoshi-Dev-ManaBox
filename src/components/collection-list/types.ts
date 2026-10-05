@@ -51,8 +51,7 @@ export interface CatalogsBarProps {
 
 export interface CollectionFiltersBarProps {
   filters: FilterOptions;
-  /** [kod, nazwa, udział w wartości kolekcji w %] */
-  sets: [string, string, number][];
+  sets: import('./useCollectionFilters').SetOption[];
   catalogs: Catalog[];
   viewMode: 'grid' | 'table';
   onFilterChange: (newFilters: Partial<FilterOptions>) => void;
