@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { ArrowLeft, Crown, Plus, Sparkles, Loader2, Check } from 'lucide-react';
+import { ArrowLeft, Crown, Plus, Sparkles, Loader2, Check, Search, X } from 'lucide-react';
 import type { AppSettings, CollectionItem, DeckCardEntry, ScryfallCard } from '../../types';
 import { formatCurrency, getCardImageUri, getCardPrice, handleCardImageError, langFromCard } from '../../utils/formatters';
 
@@ -16,6 +16,23 @@ interface AddCardVersionPickerProps {
   onConfirm: (card: ScryfallCard, isFoil: boolean, asCommander: boolean) => void;
   /** Własny napis na przycisku potwierdzenia (poza talią). */
   confirmLabel?: string;
+}
+
+/**
+ * Filtr wydań: każde słowo musi pasować do kodu dodatku, numeru karty lub nazwy dodatku.
+ * Np. „dsc 114”, „#114”, „sld”, „duskmourn”, „dsc/114”.
+ */
+function matchesPrint(p: ScryfallCard, query: string): boolean {
+  const tokens = query.toLowerCase().replace(/[#/,]/g, ' ').split(/\s+/).filter(Boolean);
+  if (!tokens.length) return true;
+  const set = (p.set || '').toLowerCase();
+  const num = (p.collector_number || '').toLowerCase();
+  const numBare = num.replace(/^0+(?=\d)/, '');
+  const setName = (p.set_name || '').toLowerCase();
+  return tokens.every((t) => {
+    const tb = t.replace(/^0+(?=\d)/, '');
+    return set === t || set.startsWith(t) || num === t || numBare === tb || num.startsWith(t) || setName.includes(t);
+  });
 }
 
 const hasFinish = (c: ScryfallCard, finish: 'foil' | 'nonfoil') => {
@@ -45,6 +62,7 @@ export const AddCardVersionPicker: React.FC<AddCardVersionPickerProps> = ({
   const ownedIds = useMemo(() => new Map(owned.map((o) => [o.card.id, o])), [owned]);
 
   const [prints, setPrints] = useState<ScryfallCard[] | null>(null);
+  const [printFilter, setPrintFilter] = useState('');
   const [selected, setSelected] = useState<ScryfallCard>(card);
   const [foil, setFoil] = useState(() => {
     const o = owned.find((x) => x.card.id === card.id);
@@ -74,6 +92,21 @@ export const AddCardVersionPicker: React.FC<AddCardVersionPickerProps> = ({
     const merged = [...mine, ...all.filter((p) => !ownedIds.has(p.id))];
     return collectionOnly && mine.length ? mine : merged;
   }, [prints, card, owned, ownedIds, collectionOnly]);
+
+  // Wydania po filtrze; dokładne trafienie kodu i numeru (np. „dsc 114”) na początku
+  const shown = useMemo(() => {
+    const q = printFilter.trim();
+    if (!q) return list;
+    const out = list.filter((p) => matchesPrint(p, q));
+    const [a, b] = q.toLowerCase().replace(/[#/,]/g, ' ').split(/\s+/).filter(Boolean);
+    const exact = (p: ScryfallCard) => (p.set || '').toLowerCase() === a && (p.collector_number || '').toLowerCase().replace(/^0+(?=\d)/, '') === (b || '').replace(/^0+(?=\d)/, '');
+    return b ? [...out.filter(exact), ...out.filter((p) => !exact(p))] : out;
+  }, [list, printFilter]);
+
+  // Jedno pasujące wydanie: od razu je zaznaczamy
+  useEffect(() => {
+    if (printFilter.trim() && shown.length === 1 && shown[0].id !== selected.id) setSelected(shown[0]);
+  }, [shown, printFilter, selected.id]);
 
   const canFoil = hasFinish(selected, 'foil');
   const canNonfoil = hasFinish(selected, 'nonfoil');
@@ -147,17 +180,50 @@ export const AddCardVersionPicker: React.FC<AddCardVersionPickerProps> = ({
 
           {/* Wydania */}
           <div>
-            <p className="text-sm text-stone-300 mb-2">
-              Wydanie {prints && <span className="text-stone-500 tabular-nums">({list.length})</span>}
-              {collectionOnly && owned.length > 0 && <span className="text-stone-500"> z Twojej kolekcji</span>}
-            </p>
+            <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
+              <p className="text-sm text-stone-300">
+                Wydanie{' '}
+                {prints && (
+                  <span className="text-stone-500 tabular-nums">
+                    ({printFilter.trim() ? `${shown.length} z ${list.length}` : list.length})
+                  </span>
+                )}
+                {collectionOnly && owned.length > 0 && <span className="text-stone-500"> z Twojej kolekcji</span>}
+              </p>
+              {prints && list.length > 1 && (
+                <div className="relative w-full sm:w-64">
+                  <Search className="w-3.5 h-3.5 text-stone-500 absolute left-2.5 top-1/2 -translate-y-1/2" />
+                  <input
+                    type="text"
+                    value={printFilter}
+                    onChange={(e) => setPrintFilter(e.target.value)}
+                    onKeyDown={(e) => {
+                      // Enter przy jednym pasującym wydaniu = potwierdzenie
+                      if (e.key === 'Enter' && shown.length === 1) {
+                        e.preventDefault();
+                        onConfirm(shown[0], foil && hasFinish(shown[0], 'foil'), asCommander);
+                      }
+                    }}
+                    placeholder="Kod setu i numer, np. DSC 114"
+                    aria-label="Filtruj wydania po kodzie dodatku, numerze karty lub nazwie dodatku"
+                    autoComplete="off"
+                    className="w-full h-9 bg-stone-950 border border-stone-800 rounded-lg pl-8 pr-8 text-sm text-stone-100 placeholder-stone-500 focus:outline-none focus:border-amber-500"
+                  />
+                  {printFilter && (
+                    <button type="button" onClick={() => setPrintFilter('')} aria-label="Wyczyść filtr" className="absolute right-1.5 top-1/2 -translate-y-1/2 w-6 h-6 rounded flex items-center justify-center text-stone-400 hover:text-stone-100 cursor-pointer">
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
             {!prints ? (
               <p className="text-sm text-stone-400 flex items-center gap-2 py-4">
                 <Loader2 className="w-4 h-4 animate-spin" /> Wczytywanie wydań…
               </p>
             ) : (
               <ul className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-5 gap-2.5 max-h-[320px] overflow-y-auto pr-1 -mr-1">
-                {list.map((p) => {
+                {shown.map((p) => {
                   const t = getCardImageUri(p, 'small') || getCardImageUri(p, 'normal');
                   const isSel = p.id === selected.id;
                   const mine = ownedIds.has(p.id);
@@ -196,6 +262,9 @@ export const AddCardVersionPicker: React.FC<AddCardVersionPickerProps> = ({
                   );
                 })}
               </ul>
+            )}
+            {prints && printFilter.trim() && shown.length === 0 && (
+              <p className="text-sm text-stone-400 py-3">Brak wydań pasujących do „{printFilter.trim()}”. Sprawdź kod dodatku i numer z dołu karty.</p>
             )}
           </div>
         </div>
