@@ -66,5 +66,6 @@ export const CHANGELOG_DRAFTS: ChangelogDraft[] = [
   // ---------- 5 października 2026 ----------
   { id: '2026-10-05-top-movers', day: '2026-10-05', type: 'improved', area: 'Statystyki', text: 'Nowa sekcja „Największe zmiany”: 20 kart z kolekcji, które najbardziej zyskały, i 20, które najbardziej straciły od ostatniego odświeżenia cen.' },
   { id: '2026-10-05-changelog', day: '2026-10-05', type: 'new', area: 'Dziennik zmian', text: 'Zakładka „Dziennik zmian”: codziennie o 23:30 pojawia się tu podsumowanie nowości z danego dnia.' },
-  { id: '2026-10-05-unread-mail', day: '2026-10-05', type: 'improved', area: 'Wiadomości', text: 'Nowe wiadomości pojawiają się bez odświeżania strony: koperta podświetla się na bursztynowo, na telefonie pojawia się w nagłówku, a liczbę nieprzeczytanych widać też w tytule karty przeglądarki.' }
+  { id: '2026-10-05-unread-mail', day: '2026-10-05', type: 'improved', area: 'Wiadomości', text: 'Nowe wiadomości pojawiają się bez odświeżania strony: koperta podświetla się na bursztynowo, na telefonie pojawia się w nagłówku, a liczbę nieprzeczytanych widać też w tytule karty przeglądarki.' },
+  { id: '2026-10-05-wishlist-match-label', day: '2026-10-05', type: 'fixed', area: 'Gracze', text: 'Kafelek gracza jasno rozróżnia karty z Twojej listy życzeń, które sprzedaje, od tych, które ma tylko w kolekcji.' }
 ];

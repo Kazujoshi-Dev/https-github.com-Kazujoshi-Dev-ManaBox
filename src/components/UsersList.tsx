@@ -1089,7 +1089,8 @@ export const UsersList: React.FC<UsersListProps> = ({
             const hasForSale = u.forSaleCount > 0;
             const hasWishlist = (u.wishlistCount || 0) > 0;
 
-            const wishMatch = !isSelf ? matches[u.id]?.collection || 0 : 0;
+            const wishOwned = !isSelf ? matches[u.id]?.collection || 0 : 0;
+            const wishSale = !isSelf ? matches[u.id]?.forSale || 0 : 0;
             const iconBtn = 'w-8 h-8 rounded-md flex items-center justify-center text-stone-400 hover:text-stone-100 hover:bg-stone-800 cursor-pointer';
             return (
               <article
@@ -1112,13 +1113,17 @@ export const UsersList: React.FC<UsersListProps> = ({
                   </div>
                 </div>
 
-                {wishMatch > 0 && (
+                {wishSale > 0 ? (
                   <p className="text-sm text-rose-300 flex items-center gap-1.5 -mt-1">
                     <Heart className="w-3.5 h-3.5 fill-rose-400 text-rose-400 shrink-0" />
-                    {wishMatch} z Twojej listy życzeń
-                    {matches[u.id].forSale > 0 ? `, ${matches[u.id].forSale} na sprzedaż` : ''}
+                    {wishSale === 1 ? 'Sprzedaje 1 kartę' : `Sprzedaje ${wishSale} ${kartyPl(wishSale)}`} z Twojej listy życzeń
                   </p>
-                )}
+                ) : wishOwned > 0 ? (
+                  <p className="text-xs text-stone-400 flex items-center gap-1.5 -mt-1" title="Karty są w kolekcji gracza, ale nie wystawił ich na sprzedaż. Możesz do niego napisać.">
+                    <Heart className="w-3.5 h-3.5 text-stone-500 shrink-0" />
+                    Ma {wishOwned} z Twojej listy, ale nie sprzedaje
+                  </p>
+                ) : null}
 
                 <div className="grid grid-cols-2 gap-px rounded-lg overflow-hidden bg-stone-800 text-sm">
                   <button
@@ -1132,7 +1137,7 @@ export const UsersList: React.FC<UsersListProps> = ({
                   >
                     <span className="block text-xs text-stone-400">Sprzedaje</span>
                     <span className={`block tabular-nums font-medium ${hasForSale ? 'text-emerald-300' : 'text-stone-500'}`}>
-                      {hasForSale ? `${u.forSaleCount} kart` : 'nic'}
+                      {hasForSale ? kartyLabel(u.forSaleCount) : 'nic'}
                     </span>
                   </button>
                   <button
@@ -1146,7 +1151,7 @@ export const UsersList: React.FC<UsersListProps> = ({
                   >
                     <span className="block text-xs text-stone-400">Szuka</span>
                     <span className={`block tabular-nums font-medium ${hasWishlist ? 'text-stone-100' : 'text-stone-500'}`}>
-                      {hasWishlist ? `${u.wishlistCount} kart` : 'nic'}
+                      {hasWishlist ? kartyLabel(u.wishlistCount || 0) : 'nic'}
                     </span>
                   </button>
                 </div>
@@ -1177,3 +1182,15 @@ export const UsersList: React.FC<UsersListProps> = ({
     </div>
   );
 };
+
+/** „karty” / „kart” dla liczby większej niż 1. */
+function kartyPl(n: number): string {
+  const d = n % 10;
+  const h = n % 100;
+  return d >= 2 && d <= 4 && (h < 12 || h > 14) ? 'karty' : 'kart';
+}
+
+/** „1 karta”, „3 karty”, „5 kart”. */
+function kartyLabel(n: number): string {
+  return n === 1 ? '1 karta' : `${n} ${kartyPl(n)}`;
+}
