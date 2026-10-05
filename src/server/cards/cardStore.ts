@@ -563,18 +563,35 @@ export async function getShowcaseCards(limit = 12): Promise<ShowcaseCard[]> {
  * Karty po nazwach (dokładna nazwa lub nazwa pierwszej strony), po jednej — najnowsze
  * angielskie wydanie z obrazkiem. Klucz mapy: nazwa małymi literami (tak jak podana).
  */
-export async function getCardsByNames(names: string[]): Promise<Map<string, any>> {
+/**
+ * Wydanie „specjalne” (1) lub zwykłe (0): Secret Lair i podobne serie, promki, wersje cyfrowe,
+ * borderless, showcase, extended art, full art (poza lądami podstawowymi) i warianty.
+ */
+const SPECIAL_PRINT_SQL = `(CASE WHEN
+    data->>'set' IN ('sld', 'sldp', 'slx', 'slc', 'plst', 'mb2', 'pmb2', 'mb1', 'fmb1', 'cmb1', 'cmb2', 'ulst', 'unk', 'pagl')
+    OR data->>'set_type' IN ('promo', 'box', 'memorabilia', 'funny', 'masterpiece', 'alchemy', 'token', 'minigame', 'treasure_chest', 'vanguard')
+    OR COALESCE((data->>'promo')::boolean, false)
+    OR COALESCE((data->>'digital')::boolean, false)
+    OR COALESCE((data->>'variation')::boolean, false)
+    OR COALESCE((data->>'oversized')::boolean, false)
+    OR data->>'border_color' IN ('borderless', 'gold', 'silver', 'yellow')
+    OR COALESCE(data->'frame_effects', '[]'::jsonb) ?| array['showcase', 'extendedart', 'inverted', 'etched', 'fullart', 'textless']
+    OR (COALESCE((data->>'full_art')::boolean, false) AND COALESCE(data->>'type_line', '') NOT ILIKE '%basic%')
+  THEN 1 ELSE 0 END)`;
+
+export async function getCardsByNames(names: string[], opts: { preferRegular?: boolean } = {}): Promise<Map<string, any>> {
   const out = new Map<string, any>();
   const p = pool();
   const wanted = [...new Set(names.map((n) => n.toLowerCase().trim()).filter(Boolean))];
   if (!p || wanted.length === 0) return out;
+  // preferRegular: najnowsze zwykłe wydanie, a wersja specjalna dopiero gdy zwykłej nie ma
   const res = await p.query(
     `SELECT DISTINCT ON (key) key, data FROM (
        SELECT LOWER(name) AS key, data, lang, released_at, image_small FROM scryfall_cards WHERE LOWER(name) = ANY($1)
        UNION ALL
        SELECT LOWER(face_names[1]) AS key, data, lang, released_at, image_small FROM scryfall_cards WHERE LOWER(face_names[1]) = ANY($1)
      ) x
-     ORDER BY key, (lang = 'en') DESC, (image_small IS NOT NULL) DESC, released_at DESC NULLS LAST`,
+     ORDER BY key, (lang = 'en') DESC, ${opts.preferRegular ? `${SPECIAL_PRINT_SQL} ASC,` : ''} (image_small IS NOT NULL) DESC, released_at DESC NULLS LAST`,
     [wanted]
   );
   for (const r of res.rows) out.set(r.key, r.data);

@@ -73,6 +73,7 @@ export const CHANGELOG_DRAFTS: ChangelogDraft[] = [
   { id: '2026-10-05-phyrexian', day: '2026-10-05', type: 'new', area: 'Karty', text: 'Karty w języku phyrexian w bazie kart, do wyboru przy dodawaniu i jako język karty w kolekcji.' },
   { id: '2026-10-05-import-progress', day: '2026-10-05', type: 'improved', area: 'Import', text: 'Pasek postępu przy imporcie kolekcji: przy dużych listach (np. kilka tysięcy kart) widać, ile kart już rozpoznano i zapisano.' },
   { id: '2026-10-05-suggestion-wishlist', day: '2026-10-05', type: 'improved', area: 'Talie', text: 'W sugestiach EDHREC przycisk z sercem dodaje kartę do listy życzeń; karty, które już na niej są, mają wypełnione serce.' },
+  { id: '2026-10-05-suggestion-regular-print', day: '2026-10-05', type: 'improved', area: 'Talie', text: 'Sugestie EDHREC pokazują najnowsze zwykłe wydanie karty zamiast Secret Lair, promek czy wersji borderless i showcase.' },
   { id: '2026-10-05-dfc-thumbs', day: '2026-10-05', type: 'fixed', area: 'Karty', text: 'Miniatury kart dwustronnych (np. przy wyborze dowódcy, w talii i w wyszukiwarce) wczytują się poprawnie.' },
   { id: '2026-10-05-for-sale-add', day: '2026-10-05', type: 'new', area: 'Sprzedam', text: 'Przycisk „Dodaj kartę na sprzedaż”: wyszukaj dowolną kartę, wybierz wydanie, foil, ilość, stan i cenę, a trafi od razu do Twojej oferty.' },
   { id: '2026-10-05-print-filter', day: '2026-10-05', type: 'improved', area: 'Karty', text: 'Przy wyborze wydania karty możesz wpisać kod dodatku i numer z dołu karty (np. DSC 114), aby od razu znaleźć właściwą wersję.' },

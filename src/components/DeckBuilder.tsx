@@ -178,7 +178,7 @@ export const DeckBuilder: React.FC<DeckBuilderProps> = ({
   const resolveRecommendedCard = useCallback(async (rec: EdhrecRecommendation): Promise<ScryfallCard | null> => {
     if (rec.card) return rec.card;
     try {
-      const res = await fetch(`/api/scryfall/named?exact=${encodeURIComponent(rec.name)}`);
+      const res = await fetch(`/api/scryfall/named?exact=${encodeURIComponent(rec.name)}&prefer=regular`);
       return res.ok ? ((await res.json()) as ScryfallCard) : null;
     } catch {
       return null;

@@ -1109,7 +1109,7 @@ app.get('/api/scryfall/named', async (req, res) => {
 
     // Dokładna nazwa bez wskazanego dodatku: najpierw lokalna baza kart (bez zapytania do Scryfall)
     if (exact && !set) {
-      const local = await cards.getCardsByNames([exact]).catch(() => new Map<string, any>());
+      const local = await cards.getCardsByNames([exact], { preferRegular: req.query.prefer === 'regular' }).catch(() => new Map<string, any>());
       const hit = local.get(exact.toLowerCase());
       if (hit) return res.json(hit);
     }
@@ -1927,7 +1927,7 @@ app.get('/api/edhrec/commander', authMiddleware, edhrecLimiter, async (req, res)
     }
     if (!data) return res.status(404).json({ error: 'EDHREC nie ma jeszcze danych dla tego dowódcy.' });
     const top = data.cards.slice(0, 220);
-    const found = await cards.getCardsByNames(top.map((c) => c.name)).catch(() => new Map<string, any>());
+    const found = await cards.getCardsByNames(top.map((c) => c.name), { preferRegular: true }).catch(() => new Map<string, any>());
     res.json({
       commander: data.name,
       url: data.url,
