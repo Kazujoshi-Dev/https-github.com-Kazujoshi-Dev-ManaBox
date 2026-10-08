@@ -22,6 +22,8 @@ export interface CardModalProps {
   onSaveToCollection: (itemData: CardSaveData) => void;
   onAddToWishlist?: (card: ScryfallCard, isFoil?: boolean) => void;
   onSelectPrint?: (newCard: ScryfallCard, oldCard: ScryfallCard) => void;
+  /** Dodaje 1 szt. wskazanego wydania (NM, nie foil) do domyślnego klasera. */
+  onQuickAddToCollection?: (card: ScryfallCard) => Promise<unknown> | void;
   onToggleFoil?: (isFoil: boolean) => void;
   initialFoil?: boolean;
   /** Okno otwarte z listy życzeń — zmiana foil / wersji zapisuje się w tej pozycji. */
@@ -114,4 +116,7 @@ export interface CardPrintsTabProps {
   onFilterChange: (filter: string) => void;
   onSelectPrint: (print: ScryfallCard) => void;
   onSwitchToDetails: () => void;
+  /** Nazwa domyślnego klasera, do którego trafia karta z przycisku „Dodaj do kolekcji”. */
+  defaultBinderName?: string;
+  onQuickAddToCollection?: (print: ScryfallCard) => Promise<unknown> | void;
 }

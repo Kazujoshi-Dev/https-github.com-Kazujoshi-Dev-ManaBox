@@ -26,6 +26,7 @@ export const CardModal: React.FC<CardModalProps> = ({
   onSaveToCollection,
   onAddToWishlist,
   onSelectPrint,
+  onQuickAddToCollection,
   onToggleFoil,
   initialFoil,
   wishlistItem,
@@ -168,6 +169,8 @@ export const CardModal: React.FC<CardModalProps> = ({
               onFilterChange={setPrintsFilter}
               onSelectPrint={handleSelectPrint}
               onSwitchToDetails={() => setActiveTab('details')}
+              defaultBinderName={catalogs.find((c) => c.isDefault)?.name || catalogs[0]?.name || 'Klaser Główny'}
+              onQuickAddToCollection={onQuickAddToCollection}
             />
           )}
 

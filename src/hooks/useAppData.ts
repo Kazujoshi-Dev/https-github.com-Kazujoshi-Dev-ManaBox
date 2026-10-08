@@ -401,7 +401,7 @@ export function useAppData({ userId, onUnauthorized, showToast, onSettingsLoaded
       ? (catalogs.find(c => c.isDefault)?.name || catalogs[0].name)
       : 'Klaser Główny';
 
-    saveToCollection({
+    return saveToCollection({
       card,
       quantity: 1,
       quantityFoil: 0,

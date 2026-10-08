@@ -967,6 +967,7 @@ export default function App() {
           onSaveToCollection={handleSaveCardModal}
           onAddToWishlist={addToWishlist}
           onSelectPrint={handleCardPrintSelectedInModal}
+          onQuickAddToCollection={quickAddToCollection}
           onToggleFoil={handleCardFoilToggledInModal}
           initialFoil={deckCardIsFoil}
           wishlistItem={selectedWishlistItemForModal}

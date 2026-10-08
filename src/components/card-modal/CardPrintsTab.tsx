@@ -1,5 +1,5 @@
-import React from 'react';
-import { Layers, Search, Loader2, Check, Sparkles } from 'lucide-react';
+import React, { useEffect, useRef, useState } from 'react';
+import { Layers, Search, Loader2, Check, Sparkles, Plus } from 'lucide-react';
 import { ScryfallCard } from '../../types';
 import { formatCurrency, getCardImageUri, getCardPrice, getRarityColor, getRarityLabel, handleCardImageError, langFromCard } from '../../utils/formatters';
 import { CardPrintsTabProps } from './types';
@@ -15,7 +15,33 @@ export const CardPrintsTab: React.FC<CardPrintsTabProps> = ({
   onFilterChange,
   onSelectPrint,
   onSwitchToDetails,
+  defaultBinderName = 'Klaser Główny',
+  onQuickAddToCollection,
 }) => {
+  // Stan przycisku „Dodaj do kolekcji” per wydanie: w trakcie zapisu / chwilowe potwierdzenie
+  const [addingId, setAddingId] = useState<string | null>(null);
+  const [addedId, setAddedId] = useState<string | null>(null);
+  const addedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => () => {
+    if (addedTimerRef.current) clearTimeout(addedTimerRef.current);
+  }, []);
+
+  const handleQuickAdd = async (print: ScryfallCard) => {
+    if (!onQuickAddToCollection || addingId) return;
+    setAddingId(print.id);
+    try {
+      const result = await onQuickAddToCollection(print);
+      if (result !== null) {
+        setAddedId(print.id);
+        if (addedTimerRef.current) clearTimeout(addedTimerRef.current);
+        addedTimerRef.current = setTimeout(() => setAddedId(null), 2000);
+      }
+    } finally {
+      setAddingId(null);
+    }
+  };
+
   return (
     <div className="space-y-4 bg-stone-950/80 p-5 rounded-2xl border border-stone-800">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -127,7 +153,7 @@ export const CardPrintsTab: React.FC<CardPrintsTabProps> = ({
                   </div>
 
                   {/* Print Action / State Badge */}
-                  <div className="pt-1.5 flex justify-end">
+                  <div className="pt-1.5 flex flex-wrap justify-end gap-1.5">
                     {isSelected ? (
                       <span className="text-[11px] font-bold text-amber-300 flex items-center gap-1 bg-amber-500/20 px-2 py-0.5 rounded-md border border-amber-500/30">
                         <Check className="w-3 h-3 stroke-[3]" />
@@ -143,6 +169,31 @@ export const CardPrintsTab: React.FC<CardPrintsTabProps> = ({
                         className="text-[11px] font-bold text-stone-300 hover:text-stone-950 flex items-center gap-1 bg-stone-800 hover:bg-amber-400 px-2 py-0.5 rounded-md transition-colors cursor-pointer border border-stone-700 hover:border-amber-400"
                       >
                         <span>{isExistingItem ? 'Zmień i zapisz print' : 'Wybierz ten print'}</span>
+                      </button>
+                    )}
+                    {onQuickAddToCollection && (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleQuickAdd(p);
+                        }}
+                        disabled={addingId !== null}
+                        title={`Dodaj 1 szt. tego wydania (NM) do klasera „${defaultBinderName}”`}
+                        className={`text-[11px] font-bold flex items-center gap-1 px-2 py-0.5 rounded-md transition-colors border disabled:cursor-wait ${
+                          addedId === p.id
+                            ? 'text-amber-300 bg-amber-500/20 border-amber-500/30'
+                            : 'text-stone-300 hover:text-stone-950 bg-stone-800 hover:bg-amber-400 border-stone-700 hover:border-amber-400 cursor-pointer'
+                        }`}
+                      >
+                        {addingId === p.id ? (
+                          <Loader2 className="w-3 h-3 animate-spin" />
+                        ) : addedId === p.id ? (
+                          <Check className="w-3 h-3 stroke-[3]" />
+                        ) : (
+                          <Plus className="w-3 h-3 stroke-[3]" />
+                        )}
+                        <span>{addedId === p.id ? 'Dodano' : 'Dodaj do kolekcji'}</span>
                       </button>
                     )}
                   </div>

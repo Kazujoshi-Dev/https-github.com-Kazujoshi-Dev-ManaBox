@@ -83,5 +83,6 @@ export const CHANGELOG_DRAFTS: ChangelogDraft[] = [
   { id: '2026-10-08-separate-entries', day: '2026-10-08', type: 'fixed', area: 'Kolekcja', text: 'Karty różniące się wydaniem, wersją foil, stanem, językiem lub klaserem są w kolekcji osobnymi pozycjami, a dodanie innej wersji nie zmienia już posiadanej karty.' },
   { id: '2026-10-08-catalog-create-error', day: '2026-10-08', type: 'fixed', area: 'Kolekcja', text: 'Tworzenie nowego klasera nie kończy się już błędem, a konta, którym przy rejestracji nie utworzyły się startowe klasery, dostają je automatycznie.' },
   { id: '2026-10-08-main-binder', day: '2026-10-08', type: 'improved', area: 'Kolekcja', text: 'Nowe konta zaczynają z jednym „Klaserem Głównym”, którego nie można usunąć ani przemianować; możesz go za to opróżnić z kart przyciskiem „Opróżnij”.' },
-  { id: '2026-10-08-catalog-edit', day: '2026-10-08', type: 'fixed', area: 'Kolekcja', text: 'Edycja katalogu (nazwa, opis, kolor, domyślny) znów się zapisuje, a karty przechodzą razem z katalogiem pod nową nazwę.' }
+  { id: '2026-10-08-catalog-edit', day: '2026-10-08', type: 'fixed', area: 'Kolekcja', text: 'Edycja katalogu (nazwa, opis, kolor, domyślny) znów się zapisuje, a karty przechodzą razem z katalogiem pod nową nazwę.' },
+  { id: '2026-10-08-print-quick-add', day: '2026-10-08', type: 'new', area: 'Karty', text: 'Przy wyborze wydania karty przycisk „Dodaj do kolekcji” od razu dodaje to wydanie do domyślnego klasera.' }
 ];
