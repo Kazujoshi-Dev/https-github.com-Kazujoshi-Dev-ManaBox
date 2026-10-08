@@ -2,7 +2,22 @@ import { FOR_SALE_BINDER } from './constants';
 import React, { useState } from 'react';
 import { Search, X, Sparkles, LayoutGrid, List, SlidersHorizontal, Library } from 'lucide-react';
 import { CollectionFiltersBarProps } from './types';
-import { COLOR_PILLS, CARD_TYPES, CARD_RARITIES, SORT_OPTIONS } from './constants';
+import { COLOR_PILLS, CARD_TYPES, CARD_RARITIES, SORT_OPTIONS, ROWS_PER_PAGE_OPTIONS } from './constants';
+
+/** Rozwijany wybór liczby wierszy na stronie. */
+const RowsPerPageSelect: React.FC<{ value: number; onChange: (rows: number) => void; className: string }> = ({ value, onChange, className }) => (
+  <select
+    value={value}
+    onChange={(e) => onChange(Number(e.target.value))}
+    title="Wiersze kart na stronie"
+    aria-label="Wiersze kart na stronie"
+    className={`bg-stone-900 border border-stone-800 rounded-lg px-2 text-stone-200 tabular-nums focus:outline-none focus:border-amber-500 cursor-pointer ${className}`}
+  >
+    {ROWS_PER_PAGE_OPTIONS.map((n) => (
+      <option key={n} value={n}>{n} wierszy</option>
+    ))}
+  </select>
+);
 
 export const CollectionFiltersBar: React.FC<CollectionFiltersBarProps> = ({
   filters,
@@ -11,7 +26,10 @@ export const CollectionFiltersBar: React.FC<CollectionFiltersBarProps> = ({
   viewMode,
   onFilterChange,
   onViewModeChange,
+  rowsPerPage,
+  onRowsPerPageChange,
 }) => {
+  const showRows = rowsPerPage !== undefined && !!onRowsPerPageChange;
   // Na telefonie zaawansowane filtry są schowane pod przyciskiem, żeby karty były widoczne od razu.
   const [showAdvanced, setShowAdvanced] = useState(false);
   const activeAdvanced = [
@@ -77,6 +95,9 @@ export const CollectionFiltersBar: React.FC<CollectionFiltersBarProps> = ({
           <SlidersHorizontal className="w-4 h-4" />
           <span>Filtry i sortowanie{activeAdvanced ? ` (${activeAdvanced})` : ''}</span>
         </button>
+        {showRows && (
+          <RowsPerPageSelect value={rowsPerPage!} onChange={onRowsPerPageChange!} className="h-11 rounded-xl text-sm shrink-0" />
+        )}
         <div className="flex items-center gap-1 bg-stone-950 p-1 rounded-xl border border-stone-800 shrink-0">
           <button
             type="button"
@@ -106,7 +127,7 @@ export const CollectionFiltersBar: React.FC<CollectionFiltersBarProps> = ({
       </div>
 
       {/* Secondary Filter Dropdowns */}
-      <div className={`${showAdvanced ? 'grid' : 'hidden'} md:grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 text-xs`}>
+      <div className={`${showAdvanced ? 'grid' : 'hidden'} md:grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-3 text-xs`}>
         {/* Type Filter */}
         <div>
           <label className="block text-[11px] font-semibold text-stone-400 mb-1">Typ karty</label>
@@ -188,7 +209,7 @@ export const CollectionFiltersBar: React.FC<CollectionFiltersBarProps> = ({
         </div>
 
         {/* View Mode Toggle & Only Foil */}
-        <div className="flex items-end justify-between gap-2">
+        <div className="flex items-end justify-between gap-2 lg:col-span-2">
           <button
             onClick={() => onFilterChange({ onlyFoil: !filters.onlyFoil })}
             className={`h-9 px-3 rounded-lg text-xs font-medium flex items-center gap-1.5 border cursor-pointer ${
@@ -200,6 +221,10 @@ export const CollectionFiltersBar: React.FC<CollectionFiltersBarProps> = ({
             <Sparkles className="w-3.5 h-3.5 text-amber-400" />
             <span>Tylko foil</span>
           </button>
+
+          {showRows && (
+            <RowsPerPageSelect value={rowsPerPage!} onChange={onRowsPerPageChange!} className="hidden md:block h-9 text-xs" />
+          )}
 
           <div className="hidden md:flex items-center gap-1 bg-stone-900 p-1 rounded-lg border border-stone-800 h-9">
             <button

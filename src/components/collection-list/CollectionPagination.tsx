@@ -1,14 +1,10 @@
 import React from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
-import { ROWS_PER_PAGE_OPTIONS } from './constants';
 
 interface CollectionPaginationProps {
   page: number;
   pageCount: number;
   onPageChange: (page: number) => void;
-  /** Wybór liczby wierszy pokazujemy tylko w górnym pasku. */
-  rowsPerPage?: number;
-  onRowsPerPageChange?: (rows: number) => void;
   /** Zakres wyświetlanych pozycji, np. „1–72 z 1158”. */
   rangeLabel?: string;
 }
@@ -33,45 +29,18 @@ export const CollectionPagination: React.FC<CollectionPaginationProps> = ({
   page,
   pageCount,
   onPageChange,
-  rowsPerPage,
-  onRowsPerPageChange,
   rangeLabel,
 }) => {
-  const showPager = pageCount > 1;
-  const showRows = rowsPerPage !== undefined && onRowsPerPageChange;
-  if (!showPager && !showRows) return null;
+  if (pageCount <= 1) return null;
 
   return (
     <nav
       aria-label="Strony kolekcji"
       className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-2"
     >
-      {showRows ? (
-        <div className="flex items-center gap-2 text-xs text-stone-400">
-          <span>Wiersze na stronie:</span>
-          <div className="flex items-center gap-1 bg-stone-900 p-1 rounded-lg border border-stone-800">
-            {ROWS_PER_PAGE_OPTIONS.map((n) => (
-              <button
-                key={n}
-                type="button"
-                onClick={() => onRowsPerPageChange!(n)}
-                aria-pressed={rowsPerPage === n}
-                className={`h-7 min-w-9 px-2 rounded-md text-xs font-medium tabular-nums cursor-pointer transition-colors ${
-                  rowsPerPage === n ? 'bg-stone-800 text-amber-400' : 'text-stone-400 hover:text-stone-200'
-                }`}
-              >
-                {n}
-              </button>
-            ))}
-          </div>
-          {rangeLabel && <span className="max-sm:hidden tabular-nums">{rangeLabel}</span>}
-        </div>
-      ) : (
-        <span className="text-xs text-stone-400 tabular-nums">{rangeLabel}</span>
-      )}
+      <span className="text-xs text-stone-400 tabular-nums">{rangeLabel}</span>
 
-      {showPager && (
-        <div className="flex items-center gap-1 self-center sm:self-auto">
+      <div className="flex items-center gap-1 self-center sm:self-auto">
           <button
             type="button"
             onClick={() => onPageChange(page - 1)}
@@ -118,8 +87,7 @@ export const CollectionPagination: React.FC<CollectionPaginationProps> = ({
           >
             <ChevronRight className="w-4 h-4" />
           </button>
-        </div>
-      )}
+      </div>
     </nav>
   );
 };

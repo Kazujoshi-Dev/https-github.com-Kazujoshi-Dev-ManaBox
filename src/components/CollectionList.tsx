@@ -209,6 +209,8 @@ export const CollectionList: React.FC<CollectionListProps> = ({
         catalogs={catalogs}
         viewMode={viewMode}
         onFilterChange={updateFilters}
+        rowsPerPage={onUpdateSettings ? rowsPerPage : undefined}
+        onRowsPerPageChange={onUpdateSettings ? handleRowsPerPageChange : undefined}
         onViewModeChange={(mode) => {
           // Wejście w widok „Dodatki” zawsze zaczyna od siatki wszystkich dodatków
           if (mode === 'sets' && viewMode !== 'sets') updateFilters({ set: 'ALL' });
@@ -251,8 +253,6 @@ export const CollectionList: React.FC<CollectionListProps> = ({
                 page={currentPage}
                 pageCount={pageCount}
                 onPageChange={goToPage}
-                rowsPerPage={onUpdateSettings ? rowsPerPage : undefined}
-                onRowsPerPageChange={onUpdateSettings ? handleRowsPerPageChange : undefined}
                 rangeLabel={rangeLabel}
               />
             </div>

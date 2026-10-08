@@ -64,6 +64,9 @@ export interface CollectionFiltersBarProps {
   viewMode: CollectionViewMode;
   onFilterChange: (newFilters: Partial<FilterOptions>) => void;
   onViewModeChange: (mode: CollectionViewMode) => void;
+  /** Liczba wierszy kart na stronie; bez handlera wybór jest ukryty. */
+  rowsPerPage?: number;
+  onRowsPerPageChange?: (rows: number) => void;
 }
 
 export interface CollectionResultsHeaderProps {
