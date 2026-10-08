@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { SupportButton } from './ui/SupportButton';
-import { DiscordButton } from './ui/DiscordButton';
+import { SUPPORT_URL } from './ui/SupportButton';
+import { DISCORD_URL } from './ui/DiscordButton';
 import { TermsLink } from './AppFooter';
 import { versionLabel } from '../utils/appVersion';
 import { BinderShowcase } from './auth/BinderShowcase';
@@ -8,7 +8,6 @@ import { FeatureBento } from './auth/FeatureBento';
 import { useShowcaseCards } from './auth/useShowcaseCards';
 import { AuthUser } from '../types';
 import { emailAuthApi } from '../services/api';
-import { Lock, Mail, User, ArrowRight, ArrowLeft, CheckCircle2, AlertCircle, Loader2, MailCheck } from 'lucide-react';
 
 interface AuthViewProps {
   onAuthSuccess: (user: AuthUser, token: string) => void;
@@ -34,6 +33,7 @@ export const AuthView: React.FC<AuthViewProps> = ({ onAuthSuccess, initialMode =
   const [error, setError] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const formCardRef = useRef<HTMLDivElement | null>(null);
   const usernameRef = useRef<HTMLInputElement | null>(null);
   const [focusUsername, setFocusUsername] = useState(false);
@@ -185,8 +185,38 @@ export const AuthView: React.FC<AuthViewProps> = ({ onAuthSuccess, initialMode =
     setPendingEmail(null);
   };
   const inputCls =
-    'w-full bg-stone-950 border border-stone-700 focus:border-amber-400 focus:ring-2 focus:ring-amber-400/30 rounded-xl pl-10 pr-3.5 py-3 text-base sm:text-sm text-stone-100 placeholder-stone-500 focus:outline-none transition-colors';
-  const labelCls = 'block text-sm font-medium text-stone-300 mb-1.5';
+    'w-full h-11 bg-stone-950 border border-stone-700 hover:border-stone-600 focus:border-amber-400 focus:ring-2 focus:ring-amber-400/25 rounded-lg px-3.5 text-base sm:text-sm text-stone-100 placeholder-stone-500 focus:outline-none transition-colors';
+  const labelCls = 'block text-sm font-medium text-stone-200';
+  const linkCls = 'font-medium text-amber-300 hover:text-amber-200 underline underline-offset-[3px] decoration-amber-300/40 hover:decoration-amber-200 cursor-pointer';
+  const primaryBtnCls =
+    'w-full h-11 px-4 rounded-lg bg-amber-400 hover:bg-amber-300 active:translate-y-px text-stone-950 font-semibold text-sm transition-colors cursor-pointer disabled:opacity-60 disabled:cursor-wait';
+  const secondaryBtnCls =
+    'w-full h-11 rounded-lg border border-stone-700 hover:border-stone-500 text-stone-100 text-sm font-medium cursor-pointer transition-colors disabled:opacity-60 disabled:cursor-not-allowed';
+
+  // Komunikaty: zwykły akapit z kreską z lewej, bez ikon
+  const notices = (
+    <>
+      {error && (
+        <p role="alert" className="border-l-2 border-rose-400 bg-rose-500/[0.08] rounded-r-md pl-3 pr-3 py-2.5 text-sm text-rose-200 leading-relaxed">
+          {error}
+        </p>
+      )}
+      {successMsg && (
+        <p role="status" className="border-l-2 border-emerald-400 bg-emerald-500/[0.08] rounded-r-md pl-3 pr-3 py-2.5 text-sm text-emerald-200 leading-relaxed">
+          {successMsg}
+        </p>
+      )}
+    </>
+  );
+
+  const backToLogin = (
+    <p className="text-sm text-stone-400">
+      Pamiętasz już?{' '}
+      <button type="button" onClick={() => switchMode('login')} className={linkCls}>
+        Wróć do logowania
+      </button>
+    </p>
+  );
 
   return (
     <div className="auth-page relative isolate min-h-dvh bg-stone-950 text-stone-100 overflow-x-clip">
@@ -223,230 +253,153 @@ export const AuthView: React.FC<AuthViewProps> = ({ onAuthSuccess, initialMode =
           </div>
 
           {/* Formularz */}
-          <div ref={formCardRef} className="rounded-2xl bg-stone-900/90 backdrop-blur-md ring-1 ring-stone-700/60 p-5 sm:p-6 space-y-5 scroll-mt-6 shadow-[0_24px_60px_-24px_rgba(12,10,9,0.9)]">
+          <div ref={formCardRef} className="max-w-md rounded-xl bg-stone-900 border border-stone-800 p-6 sm:p-7 scroll-mt-6">
             {pendingEmail ? (
-              <div className="space-y-4">
-                <div className="w-12 h-12 rounded-2xl bg-amber-400/15 ring-1 ring-amber-400/30 text-amber-300 flex items-center justify-center">
-                  <MailCheck className="w-6 h-6" aria-hidden="true" />
-                </div>
-                <div className="space-y-1.5">
-                  <h2 className="text-lg font-bold text-stone-50">Sprawdź skrzynkę</h2>
+              <div className="space-y-5">
+                <div className="space-y-2">
+                  <h2 className="text-xl font-semibold tracking-tight text-stone-50">Sprawdź skrzynkę</h2>
                   <p className="text-sm text-stone-300 leading-relaxed">
-                    Wysłaliśmy link aktywacyjny na <strong className="text-stone-50 break-all">{pendingEmail}</strong>. Kliknij go, aby potwierdzić adres i zalogować się. Link jest ważny 24 godziny.
+                    Wysłaliśmy link aktywacyjny na <strong className="font-semibold text-stone-50 break-all">{pendingEmail}</strong>. Kliknij go, aby potwierdzić adres i zalogować się. Link jest ważny 24 godziny.
                   </p>
-                  <p className="text-xs text-stone-500">Nie widzisz maila? Zajrzyj do folderu spam albo „Oferty”.</p>
+                  <p className="text-sm text-stone-500">Nie widzisz maila? Zajrzyj do folderu spam albo „Oferty”.</p>
                 </div>
-                {error && (
-                  <p role="alert" className="p-3 rounded-xl bg-rose-500/10 ring-1 ring-rose-500/30 flex items-start gap-2.5 text-sm text-rose-200">
-                    <AlertCircle className="w-4 h-4 shrink-0 text-rose-300 mt-0.5" aria-hidden="true" />
-                    <span>{error}</span>
-                  </p>
-                )}
-                {successMsg && (
-                  <p role="status" className="p-3 rounded-xl bg-emerald-500/10 ring-1 ring-emerald-500/30 flex items-start gap-2.5 text-sm text-emerald-200">
-                    <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-300 mt-0.5" aria-hidden="true" />
-                    <span>{successMsg}</span>
-                  </p>
-                )}
+                {notices}
                 <button
                   type="button"
                   disabled={resending || resendIn > 0}
                   onClick={() => resendVerification(pendingEmail)}
-                  className="w-full h-11 rounded-xl bg-stone-800 hover:bg-stone-700 text-stone-100 text-sm font-semibold flex items-center justify-center gap-2 cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
+                  className={secondaryBtnCls}
                 >
-                  {resending && <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />}
-                  {resendIn > 0 ? <span className="tabular-nums">Wyślij ponownie za {resendIn} s</span> : 'Wyślij link ponownie'}
+                  {resending ? 'Wysyłam...' : resendIn > 0 ? <span className="tabular-nums">Wyślij ponownie za {resendIn} s</span> : 'Wyślij link ponownie'}
                 </button>
-                <button
-                  type="button"
-                  onClick={() => switchMode('login')}
-                  className="w-full h-10 text-sm font-medium text-stone-400 hover:text-stone-200 flex items-center justify-center gap-1.5 cursor-pointer"
-                >
-                  <ArrowLeft className="w-4 h-4" aria-hidden="true" />
-                  Wróć do logowania
-                </button>
+                {backToLogin}
               </div>
             ) : mode === 'forgot' ? (
-              <form onSubmit={handleForgot} className="space-y-4">
-                <div className="space-y-1.5">
-                  <h2 className="text-lg font-bold text-stone-50">Nie pamiętasz hasła?</h2>
+              <form onSubmit={handleForgot} className="space-y-5">
+                <div className="space-y-2">
+                  <h2 className="text-xl font-semibold tracking-tight text-stone-50">Nowe hasło</h2>
                   <p className="text-sm text-stone-400 leading-relaxed">Podaj adres e-mail użyty przy rejestracji. Wyślemy na niego link do ustawienia nowego hasła.</p>
                 </div>
-                <div>
+                <div className="space-y-2">
                   <label htmlFor="auth-forgot-email" className={labelCls}>Adres e-mail</label>
-                  <div className="relative">
-                    <Mail className="w-4 h-4 text-stone-500 absolute left-3.5 top-1/2 -translate-y-1/2" aria-hidden="true" />
-                    <input
-                      id="auth-forgot-email"
-                      type="email"
-                      required
-                      autoComplete="email"
-                      autoFocus
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      className={inputCls}
-                    />
-                  </div>
+                  <input
+                    id="auth-forgot-email"
+                    type="email"
+                    required
+                    autoComplete="email"
+                    autoFocus
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    className={inputCls}
+                  />
                 </div>
-                {error && (
-                  <p role="alert" className="p-3 rounded-xl bg-rose-500/10 ring-1 ring-rose-500/30 flex items-start gap-2.5 text-sm text-rose-200">
-                    <AlertCircle className="w-4 h-4 shrink-0 text-rose-300 mt-0.5" aria-hidden="true" />
-                    <span>{error}</span>
-                  </p>
-                )}
-                {successMsg && (
-                  <p role="status" className="p-3 rounded-xl bg-emerald-500/10 ring-1 ring-emerald-500/30 flex items-start gap-2.5 text-sm text-emerald-200">
-                    <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-300 mt-0.5" aria-hidden="true" />
-                    <span>{successMsg}</span>
-                  </p>
-                )}
-                <button
-                  type="submit"
-                  disabled={isLoading}
-                  className="w-full h-12 px-4 rounded-xl bg-amber-400 hover:bg-amber-300 active:scale-[0.98] text-stone-950 font-bold text-sm flex items-center justify-center gap-2 transition-[background-color,transform] cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
-                >
-                  {isLoading ? <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" /> : <Mail className="w-4 h-4" aria-hidden="true" />}
-                  <span>{isLoading ? 'Chwileczkę...' : 'Wyślij link'}</span>
+                {notices}
+                <button type="submit" disabled={isLoading} className={primaryBtnCls}>
+                  {isLoading ? 'Wysyłam...' : 'Wyślij link'}
                 </button>
-                <button
-                  type="button"
-                  onClick={() => switchMode('login')}
-                  className="w-full h-10 text-sm font-medium text-stone-400 hover:text-stone-200 flex items-center justify-center gap-1.5 cursor-pointer"
-                >
-                  <ArrowLeft className="w-4 h-4" aria-hidden="true" />
-                  Wróć do logowania
-                </button>
+                {backToLogin}
               </form>
             ) : (
-              <>
-              <div className="grid grid-cols-2 gap-1 p-1 rounded-xl bg-stone-950 ring-1 ring-stone-800" role="tablist" aria-label="Logowanie lub rejestracja">
-                {(['login', 'register'] as AuthMode[]).map((m) => (
-                  <button
-                    key={m}
-                    type="button"
-                    role="tab"
-                    aria-selected={mode === m}
-                    onClick={() => switchMode(m)}
-                    className={`h-10 rounded-lg text-sm font-semibold transition-colors cursor-pointer ${
-                      mode === m ? 'bg-stone-800 text-stone-50 shadow-sm' : 'text-stone-400 hover:text-stone-200'
-                    }`}
-                  >
-                    {m === 'login' ? 'Logowanie' : 'Załóż konto'}
-                  </button>
-                ))}
-              </div>
+              <form onSubmit={handleSubmit} className="space-y-5">
+                <div className="space-y-1.5">
+                  <h2 className="text-xl font-semibold tracking-tight text-stone-50">
+                    {mode === 'register' ? 'Załóż konto' : 'Zaloguj się'}
+                  </h2>
+                  <p className="text-sm text-stone-400">
+                    {mode === 'register' ? 'Masz już konto?' : 'Pierwszy raz tutaj?'}{' '}
+                    <button type="button" onClick={() => switchMode(mode === 'register' ? 'login' : 'register')} className={linkCls}>
+                      {mode === 'register' ? 'Zaloguj się' : 'Załóż darmowe konto'}
+                    </button>
+                  </p>
+                </div>
 
-              <form onSubmit={handleSubmit} className="space-y-4" noValidate={false}>
                 {mode === 'register' && (
-                  <div>
+                  <div className="space-y-2">
                     <label htmlFor="auth-username" className={labelCls}>Nazwa gracza</label>
-                    <div className="relative">
-                      <User className="w-4 h-4 text-stone-500 absolute left-3.5 top-1/2 -translate-y-1/2" aria-hidden="true" />
-                      <input
-                        id="auth-username"
-                        type="text"
-                        required
-                        ref={usernameRef}
-                        autoComplete="username"
-                        value={username}
-                        onChange={(e) => setUsername(e.target.value)}
-                        className={inputCls}
-                        aria-describedby="auth-username-help"
-                      />
-                    </div>
-                    <p id="auth-username-help" className="text-xs text-stone-500 mt-1.5">Widoczna dla innych graczy, np. w ofercie sprzedaży.</p>
+                    <input
+                      id="auth-username"
+                      type="text"
+                      required
+                      ref={usernameRef}
+                      autoComplete="username"
+                      value={username}
+                      onChange={(e) => setUsername(e.target.value)}
+                      className={inputCls}
+                      aria-describedby="auth-username-help"
+                    />
+                    <p id="auth-username-help" className="text-xs text-stone-500">Widoczna dla innych graczy, np. w ofercie sprzedaży.</p>
                   </div>
                 )}
 
-                <div>
+                <div className="space-y-2">
                   <label htmlFor="auth-email" className={labelCls}>Adres e-mail</label>
-                  <div className="relative">
-                    <Mail className="w-4 h-4 text-stone-500 absolute left-3.5 top-1/2 -translate-y-1/2" aria-hidden="true" />
-                    <input
-                      id="auth-email"
-                      type="email"
-                      required
-                      autoComplete="email"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      className={inputCls}
-                    />
-                  </div>
+                  <input
+                    id="auth-email"
+                    type="email"
+                    required
+                    autoComplete="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    className={inputCls}
+                  />
                 </div>
 
-                <div>
-                  <label htmlFor="auth-password" className={labelCls}>Hasło</label>
+                <div className="space-y-2">
+                  <div className="flex items-baseline justify-between gap-3">
+                    <label htmlFor="auth-password" className={labelCls}>Hasło</label>
+                    {mode === 'login' && (
+                      <button
+                        type="button"
+                        onClick={() => switchMode('forgot')}
+                        className="text-xs font-medium text-stone-400 hover:text-amber-300 underline-offset-[3px] hover:underline cursor-pointer"
+                      >
+                        Nie pamiętasz?
+                      </button>
+                    )}
+                  </div>
                   <div className="relative">
-                    <Lock className="w-4 h-4 text-stone-500 absolute left-3.5 top-1/2 -translate-y-1/2" aria-hidden="true" />
                     <input
                       id="auth-password"
-                      type="password"
+                      type={showPassword ? 'text' : 'password'}
                       required
                       autoComplete={mode === 'register' ? 'new-password' : 'current-password'}
                       minLength={mode === 'register' ? 8 : undefined}
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
-                      className={inputCls}
+                      className={`${inputCls} pr-16`}
                       aria-describedby={mode === 'register' ? 'auth-password-help' : undefined}
                     />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword((v) => !v)}
+                      aria-pressed={showPassword}
+                      aria-controls="auth-password"
+                      className="absolute right-1.5 top-1/2 -translate-y-1/2 h-8 px-2.5 rounded-md text-xs font-medium text-stone-400 hover:text-stone-100 hover:bg-stone-800 cursor-pointer"
+                    >
+                      {showPassword ? 'Ukryj' : 'Pokaż'}
+                    </button>
                   </div>
-                  {mode === 'register' && <p id="auth-password-help" className="text-xs text-stone-500 mt-1.5">Co najmniej 8 znaków.</p>}
-                  {mode === 'login' && (
-                    <div className="mt-2 text-right">
-                      <button
-                        type="button"
-                        onClick={() => switchMode('forgot')}
-                        className="text-xs font-medium text-stone-400 hover:text-amber-300 underline-offset-2 hover:underline cursor-pointer"
-                      >
-                        Nie pamiętasz hasła?
-                      </button>
-                    </div>
-                  )}
+                  {mode === 'register' && <p id="auth-password-help" className="text-xs text-stone-500">Co najmniej 8 znaków.</p>}
                 </div>
 
-                {error && (
-                  <p role="alert" className="p-3 rounded-xl bg-rose-500/10 ring-1 ring-rose-500/30 flex items-start gap-2.5 text-sm text-rose-200">
-                    <AlertCircle className="w-4 h-4 shrink-0 text-rose-300 mt-0.5" aria-hidden="true" />
-                    <span>{error}</span>
-                  </p>
-                )}
-                {successMsg && (
-                  <p role="status" className="p-3 rounded-xl bg-emerald-500/10 ring-1 ring-emerald-500/30 flex items-start gap-2.5 text-sm text-emerald-200">
-                    <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-300 mt-0.5" aria-hidden="true" />
-                    <span>{successMsg}</span>
-                  </p>
-                )}
+                {notices}
                 {canResend && mode === 'login' && (
                   <button
                     type="button"
                     disabled={resending || resendIn > 0}
                     onClick={() => resendVerification(email.trim().toLowerCase())}
-                    className="w-full h-10 rounded-xl bg-stone-800 hover:bg-stone-700 text-stone-100 text-sm font-semibold flex items-center justify-center gap-2 cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
+                    className={secondaryBtnCls}
                   >
-                    {resending && <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />}
-                    {resendIn > 0 ? <span className="tabular-nums">Wyślij link ponownie za {resendIn} s</span> : 'Wyślij link potwierdzający ponownie'}
+                    {resending ? 'Wysyłam...' : resendIn > 0 ? <span className="tabular-nums">Wyślij link ponownie za {resendIn} s</span> : 'Wyślij link potwierdzający ponownie'}
                   </button>
                 )}
 
-                <button
-                  type="submit"
-                  disabled={isLoading}
-                  className="w-full h-12 px-4 rounded-xl bg-amber-400 hover:bg-amber-300 active:scale-[0.98] text-stone-950 font-bold text-sm flex items-center justify-center gap-2 transition-[background-color,transform] cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
-                >
-                  {isLoading ? (
-                    <>
-                      <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />
-                      <span>Chwileczkę...</span>
-                    </>
-                  ) : (
-                    <>
-                      <span>{mode === 'register' ? 'Załóż konto' : 'Zaloguj się'}</span>
-                      <ArrowRight className="w-4 h-4" aria-hidden="true" />
-                    </>
-                  )}
+                <button type="submit" disabled={isLoading} className={primaryBtnCls}>
+                  {isLoading
+                    ? mode === 'register' ? 'Zakładam konto...' : 'Loguję...'
+                    : mode === 'register' ? 'Załóż konto' : 'Zaloguj się'}
                 </button>
               </form>
-              </>
             )}
           </div>
         </div>
@@ -482,7 +435,7 @@ export const AuthView: React.FC<AuthViewProps> = ({ onAuthSuccess, initialMode =
             <button
               type="button"
               onClick={startRegistration}
-              className="h-12 px-6 rounded-xl bg-amber-400 hover:bg-amber-300 active:scale-[0.98] text-stone-950 font-bold text-sm shrink-0 cursor-pointer transition-[background-color,transform]"
+              className="h-11 px-6 rounded-lg bg-amber-400 hover:bg-amber-300 active:translate-y-px text-stone-950 font-semibold text-sm shrink-0 cursor-pointer transition-colors"
             >
               Załóż konto
             </button>
@@ -502,7 +455,10 @@ export const AuthView: React.FC<AuthViewProps> = ({ onAuthSuccess, initialMode =
             <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer" className="underline hover:text-stone-300">OpenStreetMap</a>.
           </p>
           <p>
-            Lubisz Mana Screw? <SupportButton variant="link" /> <span className="text-stone-600">·</span> <DiscordButton variant="link" />
+            Lubisz Mana Screw?{' '}
+            <a href={SUPPORT_URL} target="_blank" rel="noopener noreferrer" className="text-amber-300 hover:text-amber-200 underline-offset-2 hover:underline">Postaw kawę</a>
+            <span className="text-stone-600"> · </span>
+            <a href={DISCORD_URL} target="_blank" rel="noopener noreferrer" className="text-stone-400 hover:text-stone-200 underline-offset-2 hover:underline">Discord</a>
           </p>
           <p>
             manascrew.eu nie odpowiada za oszustwa wynikające z handlu między graczami. <TermsLink />

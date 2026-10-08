@@ -1,5 +1,4 @@
 import React from 'react';
-import { ScanLine, FolderOpen, Coins, Link2, MapPin, Swords, Layers } from 'lucide-react';
 import type { ShowcaseCard } from './useShowcaseCards';
 
 /**
@@ -37,7 +36,6 @@ export const FeatureBento: React.FC<{ cards: ShowcaseCard[] }> = ({ cards }) => 
       {/* Skaner: duże pole z kartą w ramce celownika */}
       <article className="md:col-span-3 md:row-span-2 relative overflow-hidden rounded-2xl bg-stone-900 ring-1 ring-stone-800 p-6 flex flex-col gap-6 min-h-[320px]">
         <div className="space-y-2 max-w-sm">
-          <ScanLine className="w-6 h-6 text-amber-400" strokeWidth={1.75} aria-hidden="true" />
           <h3 className="text-xl font-bold text-stone-50">Skaner kart w telefonie</h3>
           <p className="text-sm text-stone-400 leading-relaxed">Nakieruj aparat na kartę. Aplikacja rozpozna nazwę, wydanie i cenę, także wersje japońskie. Bez limitu skanów.</p>
         </div>
@@ -56,8 +54,7 @@ export const FeatureBento: React.FC<{ cards: ShowcaseCard[] }> = ({ cards }) => 
       <article className="md:col-span-3 relative overflow-hidden rounded-2xl bg-stone-900 ring-1 ring-amber-400/30 p-6 flex flex-col gap-5">
         <div className="flex flex-col sm:flex-row gap-5">
           <div className="space-y-2 sm:flex-1">
-            <div className="flex items-center gap-2.5">
-              <Swords className="w-6 h-6 text-amber-400" strokeWidth={1.75} aria-hidden="true" />
+            <div>
               <NewBadge />
             </div>
             <h3 className="text-lg font-bold text-stone-50">Talie w każdym formacie, także MTG Arena</h3>
@@ -106,10 +103,9 @@ export const FeatureBento: React.FC<{ cards: ShowcaseCard[] }> = ({ cards }) => 
       {/* Nowość: kolekcja według dodatków z procentem skompletowania */}
       <article className="md:col-span-3 relative overflow-hidden rounded-2xl bg-stone-900 ring-1 ring-amber-400/30 p-6 flex flex-col sm:flex-row gap-5 sm:items-center">
         <div className="space-y-2 sm:flex-1">
-          <div className="flex items-center gap-2.5">
-            <Layers className="w-6 h-6 text-amber-400" strokeWidth={1.75} aria-hidden="true" />
-            <NewBadge />
-          </div>
+          <div>
+              <NewBadge />
+            </div>
           <h3 className="text-lg font-bold text-stone-50">Kolekcja według dodatków</h3>
           <p className="text-sm text-stone-400 leading-relaxed">
             Zobacz symbole wszystkich dodatków, z których masz karty, i ile procent każdego już skompletowałeś. Kliknij dodatek, aby przejrzeć jego karty.
@@ -141,7 +137,6 @@ export const FeatureBento: React.FC<{ cards: ShowcaseCard[] }> = ({ cards }) => 
       {/* Klasery: pasek z grafikami kart */}
       <article className="md:col-span-3 relative overflow-hidden rounded-2xl bg-stone-900 ring-1 ring-stone-800 p-6 flex flex-col sm:flex-row gap-5 sm:items-center">
         <div className="space-y-2 sm:flex-1">
-          <FolderOpen className="w-6 h-6 text-amber-400" strokeWidth={1.75} aria-hidden="true" />
           <h3 className="text-lg font-bold text-stone-50">Klasery i filtry</h3>
           <p className="text-sm text-stone-400 leading-relaxed">Dziel kolekcję na klasery, oznaczaj foile i wersje językowe, filtruj po kolorze, secie i rzadkości.</p>
         </div>
@@ -156,7 +151,6 @@ export const FeatureBento: React.FC<{ cards: ShowcaseCard[] }> = ({ cards }) => 
 
       {/* Wycena: pole z tłem w odcieniu akcentu */}
       <article className="md:col-span-3 rounded-2xl bg-amber-400 text-stone-950 p-6 flex flex-col justify-between gap-4">
-        <Coins className="w-6 h-6" strokeWidth={1.75} aria-hidden="true" />
         <div className="space-y-1.5">
           <h3 className="text-lg font-bold">Wycena w złotówkach</h3>
           <p className="text-sm text-stone-900/80 leading-relaxed">
@@ -167,7 +161,6 @@ export const FeatureBento: React.FC<{ cards: ShowcaseCard[] }> = ({ cards }) => 
 
       {/* Link do oferty */}
       <article className="md:col-span-3 rounded-2xl bg-stone-900 ring-1 ring-stone-800 p-6 flex flex-col gap-4">
-        <Link2 className="w-6 h-6 text-amber-400" strokeWidth={1.75} aria-hidden="true" />
         <div className="space-y-1.5">
           <h3 className="text-lg font-bold text-stone-50">Oferta jednym linkiem</h3>
           <p className="text-sm text-stone-400 leading-relaxed">Oznacz karty na sprzedaż i wyślij link. Kupujący przejrzy ofertę bez konta i napisze do Ciebie prosto z niej.</p>
@@ -187,7 +180,7 @@ export const FeatureBento: React.FC<{ cards: ShowcaseCard[] }> = ({ cards }) => 
           className="absolute inset-0 w-full h-full object-cover grayscale-[0.6] brightness-[0.45] contrast-125"
           aria-hidden="true"
         />
-        <MapPin className="absolute top-[38%] left-[52%] w-8 h-8 text-amber-400 fill-amber-400/30 drop-shadow-lg" strokeWidth={1.75} aria-hidden="true" />
+        <span className="absolute top-[42%] left-[54%] w-4 h-4 -translate-x-1/2 -translate-y-1/2 rounded-full bg-amber-400 ring-4 ring-amber-400/25" aria-hidden="true" />
         <div className="relative p-6 space-y-1.5 bg-gradient-to-t from-stone-950 via-stone-950/85 to-transparent pt-16">
           <h3 className="text-lg font-bold text-stone-50">Gracze w okolicy</h3>
           <p className="text-sm text-stone-300 leading-relaxed">Mapa pokazuje, kto w Twoim mieście sprzedaje karty z Twojej listy życzeń.</p>

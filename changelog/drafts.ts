@@ -26,6 +26,7 @@ export interface ChangelogDraft {
 
 export const CHANGELOG_DRAFTS: ChangelogDraft[] = [
   // ---------- 8 października 2026 ----------
+  { id: '2026-10-08-nowy-ekran-logowania', day: '2026-10-08', type: 'improved', area: 'Logowanie', text: 'Ekran logowania jest prostszy i czytelniejszy, a wpisane hasło możesz podejrzeć przyciskiem „Pokaż”.' },
   { id: '2026-10-08-kolekcja-strony', day: '2026-10-08', type: 'new', area: 'Kolekcja', text: 'Kolekcja jest teraz podzielona na strony, a liczbę wierszy kart na stronie (12, 24, 48 lub 60) wybierasz sam i zostaje zapamiętana na Twoim koncie.' },
   { id: '2026-10-08-wczytywanie-katalogu', day: '2026-10-08', type: 'improved', area: 'Kolekcja', text: 'Przejście do katalogu z dużą liczbą kart pokazuje teraz pasek wczytywania zamiast chwilowego zawieszenia strony.' },
   { id: '2026-10-08-stats-bez-basic-lands', day: '2026-10-08', type: 'improved', area: 'Statystyki', text: 'Wykres kolorów i krzywa many w Statystykach nie wliczają już lądów.' },
