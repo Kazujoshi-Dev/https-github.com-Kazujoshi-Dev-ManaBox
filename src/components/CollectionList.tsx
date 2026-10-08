@@ -9,6 +9,9 @@ import {
   CollectionEmptyState,
   CollectionGridView,
   CollectionTableView,
+  CollectionSetsView,
+  CollectionSetHeader,
+  CollectionViewMode,
   CatalogFormModal,
   CatalogDeleteModal,
   useCollectionFilters,
@@ -44,7 +47,7 @@ export const CollectionList: React.FC<CollectionListProps> = ({
 }) => {
   const [isForSaleAddOpen, setIsForSaleAddOpen] = useState(false);
   // Na telefonie domyślnie lista (więcej kart na ekranie), na większych ekranach siatka.
-  const [viewMode, setViewMode] = useState<'grid' | 'table'>(() =>
+  const [viewMode, setViewMode] = useState<CollectionViewMode>(() =>
     typeof window !== 'undefined' && window.matchMedia?.('(max-width: 767px)').matches ? 'table' : 'grid'
   );
 
@@ -53,11 +56,22 @@ export const CollectionList: React.FC<CollectionListProps> = ({
     filters,
     updateFilters,
     sets,
+    viewSets,
     filteredCollection,
     filteredMetrics,
     hasActiveFilters,
     handleResetFilters,
   } = useCollectionFilters({ collection, settings });
+
+  // Widok „Dodatki”: bez wybranego dodatku pokazujemy siatkę dodatków, po wyborze listę jego kart
+  const showSetsGrid = viewMode === 'sets' && filters.set === 'ALL';
+  const selectedSet = viewMode === 'sets' && filters.set !== 'ALL'
+    ? viewSets.find((s) => s.code.toLowerCase() === filters.set.toLowerCase()) || sets.find((s) => s.code.toLowerCase() === filters.set.toLowerCase())
+    : undefined;
+  const handleSelectSet = (code: string) => {
+    updateFilters({ set: code });
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
 
   // Duże kolekcje dorysowujemy partiami przy wejściu do zakładki (z paskiem postępu)
   const progressive = useProgressiveRender(filteredCollection.length);
@@ -151,21 +165,58 @@ export const CollectionList: React.FC<CollectionListProps> = ({
         catalogs={catalogs}
         viewMode={viewMode}
         onFilterChange={updateFilters}
-        onViewModeChange={setViewMode}
+        onViewModeChange={(mode) => {
+          // Wejście w widok „Dodatki” zawsze zaczyna od siatki wszystkich dodatków
+          if (mode === 'sets' && viewMode !== 'sets') updateFilters({ set: 'ALL' });
+          setViewMode(mode);
+        }}
       />
 
       {/* 3. Results Header Bar */}
-      <CollectionResultsHeader
-        displayedCount={filteredCollection.length}
-        totalCardsCount={filteredMetrics.cardsCount}
-        totalValue={filteredMetrics.totalValue}
-        currency={settings.currency}
-        hasActiveFilters={hasActiveFilters}
-        onResetFilters={handleResetFilters}
-      />
+      {showSetsGrid ? (
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between px-2 text-xs gap-2 text-stone-400">
+          <span>
+            Dodatki w kolekcji: <strong className="text-stone-100 tabular-nums">{viewSets.length}</strong>
+            <span className="max-sm:hidden"> · kliknij dodatek, aby zobaczyć jego karty</span>
+          </span>
+          {hasActiveFilters && (
+            <button
+              onClick={handleResetFilters}
+              className="text-amber-400 hover:text-amber-300 underline text-xs cursor-pointer self-start sm:self-auto"
+            >
+              Wyczyść wszystkie filtry
+            </button>
+          )}
+        </div>
+      ) : (
+        <>
+          {viewMode === 'sets' && (
+            <CollectionSetHeader set={selectedSet} code={filters.set} onBack={() => updateFilters({ set: 'ALL' })} />
+          )}
+          <CollectionResultsHeader
+            displayedCount={filteredCollection.length}
+            totalCardsCount={filteredMetrics.cardsCount}
+            totalValue={filteredMetrics.totalValue}
+            currency={settings.currency}
+            hasActiveFilters={hasActiveFilters}
+            onResetFilters={handleResetFilters}
+          />
+        </>
+      )}
 
       {/* 4. Collection Cards Presentation Area */}
-      {filteredCollection.length === 0 ? (
+      {showSetsGrid ? (
+        viewSets.length === 0 ? (
+          <CollectionEmptyState
+            activeBinder={filters.binder}
+            onOpenAddModal={onOpenAddModal}
+            onOpenScannerModal={onOpenScannerModal}
+            onOpenImportExport={onOpenImportExport}
+          />
+        ) : (
+          <CollectionSetsView sets={viewSets} onSelectSet={handleSelectSet} />
+        )
+      ) : filteredCollection.length === 0 ? (
         <CollectionEmptyState
           activeBinder={filters.binder}
           onOpenAddModal={onOpenAddModal}

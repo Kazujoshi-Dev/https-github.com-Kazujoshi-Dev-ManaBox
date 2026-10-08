@@ -10,6 +10,81 @@ export interface SetOption {
   name: string;
   owned: number;
   total: number | null;
+  /** Data premiery (RRRR-MM-DD), jeśli znana. */
+  released?: string;
+}
+
+/** Czy pozycja kolekcji pasuje do filtrów (bez sortowania). */
+export function matchesFilters(item: CollectionItem, filters: FilterOptions): boolean {
+  const card = item.card;
+  if (!card) return false;
+
+  // Search query
+  if (filters.searchQuery) {
+    const query = filters.searchQuery.toLowerCase();
+    const matchName = card.name.toLowerCase().includes(query);
+    const matchType = card.type_line?.toLowerCase().includes(query);
+    const matchSet = card.set_name?.toLowerCase().includes(query) || card.set.toLowerCase().includes(query);
+    const matchNotes = item.notes?.toLowerCase().includes(query);
+    if (!matchName && !matchType && !matchSet && !matchNotes) return false;
+  }
+
+  // Color filter
+  if (filters.color !== 'ALL') {
+    const colors = card.colors || [];
+    if (filters.color === 'MULTI' && colors.length < 2) return false;
+    if (filters.color === 'C' && colors.length > 0) return false;
+    if (['W', 'U', 'B', 'R', 'G'].includes(filters.color) && !colors.includes(filters.color)) return false;
+  }
+
+  // Type filter
+  if (filters.type !== 'ALL') {
+    if (!card.type_line?.toLowerCase().includes(filters.type.toLowerCase())) return false;
+  }
+
+  // Rarity filter
+  if (filters.rarity !== 'ALL') {
+    if (card.rarity.toLowerCase() !== filters.rarity.toLowerCase()) return false;
+  }
+
+  // Set filter
+  if (filters.set !== 'ALL') {
+    if (card.set.toLowerCase() !== filters.set.toLowerCase()) return false;
+  }
+
+  // Klaser: karty na sprzedaż są tylko w kategorii „Sprzedam” (i w „Wszystkie karty”)
+  if (filters.binder === FOR_SALE_BINDER) {
+    if (!item.isForSale) return false;
+  } else if (filters.binder !== 'ALL') {
+    if (item.isForSale || (item.binder || 'Klaser Główny') !== filters.binder) return false;
+  }
+
+  // Only Foil filter
+  if (filters.onlyFoil && item.quantityFoil <= 0) return false;
+
+  return true;
+}
+
+/** Dodatki z podanych pozycji: ile różnych kart z dodatku jest i ile liczy cały dodatek; od najnowszej premiery. */
+export function buildSetOptions(items: CollectionItem[], setSizes: Record<string, number>): SetOption[] {
+  const list = new Map<string, { name: string; numbers: Set<string>; released: string }>();
+  items.forEach(item => {
+    if (!item.card || !item.card.set || (item.quantity || 0) + (item.quantityFoil || 0) <= 0) return;
+    const code = item.card.set;
+    let cur = list.get(code);
+    if (!cur) list.set(code, (cur = { name: item.card.set_name || code.toUpperCase(), numbers: new Set(), released: '' }));
+    cur.numbers.add(String(item.card.collector_number || item.card.name).toLowerCase());
+    // Data premiery dodatku: najwcześniejsza data wydania kart z tego dodatku w kolekcji
+    const released = item.card.released_at || '';
+    if (released && (!cur.released || released < cur.released)) cur.released = released;
+  });
+  return Array.from(list.entries())
+    .sort(([, a], [, b]) => (b.released || '').localeCompare(a.released || '') || a.name.localeCompare(b.name))
+    .map(([code, { name, numbers, released }]) => {
+      const total = setSizes[code.toLowerCase()] || null;
+      // Gdy baza zna mniej kart niż masz (np. niepełne dane), nie pokazujemy mylącego procentu
+      return { code, name, owned: numbers.size, total: total && total >= numbers.size ? total : null, released: released || undefined };
+    });
 }
 
 let setSizesMemo: Record<string, number> | null = null;
@@ -40,79 +115,18 @@ export function useCollectionFilters({ collection, settings }: UseCollectionFilt
     };
   }, []);
 
-  // Dodatki do listy: skompletowanie (różne karty z dodatku / wszystkie karty dodatku), od najnowszej premiery
-  const sets = useMemo((): SetOption[] => {
-    const list = new Map<string, { name: string; numbers: Set<string>; released: string }>();
-    collection.forEach(item => {
-      if (!item.card || !item.card.set || (item.quantity || 0) + (item.quantityFoil || 0) <= 0) return;
-      const code = item.card.set;
-      let cur = list.get(code);
-      if (!cur) list.set(code, (cur = { name: item.card.set_name || code.toUpperCase(), numbers: new Set(), released: '' }));
-      cur.numbers.add(String(item.card.collector_number || item.card.name).toLowerCase());
-      // Data premiery dodatku: najwcześniejsza data wydania kart z tego dodatku w kolekcji
-      const released = item.card.released_at || '';
-      if (released && (!cur.released || released < cur.released)) cur.released = released;
-    });
-    return Array.from(list.entries())
-      .sort(([, a], [, b]) => (b.released || '').localeCompare(a.released || '') || a.name.localeCompare(b.name))
-      .map(([code, { name, numbers }]) => {
-        const total = setSizes[code.toLowerCase()] || null;
-        // Gdy baza zna mniej kart niż masz (np. niepełne dane), nie pokazujemy mylącego procentu
-        return { code, name, owned: numbers.size, total: total && total >= numbers.size ? total : null };
-      });
-  }, [collection, setSizes]);
+  // Dodatki do listy filtra: skompletowanie w całej kolekcji, od najnowszej premiery
+  const sets = useMemo(() => buildSetOptions(collection, setSizes), [collection, setSizes]);
+
+  // Widok „Dodatki”: te same dodatki, ale tylko z kart pasujących do pozostałych filtrów (np. wybranego klasera)
+  const viewSets = useMemo(() => {
+    const noSetFilter = { ...filters, set: 'ALL' };
+    return buildSetOptions(collection.filter((item) => matchesFilters(item, noSetFilter)), setSizes);
+  }, [collection, filters, setSizes]);
 
   // Filter & Sort Logic
   const filteredCollection = useMemo(() => {
-    return collection.filter(item => {
-      const card = item.card;
-      if (!card) return false;
-
-      // Search query
-      if (filters.searchQuery) {
-        const query = filters.searchQuery.toLowerCase();
-        const matchName = card.name.toLowerCase().includes(query);
-        const matchType = card.type_line?.toLowerCase().includes(query);
-        const matchSet = card.set_name?.toLowerCase().includes(query) || card.set.toLowerCase().includes(query);
-        const matchNotes = item.notes?.toLowerCase().includes(query);
-        if (!matchName && !matchType && !matchSet && !matchNotes) return false;
-      }
-
-      // Color filter
-      if (filters.color !== 'ALL') {
-        const colors = card.colors || [];
-        if (filters.color === 'MULTI' && colors.length < 2) return false;
-        if (filters.color === 'C' && colors.length > 0) return false;
-        if (['W', 'U', 'B', 'R', 'G'].includes(filters.color) && !colors.includes(filters.color)) return false;
-      }
-
-      // Type filter
-      if (filters.type !== 'ALL') {
-        if (!card.type_line?.toLowerCase().includes(filters.type.toLowerCase())) return false;
-      }
-
-      // Rarity filter
-      if (filters.rarity !== 'ALL') {
-        if (card.rarity.toLowerCase() !== filters.rarity.toLowerCase()) return false;
-      }
-
-      // Set filter
-      if (filters.set !== 'ALL') {
-        if (card.set.toLowerCase() !== filters.set.toLowerCase()) return false;
-      }
-
-      // Klaser: karty na sprzedaż są tylko w kategorii „Sprzedam” (i w „Wszystkie karty”)
-      if (filters.binder === FOR_SALE_BINDER) {
-        if (!item.isForSale) return false;
-      } else if (filters.binder !== 'ALL') {
-        if (item.isForSale || (item.binder || 'Klaser Główny') !== filters.binder) return false;
-      }
-
-      // Only Foil filter
-      if (filters.onlyFoil && item.quantityFoil <= 0) return false;
-
-      return true;
-    }).sort((a, b) => {
+    return collection.filter(item => matchesFilters(item, filters)).sort((a, b) => {
       const cardA = a.card;
       const cardB = b.card;
       
@@ -180,6 +194,7 @@ export function useCollectionFilters({ collection, settings }: UseCollectionFilt
     setFilters,
     updateFilters,
     sets,
+    viewSets,
     filteredCollection,
     filteredMetrics,
     hasActiveFilters,

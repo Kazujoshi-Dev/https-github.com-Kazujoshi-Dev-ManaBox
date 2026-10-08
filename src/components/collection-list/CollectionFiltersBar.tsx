@@ -1,6 +1,6 @@
 import { FOR_SALE_BINDER } from './constants';
 import React, { useState } from 'react';
-import { Search, X, Sparkles, LayoutGrid, List, SlidersHorizontal } from 'lucide-react';
+import { Search, X, Sparkles, LayoutGrid, List, SlidersHorizontal, Library } from 'lucide-react';
 import { CollectionFiltersBarProps } from './types';
 import { COLOR_PILLS, CARD_TYPES, CARD_RARITIES, SORT_OPTIONS } from './constants';
 
@@ -93,6 +93,14 @@ export const CollectionFiltersBar: React.FC<CollectionFiltersBarProps> = ({
             className={`w-10 h-9 rounded-lg flex items-center justify-center ${viewMode === 'grid' ? 'bg-stone-800 text-amber-400' : 'text-stone-500'}`}
           >
             <LayoutGrid className="w-5 h-5" />
+          </button>
+          <button
+            type="button"
+            onClick={() => onViewModeChange('sets')}
+            aria-label="Widok dodatków"
+            className={`w-10 h-9 rounded-lg flex items-center justify-center ${viewMode === 'sets' ? 'bg-stone-800 text-amber-400' : 'text-stone-500'}`}
+          >
+            <Library className="w-5 h-5" />
           </button>
         </div>
       </div>
@@ -207,6 +215,13 @@ export const CollectionFiltersBar: React.FC<CollectionFiltersBarProps> = ({
               title="Widok tabeli"
             >
               <List className="w-4 h-4" />
+            </button>
+            <button
+              onClick={() => onViewModeChange('sets')}
+              className={`p-1 rounded transition-colors cursor-pointer ${viewMode === 'sets' ? 'bg-stone-800 text-amber-400' : 'text-stone-500 hover:text-stone-300'}`}
+              title="Widok dodatków"
+            >
+              <Library className="w-4 h-4" />
             </button>
           </div>
         </div>

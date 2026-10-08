@@ -1,6 +1,9 @@
 import type { FormEvent, MouseEvent } from 'react';
 import { CollectionItem, FilterOptions, AppSettings, Catalog, DeckItem } from '../../types';
 
+/** Sposób wyświetlania kolekcji: kafelki, lista albo dodatki. */
+export type CollectionViewMode = 'grid' | 'table' | 'sets';
+
 export interface CollectionListProps {
   collection: CollectionItem[];
   settings: AppSettings;
@@ -56,9 +59,9 @@ export interface CollectionFiltersBarProps {
   filters: FilterOptions;
   sets: import('./useCollectionFilters').SetOption[];
   catalogs: Catalog[];
-  viewMode: 'grid' | 'table';
+  viewMode: CollectionViewMode;
   onFilterChange: (newFilters: Partial<FilterOptions>) => void;
-  onViewModeChange: (mode: 'grid' | 'table') => void;
+  onViewModeChange: (mode: CollectionViewMode) => void;
 }
 
 export interface CollectionResultsHeaderProps {

@@ -8,6 +8,7 @@ export * from './CollectionResultsHeader';
 export * from './CollectionEmptyState';
 export * from './CollectionGridView';
 export * from './CollectionTableView';
+export * from './CollectionSetsView';
 export * from './CatalogFormModal';
 export * from './CatalogDeleteModal';
 export * from './CollectionLoadingOverlay';
