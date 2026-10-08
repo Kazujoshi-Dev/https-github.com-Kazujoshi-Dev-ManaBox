@@ -28,7 +28,7 @@ import { CollectionHistoryModal } from './components/CollectionHistoryModal';
 const BugReportModal = lazyWithReload(() => import('./components/BugReportModal'));
 
 const TAB_LABELS: Record<string, string> = {
-  collection: 'Kolekcja', decks: 'Talie', search: 'Szukaj kart', 'set-top': 'Top z dodatku', analytics: 'Statystyki',
+  collection: 'Kolekcja', decks: 'Talie', search: 'Szukaj kart', 'set-top': 'Top z dodatku', spoilers: 'Spoilery', analytics: 'Statystyki',
   wishlist: 'Lista życzeń', 'for-sale': 'Sprzedam', users: 'Gracze', changelog: 'Dziennik zmian', admin: 'Admin', settings: 'Ustawienia'
 };
 // Zakładka zapamiętana przed przeładowaniem do nowej wersji aplikacji (odczyt raz, przy starcie)

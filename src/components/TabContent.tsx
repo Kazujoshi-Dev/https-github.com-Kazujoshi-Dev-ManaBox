@@ -22,8 +22,9 @@ import { Analytics } from './Analytics';
 import { Wishlist } from './Wishlist';
 import { ForSaleList } from './ForSaleList';
 import { UsersList } from './UsersList';
+import { SpoilersView } from './SpoilersView';
 
-export type NavigationTab = 'collection' | 'decks' | 'search' | 'set-top' | 'analytics' | 'wishlist' | 'for-sale' | 'users' | 'changelog' | 'admin' | 'settings';
+export type NavigationTab = 'collection' | 'decks' | 'search' | 'set-top' | 'spoilers' | 'analytics' | 'wishlist' | 'for-sale' | 'users' | 'changelog' | 'admin' | 'settings';
 
 interface TabContentProps {
   /** Zakładka „Dziennik zmian” została obejrzana (gasi kropkę „nowe”). */
@@ -211,6 +212,9 @@ export const TabContent: React.FC<TabContentProps> = ({
           onAddToWishlist={onAddToWishlist}
         />
       );
+
+    case 'spoilers':
+      return <SpoilersView onAddToWishlist={onAddToWishlist} />;
 
     case 'analytics':
       return (

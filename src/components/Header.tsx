@@ -11,6 +11,7 @@ import {
   FolderHeart,
   Settings,
   Trophy,
+  Telescope,
   LogOut,
   Swords,
   Camera,
@@ -27,7 +28,7 @@ import { SupportButton } from './ui/SupportButton';
 import { DiscordButton } from './ui/DiscordButton';
 import { AppSettings, AuthUser } from '../types';
 
-type Tab = 'collection' | 'search' | 'set-top' | 'analytics' | 'wishlist' | 'decks' | 'for-sale' | 'users' | 'changelog' | 'admin' | 'settings';
+type Tab = 'collection' | 'search' | 'set-top' | 'spoilers' | 'analytics' | 'wishlist' | 'decks' | 'for-sale' | 'users' | 'changelog' | 'admin' | 'settings';
 
 interface HeaderProps {
   /** Nowe wpisy w dzienniku zmian, których użytkownik nie widział. */
@@ -208,6 +209,7 @@ export const Header: React.FC<HeaderProps> = ({
     { id: 'decks', label: 'Talie', icon: Swords, count: decksCount || undefined },
     { id: 'search', label: 'Szukaj kart', icon: Search },
     { id: 'set-top', label: 'Top z dodatku', icon: Trophy },
+    { id: 'spoilers', label: 'Spoilery', icon: Telescope },
     { id: 'analytics', label: 'Statystyki', icon: BarChart3 },
     { id: 'wishlist', label: 'Lista życzeń', icon: FolderHeart },
     { id: 'for-sale', label: 'Sprzedam', icon: CircleDollarSign, count: forSaleCount || undefined },

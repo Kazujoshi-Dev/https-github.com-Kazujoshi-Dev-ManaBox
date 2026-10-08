@@ -6,6 +6,7 @@ import {
   Search,
   Menu,
   Trophy,
+  Telescope,
   BarChart3,
   FolderHeart,
   CircleDollarSign,
@@ -45,6 +46,7 @@ interface MobileNavProps {
 /** Zakładki dostępne pod „Więcej” — na telefonie nie mieszczą się w dolnym pasku. */
 const MORE_TABS: Array<{ tab: NavigationTab; label: string; icon: React.ElementType }> = [
   { tab: 'set-top', label: 'Top z dodatku', icon: Trophy },
+  { tab: 'spoilers', label: 'Spoilery', icon: Telescope },
   { tab: 'analytics', label: 'Statystyki', icon: BarChart3 },
   { tab: 'wishlist', label: 'Lista życzeń', icon: FolderHeart },
   { tab: 'for-sale', label: 'Sprzedam', icon: CircleDollarSign },

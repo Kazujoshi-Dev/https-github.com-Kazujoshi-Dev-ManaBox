@@ -1548,6 +1548,141 @@ app.get('/api/scryfall/set-top/:setCode', async (req, res) => {
   }
 });
 
+// Spoilery: nadchodzące dodatki i ich zapowiedziane karty (Scryfall).
+// Scryfall dodaje zapowiedziane karty do setu na bieżąco, z polem `preview`
+// (data i źródło zapowiedzi), więc to jedno źródło wystarcza do zakładki „Spoilery”.
+const SPOILER_SET_TYPES = new Set([
+  'expansion', 'core', 'masters', 'draft_innovation', 'commander', 'funny', 'starter',
+  'box', 'duel_deck', 'from_the_vault', 'spellbook', 'premium_deck', 'planechase',
+  'archenemy', 'arsenal', 'masterpiece',
+]);
+/** Ile dni po premierze dodatek zostaje jeszcze w zakładce (świeże premiery wciąż interesują graczy). */
+const SPOILER_RECENT_DAYS = 7;
+const SPOILER_MAX_PAGES = 8; // 8 × 175 kart, z dużym zapasem na każdy dodatek
+const SPOILER_CARDS_TTL_MS = 1000 * 60 * 20; // spoilery pojawiają się w ciągu dnia
+const spoilerCardsCache = new Map<string, { data: any; timestamp: number }>();
+
+const warsawToday = () => new Date().toLocaleDateString('sv-SE', { timeZone: 'Europe/Warsaw' }); // RRRR-MM-DD
+
+function mapSpoilerSet(s: any) {
+  return {
+    id: s.id,
+    code: s.code,
+    name: s.name,
+    released_at: s.released_at || null,
+    set_type: s.set_type,
+    card_count: s.card_count || 0,
+    printed_size: s.printed_size || null,
+    icon_svg_uri: s.icon_svg_uri,
+    scryfall_uri: s.scryfall_uri,
+    parent_set_code: s.parent_set_code || null,
+  };
+}
+
+app.get('/api/scryfall/spoilers', async (_req, res) => {
+  try {
+    const data = await fetchScryfall('/sets');
+    const all: any[] = Array.isArray(data?.data) ? data.data : [];
+    const today = warsawToday();
+    const cutoff = new Date(Date.now() - SPOILER_RECENT_DAYS * 86400000).toISOString().slice(0, 10);
+
+    const upcoming = all
+      .filter((s) => !s.digital && SPOILER_SET_TYPES.has(s.set_type) && s.released_at && s.released_at >= cutoff)
+      .map(mapSpoilerSet);
+    const byCode = new Map(upcoming.map((s) => [s.code, s]));
+
+    // Dodatki poboczne (np. talie Commander) trafiają pod swój główny dodatek
+    const rootOf = (s: any) => {
+      let cur = s;
+      for (let i = 0; i < 5 && cur.parent_set_code && byCode.has(cur.parent_set_code); i++) {
+        cur = byCode.get(cur.parent_set_code);
+      }
+      return cur;
+    };
+    const groups = new Map<string, { set: any; children: any[] }>();
+    for (const s of upcoming) {
+      const root = rootOf(s);
+      if (!groups.has(root.code)) groups.set(root.code, { set: root, children: [] });
+      if (root.code !== s.code) groups.get(root.code)!.children.push(s);
+    }
+
+    const result = [...groups.values()]
+      .map((g) => {
+        g.children.sort((a, b) => b.card_count - a.card_count || a.name.localeCompare(b.name));
+        const sets = [g.set, ...g.children];
+        return {
+          ...g,
+          released: g.set.released_at < today,
+          total_cards: sets.reduce((sum, s) => sum + s.card_count, 0),
+        };
+      })
+      // najpierw najbliższe premiery; dodatki bez żadnej karty na końcu
+      .sort((a, b) =>
+        Number(a.total_cards === 0) - Number(b.total_cards === 0) ||
+        Number(a.released) - Number(b.released) ||
+        a.set.released_at.localeCompare(b.set.released_at)
+      );
+
+    res.setHeader('Cache-Control', 'public, max-age=600');
+    res.json({ today, data: result });
+  } catch (err: any) {
+    res.status(err instanceof ScryfallBusyError ? 503 : 500).json({ error: err.message });
+  }
+});
+
+app.get('/api/scryfall/spoilers/:setCode', async (req, res) => {
+  const code = String(req.params.setCode || '').toLowerCase();
+  if (!/^[a-z0-9]{2,8}$/.test(code)) return res.status(400).json({ error: 'Nieprawidłowy kod dodatku' });
+
+  const cached = spoilerCardsCache.get(code);
+  if (cached && Date.now() - cached.timestamp < SPOILER_CARDS_TTL_MS) {
+    res.setHeader('Cache-Control', 'public, max-age=300');
+    return res.json(cached.data);
+  }
+
+  try {
+    const cards: any[] = [];
+    let total = 0;
+    for (let page = 1; page <= SPOILER_MAX_PAGES; page++) {
+      const response = await fetchScryfallThrottled(
+        `${SCRYFALL_BASE}/cards/search?q=${encodeURIComponent(`e:${code}`)}&unique=prints&order=set&page=${page}`
+      );
+      if (response.status === 404) break; // dodatek bez żadnej karty
+      if (!response.ok) throw new Error(`Scryfall API error (${response.status})`);
+      const json: any = await response.json();
+      total = json.total_cards || total;
+      if (Array.isArray(json.data)) cards.push(...json.data);
+      if (!json.has_more) break;
+    }
+
+    const data = {
+      code,
+      total_cards: total,
+      fetched_at: new Date().toISOString(),
+      cards: cards.map((c) => {
+        // pomijamy pola, których zakładka nie używa (mniejsza odpowiedź)
+        const {
+          purchase_uris, related_uris, uri, rulings_uri, multiverse_ids, mtgo_id, mtgo_foil_id,
+          tcgplayer_id, tcgplayer_etched_id, arena_id, highres_image, image_status, story_spotlight,
+          set_search_uri, scryfall_set_uri, set_uri, set_id, card_back_id, illustration_id, ...rest
+        } = c;
+        return rest;
+      }),
+    };
+    spoilerCardsCache.set(code, { data, timestamp: Date.now() });
+    if (spoilerCardsCache.size > 60) {
+      const oldest = spoilerCardsCache.keys().next().value;
+      if (oldest !== undefined) spoilerCardsCache.delete(oldest);
+    }
+    res.setHeader('Cache-Control', 'public, max-age=300');
+    res.json(data);
+  } catch (err: any) {
+    // przy problemie z Scryfall lepiej pokazać starsze dane niż błąd
+    if (cached) return res.json(cached.data);
+    res.status(err instanceof ScryfallBusyError ? 503 : 500).json({ error: err.message || 'Nie udało się pobrać spoilerów' });
+  }
+});
+
 // 8. Scryfall Prints / Versions for a Card
 app.get('/api/scryfall/prints', async (req, res) => {
   try {
