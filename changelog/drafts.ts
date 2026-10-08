@@ -113,4 +113,5 @@ export const CHANGELOG_DRAFTS: ChangelogDraft[] = [
   { id: '2026-10-08-mobile-zapis-pod-karta', day: '2026-10-08', type: 'improved', area: 'Telefon', text: 'Na telefonie przycisk zapisu w katalogu jest też tuż pod grafiką karty, więc nie trzeba przewijać do końca.' },
   { id: '2026-10-08-kolekcja-widok-dodatkow', day: '2026-10-08', type: 'new', area: 'Kolekcja', text: 'Nowy widok „Dodatki” w kolekcji: siatka symboli dodatków, z których masz karty, z procentem skompletowania, a po kliknięciu lista kart z wybranego dodatku.' },
   { id: '2026-10-08-mobile-skaner-prostszy', day: '2026-10-08', type: 'improved', area: 'Skaner', text: 'Prostszy skaner na telefonie: bez wyboru kamery i wgrywania zdjęć, z przyciskiem „Zeskanuj” na środku.' },
+  { id: '2026-10-08-logowanie-nowe-funkcje', day: '2026-10-08', type: 'improved', area: 'Logowanie', text: 'Strona logowania przedstawia nowości: widok kolekcji według dodatków oraz talie w każdym formacie, także do MTG Arena.' },
 ];

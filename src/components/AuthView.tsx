@@ -218,7 +218,7 @@ export const AuthView: React.FC<AuthViewProps> = ({ onAuthSuccess, initialMode =
               Twoja kolekcja Magic: The Gathering, zawsze pod ręką
             </h1>
             <p className="text-base text-stone-400 leading-relaxed max-w-[46ch]">
-              Skanuj karty telefonem, buduj talie Commander i śledź wartość kolekcji w złotówkach. Sprzedawaj i wymieniaj z graczami z okolicy.
+              Skanuj karty telefonem, buduj talie w każdym formacie, także do MTG Arena, i śledź wartość kolekcji w złotówkach. Sprzedawaj i wymieniaj z graczami z okolicy.
             </p>
           </div>
 
