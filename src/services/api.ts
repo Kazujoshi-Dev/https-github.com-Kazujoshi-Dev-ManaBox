@@ -1,4 +1,5 @@
 import { AdminUser, AdminStats, AdminAuditEntry, AuthUser, AppSettings, Catalog, CollectionItem, DeckItem, ScryfallCard, WishlistItem, SpellbookFindCombosResponse, SpellbookVariant, RegisteredUserSummary, UserMessage, UserProfile, CitySuggestion, MapCity, WishlistMatches } from '../types';
+import { noteResponseVersion } from '../utils/appVersion';
 
 const TOKEN_KEY = 'mtg_auth_token';
 const USER_KEY = 'mtg_auth_user';
@@ -35,6 +36,7 @@ export async function fetchWithAuth(
   };
 
   const response = await fetch(url, { ...options, headers });
+  noteResponseVersion(response);
   if (response.status === 401) {
     tokenStorage.clear();
     onUnauthorized?.();

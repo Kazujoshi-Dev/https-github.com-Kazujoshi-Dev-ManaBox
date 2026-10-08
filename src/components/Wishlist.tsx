@@ -1,8 +1,9 @@
 import { PageHeader } from './ui/PageHeader';
 import { publicUrl } from '../utils/publicLinks';
-import React, { Suspense, lazy, useState } from 'react';
+import React, { Suspense, useState } from 'react';
+import { lazyWithReload } from '../utils/lazyWithReload';
 
-const SellersMapModal = lazy(() => import('./SellersMapModal'));
+const SellersMapModal = lazyWithReload(() => import('./SellersMapModal'));
 import { WishlistItem, ScryfallCard, AppSettings, AuthUser } from '../types';
 import { formatCurrency, getCardImageUri, getCardPrice, handleCardImageError, getCardEdhrecRank } from '../utils/formatters';
 import { ManaSymbol } from './ManaSymbol';

@@ -1,8 +1,9 @@
-import React, { Suspense, lazy } from 'react';
+import React, { Suspense } from 'react';
+import { lazyWithReload } from '../utils/lazyWithReload';
 import { Changelog } from './Changelog';
 
 // Panel administratora ładowany tylko, gdy ktoś go otworzy
-const AdminPanel = lazy(() => import('./AdminPanel'));
+const AdminPanel = lazyWithReload(() => import('./AdminPanel'));
 import {
   CollectionItem,
   WishlistItem,

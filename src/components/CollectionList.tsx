@@ -1,4 +1,5 @@
-import React, { useState, Suspense, lazy } from 'react';
+import React, { useState, Suspense } from 'react';
+import { lazyWithReload } from '../utils/lazyWithReload';
 import { CircleDollarSign, Plus } from 'lucide-react';
 import {
   CollectionListProps,
@@ -17,7 +18,7 @@ import {
   FOR_SALE_BINDER,
 } from './collection-list';
 
-const ForSaleAddModal = lazy(() => import('./for-sale/ForSaleAddModal'));
+const ForSaleAddModal = lazyWithReload(() => import('./for-sale/ForSaleAddModal'));
 
 export const CollectionList: React.FC<CollectionListProps> = ({
   collection,

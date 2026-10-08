@@ -1,6 +1,7 @@
 import { PageHeader } from './ui/PageHeader';
 import { publicUrl } from '../utils/publicLinks';
-import React, { useState, useMemo, Suspense, lazy } from 'react';
+import React, { useState, useMemo, Suspense } from 'react';
+import { lazyWithReload } from '../utils/lazyWithReload';
 import { CollectionItem, AppSettings, AuthUser } from '../types';
 import { formatCurrency, getCardPrice, getCardImageUri, getRarityColor, getRarityLabel, getCardEdhrecRank, handleCardImageError } from '../utils/formatters';
 import { ManaSymbol } from './ManaSymbol';
@@ -27,8 +28,8 @@ import {
 } from 'lucide-react';
 
 // Mapa (Leaflet) ładowana dopiero po otwarciu — nie spowalnia reszty aplikacji
-const SellersMapModal = lazy(() => import('./SellersMapModal'));
-const ForSaleAddModal = lazy(() => import('./for-sale/ForSaleAddModal'));
+const SellersMapModal = lazyWithReload(() => import('./SellersMapModal'));
+const ForSaleAddModal = lazyWithReload(() => import('./for-sale/ForSaleAddModal'));
 
 interface ForSaleListProps {
   collection: CollectionItem[];

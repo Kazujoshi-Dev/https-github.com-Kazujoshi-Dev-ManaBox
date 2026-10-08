@@ -74,6 +74,33 @@ app.use((req, res, next) => {
   next();
 });
 
+// Wersja aplikacji (dist/version.json z builda Vite). Otwarte karty przeglądarki porównują ją
+// ze swoją i przechodzą na nową wersję bez ręcznego odświeżania (src/utils/appVersion.ts).
+const APP_VERSION: string = (() => {
+  if (process.env.NODE_ENV !== 'production') return 'dev';
+  try {
+    const raw = JSON.parse(fs.readFileSync(path.join(process.cwd(), 'dist', 'version.json'), 'utf8'));
+    if (typeof raw.version === 'string' && raw.version) return raw.version;
+  } catch {
+    /* brak pliku — poniżej zapasowy identyfikator */
+  }
+  try {
+    return 'm' + Math.floor(fs.statSync(path.join(process.cwd(), 'dist', 'index.html')).mtimeMs).toString(36);
+  } catch {
+    return 'unknown';
+  }
+})();
+
+app.use('/api', (_req: express.Request, res: express.Response, next: express.NextFunction) => {
+  res.setHeader('X-App-Version', APP_VERSION);
+  next();
+});
+
+app.get('/api/version', (_req: express.Request, res: express.Response) => {
+  res.setHeader('Cache-Control', 'no-store');
+  res.json({ version: APP_VERSION });
+});
+
 // Auth verification middleware
 function bearerToken(req: express.Request): string | null {
   const authHeader = req.headers.authorization;

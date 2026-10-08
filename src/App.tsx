@@ -2,6 +2,7 @@ import { langFromCard } from './utils/formatters';
 import { useChangelogBadge } from './hooks/useChangelogBadge';
 import { parsePublicLink } from './utils/publicLinks';
 import React, { useState, useCallback, useEffect } from 'react';
+import { lazyWithReload } from './utils/lazyWithReload';
 import { ScryfallCard, CollectionItem, DeckItem, CardCondition, CardLanguage, AppSettings, RegisteredUserSummary, WishlistItem, AuthUser } from './types';
 import { Header } from './components/Header';
 import { AuthView } from './components/AuthView';
@@ -23,15 +24,21 @@ import { SellQuantityModal } from './components/SellQuantityModal';
 import { Toast } from './components/Toast';
 import { MobileNav } from './components/MobileNav';
 import { CollectionHistoryModal } from './components/CollectionHistoryModal';
-const BugReportModal = React.lazy(() => import('./components/BugReportModal'));
+const BugReportModal = lazyWithReload(() => import('./components/BugReportModal'));
 
 const TAB_LABELS: Record<string, string> = {
   collection: 'Kolekcja', decks: 'Talie', search: 'Szukaj kart', 'set-top': 'Top z dodatku', analytics: 'Statystyki',
   wishlist: 'Lista życzeń', 'for-sale': 'Sprzedam', users: 'Gracze', changelog: 'Dziennik zmian', admin: 'Admin', settings: 'Ustawienia'
 };
+// Zakładka zapamiętana przed przeładowaniem do nowej wersji aplikacji (odczyt raz, przy starcie)
+const RESUME_TAB = takeResumeTab();
+const INITIAL_TAB: NavigationTab = RESUME_TAB && RESUME_TAB in TAB_LABELS ? (RESUME_TAB as NavigationTab) : 'collection';
 import { CircleDollarSign } from 'lucide-react';
 import { useAuth } from './hooks/useAuth';
 import { useBackToClose, useHistoryTabs } from './hooks/useBackButton';
+import { useAppUpdate } from './hooks/useAppUpdate';
+import { takeResumeTab } from './utils/appVersion';
+import { UpdateBanner } from './components/UpdateBanner';
 import { useToast } from './hooks/useToast';
 import { useSettings } from './hooks/useSettings';
 import { useCollectionStats } from './hooks/useCollectionStats';
@@ -195,10 +202,16 @@ export default function App() {
   }, [publicLink]);
 
   // Navigation & Active View State
-  const [activeTab, setActiveTabState] = useState<NavigationTab>('collection');
+  const [activeTab, setActiveTabState] = useState<NavigationTab>(INITIAL_TAB);
   const [selectedDeck, setSelectedDeck] = useState<DeckItem | null>(null);
   // Zmiana zakładki trafia do historii przeglądarki — „Wstecz” wraca do poprzedniej zakładki
   const setActiveTab = useHistoryTabs<NavigationTab>(activeTab, setActiveTabState, 'collection');
+  // Nowa wersja aplikacji wchodzi przy zmianie zakładki (przeładowanie prosto na wybraną zakładkę)
+  const { showUpdateBanner, applyOnNavigate, reloadNow } = useAppUpdate();
+  const navigateTab = useCallback((tab: NavigationTab) => {
+    if (tab !== activeTab && applyOnNavigate(tab)) return;
+    setActiveTab(tab);
+  }, [activeTab, applyOnNavigate, setActiveTab]);
   // Profil sprzedawcy do otwarcia w zakładce Użytkownicy (np. z mapy sprzedawców)
   const [profileRequest, setProfileRequest] = useState<{ username: string; nonce: number } | null>(null);
   const handleOpenSellerProfile = useCallback((username: string) => {
@@ -777,7 +790,7 @@ export default function App() {
       {/* App Header */}
       <Header
         activeTab={activeTab}
-        setActiveTab={setActiveTab}
+        setActiveTab={navigateTab}
         totalCards={totals.totalCards}
         totalValue={totals.totalValue}
         valueChange={totals.valueChange}
@@ -787,10 +800,10 @@ export default function App() {
         decksCount={decks.length}
         forSaleCount={forSaleCount}
         hasNewChangelog={changelogBadge.hasNew}
-        onOpenSettings={() => setActiveTab('settings')}
+        onOpenSettings={() => navigateTab('settings')}
         onRefreshPrices={refreshPrices}
         isRefreshing={isRefreshingPrices}
-        onOpenAddModal={() => setActiveTab('search')}
+        onOpenAddModal={() => navigateTab('search')}
         onOpenScannerModal={() => setIsScannerModalOpen(true)}
         onExportCollection={exportCollection}
         onImportCollection={importCollection}
@@ -931,10 +944,10 @@ export default function App() {
       {/* Dolny pasek nawigacji (tylko telefon) */}
       <MobileNav
         activeTab={activeTab}
-        setActiveTab={setActiveTab}
+        setActiveTab={navigateTab}
         onOpenScanner={() => setIsScannerModalOpen(true)}
         onOpenMailbox={() => setIsMailboxOpen(true)}
-        onOpenSettings={() => setActiveTab('settings')}
+        onOpenSettings={() => navigateTab('settings')}
         onOpenImportExport={handleOpenCollectionImportExport}
         onRefreshPrices={refreshPrices}
         isRefreshing={isRefreshingPrices}
@@ -1059,6 +1072,7 @@ export default function App() {
 
       {/* Notification Toast */}
       <Toast message={toastMessage} />
+      {showUpdateBanner && <UpdateBanner onReload={() => reloadNow(activeTab)} />}
     </div>
   );
 }

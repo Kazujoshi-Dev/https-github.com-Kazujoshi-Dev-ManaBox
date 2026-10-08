@@ -1,4 +1,9 @@
 manascrew.eu, www.manascrew.eu {
 	encode zstd gzip
-	reverse_proxy app:3000
+	reverse_proxy app:3000 {
+		# Podczas `docker compose up -d --build` kontener aplikacji startuje kilka sekund.
+		# Zamiast zwracać 502, Caddy wstrzymuje zapytania i ponawia je, aż aplikacja wstanie.
+		lb_try_duration 30s
+		lb_try_interval 250ms
+	}
 }

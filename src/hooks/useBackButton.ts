@@ -69,6 +69,11 @@ function ensureListener() {
   });
 }
 
+/** Czy jest otwarte jakiekolwiek okno/arkusz (np. żeby nie przeładowywać strony w trakcie edycji). */
+export function hasOpenOverlay(): boolean {
+  return overlayStack.length > 0;
+}
+
 /** Zamyka okno gestem/przyciskiem „Wstecz”, gdy `open` jest prawdą. */
 export function useBackToClose(open: boolean, onClose: () => void): void {
   const onCloseRef = useRef(onClose);
