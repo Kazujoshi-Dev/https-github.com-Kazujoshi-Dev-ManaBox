@@ -5,6 +5,7 @@ import { getCardImageUri, handleCardImageError } from '../../utils/formatters';
 import type { EdhrecRecommendation } from '../../services/api';
 import { getCardCategory, DECK_CATEGORIES } from './constants';
 import { useBackToClose } from '../../hooks/useBackButton';
+import { useT } from '../../i18n';
 
 interface ReplaceCardModalProps {
   deck: DeckItem;
@@ -23,6 +24,7 @@ const pct = (v: number) => `${Math.round(v * 100)}%`;
  * najpierw ten sam typ co nowa karta, w kolejności od najrzadziej granych z tym dowódcą.
  */
 export const ReplaceCardModal: React.FC<ReplaceCardModalProps> = ({ deck, incoming, inclusionByName, onConfirm, onClose }) => {
+  const t = useT();
   useBackToClose(true, onClose);
   const [query, setQuery] = useState('');
   const [selected, setSelected] = useState<ScryfallCard | null>(null);
@@ -68,7 +70,7 @@ export const ReplaceCardModal: React.FC<ReplaceCardModalProps> = ({ deck, incomi
       onClick={(e) => e.target === e.currentTarget && onClose()}
       role="dialog"
       aria-modal="true"
-      aria-label={`Zastąp kartę kartą ${incoming.name}`}
+      aria-label={t('Zastąp kartę kartą {name}', { name: incoming.name })}
     >
       <div className="w-full sm:max-w-5xl max-h-[92dvh] bg-stone-900 border border-stone-800 rounded-t-2xl sm:rounded-2xl shadow-2xl flex flex-col pb-[env(safe-area-inset-bottom)]">
         {/* Nagłówek: co wchodzi do talii */}
@@ -77,12 +79,12 @@ export const ReplaceCardModal: React.FC<ReplaceCardModalProps> = ({ deck, incomi
             {incomingImg && <img src={incomingImg} alt="" referrerPolicy="no-referrer" className="w-full h-full object-cover" />}
           </span>
           <div className="min-w-0 flex-1">
-            <h3 className="text-base font-semibold text-stone-50 truncate">Zastąp kartą {incoming.name}</h3>
+            <h3 className="text-base font-semibold text-stone-50 truncate">{t('Zastąp kartą {name}', { name: incoming.name })}</h3>
             <p className="text-sm text-stone-400">
-              Wybierz kartę z talii, która ustąpi miejsca. Na górze karty typu {incomingCategory || 'tej samej kategorii'}, od najrzadziej granych.
+              {t('Wybierz kartę z talii, która ustąpi miejsca. Na górze karty typu {category}, od najrzadziej granych.', { category: incomingCategory || t('tej samej kategorii') })}
             </p>
           </div>
-          <button type="button" onClick={onClose} aria-label="Zamknij" className="w-10 h-10 rounded-lg text-stone-400 hover:text-stone-100 hover:bg-stone-800 flex items-center justify-center shrink-0 cursor-pointer">
+          <button type="button" onClick={onClose} aria-label={t('Zamknij')} className="w-10 h-10 rounded-lg text-stone-400 hover:text-stone-100 hover:bg-stone-800 flex items-center justify-center shrink-0 cursor-pointer">
             <X className="w-5 h-5" />
           </button>
         </div>
@@ -94,8 +96,8 @@ export const ReplaceCardModal: React.FC<ReplaceCardModalProps> = ({ deck, incomi
               type="search"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Szukaj w talii"
-              aria-label="Szukaj karty w talii"
+              placeholder={t('Szukaj w talii')}
+              aria-label={t('Szukaj karty w talii')}
               className="w-full h-10 bg-stone-950 border border-stone-800 rounded-lg pl-9 pr-3 text-sm text-stone-100 placeholder-stone-500 focus:outline-none focus:border-stone-600"
             />
           </div>
@@ -103,7 +105,7 @@ export const ReplaceCardModal: React.FC<ReplaceCardModalProps> = ({ deck, incomi
 
         {/* Karty talii */}
         <div className="flex-1 overflow-y-auto px-4 sm:px-5 py-4 space-y-5">
-          {groups.length === 0 && <p className="text-sm text-stone-400">Brak kart pasujących do wyszukiwania.</p>}
+          {groups.length === 0 && <p className="text-sm text-stone-400">{t('Brak kart pasujących do wyszukiwania.')}</p>}
           {groups.map((g) => (
             <section key={g.id}>
               <h4 className="text-sm font-medium text-stone-300 mb-2">
@@ -134,7 +136,7 @@ export const ReplaceCardModal: React.FC<ReplaceCardModalProps> = ({ deck, incomi
                         <span className="absolute inset-x-0 bottom-0 flex items-center justify-between gap-1 px-1.5 py-1 bg-gradient-to-t from-stone-950/95 to-transparent text-[11px]">
                           {e.quantity > 1 ? <span className="text-stone-100 tabular-nums">{e.quantity}×</span> : <span />}
                           {inc !== undefined && (
-                            <span className={`tabular-nums ${inc < 0.1 ? 'text-rose-300' : 'text-stone-300'}`} title="Ile talii z tym dowódcą gra tę kartę (EDHREC)">
+                            <span className={`tabular-nums ${inc < 0.1 ? 'text-rose-300' : 'text-stone-300'}`} title={t('Ile talii z tym dowódcą gra tę kartę (EDHREC)')}>
                               {pct(inc)}
                             </span>
                           )}
@@ -161,16 +163,16 @@ export const ReplaceCardModal: React.FC<ReplaceCardModalProps> = ({ deck, incomi
                 <span className="text-stone-100">{incoming.name}</span>
               </>
             ) : (
-              'Kliknij kartę, którą chcesz usunąć z talii.'
+              t('Kliknij kartę, którą chcesz usunąć z talii.')
             )}
           </p>
           <div className="flex gap-2 justify-end">
             <button type="button" onClick={onClose} className="btn btn-ghost">
-              Anuluj
+              {t('Anuluj')}
             </button>
             <button type="button" disabled={!selected} onClick={() => selected && onConfirm(selected)} className="btn btn-primary">
               <Repeat className="w-4 h-4" />
-              Zastąp
+              {t('Zastąp')}
             </button>
           </div>
         </div>

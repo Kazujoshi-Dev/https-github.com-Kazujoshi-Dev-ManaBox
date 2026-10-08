@@ -1,11 +1,12 @@
 import type { DeckCardEntry, ScryfallCard } from '../../types';
+import { tk } from '../../i18n';
 
 export type DeckCardSort = 'name' | 'cmc' | 'color';
 
 export const DECK_SORT_OPTIONS: Array<{ id: DeckCardSort; label: string; title: string }> = [
-  { id: 'name', label: 'Nazwa', title: 'Alfabetycznie' },
-  { id: 'cmc', label: 'Koszt', title: 'Według kosztu many (CMC), potem alfabetycznie' },
-  { id: 'color', label: 'Kolor', title: 'Według koloru (W, U, B, R, G, wielokolorowe, bezbarwne), potem kosztu' }
+  { id: 'name', label: tk('Nazwa'), title: tk('Alfabetycznie') },
+  { id: 'cmc', label: tk('Koszt'), title: tk('Według kosztu many (CMC), potem alfabetycznie') },
+  { id: 'color', label: tk('Kolor'), title: tk('Według koloru (W, U, B, R, G, wielokolorowe, bezbarwne), potem kosztu') }
 ];
 
 const WUBRG = ['W', 'U', 'B', 'R', 'G'];

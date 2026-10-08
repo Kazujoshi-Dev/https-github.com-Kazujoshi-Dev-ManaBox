@@ -2,6 +2,7 @@ import React from 'react';
 import { X, Layers, Sparkles } from 'lucide-react';
 import { ManaSymbol } from '../ManaSymbol';
 import { CardModalHeaderProps } from './types';
+import { useT } from '../../i18n';
 
 export const CardModalHeader: React.FC<CardModalHeaderProps> = ({
   cardName,
@@ -13,6 +14,7 @@ export const CardModalHeader: React.FC<CardModalHeaderProps> = ({
   onSelectTab,
   onClose,
 }) => {
+  const t = useT();
   return (
     <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-stone-800 bg-stone-950/70 flex flex-wrap items-center justify-between gap-2 shrink-0">
       <div className="flex items-center gap-3 min-w-0 flex-1 basis-full sm:basis-auto order-1">
@@ -20,7 +22,7 @@ export const CardModalHeader: React.FC<CardModalHeaderProps> = ({
           <span>{cardName}</span>
           {isPromo && (
             <span className="text-[11px] tabular-nums px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/40">
-              Promo
+              {t('Promo')}
             </span>
           )}
         </h2>
@@ -36,10 +38,10 @@ export const CardModalHeader: React.FC<CardModalHeaderProps> = ({
               ? 'bg-amber-500 text-stone-950 border-amber-500 shadow-md'
               : 'bg-stone-900 hover:bg-stone-800 text-amber-300 border-amber-500/30'
           }`}
-          title="Przeglądaj kombinacje Commander Spellbook dla tej karty"
+          title={t('Przeglądaj kombinacje Commander Spellbook dla tej karty')}
         >
           <Sparkles className="w-3.5 h-3.5" />
-          <span>Combo Spellbook</span>
+          <span>{t('Combo Spellbook')}</span>
         </button>
 
         {/* Prints Switcher Pill */}
@@ -50,16 +52,16 @@ export const CardModalHeader: React.FC<CardModalHeaderProps> = ({
               ? 'bg-amber-500 text-stone-950 border-amber-400 shadow-md'
               : 'bg-stone-900 hover:bg-stone-800 text-amber-400 border-amber-500/30'
           }`}
-          title="Przełącz widok wydań karty"
+          title={t('Przełącz widok wydań karty')}
         >
           <Layers className="w-3.5 h-3.5" />
-          <span>Wersje ({isLoadingPrints ? '...' : printsCount})</span>
+          <span>{t('Wersje')} ({isLoadingPrints ? '...' : printsCount})</span>
         </button>
 
         <button
           onClick={onClose}
           className="w-10 h-10 sm:w-auto sm:h-auto sm:p-1.5 flex items-center justify-center rounded-full bg-stone-900 hover:bg-stone-800 text-stone-400 hover:text-stone-100 border border-stone-800 transition-colors cursor-pointer"
-          aria-label="Zamknij okno"
+          aria-label={t('Zamknij okno')}
         >
           <X className="w-5 h-5" />
         </button>

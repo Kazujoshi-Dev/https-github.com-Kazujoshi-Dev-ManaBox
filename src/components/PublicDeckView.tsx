@@ -10,6 +10,8 @@ import { checkDeckLegality } from './deck-builder/legality';
 import { DeckBracketPanel, useDeckBracket } from './deck-builder/DeckBracket';
 import { deckToText } from './deck-builder/DeckShareModal';
 import { useBackToClose } from '../hooks/useBackButton';
+import { LanguageSwitcher } from './ui/LanguageSwitcher';
+import { useT, plural, useLang } from '../i18n';
 
 interface PublicDeckViewProps {
   deck: DeckItem;
@@ -22,9 +24,11 @@ interface PublicDeckViewProps {
 
 /** Publiczny podgląd talii (link /talia/id) — dostępny bez logowania. */
 export const PublicDeckView: React.FC<PublicDeckViewProps> = ({ deck, owner, settings, isLoggedIn = false, onOpenLogin, showToast }) => {
+  const t = useT();
   const { totalCardsCount, totalDeckValue, categorizedCards, manaCurve, colorIdentity } = useDeckStats({ deck, settings });
   const [preview, setPreview] = useState<ScryfallCard | null>(null);
-  const legality = React.useMemo(() => checkDeckLegality(deck), [deck]);
+  const lang = useLang();
+  const legality = React.useMemo(() => checkDeckLegality(deck), [deck, lang]);
   const bracket = useDeckBracket(deck);
   const viewByName = (name: string) => {
     const c = deck.commander?.name === name ? deck.commander : deck.cards.find((e) => e.card.name === name)?.card;
@@ -47,10 +51,10 @@ export const PublicDeckView: React.FC<PublicDeckViewProps> = ({ deck, owner, set
     try {
       await navigator.clipboard.writeText(what === 'link' ? window.location.href : deckToText(deck));
       setCopied(what);
-      showToast?.(what === 'link' ? 'Skopiowano link do talii.' : 'Skopiowano listę kart.');
+      showToast?.(what === 'link' ? t('Skopiowano link do talii.') : t('Skopiowano listę kart.'));
       setTimeout(() => setCopied(null), 2000);
     } catch {
-      showToast?.('Nie udało się skopiować do schowka.');
+      showToast?.(t('Nie udało się skopiować do schowka.'));
     }
   };
 
@@ -66,22 +70,23 @@ export const PublicDeckView: React.FC<PublicDeckViewProps> = ({ deck, owner, set
             </div>
             <div className="min-w-0">
               <h1 className="text-base sm:text-lg font-bold tracking-tight truncate">
-                <span className="hidden sm:inline text-stone-400 font-bold">Mana Screw • </span>Talia
+                <span className="hidden sm:inline text-stone-400 font-bold">Mana Screw • </span>{t('Talia')}
               </h1>
               <p className="text-xs text-stone-400 truncate">
-                Autor: <strong className="text-amber-300">@{owner.username}</strong>
+                {t('Autor:')} <strong className="text-amber-300">@{owner.username}</strong>
               </p>
             </div>
           </div>
           <div className="flex items-center gap-2 shrink-0">
+            <LanguageSwitcher />
             <button
               type="button"
               onClick={() => copy('link')}
-              aria-label="Kopiuj link do talii"
+              aria-label={t('Kopiuj link do talii')}
               className="h-10 px-3 bg-stone-800 hover:bg-stone-700 text-stone-200 border border-stone-700 text-xs font-bold rounded-xl flex items-center gap-1.5 cursor-pointer"
             >
               {copied === 'link' ? <Check className="w-4 h-4 text-emerald-400" /> : <Share2 className="w-4 h-4 text-amber-300" />}
-              <span className="hidden sm:inline">{copied === 'link' ? 'Skopiowano!' : 'Udostępnij'}</span>
+              <span className="hidden sm:inline">{copied === 'link' ? t('Skopiowano!') : t('Udostępnij')}</span>
             </button>
             {!isLoggedIn && (
               <button
@@ -90,7 +95,7 @@ export const PublicDeckView: React.FC<PublicDeckViewProps> = ({ deck, owner, set
                 className="h-10 px-4 bg-amber-600 hover:bg-amber-500 text-stone-950 font-bold text-xs rounded-xl flex items-center gap-1.5 cursor-pointer"
               >
                 <LogIn className="w-4 h-4" />
-                Zaloguj się
+                {t('Zaloguj się')}
               </button>
             )}
           </div>
@@ -121,13 +126,13 @@ export const PublicDeckView: React.FC<PublicDeckViewProps> = ({ deck, owner, set
             <h2 className="text-2xl sm:text-3xl font-bold text-white tracking-tight break-words">{deck.name}</h2>
             {deck.commander && (
               <p className="text-sm text-stone-300 flex items-center gap-1.5">
-                <Crown className="w-4 h-4 text-amber-400" /> Dowódca: <strong className="text-stone-100">{deck.commander.name}</strong>
+                <Crown className="w-4 h-4 text-amber-400" /> {t('Dowódca:')} <strong className="text-stone-100">{deck.commander.name}</strong>
               </p>
             )}
             {deck.description && <p className="text-sm text-stone-400 whitespace-pre-line">{deck.description}</p>}
             <div className="flex flex-wrap items-center gap-3">
               <span className="bg-stone-950/80 px-3.5 py-2 rounded-xl border border-stone-800 text-sm flex items-center gap-2">
-                <Layers className="w-4 h-4 text-amber-400" /> <strong>{totalCardsCount}</strong> kart
+                <Layers className="w-4 h-4 text-amber-400" /> <strong>{totalCardsCount}</strong> {plural(totalCardsCount, ['karta', 'karty', 'kart'], ['card', 'cards'])}
               </span>
               <span className="bg-stone-950/80 px-3.5 py-2 rounded-xl border border-stone-800 text-sm flex items-center gap-2">
                 <Coins className="w-4 h-4 text-emerald-400" /> <strong className="text-emerald-300">{formatCurrency(totalDeckValue, settings.currency)}</strong>
@@ -138,7 +143,7 @@ export const PublicDeckView: React.FC<PublicDeckViewProps> = ({ deck, owner, set
                 className="h-10 px-3.5 bg-stone-800 hover:bg-stone-700 text-stone-200 border border-stone-700 text-xs font-bold rounded-xl flex items-center gap-2 cursor-pointer"
               >
                 {copied === 'txt' ? <Check className="w-4 h-4 text-emerald-400" /> : <FileText className="w-4 h-4 text-amber-300" />}
-                Kopiuj listę kart
+                {t('Kopiuj listę kart')}
               </button>
             </div>
           </div>
@@ -167,9 +172,9 @@ export const PublicDeckView: React.FC<PublicDeckViewProps> = ({ deck, owner, set
 
         {!isLoggedIn && (
           <div className="bg-stone-900 border border-amber-500/30 rounded-2xl p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <p className="text-sm text-stone-300">Chcesz zbudować własną talię i sprawdzić, które karty już masz? Załóż darmowe konto w Mana Screw.</p>
+            <p className="text-sm text-stone-300">{t('Chcesz zbudować własną talię i sprawdzić, które karty już masz? Załóż darmowe konto w Mana Screw.')}</p>
             <button type="button" onClick={onOpenLogin} className="h-11 px-5 rounded-xl bg-amber-500 hover:bg-amber-400 text-stone-950 text-sm font-bold shrink-0 cursor-pointer">
-              Załóż konto
+              {t('Załóż konto')}
             </button>
           </div>
         )}
@@ -187,7 +192,7 @@ export const PublicDeckView: React.FC<PublicDeckViewProps> = ({ deck, owner, set
             <button
               type="button"
               onClick={() => setPreview(null)}
-              aria-label="Zamknij"
+              aria-label={t('Zamknij')}
               className="absolute -top-12 right-0 w-10 h-10 rounded-full bg-stone-800 text-stone-200 flex items-center justify-center cursor-pointer"
             >
               <X className="w-5 h-5" />

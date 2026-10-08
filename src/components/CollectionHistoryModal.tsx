@@ -5,12 +5,13 @@ import { collectionApi } from '../services/api';
 import { formatCurrency } from '../utils/formatters';
 import { useBackToClose } from '../hooks/useBackButton';
 import type { CurrencyCode } from '../types';
+import { useT, locale, plural, t as tr, tk } from '../i18n';
 
 type Range = 7 | 30 | 365;
 const RANGES: Array<{ days: Range; label: string }> = [
-  { days: 7, label: '7 dni' },
-  { days: 30, label: '30 dni' },
-  { days: 365, label: 'Rok' }
+  { days: 7, label: tk('7 dni') },
+  { days: 30, label: tk('30 dni') },
+  { days: 365, label: tk('Rok') }
 ];
 
 interface Point {
@@ -24,7 +25,7 @@ const VALUE_COLOR = '#fbbf24'; // amber-400 (akcent aplikacji)
 const CARDS_COLOR = '#a8a29e'; // stone-400
 
 const fmtDay = (d: string, long = false) =>
-  new Date(`${d}T12:00:00`).toLocaleDateString('pl-PL', long ? { day: 'numeric', month: 'long', year: 'numeric' } : { day: 'numeric', month: 'short' });
+  new Date(`${d}T12:00:00`).toLocaleDateString(locale(), long ? { day: 'numeric', month: 'long', year: 'numeric' } : { day: 'numeric', month: 'short' });
 
 /** Jeden wykres (wartość albo liczba kart) – osobne osie, bez mieszania skal. */
 const SeriesChart: React.FC<{
@@ -36,7 +37,7 @@ const SeriesChart: React.FC<{
 }> = ({ data, dataKey, color, format, label }) => {
   const gradientId = `fill-${dataKey}-${useId().replace(/:/g, '')}`;
   return (
-  <div className="h-48 sm:h-56" role="img" aria-label={`${label}: wykres dzień po dniu`}>
+  <div className="h-48 sm:h-56" role="img" aria-label={`${label}: ${tr('wykres dzień po dniu')}`}>
     <ResponsiveContainer width="100%" height="100%">
       <AreaChart data={data} margin={{ top: 8, right: 8, bottom: 0, left: 0 }}>
         <defs>
@@ -55,7 +56,7 @@ const SeriesChart: React.FC<{
           minTickGap={24}
         />
         <YAxis
-          tickFormatter={(v) => (dataKey === 'value' ? Math.round(v).toLocaleString('pl-PL') : String(v))}
+          tickFormatter={(v) => (dataKey === 'value' ? Math.round(v).toLocaleString(locale()) : String(v))}
           tick={{ fill: '#a8a29e', fontSize: 12 }}
           axisLine={false}
           tickLine={false}
@@ -89,6 +90,7 @@ const SeriesChart: React.FC<{
 
 /** Historia kolekcji: wybór zakresu i krzywych, podsumowanie i wykresy. Używana w oknie i w Statystykach. */
 export const CollectionHistoryPanel: React.FC<{ currency: CurrencyCode }> = ({ currency }) => {
+  const t = useT();
   const [range, setRange] = useState<Range>(30);
   const [show, setShow] = useState({ value: true, cards: true });
   const [points, setPoints] = useState<Point[] | null>(null);
@@ -122,15 +124,15 @@ export const CollectionHistoryPanel: React.FC<{ currency: CurrencyCode }> = ({ c
   const money = (v: number) => formatCurrency(v, currency);
   const signed = (v: number, f: (n: number) => string) => `${v > 0 ? '+' : v < 0 ? '−' : ''}${f(Math.abs(v))}`;
   const toggles: Array<{ key: 'value' | 'cards'; label: string; color: string }> = [
-    { key: 'value', label: 'Wartość', color: VALUE_COLOR },
-    { key: 'cards', label: 'Liczba kart', color: CARDS_COLOR }
+    { key: 'value', label: t('Wartość'), color: VALUE_COLOR },
+    { key: 'cards', label: t('Liczba kart'), color: CARDS_COLOR }
   ];
 
   return (
     <div className="space-y-5">
       {/* Zakres i krzywe: jeden rząd nad wykresami */}
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="inline-grid grid-cols-3 p-1 rounded-lg bg-stone-950 ring-1 ring-stone-800" role="radiogroup" aria-label="Zakres czasu">
+        <div className="inline-grid grid-cols-3 p-1 rounded-lg bg-stone-950 ring-1 ring-stone-800" role="radiogroup" aria-label={t('Zakres czasu')}>
           {RANGES.map((r) => (
             <button
               key={r.days}
@@ -142,25 +144,25 @@ export const CollectionHistoryPanel: React.FC<{ currency: CurrencyCode }> = ({ c
                 range === r.days ? 'bg-stone-800 text-stone-50 font-medium' : 'text-stone-400 hover:text-stone-200'
               }`}
             >
-              {r.label}
+              {t(r.label)}
             </button>
           ))}
         </div>
-        <div className="flex items-center gap-1.5" role="group" aria-label="Widoczne krzywe">
-          {toggles.map((t) => {
-            const on = show[t.key];
+        <div className="flex items-center gap-1.5" role="group" aria-label={t('Widoczne krzywe')}>
+          {toggles.map((tg) => {
+            const on = show[tg.key];
             return (
               <button
-                key={t.key}
+                key={tg.key}
                 type="button"
                 aria-pressed={on}
-                onClick={() => setShow((s) => ({ ...s, [t.key]: !s[t.key] }))}
+                onClick={() => setShow((s) => ({ ...s, [tg.key]: !s[tg.key] }))}
                 className={`h-8 px-3 rounded-md text-sm flex items-center gap-2 cursor-pointer ring-1 ${
                   on ? 'ring-stone-600 text-stone-100 bg-stone-800' : 'ring-stone-800 text-stone-500 hover:text-stone-300'
                 }`}
               >
-                <span className="w-3 h-0.5 rounded-full" style={{ background: on ? t.color : '#57534e' }} aria-hidden="true" />
-                {t.label}
+                <span className="w-3 h-0.5 rounded-full" style={{ background: on ? tg.color : '#57534e' }} aria-hidden="true" />
+                {tg.label}
               </button>
             );
           })}
@@ -178,20 +180,20 @@ export const CollectionHistoryPanel: React.FC<{ currency: CurrencyCode }> = ({ c
           {summary && (
             <dl className="grid grid-cols-2 gap-4">
               <div>
-                <dt className="text-sm text-stone-400">Wartość</dt>
+                <dt className="text-sm text-stone-400">{t('Wartość')}</dt>
                 <dd className="text-2xl font-semibold text-stone-50 tabular-nums">{money(summary.value)}</dd>
                 {points.length > 1 && (
                   <dd className={`text-sm tabular-nums ${summary.valueDelta > 0 ? 'text-emerald-400' : summary.valueDelta < 0 ? 'text-rose-400' : 'text-stone-400'}`}>
-                    {signed(summary.valueDelta, money)} od {fmtDay(summary.since)}
+                    {signed(summary.valueDelta, money)} {t('od')} {fmtDay(summary.since)}
                   </dd>
                 )}
               </div>
               <div>
-                <dt className="text-sm text-stone-400">Liczba kart</dt>
-                <dd className="text-2xl font-semibold text-stone-50 tabular-nums">{summary.cards.toLocaleString('pl-PL')}</dd>
+                <dt className="text-sm text-stone-400">{t('Liczba kart')}</dt>
+                <dd className="text-2xl font-semibold text-stone-50 tabular-nums">{summary.cards.toLocaleString(locale())}</dd>
                 {points.length > 1 && (
                   <dd className="text-sm tabular-nums text-stone-400">
-                    {signed(summary.cardsDelta, (n) => n.toLocaleString('pl-PL'))} od {fmtDay(summary.since)}
+                    {signed(summary.cardsDelta, (n) => n.toLocaleString(locale()))} {t('od')} {fmtDay(summary.since)}
                   </dd>
                 )}
               </div>
@@ -200,29 +202,29 @@ export const CollectionHistoryPanel: React.FC<{ currency: CurrencyCode }> = ({ c
 
           {points.length < 2 ? (
             <p className="text-sm text-stone-400 rounded-lg bg-stone-950/60 ring-1 ring-stone-800 p-4">
-              Historia zbiera się od dziś: każdego dnia zapisujemy wartość i liczbę kart. Wykres pojawi się, gdy będą co najmniej dwa dni danych.
+              {t('Historia zbiera się od dziś: każdego dnia zapisujemy wartość i liczbę kart. Wykres pojawi się, gdy będą co najmniej dwa dni danych.')}
             </p>
           ) : (
             <div className="space-y-6">
               {show.value && (
                 <div>
-                  <h4 className="text-sm font-medium text-stone-300 mb-1">Wartość ({currency})</h4>
-                  <SeriesChart data={points} dataKey="value" color={VALUE_COLOR} format={money} label="Wartość" />
+                  <h4 className="text-sm font-medium text-stone-300 mb-1">{t('Wartość')} ({currency})</h4>
+                  <SeriesChart data={points} dataKey="value" color={VALUE_COLOR} format={money} label={t('Wartość')} />
                 </div>
               )}
               {show.cards && (
                 <div>
-                  <h4 className="text-sm font-medium text-stone-300 mb-1">Liczba kart</h4>
-                  <SeriesChart data={points} dataKey="cards" color={CARDS_COLOR} format={(n) => `${n.toLocaleString('pl-PL')} kart`} label="Liczba kart" />
+                  <h4 className="text-sm font-medium text-stone-300 mb-1">{t('Liczba kart')}</h4>
+                  <SeriesChart data={points} dataKey="cards" color={CARDS_COLOR} format={(n) => plural(n, ['{n} karta', '{n} karty', '{n} kart'], ['{n} card', '{n} cards']).replace(String(n), n.toLocaleString(locale()))} label={t('Liczba kart')} />
                 </div>
               )}
-              {!show.value && !show.cards && <p className="text-sm text-stone-500">Włącz co najmniej jedną krzywą.</p>}
+              {!show.value && !show.cards && <p className="text-sm text-stone-500">{t('Włącz co najmniej jedną krzywą.')}</p>}
             </div>
           )}
         </>
       )}
       <p className="text-xs text-stone-500">
-        Wartość liczymy po cenach zapisanych w kolekcji, więc zmienia się po odświeżeniu cen albo zmianach w kolekcji.
+        {t('Wartość liczymy po cenach zapisanych w kolekcji, więc zmienia się po odświeżeniu cen albo zmianach w kolekcji.')}
       </p>
     </div>
   );
@@ -230,6 +232,7 @@ export const CollectionHistoryPanel: React.FC<{ currency: CurrencyCode }> = ({ c
 
 /** Okno z historią kolekcji: wartość i liczba kart w czasie, z wyborem zakresu i krzywych. */
 export const CollectionHistoryModal: React.FC<{ currency: CurrencyCode; onClose: () => void }> = ({ currency, onClose }) => {
+  const t = useT();
   useBackToClose(true, onClose);
 
   useEffect(() => {
@@ -244,15 +247,15 @@ export const CollectionHistoryModal: React.FC<{ currency: CurrencyCode; onClose:
       onClick={(e) => e.target === e.currentTarget && onClose()}
       role="dialog"
       aria-modal="true"
-      aria-label="Historia kolekcji"
+      aria-label={t('Historia kolekcji')}
     >
       <div className="w-full sm:max-w-3xl max-h-[92dvh] overflow-y-auto bg-stone-900 border border-stone-800 rounded-t-2xl sm:rounded-2xl shadow-2xl pb-[env(safe-area-inset-bottom)]">
         <div className="flex items-start justify-between gap-3 p-4 sm:p-5 border-b border-stone-800">
           <div>
-            <h3 className="text-base font-semibold text-stone-50">Historia kolekcji</h3>
-            <p className="text-sm text-stone-400">Wartość i liczba kart dzień po dniu.</p>
+            <h3 className="text-base font-semibold text-stone-50">{t('Historia kolekcji')}</h3>
+            <p className="text-sm text-stone-400">{t('Wartość i liczba kart dzień po dniu.')}</p>
           </div>
-          <button type="button" onClick={onClose} aria-label="Zamknij" className="w-10 h-10 rounded-lg text-stone-400 hover:text-stone-100 hover:bg-stone-800 flex items-center justify-center cursor-pointer">
+          <button type="button" onClick={onClose} aria-label={t('Zamknij')} className="w-10 h-10 rounded-lg text-stone-400 hover:text-stone-100 hover:bg-stone-800 flex items-center justify-center cursor-pointer">
             <X className="w-5 h-5" />
           </button>
         </div>

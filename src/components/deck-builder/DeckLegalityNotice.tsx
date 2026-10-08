@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { AlertTriangle, CheckCircle2, ChevronDown, Info } from 'lucide-react';
 import type { DeckItem, ScryfallCard } from '../../types';
 import type { LegalityReport } from './legality';
+import { useT, plural } from '../../i18n';
 
 /** Podsumowanie zgodności talii z zasadami jej formatu, z listą kart do poprawienia. */
 export const DeckLegalityNotice: React.FC<{
@@ -9,6 +10,7 @@ export const DeckLegalityNotice: React.FC<{
   report: LegalityReport;
   onViewCardDetails: (card: ScryfallCard) => void;
 }> = ({ deck, report, onViewCardDetails }) => {
+  const t = useT();
   const [open, setOpen] = useState(true);
   if (!report.active) return null;
 
@@ -26,7 +28,7 @@ export const DeckLegalityNotice: React.FC<{
       <div className="space-y-1.5">
         <p className="flex items-center gap-2 text-sm text-stone-400 px-1">
           <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-          Wszystkie karty są legalne w formacie {formatName}.
+          {t('Wszystkie karty są legalne w formacie {format}.', { format: formatName })}
         </p>
         {deckNotes}
       </div>
@@ -35,7 +37,11 @@ export const DeckLegalityNotice: React.FC<{
 
   const cardById = new Map(deck.cards.map((e) => [e.card.id, e.card]));
   const count = report.total;
-  const label = count === 1 ? 'karta łamie' : count % 10 >= 2 && count % 10 <= 4 && (count % 100 < 12 || count % 100 > 14) ? 'karty łamią' : 'kart łamie';
+  const label = plural(
+    count,
+    ['{n} karta łamie zasady formatu {format}', '{n} karty łamią zasady formatu {format}', '{n} kart łamie zasady formatu {format}'],
+    ['{n} card breaks the {format} format rules', '{n} cards break the {format} format rules']
+  ).replace('{format}', formatName);
 
   return (
     <div className="space-y-1.5">
@@ -48,7 +54,7 @@ export const DeckLegalityNotice: React.FC<{
         >
           <AlertTriangle className="w-4 h-4 text-rose-400 shrink-0" />
           <span className="flex-1 text-sm font-medium text-rose-100">
-            <span className="tabular-nums">{count}</span> {label} zasady formatu {formatName}
+            {label}
           </span>
           <ChevronDown className={`w-4 h-4 text-rose-300 transition-transform ${open ? 'rotate-180' : ''}`} />
         </button>
@@ -57,7 +63,7 @@ export const DeckLegalityNotice: React.FC<{
             {report.commander.length > 0 && deck.commander && (
               <li className="text-sm">
                 <button type="button" onClick={() => onViewCardDetails(deck.commander!)} className="text-rose-100 font-medium hover:underline cursor-pointer">
-                  {deck.commander.name} (dowódca)
+                  {deck.commander.name} {t('(dowódca)')}
                 </button>
                 <span className="text-rose-200/80">: {report.commander.join('; ')}</span>
               </li>

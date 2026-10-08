@@ -2,6 +2,7 @@ import { useState, useRef, useEffect, useCallback, FormEvent } from 'react';
 import { CollectionItem, ScryfallCard, CardCondition, CardLanguage, Catalog, WishlistItem } from '../../types';
 import { CardSaveData } from './types';
 import { langFromCard } from '../../utils/formatters';
+import { t, MAIN_BINDER } from '../../i18n';
 
 interface UseCardModalFormProps {
   card: ScryfallCard;
@@ -61,7 +62,7 @@ export function useCardModalForm({
       if (defaultCat) return defaultCat.name;
       return catalogs[0].name;
     }
-    return 'Klaser Główny';
+    return MAIN_BINDER;
   });
 
   // Inline new catalog creation state
@@ -139,7 +140,7 @@ export function useCardModalForm({
       onToggleFoil(toFoil);
     }
 
-    const label = toFoil ? 'Foil (Błyszcząca)' : 'Standard (Zwykła)';
+    const label = toFoil ? t('Foil (Błyszcząca)') : t('Standard (Zwykła)');
     if (existingItem) {
       onSaveToCollection({
         card: activeCard,
@@ -151,13 +152,13 @@ export function useCardModalForm({
         notes,
         binder: selectedBinder,
       });
-      showNotice(`Zapisano w kolekcji wersję ${label}`);
+      showNotice(t('Zapisano w kolekcji wersję {label}', { label }));
     } else if (wishlistItem && onUpdateWishlistItem) {
       onUpdateWishlistItem({ isFoil: toFoil });
-      showNotice(`Zapisano na liście życzeń: wersja ${label}`);
+      showNotice(t('Zapisano na liście życzeń: wersja {label}', { label }));
     } else {
       // Karty nie ma w kolekcji — zmiana dotyczy formularza, zapis po kliknięciu „Dodaj”
-      showNotice(`Wybrano wersję ${label}. Kliknij „Dodaj”, aby zapisać kartę w kolekcji`);
+      showNotice(t('Wybrano wersję {label}. Kliknij „Dodaj”, aby zapisać kartę w kolekcji', { label }));
     }
   }, [quantity, quantityFoil, purchasePrice, onToggleFoil, existingItem, onSaveToCollection, activeCard, condition, language, notes, selectedBinder, showNotice, wishlistItem, onUpdateWishlistItem]);
 
@@ -184,12 +185,12 @@ export function useCardModalForm({
         notes,
         binder: selectedBinder,
       });
-      showNotice(`Zapisano nową wersję printu: [${print.set.toUpperCase()}] #${print.collector_number} (${print.set_name})`);
+      showNotice(t('Zapisano nową wersję printu: {print}', { print: `[${print.set.toUpperCase()}] #${print.collector_number} (${print.set_name})` }));
     } else if (wishlistItem && onUpdateWishlistItem) {
       onUpdateWishlistItem({ card: print });
-      showNotice(`Zapisano na liście życzeń wersję: [${print.set.toUpperCase()}] #${print.collector_number} (${print.set_name})`);
+      showNotice(t('Zapisano na liście życzeń wersję: {print}', { print: `[${print.set.toUpperCase()}] #${print.collector_number} (${print.set_name})` }));
     } else {
-      showNotice(`Wybrano wersję: [${print.set.toUpperCase()}] #${print.collector_number} (${print.set_name}). Kliknij „Dodaj”, aby zapisać`);
+      showNotice(t('Wybrano wersję: {print}. Kliknij „Dodaj”, aby zapisać', { print: `[${print.set.toUpperCase()}] #${print.collector_number} (${print.set_name})` }));
     }
   }, [activeCard, onSelectPrint, existingItem, onSaveToCollection, quantity, quantityFoil, condition, language, purchasePrice, notes, selectedBinder, showNotice, wishlistItem, onUpdateWishlistItem]);
 
@@ -209,7 +210,7 @@ export function useCardModalForm({
         notes,
         binder: selectedBinder,
       });
-      showNotice(`Ustawiono i zapisano cenę: ${priceStr} ${currency}`);
+      showNotice(t('Ustawiono i zapisano cenę: {price}', { price: `${priceStr} ${currency}` }));
     }
   }, [existingItem, onSaveToCollection, activeCard, quantity, quantityFoil, condition, language, notes, selectedBinder, showNotice]);
 

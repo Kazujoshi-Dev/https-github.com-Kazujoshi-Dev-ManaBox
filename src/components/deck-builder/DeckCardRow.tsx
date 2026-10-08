@@ -2,6 +2,7 @@ import React from 'react';
 import { PlusCircle, MinusCircle, Crown, ExternalLink, AlertTriangle, Gem } from 'lucide-react';
 import { DeckCardRowProps } from './types';
 import { formatCurrency, getCardPrice, getCardImageUri } from '../../utils/formatters';
+import { useT } from '../../i18n';
 
 export const DeckCardRow: React.FC<DeckCardRowProps> = ({
   entry,
@@ -15,6 +16,7 @@ export const DeckCardRow: React.FC<DeckCardRowProps> = ({
   issues,
   gameChanger = false,
 }) => {
+  const t = useT();
   const card = entry.card;
   const isLegendary = (card.type_line || '').toLowerCase().includes('legendary');
   const singlePrice = settings ? getCardPrice(card, Boolean(entry.isFoil), settings) : 0;
@@ -30,7 +32,7 @@ export const DeckCardRow: React.FC<DeckCardRowProps> = ({
       onMouseLeave={onLeave}
       onClick={() => onViewDetails(card)}
       style={{ height: `${rowHeight}px` }}
-      title={illegal ? `Niezgodna z zasadami Commandera:\n${issues!.join('\n')}` : undefined}
+      title={illegal ? t('Niezgodna z zasadami Commandera:\n{v1}', { v1: issues!.join('\n') }) : undefined}
       aria-invalid={illegal || undefined}
       className={`group relative w-full rounded-xl overflow-hidden border transition-all shadow-md cursor-pointer flex items-center justify-between px-2.5 pointer-coarse:min-h-11 ${
         illegal
@@ -61,15 +63,15 @@ export const DeckCardRow: React.FC<DeckCardRowProps> = ({
         </span>
         {entry.isFoil && (
           <span className="px-1.5 py-0.2 rounded bg-amber-500/30 text-amber-300 tabular-nums text-[11px] font-bold border border-amber-400/40 shrink-0 flex items-center gap-0.5">
-            FOIL
+            {t('FOIL')}
           </span>
         )}
         {gameChanger && (
-          <span title="Game Changer: liczy się do limitu bracketu (w bracket 3 najwyżej 3 takie karty)" aria-label="Game Changer" className="shrink-0">
+          <span title={t('Game Changer: liczy się do limitu bracketu (w bracket 3 najwyżej 3 takie karty)')} aria-label={t('Game Changer')} className="shrink-0">
             <Gem className="w-3.5 h-3.5 text-amber-300 drop-shadow" strokeWidth={2.25} />
           </span>
         )}
-        {illegal && <AlertTriangle className="w-3.5 h-3.5 text-rose-400 shrink-0" aria-label="Karta niezgodna z zasadami" />}
+        {illegal && <AlertTriangle className="w-3.5 h-3.5 text-rose-400 shrink-0" aria-label={t('Karta niezgodna z zasadami')} />}
         <span
           className={`font-bold text-xs truncate transition-colors drop-shadow-md ${
             illegal
@@ -109,7 +111,7 @@ export const DeckCardRow: React.FC<DeckCardRowProps> = ({
                   onUpdateQuantity(card.id, 1);
                 }}
                 className="text-stone-400 hover:text-emerald-400 p-0.5 pointer-coarse:p-2"
-                title="Zwiększ ilość"
+                title={t('Zwiększ ilość')}
               >
                 <PlusCircle className="w-3.5 h-3.5" />
               </button>
@@ -120,7 +122,7 @@ export const DeckCardRow: React.FC<DeckCardRowProps> = ({
                   onUpdateQuantity(card.id, -1);
                 }}
                 className="text-stone-400 hover:text-rose-400 p-0.5 pointer-coarse:p-2"
-                title="Zmniejsz ilość"
+                title={t('Zmniejsz ilość')}
               >
                 <MinusCircle className="w-3.5 h-3.5" />
               </button>
@@ -134,7 +136,7 @@ export const DeckCardRow: React.FC<DeckCardRowProps> = ({
                 onSetCommander(card);
               }}
               className="text-stone-400 hover:text-amber-300 p-0.5 pointer-coarse:p-2"
-              title="Ustaw jako Dowódcę"
+              title={t('Ustaw jako Dowódcę')}
             >
               <Crown className="w-3.5 h-3.5" />
             </button>
@@ -146,7 +148,7 @@ export const DeckCardRow: React.FC<DeckCardRowProps> = ({
               onViewDetails(card);
             }}
             className="text-stone-400 hover:text-amber-300 p-0.5"
-            title="Szczegóły karty"
+            title={t('Szczegóły karty')}
           >
             <ExternalLink className="w-3.5 h-3.5" />
           </button>

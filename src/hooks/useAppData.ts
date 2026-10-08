@@ -4,6 +4,7 @@ import { entryKeyOf, matchesEntry, splitByFinish } from '../utils/collectionEntr
 import { DIGITAL_BLOCK_MESSAGE, isDigitalOnly } from '../utils/mtgFormats';
 import { CollectionItem, WishlistItem, Catalog, DeckItem, ScryfallCard, CardCondition, CardLanguage, AppSettings } from '../types';
 import { collectionApi, wishlistApi, catalogsApi, decksApi, settingsApi } from '../services/api';
+import { t, tServer, useT, binderName, MAIN_BINDER } from '../i18n';
 
 interface UseAppDataProps {
   userId?: string | null;
@@ -24,6 +25,7 @@ interface CardSaveInput {
 }
 
 export function useAppData({ userId, onUnauthorized, showToast, onSettingsLoaded }: UseAppDataProps) {
+  const t = useT();
   const [collection, setCollection] = useState<CollectionItem[]>([]);
   // Najświeższa kolekcja dla kilku zapisów pod rząd (np. skaner w trybie ciągłym)
   const collectionRef = useRef<CollectionItem[]>(collection);
@@ -83,7 +85,7 @@ export function useAppData({ userId, onUnauthorized, showToast, onSettingsLoaded
 
         if (setRes.ok) {
           const remoteSettings = await setRes.json();
-          if (remoteSettings && remoteSettings.currency) {
+          if (remoteSettings && typeof remoteSettings === 'object') {
             onSettingsLoaded?.(remoteSettings);
           }
         }
@@ -109,7 +111,7 @@ export function useAppData({ userId, onUnauthorized, showToast, onSettingsLoaded
       const res = await collectionApi.delete(id, onUnauthorized);
       if (res.ok) {
         setCollection(prev => prev.filter(c => c.id !== id));
-        showToast('Usunięto kartę z kolekcji');
+        showToast(t('Usunięto kartę z kolekcji'));
       }
     } catch (err) {
       console.error('Failed to delete item:', err);
@@ -163,7 +165,7 @@ export function useAppData({ userId, onUnauthorized, showToast, onSettingsLoaded
   const toggleForSale = useCallback(async (item: CollectionItem, customPrice?: number | null) => {
     const nextForSale = !item.isForSale;
     if (nextForSale && isDigitalOnly(item.card)) {
-      showToast(DIGITAL_BLOCK_MESSAGE);
+      showToast(t(DIGITAL_BLOCK_MESSAGE));
       return;
     }
     const updates: Partial<CollectionItem> = {
@@ -173,9 +175,9 @@ export function useAppData({ userId, onUnauthorized, showToast, onSettingsLoaded
     const res = await updateCollectionItemData(item.id, updates);
     if (res) {
       if (nextForSale) {
-        showToast(`Wystawiono "${item.card.name}" na sprzedaż! Przeniesiono ją z klasera do kategorii „Sprzedam”.`);
+        showToast(t('Wystawiono "{name}" na sprzedaż! Przeniesiono ją z klasera do kategorii „Sprzedam”.', { name: item.card.name }));
       } else {
-        showToast(`Wycofano "${item.card.name}" ze sprzedaży i wróciła do klasera „${item.binder || 'Klaser Główny'}”.`);
+        showToast(t('Wycofano "{name}" ze sprzedaży i wróciła do klasera „{v2}”.', { name: item.card.name, v2: binderName(item.binder || MAIN_BINDER) }));
       }
     }
   }, [updateCollectionItemData, showToast]);
@@ -191,7 +193,7 @@ export function useAppData({ userId, onUnauthorized, showToast, onSettingsLoaded
 
     if (quantityToSell <= 0) return;
     if (isDigitalOnly(item.card)) {
-      showToast(DIGITAL_BLOCK_MESSAGE);
+      showToast(t(DIGITAL_BLOCK_MESSAGE));
       return;
     }
 
@@ -207,7 +209,7 @@ export function useAppData({ userId, onUnauthorized, showToast, onSettingsLoaded
         ...(customPrice !== undefined ? { salePrice: customPrice } : {})
       };
       await updateCollectionItemData(item.id, updates);
-      showToast(`Wystawiono "${item.card.name}" (${quantityToSell} szt.) na sprzedaż!`);
+      showToast(t('Wystawiono "{name}" ({quantityToSell} szt.) na sprzedaż!', { name: item.card.name, quantityToSell }));
       return;
     }
 
@@ -241,11 +243,11 @@ export function useAppData({ userId, onUnauthorized, showToast, onSettingsLoaded
       if (res.ok) {
         const createdItem = await res.json();
         setCollection((prev) => [createdItem, ...prev]);
-        showToast(`Wystawiono ${quantityToSell} szt. "${item.card.name}" na sprzedaż!`);
+        showToast(t('Wystawiono {quantityToSell} szt. "{name}" na sprzedaż!', { quantityToSell, name: item.card.name }));
       }
     } catch (err: any) {
       console.error('Error splitting item for sale:', err);
-      showToast('Wystąpił błąd podczas wystawiania kart na sprzedaż.');
+      showToast(t('Wystąpił błąd podczas wystawiania kart na sprzedaż.'));
     }
   }, [updateCollectionItemData, onUnauthorized, showToast]);
 
@@ -310,10 +312,10 @@ export function useAppData({ userId, onUnauthorized, showToast, onSettingsLoaded
           const otherIsFoil = !itemIsFoil;
           const other = await addCopies(data, otherIsFoil, otherIsFoil ? foil : normal);
           showToast(other
-            ? `Zapisano "${label}". Sztuki ${otherIsFoil ? 'foil' : 'zwykłe'} są osobną pozycją w kolekcji.`
-            : 'Nie udało się zapisać wszystkich sztuk. Spróbuj ponownie.');
+            ? (otherIsFoil ? t('Zapisano "{label}". Sztuki foil są osobną pozycją w kolekcji.', { label }) : t('Zapisano "{label}". Sztuki zwykłe są osobną pozycją w kolekcji.', { label }))
+            : t('Nie udało się zapisać wszystkich sztuk. Spróbuj ponownie.'));
         } else {
-          showToast(`Zapisano "${label}"`);
+          showToast(t('Zapisano "{label}"', { label }));
         }
         return updated;
       }
@@ -329,10 +331,10 @@ export function useAppData({ userId, onUnauthorized, showToast, onSettingsLoaded
         added += qty;
       }
       if (!first) {
-        showToast('Nie udało się dodać karty do kolekcji. Spróbuj ponownie.');
+        showToast(t('Nie udało się dodać karty do kolekcji. Spróbuj ponownie.'));
         return null;
       }
-      showToast(`Dodano ${added} szt. "${label}" do kolekcji`);
+      showToast(t('Dodano {added} szt. "{label}" do kolekcji', { added, label }));
       return first;
     } catch (err) {
       console.error('Failed to save card:', err);
@@ -353,7 +355,7 @@ export function useAppData({ userId, onUnauthorized, showToast, onSettingsLoaded
     salePrice: number | null;
   }): Promise<boolean> => {
     if (isDigitalOnly(data.card)) {
-      showToast(DIGITAL_BLOCK_MESSAGE);
+      showToast(t(DIGITAL_BLOCK_MESSAGE));
       return false;
     }
     const qty = Math.max(1, Math.floor(data.quantity || 1));
@@ -383,10 +385,10 @@ export function useAppData({ userId, onUnauthorized, showToast, onSettingsLoaded
         if (!res.ok) throw new Error();
         const updated: CollectionItem = await res.json();
         setCollection((prev) => prev.map((c) => (c.id === updated.id ? updated : c)));
-        showToast(`Dodano ${qty} szt. „${data.card.name}” do oferty, wystawione: ${updated.quantity + updated.quantityFoil} szt.`);
+        showToast(t('Dodano {qty} szt. „{name}” do oferty, wystawione: {v3} szt.', { qty, name: data.card.name, v3: updated.quantity + updated.quantityFoil }));
         return true;
       }
-      const binder = catalogs.find((c) => c.isDefault)?.name || catalogs[0]?.name || 'Klaser Główny';
+      const binder = catalogs.find((c) => c.isDefault)?.name || catalogs[0]?.name || MAIN_BINDER;
       const res = await collectionApi.create({
         cardId: data.card.id,
         card: data.card,
@@ -401,10 +403,10 @@ export function useAppData({ userId, onUnauthorized, showToast, onSettingsLoaded
       if (!res.ok) throw new Error();
       const created: CollectionItem = await res.json();
       setCollection((prev) => [created, ...prev]);
-      showToast(`Wystawiono na sprzedaż: ${qty} szt. „${data.card.name}”`);
+      showToast(t('Wystawiono na sprzedaż: {qty} szt. „{name}”', { qty, name: data.card.name }));
       return true;
     } catch {
-      showToast('Nie udało się dodać karty na sprzedaż. Spróbuj ponownie.');
+      showToast(t('Nie udało się dodać karty na sprzedaż. Spróbuj ponownie.'));
       return false;
     }
   }, [collection, catalogs, onUnauthorized, showToast]);
@@ -412,7 +414,7 @@ export function useAppData({ userId, onUnauthorized, showToast, onSettingsLoaded
   const quickAddToCollection = useCallback((card: ScryfallCard) => {
     const defaultBinder = (catalogs && catalogs.length > 0)
       ? (catalogs.find(c => c.isDefault)?.name || catalogs[0].name)
-      : 'Klaser Główny';
+      : MAIN_BINDER;
 
     return saveToCollection({
       card,
@@ -428,7 +430,7 @@ export function useAppData({ userId, onUnauthorized, showToast, onSettingsLoaded
   // Wishlist CRUD
   const addToWishlist = useCallback(async (card: ScryfallCard, isFoil = false) => {
     if (isDigitalOnly(card)) {
-      showToast(DIGITAL_BLOCK_MESSAGE);
+      showToast(t(DIGITAL_BLOCK_MESSAGE));
       return;
     }
     try {
@@ -442,7 +444,7 @@ export function useAppData({ userId, onUnauthorized, showToast, onSettingsLoaded
       if (res.ok) {
         const newItem = await res.json();
         setWishlist(prev => [newItem, ...prev]);
-        showToast(`Dodano "${card.name}"${isFoil ? ' (Foil)' : ''} do Listy Życzeń!`);
+        showToast(t('Dodano "{name}"{v2} do Listy Życzeń!', { name: card.name, v2: isFoil ? ' (Foil)' : '' }));
       }
     } catch (err) {
       console.error('Failed to add to wishlist:', err);
@@ -454,7 +456,7 @@ export function useAppData({ userId, onUnauthorized, showToast, onSettingsLoaded
     patch: { card?: ScryfallCard; isFoil?: boolean; targetQuantity?: number; notes?: string }
   ): Promise<WishlistItem | null> => {
     if (patch.card && isDigitalOnly(patch.card)) {
-      showToast(DIGITAL_BLOCK_MESSAGE);
+      showToast(t(DIGITAL_BLOCK_MESSAGE));
       return null;
     }
     try {
@@ -465,10 +467,10 @@ export function useAppData({ userId, onUnauthorized, showToast, onSettingsLoaded
         return updated;
       }
       const err = await res.json().catch(() => ({}));
-      showToast(err.error || 'Nie udało się zapisać zmiany na liście życzeń.');
+      showToast(tServer(err.error) || t('Nie udało się zapisać zmiany na liście życzeń.'));
     } catch (err) {
       console.error('Failed to update wishlist item:', err);
-      showToast('Nie udało się zapisać zmiany na liście życzeń.');
+      showToast(t('Nie udało się zapisać zmiany na liście życzeń.'));
     }
     return null;
   }, [onUnauthorized, showToast]);
@@ -478,7 +480,7 @@ export function useAppData({ userId, onUnauthorized, showToast, onSettingsLoaded
       const res = await wishlistApi.delete(id, onUnauthorized);
       if (res.ok) {
         setWishlist(prev => prev.filter(w => w.id !== id));
-        showToast('Usunięto z Listy Życzeń');
+        showToast(t('Usunięto z Listy Życzeń'));
       }
     } catch (err) {
       console.error('Failed to remove from wishlist:', err);
@@ -501,14 +503,14 @@ export function useAppData({ userId, onUnauthorized, showToast, onSettingsLoaded
         } else {
           setCatalogs(prev => [...prev, created]);
         }
-        showToast(`Utworzono katalog "${created.name}"`);
+        showToast(t('Utworzono katalog "{name}"', { name: created.name }));
         return created;
       } else {
         const err = await res.json();
-        throw new Error(err.error || 'Błąd tworzenia katalogu');
+        throw new Error(tServer(err.error) || t('Błąd tworzenia katalogu'));
       }
     } catch (err: any) {
-      showToast(err.message || 'Nie udało się utworzyć katalogu');
+      showToast(err.message || t('Nie udało się utworzyć katalogu'));
       throw err;
     }
   }, [onUnauthorized, showToast]);
@@ -517,7 +519,7 @@ export function useAppData({ userId, onUnauthorized, showToast, onSettingsLoaded
     const res = await catalogsApi.update(id, updates, onUnauthorized);
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
-      throw new Error(err.error || 'Nie udało się zapisać katalogu.');
+      throw new Error(tServer(err.error) || t('Nie udało się zapisać katalogu.'));
     }
     const updated: Catalog = await res.json();
     setCatalogs(prev => prev.map(c => c.id === id ? updated : (updated.isDefault ? { ...c, isDefault: false } : c)));
@@ -527,7 +529,7 @@ export function useAppData({ userId, onUnauthorized, showToast, onSettingsLoaded
 
     const colRes = await collectionApi.getAll(onUnauthorized);
     if (colRes.ok) setCollection(await colRes.json());
-    showToast(`Zaktualizowano katalog "${updated.name}"`);
+    showToast(t('Zaktualizowano katalog "{name}"', { name: updated.name }));
   }, [onUnauthorized, showToast]);
 
   /** Usuwa karty katalogu z kolekcji (poza wystawionymi na sprzedaż); katalog zostaje. */
@@ -536,15 +538,15 @@ export function useAppData({ userId, onUnauthorized, showToast, onSettingsLoaded
     const res = await catalogsApi.empty(id, onUnauthorized);
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
-      showToast(err.error || 'Nie udało się opróżnić katalogu.');
+      showToast(tServer(err.error) || t('Nie udało się opróżnić katalogu.'));
       return;
     }
     const data = await res.json();
     const colRes = await collectionApi.getAll(onUnauthorized);
     if (colRes.ok) setCollection(await colRes.json());
     showToast(data.deletedItems > 0
-      ? `Opróżniono „${name}”: usunięto ${data.deletedItems} poz. z kolekcji`
-      : `„${name}” był już pusty`);
+      ? t('Opróżniono „{name}”: usunięto {deletedItems} poz. z kolekcji', { name: binderName(name), deletedItems: data.deletedItems })
+      : t('„{name}” był już pusty', { name: binderName(name) }));
   }, [catalogs, onUnauthorized, showToast]);
 
   const setDefaultCatalog = useCallback(async (id: string) => {
@@ -561,7 +563,7 @@ export function useAppData({ userId, onUnauthorized, showToast, onSettingsLoaded
           })));
         }
         const target = catalogs.find(c => c.id === id);
-        showToast(`Oznaczono "${target?.name || 'Katalog'}" jako domyślny`);
+        showToast(t('Oznaczono "{v1}" jako domyślny', { v1: target?.name ? binderName(target.name) : t('Katalog') }));
       }
     } catch (err) {
       console.error('Failed to set default catalog:', err);
@@ -573,7 +575,7 @@ export function useAppData({ userId, onUnauthorized, showToast, onSettingsLoaded
       const res = await catalogsApi.delete(id, onUnauthorized);
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
-        showToast(err.error || 'Nie udało się usunąć katalogu.');
+        showToast(tServer(err.error) || t('Nie udało się usunąć katalogu.'));
         return;
       }
       const data = await res.json();
@@ -584,7 +586,7 @@ export function useAppData({ userId, onUnauthorized, showToast, onSettingsLoaded
       }
       const colRes = await collectionApi.getAll(onUnauthorized);
       if (colRes.ok) setCollection(await colRes.json());
-      showToast(`Usunięto katalog. Jego karty są teraz w: ${data.reassignedTo}`);
+      showToast(t('Usunięto katalog. Jego karty są teraz w: {reassignedTo}', { reassignedTo: binderName(data.reassignedTo) }));
     } catch (err) {
       console.error('Failed to delete catalog:', err);
     }
@@ -603,14 +605,14 @@ export function useAppData({ userId, onUnauthorized, showToast, onSettingsLoaded
       if (res.ok) {
         const newDeck: DeckItem = await res.json();
         setDecks(prev => [newDeck, ...prev]);
-        showToast(`Utworzono talię "${newDeck.name}" [${newDeck.format || 'EDH Commander'}]!`);
+        showToast(t('Utworzono talię "{name}" [{v2}]!', { name: newDeck.name, v2: newDeck.format || 'EDH Commander' }));
         return newDeck;
       } else {
         const err = await res.json();
-        throw new Error(err.error || 'Nie udało się utworzyć talii.');
+        throw new Error(tServer(err.error) || t('Nie udało się utworzyć talii.'));
       }
     } catch (err: any) {
-      showToast(err.message || 'Błąd tworzenia talii.');
+      showToast(err.message || t('Błąd tworzenia talii.'));
       throw err;
     }
   }, [onUnauthorized, showToast]);
@@ -629,7 +631,7 @@ export function useAppData({ userId, onUnauthorized, showToast, onSettingsLoaded
       const res = await decksApi.delete(deckId, onUnauthorized);
       if (res.ok) {
         setDecks(prev => prev.filter(d => d.id !== deckId));
-        showToast('Usunięto talię.');
+        showToast(t('Usunięto talię.'));
       }
     } catch (err) {
       console.error('Failed to delete deck:', err);
@@ -649,14 +651,14 @@ export function useAppData({ userId, onUnauthorized, showToast, onSettingsLoaded
           const skipped = data.skippedCount ?? 0;
           showToast(
             (changed > 0
-              ? `Zaktualizowano ceny: ${data.updatedCount} kart, ${changed} ze zmianą ceny.`
-              : `Zaktualizowano ceny dla ${data.updatedCount} kart, bez zmian od ostatniej aktualizacji.`) +
-              (skipped > 0 ? ` ${skipped} kart spoza bazy zaktualizujemy przy kolejnym odświeżeniu (najwcześniej za kilka godzin).` : '')
+              ? t('Zaktualizowano ceny: {n} kart, {changed} ze zmianą ceny.', { n: data.updatedCount, changed })
+              : t('Zaktualizowano ceny dla {n} kart, bez zmian od ostatniej aktualizacji.', { n: data.updatedCount })) +
+              (skipped > 0 ? ' ' + t('{n} kart spoza bazy zaktualizujemy przy kolejnym odświeżeniu (najwcześniej za kilka godzin).', { n: skipped }) : '')
           );
         }
       } else {
         const data = await res.json().catch(() => ({}));
-        showToast(data.error || 'Nie udało się odświeżyć cen. Spróbuj ponownie później.');
+        showToast(tServer(data.error) || t('Nie udało się odświeżyć cen. Spróbuj ponownie później.'));
       }
     } catch (err) {
       console.error('Failed to refresh prices:', err);
@@ -674,7 +676,7 @@ export function useAppData({ userId, onUnauthorized, showToast, onSettingsLoaded
     document.body.appendChild(downloadAnchor);
     downloadAnchor.click();
     downloadAnchor.remove();
-    showToast('Pobrano plik z kopią zapasową kolekcji');
+    showToast(t('Pobrano plik z kopią zapasową kolekcji'));
   }, [collection, showToast]);
 
   const importCollection = useCallback((e: ChangeEvent<HTMLInputElement>) => {
@@ -691,12 +693,12 @@ export function useAppData({ userId, onUnauthorized, showToast, onSettingsLoaded
             const colRes = await collectionApi.getAll(onUnauthorized);
             if (colRes.ok) {
               setCollection(await colRes.json());
-              showToast('Pomyślnie zaimportowano kolekcję!');
+              showToast(t('Pomyślnie zaimportowano kolekcję!'));
             }
           }
         }
       } catch (err) {
-        alert('Nieprawidłowy format pliku JSON');
+        alert(t('Nieprawidłowy format pliku JSON'));
       }
     };
     reader.readAsText(file);

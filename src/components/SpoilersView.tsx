@@ -5,6 +5,7 @@ import { ManaSymbol } from './ManaSymbol';
 import { ScryfallCard } from '../types';
 import { getCardImageUri, handleCardImageError, getRarityColor, getRarityLabel } from '../utils/formatters';
 import { useBackToClose } from '../hooks/useBackButton';
+import { useT, t as tr, tk, locale, plural } from '../i18n';
 
 /** Karta z dodatku w zapowiedziach: pola Scryfall, których nie ma w ogólnym typie. */
 interface SpoilerCard extends ScryfallCard {
@@ -46,8 +47,8 @@ type RarityFilter = 'all' | 'mythic' | 'rare' | 'uncommon' | 'common';
 type ColorFilter = 'W' | 'U' | 'B' | 'R' | 'G' | 'C' | 'M';
 
 const SET_TYPE_LABELS: Record<string, string> = {
-  expansion: 'Dodatek', core: 'Edycja podstawowa', masters: 'Masters', draft_innovation: 'Dodatek draftowy',
-  commander: 'Commander', funny: 'Humorystyczny', starter: 'Startowy', box: 'Zestaw', duel_deck: 'Duel Deck',
+  expansion: tk('Dodatek'), core: tk('Edycja podstawowa'), masters: 'Masters', draft_innovation: tk('Dodatek draftowy'),
+  commander: 'Commander', funny: tk('Humorystyczny'), starter: tk('Startowy'), box: tk('Zestaw'), duel_deck: 'Duel Deck',
   from_the_vault: 'From the Vault', spellbook: 'Signature Spellbook', premium_deck: 'Premium Deck',
   planechase: 'Planechase', archenemy: 'Archenemy', arsenal: 'Arsenal', masterpiece: 'Masterpiece',
 };
@@ -55,13 +56,13 @@ const SET_TYPE_LABELS: Record<string, string> = {
 const RARITY_ORDER: Record<string, number> = { mythic: 0, special: 1, bonus: 1, rare: 2, uncommon: 3, common: 4 };
 
 const COLOR_FILTERS: Array<{ key: ColorFilter; label: string }> = [
-  { key: 'W', label: 'Biały' }, { key: 'U', label: 'Niebieski' }, { key: 'B', label: 'Czarny' },
-  { key: 'R', label: 'Czerwony' }, { key: 'G', label: 'Zielony' }, { key: 'M', label: 'Wielokolorowe' },
-  { key: 'C', label: 'Bezbarwne' },
+  { key: 'W', label: tk('Biały') }, { key: 'U', label: tk('Niebieski') }, { key: 'B', label: tk('Czarny') },
+  { key: 'R', label: tk('Czerwony') }, { key: 'G', label: tk('Zielony') }, { key: 'M', label: tk('Wielokolorowe') },
+  { key: 'C', label: tk('Bezbarwne') },
 ];
 
 const RARITY_FILTERS: Array<{ key: RarityFilter; label: string }> = [
-  { key: 'all', label: 'Wszystkie' }, { key: 'mythic', label: 'Mythic' }, { key: 'rare', label: 'Rare' },
+  { key: 'all', label: tk('Wszystkie') }, { key: 'mythic', label: 'Mythic' }, { key: 'rare', label: 'Rare' },
   { key: 'uncommon', label: 'Uncommon' }, { key: 'common', label: 'Common' },
 ];
 
@@ -70,7 +71,7 @@ const DAY_MS = 86400000;
 /** Data Scryfall (RRRR-MM-DD) jako polski tekst, bez przesunięć strefy czasowej. */
 function formatDay(day?: string, opts: Intl.DateTimeFormatOptions = { day: 'numeric', month: 'long', year: 'numeric' }) {
   if (!day) return '';
-  return new Date(`${day}T12:00:00Z`).toLocaleDateString('pl-PL', { ...opts, timeZone: 'UTC' });
+  return new Date(`${day}T12:00:00Z`).toLocaleDateString(locale(), { ...opts, timeZone: 'UTC' });
 }
 
 function daysBetween(from: string, to: string) {
@@ -79,10 +80,10 @@ function daysBetween(from: string, to: string) {
 
 function releaseLabel(releasedAt: string, today: string) {
   const d = daysBetween(today, releasedAt);
-  if (d > 1) return `premiera za ${d} dni`;
-  if (d === 1) return 'premiera jutro';
-  if (d === 0) return 'premiera dziś';
-  return 'już w sprzedaży';
+  if (d > 1) return tr('premiera za {n} dni', { n: d });
+  if (d === 1) return tr('premiera jutro');
+  if (d === 0) return tr('premiera dziś');
+  return tr('już w sprzedaży');
 }
 
 function cardColors(card: SpoilerCard): string[] {
@@ -109,6 +110,7 @@ const RulesText: React.FC<{ text?: string }> = ({ text }) => {
 };
 
 export const SpoilersView: React.FC<SpoilersViewProps> = ({ onAddToWishlist }) => {
+  const t = useT();
   const [groups, setGroups] = useState<SpoilerGroup[]>([]);
   const [today, setToday] = useState<string>(() => new Date().toISOString().slice(0, 10));
   const [groupsLoading, setGroupsLoading] = useState(true);
@@ -147,7 +149,7 @@ export const SpoilersView: React.FC<SpoilersViewProps> = ({ onAddToWishlist }) =
           setSetCode(list[0].set.code);
         }
       } catch {
-        if (!cancelled) setGroupsError('Nie udało się pobrać listy nadchodzących dodatków. Spróbuj ponownie za chwilę.');
+        if (!cancelled) setGroupsError(t('Nie udało się pobrać listy nadchodzących dodatków. Spróbuj ponownie za chwilę.'));
       } finally {
         if (!cancelled) setGroupsLoading(false);
       }
@@ -170,7 +172,7 @@ export const SpoilersView: React.FC<SpoilersViewProps> = ({ onAddToWishlist }) =
       } catch {
         if (!cancelled) {
           setCards([]);
-          setCardsError('Nie udało się pobrać kart z tego dodatku. Spróbuj ponownie za chwilę.');
+          setCardsError(t('Nie udało się pobrać kart z tego dodatku. Spróbuj ponownie za chwilę.'));
         }
       } finally {
         if (!cancelled) setCardsLoading(false);
@@ -246,8 +248,8 @@ export const SpoilersView: React.FC<SpoilersViewProps> = ({ onAddToWishlist }) =
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Spoilery"
-        description="Karty zapowiedziane z nadchodzących dodatków, na bieżąco ze Scryfall. Nowe zapowiedzi pojawiają się tu w ciągu kilkudziesięciu minut."
+        title={t('Spoilery')}
+        description={t('Karty zapowiedziane z nadchodzących dodatków, na bieżąco ze Scryfall. Nowe zapowiedzi pojawiają się tu w ciągu kilkudziesięciu minut.')}
       />
 
       {groupsLoading ? (
@@ -258,7 +260,7 @@ export const SpoilersView: React.FC<SpoilersViewProps> = ({ onAddToWishlist }) =
         <p className="text-sm text-rose-300">{groupsError}</p>
       ) : groups.length === 0 ? (
         <div className="rounded-xl border border-stone-800 bg-stone-900/60 p-6 text-sm text-stone-400">
-          Obecnie nie ma zapowiedzianych dodatków. Zajrzyj tu, gdy ruszy sezon spoilerów.
+          {t('Obecnie nie ma zapowiedzianych dodatków. Zajrzyj tu, gdy ruszy sezon spoilerów.')}
         </div>
       ) : (
         <>
@@ -285,7 +287,7 @@ export const SpoilersView: React.FC<SpoilersViewProps> = ({ onAddToWishlist }) =
                         {formatDay(g.set.released_at, { day: 'numeric', month: 'short', year: 'numeric' })} · {releaseLabel(g.set.released_at, today)}
                       </p>
                       <p className="text-xs text-stone-500 tabular-nums mt-0.5">
-                        {g.total_cards > 0 ? `${g.total_cards} kart` : 'jeszcze bez kart'}
+                        {g.total_cards > 0 ? `${g.total_cards} kart` : t('jeszcze bez kart')}
                         {g.children.length > 0 && ` · ${g.children.length + 1} kategorie`}
                       </p>
                     </div>
@@ -311,7 +313,7 @@ export const SpoilersView: React.FC<SpoilersViewProps> = ({ onAddToWishlist }) =
                           : 'border-stone-800 bg-stone-900 text-stone-300 hover:border-stone-700'
                       }`}
                     >
-                      <span className="truncate max-w-[16rem]">{s.code === group.set.code ? 'Główny dodatek' : s.name}</span>
+                      <span className="truncate max-w-[16rem]">{s.code === group.set.code ? t('Główny dodatek') : s.name}</span>
                       <span className="text-xs text-stone-500 tabular-nums">{s.card_count}</span>
                     </button>
                   ))}
@@ -324,13 +326,13 @@ export const SpoilersView: React.FC<SpoilersViewProps> = ({ onAddToWishlist }) =
                   <span className="inline-flex items-center gap-1.5"><CalendarDays className="w-4 h-4" />{formatDay(activeSet.released_at)}</span>
                   <span className="tabular-nums">
                     {activeSet.printed_size && activeSet.printed_size >= baseCards.length
-                      ? `zapowiedziano ${baseCards.length} z ${activeSet.printed_size} kart`
-                      : `${baseCards.length} kart`}
+                      ? t('zapowiedziano {n} z {total} kart', { n: baseCards.length, total: activeSet.printed_size })
+                      : plural(baseCards.length, ['{n} karta', '{n} karty', '{n} kart'], ['{n} card', '{n} cards'])}
                   </span>
                   {newCount > 0 && (
-                    <span className="inline-flex items-center gap-1 text-amber-300"><Sparkles className="w-4 h-4" />{newCount} nowych od wczoraj</span>
+                    <span className="inline-flex items-center gap-1 text-amber-300"><Sparkles className="w-4 h-4" />{t('{n} nowych od wczoraj', { n: newCount })}</span>
                   )}
-                  <span className="text-stone-500">{SET_TYPE_LABELS[activeSet.set_type] || activeSet.set_type}</span>
+                  <span className="text-stone-500">{SET_TYPE_LABELS[activeSet.set_type] ? t(SET_TYPE_LABELS[activeSet.set_type]) : activeSet.set_type}</span>
                 </div>
               )}
 
@@ -341,7 +343,7 @@ export const SpoilersView: React.FC<SpoilersViewProps> = ({ onAddToWishlist }) =
                   <input
                     value={query}
                     onChange={(e) => setQuery(e.target.value)}
-                    placeholder="Szukaj w nazwie, typie, tekście"
+                    placeholder={t('Szukaj w nazwie, typie, tekście')}
                     className="w-full rounded-lg bg-stone-900 border border-stone-800 pl-9 pr-3 py-2 text-sm text-stone-100 placeholder:text-stone-500 focus:outline-none focus:border-amber-500/60"
                   />
                 </div>
@@ -353,7 +355,7 @@ export const SpoilersView: React.FC<SpoilersViewProps> = ({ onAddToWishlist }) =
                       onClick={() => setRarity(r.key)}
                       className={`rounded-md px-2.5 py-1 text-xs border ${rarity === r.key ? 'border-amber-500/60 bg-amber-500/10 text-amber-200' : 'border-stone-800 text-stone-400 hover:text-stone-200'}`}
                     >
-                      {r.label}
+                      {t(r.label)}
                     </button>
                   ))}
                 </div>
@@ -362,7 +364,7 @@ export const SpoilersView: React.FC<SpoilersViewProps> = ({ onAddToWishlist }) =
                     <button
                       key={c.key}
                       type="button"
-                      title={c.label}
+                      title={t(c.label)}
                       aria-pressed={colors.includes(c.key)}
                       onClick={() => toggleColor(c.key)}
                       className={`rounded-full p-0.5 border transition-opacity ${colors.includes(c.key) ? 'border-amber-400 opacity-100' : 'border-transparent opacity-60 hover:opacity-100'}`}
@@ -378,13 +380,13 @@ export const SpoilersView: React.FC<SpoilersViewProps> = ({ onAddToWishlist }) =
                     value={sort}
                     onChange={(e) => setSort(e.target.value as SortMode)}
                     className="rounded-lg bg-stone-900 border border-stone-800 px-2.5 py-2 text-sm text-stone-200 focus:outline-none focus:border-amber-500/60"
-                    aria-label="Sortowanie"
+                    aria-label={t('Sortowanie')}
                   >
-                    <option value="newest">Najnowsze zapowiedzi</option>
-                    <option value="number">Numer w dodatku</option>
-                    <option value="rarity">Rzadkość</option>
+                    <option value="newest">{t('Najnowsze zapowiedzi')}</option>
+                    <option value="number">{t('Numer w dodatku')}</option>
+                    <option value="rarity">{t('Rzadkość')}</option>
                   </select>
-                  <button type="button" className="btn btn-ghost" title="Odśwież" onClick={() => setReloadKey((k) => k + 1)}>
+                  <button type="button" className="btn btn-ghost" title={t('Odśwież')} onClick={() => setReloadKey((k) => k + 1)}>
                     <RefreshCw className={`w-4 h-4 ${cardsLoading ? 'animate-spin' : ''}`} />
                   </button>
                 </div>
@@ -392,7 +394,7 @@ export const SpoilersView: React.FC<SpoilersViewProps> = ({ onAddToWishlist }) =
               {(variantCount > 0 || showVariants) && (
                 <label className="inline-flex items-center gap-2 text-sm text-stone-400 cursor-pointer select-none">
                   <input type="checkbox" checked={showVariants} onChange={(e) => setShowVariants(e.target.checked)} className="accent-amber-500" />
-                  Pokaż alternatywne grafiki {!showVariants && <span className="tabular-nums">({variantCount})</span>}
+                  {t('Pokaż alternatywne grafiki')} {!showVariants && <span className="tabular-nums">({variantCount})</span>}
                 </label>
               )}
 
@@ -408,11 +410,11 @@ export const SpoilersView: React.FC<SpoilersViewProps> = ({ onAddToWishlist }) =
               ) : visibleCards.length === 0 ? (
                 <div className="rounded-xl border border-stone-800 bg-stone-900/60 p-6 text-sm text-stone-400">
                   {cards.length === 0
-                    ? 'W tej kategorii nie zapowiedziano jeszcze żadnej karty.'
-                    : 'Żadna karta nie pasuje do wybranych filtrów.'}
+                    ? t('W tej kategorii nie zapowiedziano jeszcze żadnej karty.')
+                    : t('Żadna karta nie pasuje do wybranych filtrów.')}
                   {hasFilters && cards.length > 0 && (
                     <button type="button" className="btn btn-ghost ml-2" onClick={() => { setQuery(''); setRarity('all'); setColors([]); }}>
-                      Wyczyść filtry
+                      {t('Wyczyść filtry')}
                     </button>
                   )}
                 </div>
@@ -437,7 +439,7 @@ export const SpoilersView: React.FC<SpoilersViewProps> = ({ onAddToWishlist }) =
                             className="w-full aspect-[488/680] object-cover rounded-[4.5%] bg-stone-900 shadow-md transition-transform group-hover:-translate-y-0.5"
                           />
                           {isNew && (
-                            <span className="absolute top-2 right-2 rounded-md bg-amber-500 text-stone-950 text-[11px] font-bold px-1.5 py-0.5 shadow">NOWA</span>
+                            <span className="absolute top-2 right-2 rounded-md bg-amber-500 text-stone-950 text-[11px] font-bold px-1.5 py-0.5 shadow">{t('NOWA')}</span>
                           )}
                         </div>
                         <p className="mt-1.5 text-xs text-stone-300 truncate group-hover:text-amber-200">{card.name}</p>
@@ -456,7 +458,7 @@ export const SpoilersView: React.FC<SpoilersViewProps> = ({ onAddToWishlist }) =
       )}
 
       <p className="text-[11px] text-stone-500">
-        Dane i grafiki kart: Scryfall. Karty i grafiki Magic: The Gathering należą do Wizards of the Coast.
+        {t('Dane i grafiki kart: Scryfall. Karty i grafiki Magic: The Gathering należą do Wizards of the Coast.')}
       </p>
 
       {openCard && (
@@ -475,6 +477,7 @@ const SpoilerCardModal: React.FC<{
   onClose: () => void;
   onAddToWishlist?: (card: ScryfallCard) => Promise<void> | void;
 }> = ({ card, onClose, onAddToWishlist }) => {
+  const t = useT();
   useBackToClose(true, onClose);
   const [faceIdx, setFaceIdx] = useState(0);
   const [added, setAdded] = useState(false);
@@ -511,7 +514,7 @@ const SpoilerCardModal: React.FC<{
         aria-modal="true"
         aria-label={card.name}
       >
-        <button type="button" onClick={onClose} className="absolute top-3 right-3 btn btn-ghost z-10" aria-label="Zamknij">
+        <button type="button" onClick={onClose} className="absolute top-3 right-3 btn btn-ghost z-10" aria-label={t('Zamknij')}>
           <X className="w-5 h-5" />
         </button>
         <div className="grid sm:grid-cols-[minmax(0,5fr)_minmax(0,6fr)] gap-5 p-5">
@@ -524,7 +527,7 @@ const SpoilerCardModal: React.FC<{
             />
             {hasFaceImages && (
               <button type="button" className="btn btn-secondary w-full max-w-xs mx-auto flex justify-center" onClick={() => setFaceIdx((i) => (i + 1) % faces!.length)}>
-                <RotateCw className="w-4 h-4" /> Odwróć kartę
+                <RotateCw className="w-4 h-4" /> {t('Odwróć kartę')}
               </button>
             )}
           </div>
@@ -552,23 +555,23 @@ const SpoilerCardModal: React.FC<{
                 )}
                 {(s.power || s.loyalty || s.defense) && (
                   <p className="text-sm text-stone-300 tabular-nums">
-                    {s.power && <>Siła / Wytrzymałość: <span className="font-semibold text-stone-100">{s.power}/{s.toughness}</span></>}
-                    {s.loyalty && <>Lojalność: <span className="font-semibold text-stone-100">{s.loyalty}</span></>}
-                    {s.defense && <>Obrona: <span className="font-semibold text-stone-100">{s.defense}</span></>}
+                    {s.power && <>{t('Siła / Wytrzymałość:')} <span className="font-semibold text-stone-100">{s.power}/{s.toughness}</span></>}
+                    {s.loyalty && <>{t('Lojalność:')} <span className="font-semibold text-stone-100">{s.loyalty}</span></>}
+                    {s.defense && <>{t('Obrona:')} <span className="font-semibold text-stone-100">{s.defense}</span></>}
                   </p>
                 )}
               </div>
             ))}
 
             <div className="text-xs text-stone-400 space-y-1">
-              {card.artist && <p>Ilustracja: <span className="text-stone-300">{card.artist}</span></p>}
+              {card.artist && <p>{t('Ilustracja:')} <span className="text-stone-300">{card.artist}</span></p>}
               {card.preview?.previewed_at && (
                 <p className="flex flex-wrap items-center gap-1">
                   <Eye className="w-3.5 h-3.5" />
-                  Zapowiedź {formatDay(card.preview.previewed_at)}
+                  {t('Zapowiedź')} {formatDay(card.preview.previewed_at)}
                   {card.preview.source && (
                     <>
-                      {' przez '}
+                      {' ' + t('przez') + ' '}
                       {card.preview.source_uri ? (
                         <a href={card.preview.source_uri} target="_blank" rel="noopener noreferrer" className="text-amber-300 hover:underline">
                           {card.preview.source}
@@ -585,12 +588,12 @@ const SpoilerCardModal: React.FC<{
             <div className="flex flex-wrap gap-2 pt-1">
               {onAddToWishlist && (
                 <button type="button" className="btn btn-primary" onClick={handleWishlist} disabled={added}>
-                  <FolderHeart className="w-4 h-4" /> {added ? 'Na liście życzeń' : 'Dodaj do listy życzeń'}
+                  <FolderHeart className="w-4 h-4" /> {added ? t('Na liście życzeń') : t('Dodaj do listy życzeń')}
                 </button>
               )}
               {card.scryfall_uri && (
                 <a href={card.scryfall_uri} target="_blank" rel="noopener noreferrer" className="btn btn-secondary">
-                  <ExternalLink className="w-4 h-4" /> Scryfall
+                  <ExternalLink className="w-4 h-4" /> {t('Scryfall')}
                 </a>
               )}
             </div>

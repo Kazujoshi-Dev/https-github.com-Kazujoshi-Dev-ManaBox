@@ -3,6 +3,7 @@ import type { FormEvent, MouseEvent } from 'react';
 import { CollectionItem, Catalog, AppSettings } from '../../types';
 import { getCardPrice } from '../../utils/formatters';
 import { CatalogStatItem } from './types';
+import { t, MAIN_BINDER } from '../../i18n';
 
 interface UseCatalogManagerProps {
   collection: CollectionItem[];
@@ -49,7 +50,7 @@ export function useCatalogManager({
     collection.forEach(item => {
       const card = item.card;
       if (!card || item.isForSale) return; // karty na sprzedaż są w kategorii „Sprzedam”
-      const b = item.binder || 'Klaser Główny';
+      const b = item.binder || MAIN_BINDER;
       const existing = stats.get(b) || { count: 0, totalCards: 0, totalValue: 0 };
 
       const qty = item.quantity + item.quantityFoil;
@@ -94,7 +95,7 @@ export function useCatalogManager({
   const handleSaveCatalogModal = useCallback(async (e: FormEvent) => {
     e.preventDefault();
     if (!modalCatName.trim()) {
-      setCatalogModalError('Nazwa katalogu jest wymagana');
+      setCatalogModalError(t('Nazwa katalogu jest wymagana'));
       return;
     }
 
@@ -126,7 +127,7 @@ export function useCatalogManager({
       }
       setIsCatalogModalOpen(false);
     } catch (err: any) {
-      setCatalogModalError(err.message || 'Wystąpił błąd podczas zapisywania katalogu');
+      setCatalogModalError(err.message || t('Wystąpił błąd podczas zapisywania katalogu'));
     } finally {
       setIsCatalogSaving(false);
     }
@@ -143,7 +144,7 @@ export function useCatalogManager({
       setCatalogToDelete(null);
     } catch (err: any) {
       console.error('Failed to delete catalog:', err);
-      alert(err.message || 'Nie udało się usunąć katalogu');
+      alert(err.message || t('Nie udało się usunąć katalogu'));
     }
   }, [catalogToDelete, onDeleteCatalog, activeBinder, onSelectBinder]);
 

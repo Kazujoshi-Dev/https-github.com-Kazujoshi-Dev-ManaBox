@@ -1,6 +1,7 @@
 import { useState, useCallback, useEffect } from 'react';
 import { AuthUser } from '../types';
 import { tokenStorage, authApi } from '../services/api';
+import { t } from '../i18n';
 
 export function useAuth(onLogoutSuccess?: (msg: string) => void) {
   const [currentUser, setCurrentUser] = useState<AuthUser | null>(() => tokenStorage.getUser());
@@ -42,7 +43,7 @@ export function useAuth(onLogoutSuccess?: (msg: string) => void) {
     }
     tokenStorage.clear();
     setCurrentUser(null);
-    onLogoutSuccess?.('Pomyślnie wylogowano z konta.');
+    onLogoutSuccess?.(t('Pomyślnie wylogowano z konta.'));
   }, [handleUnauthorized, onLogoutSuccess]);
 
   // Unieważnia sesje na wszystkich urządzeniach (łącznie z bieżącym).
@@ -55,7 +56,7 @@ export function useAuth(onLogoutSuccess?: (msg: string) => void) {
     }
     tokenStorage.clear();
     setCurrentUser(null);
-    onLogoutSuccess?.('Wylogowano ze wszystkich urządzeń.');
+    onLogoutSuccess?.(t('Wylogowano ze wszystkich urządzeń.'));
     return true;
   }, [handleUnauthorized, onLogoutSuccess]);
 

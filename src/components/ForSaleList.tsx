@@ -26,6 +26,7 @@ import {
   Loader2,
   Plus
 } from 'lucide-react';
+import { useT, plural } from '../i18n';
 
 // Mapa (Leaflet) ładowana dopiero po otwarciu — nie spowalnia reszty aplikacji
 const SellersMapModal = lazyWithReload(() => import('./SellersMapModal'));
@@ -56,6 +57,7 @@ export const ForSaleList: React.FC<ForSaleListProps> = ({
   onOpenSellerProfile,
   onAddCardForSale,
 }) => {
+  const t = useT();
   const [isMapOpen, setIsMapOpen] = useState(false);
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -95,7 +97,7 @@ export const ForSaleList: React.FC<ForSaleListProps> = ({
   const handleCopyLink = () => {
     navigator.clipboard.writeText(publicShareUrl);
     setCopiedLink(true);
-    showToast?.('Skopiowano publiczny link do schowka! Każdy bez konta może go otworzyć.');
+    showToast?.(t('Skopiowano publiczny link do schowka! Każdy bez konta może go otworzyć.'));
     setTimeout(() => setCopiedLink(false), 2500);
   };
 
@@ -112,10 +114,10 @@ export const ForSaleList: React.FC<ForSaleListProps> = ({
       })
       .join('\n');
 
-    const header = `=== KARTY NA SPRZEDAŻ (${currentUser?.username || 'Gracz MTG'}) ===\nŁącznie: ${totalCardsCount} szt. | Wartość: ${formatCurrency(totalValue, settings.currency)}\nPubliczna oferta: ${publicShareUrl}\n\n`;
+    const header = `=== ${t('KARTY NA SPRZEDAŻ')} (${currentUser?.username || t('Gracz MTG')}) ===\n${t('Łącznie: {n} szt.', { n: totalCardsCount })} | ${t('Wartość:')} ${formatCurrency(totalValue, settings.currency)}\n${t('Publiczna oferta:')} ${publicShareUrl}\n\n`;
     navigator.clipboard.writeText(header + textList);
     setCopiedText(true);
-    showToast?.('Skopiowano listę kart (.txt) gotową do wklejenia na grupach MTG / Discord!');
+    showToast?.(t('Skopiowano listę kart (.txt) gotową do wklejenia na grupach MTG / Discord!'));
     setTimeout(() => setCopiedText(false), 2500);
   };
 
@@ -125,7 +127,7 @@ export const ForSaleList: React.FC<ForSaleListProps> = ({
     await onUpdateCollectionItem(item.id, { salePrice: finalPrice });
     setEditingPriceId(null);
     setTempPrice('');
-    showToast?.(finalPrice !== null ? `Zapisano własną cenę ${formatCurrency(finalPrice, settings.currency)} dla "${item.card.name}"` : `Przywrócono domyślną cenę rynkową dla "${item.card.name}"`);
+    showToast?.(finalPrice !== null ? t('Zapisano własną cenę {price} dla "{name}"', { price: formatCurrency(finalPrice, settings.currency), name: item.card.name }) : t('Przywrócono domyślną cenę rynkową dla "{name}"', { name: item.card.name }));
   };
 
   // Filtered & sorted cards
@@ -177,24 +179,24 @@ export const ForSaleList: React.FC<ForSaleListProps> = ({
     <div className="space-y-6">
       
       <PageHeader
-        title="Sprzedam"
-        description="Karty oznaczone na sprzedaż. Kupujący widzą je pod Twoim publicznym linkiem, bez zakładania konta."
+        title={t('Sprzedam')}
+        description={t('Karty oznaczone na sprzedaż. Kupujący widzą je pod Twoim publicznym linkiem, bez zakładania konta.')}
         meta={
           <>
-            <span><span className="text-stone-100 font-medium tabular-nums">{totalCardsCount}</span> kart</span>
-            <span>Wartość oferty <span className="text-stone-100 font-medium tabular-nums">{formatCurrency(totalValue, settings.currency)}</span></span>
+            <span><span className="text-stone-100 font-medium tabular-nums">{totalCardsCount}</span> {plural(totalCardsCount, ['karta', 'karty', 'kart'], ['card', 'cards'])}</span>
+            <span>{t('Wartość oferty')} <span className="text-stone-100 font-medium tabular-nums">{formatCurrency(totalValue, settings.currency)}</span></span>
           </>
         }
         actions={
           <>
             <button type="button" onClick={() => setIsMapOpen(true)} className="btn btn-secondary">
               <MapIcon className="w-4 h-4" />
-              Mapa sprzedawców
+              {t('Mapa sprzedawców')}
             </button>
             {onAddCardForSale && (
               <button type="button" onClick={() => setIsAddOpen(true)} className="btn btn-primary">
                 <Plus className="w-4 h-4" strokeWidth={2.5} />
-                Dodaj kartę na sprzedaż
+                {t('Dodaj kartę na sprzedaż')}
               </button>
             )}
           </>
@@ -210,28 +212,28 @@ export const ForSaleList: React.FC<ForSaleListProps> = ({
       <div className="rounded-xl border border-stone-800 bg-stone-900 p-3 flex flex-col md:flex-row md:items-center gap-3">
         <div className="flex items-center gap-2 text-sm text-stone-300 shrink-0">
           <Share2 className="w-4 h-4 text-stone-400" />
-          Twój link do oferty
+          {t('Twój link do oferty')}
         </div>
         <input
           type="text"
           readOnly
           value={publicShareUrl}
           onFocus={(e) => e.currentTarget.select()}
-          aria-label="Publiczny link do oferty"
+          aria-label={t('Publiczny link do oferty')}
           className="flex-1 min-w-0 h-9 bg-stone-950 border border-stone-800 rounded-lg px-3 text-sm text-stone-300 focus:outline-none focus:border-stone-600"
         />
         <div className="flex items-center gap-1 shrink-0">
           <button type="button" onClick={handleCopyLink} className="btn btn-primary">
             {copiedLink ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
-            {copiedLink ? 'Skopiowano' : 'Kopiuj link'}
+            {copiedLink ? t('Skopiowano') : t('Kopiuj link')}
           </button>
-          <a href={publicShareUrl} target="_blank" rel="noreferrer" className="btn btn-ghost" title="Zobacz, jak widzą ofertę kupujący">
+          <a href={publicShareUrl} target="_blank" rel="noreferrer" className="btn btn-ghost" title={t('Zobacz, jak widzą ofertę kupujący')}>
             <ExternalLink className="w-4 h-4" />
-            <span className="hidden lg:inline">Podgląd</span>
+            <span className="hidden lg:inline">{t('Podgląd')}</span>
           </a>
-          <button type="button" onClick={handleCopyTextList} className="btn btn-ghost" title="Kopiuj listę kart jako tekst">
+          <button type="button" onClick={handleCopyTextList} className="btn btn-ghost" title={t('Kopiuj listę kart jako tekst')}>
             {copiedText ? <Check className="w-4 h-4 text-emerald-400" /> : <FileText className="w-4 h-4" />}
-            <span className="hidden lg:inline">{copiedText ? 'Skopiowano' : 'Lista .txt'}</span>
+            <span className="hidden lg:inline">{copiedText ? t('Skopiowano') : t('Lista .txt')}</span>
           </button>
         </div>
       </div>
@@ -245,10 +247,10 @@ export const ForSaleList: React.FC<ForSaleListProps> = ({
 
           <div className="max-w-md mx-auto space-y-2">
             <h3 className="text-lg font-bold text-white">
-              Nie masz jeszcze żadnych kart na sprzedaż
+              {t('Nie masz jeszcze żadnych kart na sprzedaż')}
             </h3>
             <p className="text-xs text-stone-400 leading-relaxed">
-              Przejdź do zakładki <strong className="text-stone-200">„Kolekcja”</strong> i kliknij zieloną ikonkę dolara (<span className="text-emerald-400 font-bold">$</span>) na kafelku dowolnej karty w klaserze obok opcji <strong className="text-stone-200">„Edytuj pozycję”</strong>.
+              {t('Przejdź do zakładki')} <strong className="text-stone-200">{t('„Kolekcja”')}</strong> {t('i kliknij zieloną ikonkę dolara')} (<span className="text-emerald-400 font-bold">$</span>) {t('na kafelku dowolnej karty w klaserze obok opcji')} <strong className="text-stone-200">{t('„Edytuj pozycję”')}</strong>.
             </p>
           </div>
 
@@ -258,7 +260,7 @@ export const ForSaleList: React.FC<ForSaleListProps> = ({
             className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-xl shadow-lg shadow-emerald-950/60 transition-all cursor-pointer inline-flex items-center gap-2"
           >
             <Folder className="w-4 h-4" />
-            <span>Przejdź do kolekcji</span>
+            <span>{t('Przejdź do kolekcji')}</span>
           </button>
         </div>
       ) : (
@@ -274,7 +276,7 @@ export const ForSaleList: React.FC<ForSaleListProps> = ({
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Szukaj w ofercie (nazwa, set, typ)..."
+                placeholder={t('Szukaj w ofercie (nazwa, set, typ)...')}
                 className="w-full bg-stone-950 border border-stone-800 focus:border-emerald-500 rounded-xl pl-9 pr-3.5 py-2 text-xs text-stone-100 placeholder-stone-500 focus:outline-none transition-colors"
               />
             </div>
@@ -293,7 +295,7 @@ export const ForSaleList: React.FC<ForSaleListProps> = ({
                 }`}
               >
                 <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-                <span>Tylko foil</span>
+                <span>{t('Tylko foil')}</span>
               </button>
 
               {/* Condition */}
@@ -302,12 +304,12 @@ export const ForSaleList: React.FC<ForSaleListProps> = ({
                 onChange={(e) => setFilterCondition(e.target.value)}
                 className="bg-stone-950 border border-stone-800 rounded-xl px-3 py-1.5 text-xs text-stone-300 focus:outline-none focus:border-emerald-500"
               >
-                <option value="all">Wszystkie stany</option>
-                <option value="NM">Stan NM (Near Mint)</option>
-                <option value="EX">Stan EX (Excellent)</option>
-                <option value="GD">Stan GD (Good)</option>
-                <option value="LP">Stan LP (Light Played)</option>
-                <option value="PL">Stan PL (Played)</option>
+                <option value="all">{t('Wszystkie stany')}</option>
+                <option value="NM">{t('Stan NM (Near Mint)')}</option>
+                <option value="EX">{t('Stan EX (Excellent)')}</option>
+                <option value="GD">{t('Stan GD (Good)')}</option>
+                <option value="LP">{t('Stan LP (Light Played)')}</option>
+                <option value="PL">{t('Stan PL (Played)')}</option>
               </select>
 
               {/* Sort by */}
@@ -318,10 +320,10 @@ export const ForSaleList: React.FC<ForSaleListProps> = ({
                   onChange={(e) => setSortBy(e.target.value as any)}
                   className="bg-transparent text-xs text-stone-200 focus:outline-none cursor-pointer"
                 >
-                  <option value="price-desc">Cena: Najwyższa</option>
-                  <option value="price-asc">Cena: Najniższa</option>
-                  <option value="name">Nazwa A-Z</option>
-                  <option value="edhrec">Popularność EDHREC</option>
+                  <option value="price-desc">{t('Cena: Najwyższa')}</option>
+                  <option value="price-asc">{t('Cena: Najniższa')}</option>
+                  <option value="name">{t('Nazwa A-Z')}</option>
+                  <option value="edhrec">{t('Popularność EDHREC')}</option>
                 </select>
               </div>
 
@@ -347,13 +349,13 @@ export const ForSaleList: React.FC<ForSaleListProps> = ({
                   {/* Top Badges */}
                   <div className="absolute top-2 left-2 z-10 bg-emerald-950/95 text-emerald-300 border border-emerald-500/50 text-[11px] font-bold px-2.5 py-0.5 rounded-full shadow-lg flex items-center gap-1 backdrop-blur-md">
                     <CircleDollarSign className="w-3 h-3 text-emerald-400 stroke-[2.5]" />
-                    <span>Na sprzedaż</span>
+                    <span>{t('Na sprzedaż')}</span>
                   </div>
 
                   {item.quantityFoil > 0 && (
                     <div className="absolute top-0 right-0 z-10 ms-foil-chip font-semibold text-[11px] px-2 py-0.5 rounded-bl-lg shadow-sm flex items-center gap-1 ">
                       <Sparkles className="w-3 h-3 fill-stone-950" />
-                      <span>Foil</span>
+                      <span>{t('Foil')}</span>
                     </div>
                   )}
 
@@ -380,7 +382,7 @@ export const ForSaleList: React.FC<ForSaleListProps> = ({
 
                     {/* Asking Price Tag on image */}
                     <div className="absolute bottom-2 right-2 bg-stone-950/95 backdrop-blur-md px-2.5 py-1 rounded-xl border border-emerald-500/40 shadow-xl">
-                      <p className="text-[11px] font-bold text-stone-400 leading-none">Cena</p>
+                      <p className="text-[11px] font-bold text-stone-400 leading-none">{t('Cena')}</p>
                       <p className="text-xs font-bold tabular-nums text-emerald-300 leading-tight">
                         {formatCurrency(effectivePrice, settings.currency)}
                       </p>
@@ -418,7 +420,7 @@ export const ForSaleList: React.FC<ForSaleListProps> = ({
                     <div className="pt-2 border-t border-stone-800/80 space-y-1.5">
                       {isEditingPrice ? (
                         <div className="space-y-1 bg-stone-950 p-2 rounded-xl border border-emerald-500/40">
-                          <label className="text-[11px] text-stone-400 block font-medium">Własna cena ({settings.currency}):</label>
+                          <label className="text-[11px] text-stone-400 block font-medium">{t('Własna cena')} ({settings.currency}):</label>
                           <div className="flex items-center gap-1">
                             <input
                               type="number"
@@ -434,7 +436,7 @@ export const ForSaleList: React.FC<ForSaleListProps> = ({
                               onClick={() => handleSaveCustomPrice(item)}
                               className="px-2 py-1 bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] font-bold rounded-lg cursor-pointer"
                             >
-                              OK
+                              {t('OK')}
                             </button>
                             <button
                               type="button"
@@ -454,31 +456,31 @@ export const ForSaleList: React.FC<ForSaleListProps> = ({
                               setTempPrice(item.salePrice !== undefined && item.salePrice !== null ? item.salePrice.toString() : '');
                             }}
                             className="text-stone-400 hover:text-emerald-300 transition-colors text-[11px] font-medium underline cursor-pointer"
-                            title="Zmień cenę sprzedaży na własną"
+                            title={t('Zmień cenę sprzedaży na własną')}
                           >
-                            {item.salePrice ? 'Własna cena: Zmień' : 'Ustaw własną cenę'}
+                            {item.salePrice ? t('Własna cena: Zmień') : t('Ustaw własną cenę')}
                           </button>
 
                           <span className="tabular-nums text-[11px] text-stone-500">
-                            {item.quantity + item.quantityFoil} szt.
+                            {item.quantity + item.quantityFoil} {t('szt.')}
                           </span>
                         </div>
                       )}
 
                       {/* Bottom action bar */}
                       <div className="flex items-center justify-between pt-1">
-                        <span className="text-[11px] text-stone-500 truncate max-w-[100px]" title={item.binder || 'Klaser Główny'}>
-                          {item.binder || 'Klaser'}
+                        <span className="text-[11px] text-stone-500 truncate max-w-[100px]" title={item.binder || t('Klaser Główny')}>
+                          {item.binder || t('Klaser')}
                         </span>
 
                         <button
                           type="button"
                           onClick={() => onToggleForSale(item)}
                           className="text-[11px] text-rose-400 hover:text-rose-300 hover:bg-rose-950/40 px-2 py-1 rounded-lg transition-colors cursor-pointer flex items-center gap-1 font-semibold"
-                          title="Wycofaj kartę ze sprzedaży"
+                          title={t('Wycofaj kartę ze sprzedaży')}
                         >
                           <Trash2 className="w-3 h-3" />
-                          <span>Wycofaj</span>
+                          <span>{t('Wycofaj')}</span>
                         </button>
                       </div>
                     </div>

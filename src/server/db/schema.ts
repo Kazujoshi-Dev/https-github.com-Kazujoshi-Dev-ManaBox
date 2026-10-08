@@ -159,6 +159,8 @@ export async function initDb(): Promise<void> {
           ALTER TABLE user_settings ADD COLUMN IF NOT EXISTS auto_nbp_rate BOOLEAN DEFAULT TRUE;
           -- liczba wierszy kart na stronie kolekcji
           ALTER TABLE user_settings ADD COLUMN IF NOT EXISTS collection_rows_per_page SMALLINT;
+          -- język interfejsu (pl, en)
+          ALTER TABLE user_settings ADD COLUMN IF NOT EXISTS ui_language VARCHAR(5);
           -- publiczny link do talii (domyślnie wyłączony)
           ALTER TABLE user_decks ADD COLUMN IF NOT EXISTS is_public BOOLEAN NOT NULL DEFAULT FALSE;
           -- panel administratora: blokady kont, wymuszona zmiana hasła, ukrycie oferty

@@ -4,6 +4,7 @@ import { CatalogFormModalProps } from './types';
 import { COLOR_MAP } from './constants';
 
 import { useBackToClose } from '../../hooks/useBackButton';
+import { useT, binderName } from '../../i18n';
 export const CatalogFormModal: React.FC<CatalogFormModalProps> = ({
   isOpen,
   editingCatalog,
@@ -23,6 +24,7 @@ export const CatalogFormModal: React.FC<CatalogFormModalProps> = ({
   onSubmit,
   onRequestDelete,
 }) => {
+  const t = useT();
   // „Wstecz” na telefonie zamyka to okno zamiast opuszczać stronę
   useBackToClose(isOpen, onClose);
 
@@ -35,12 +37,12 @@ export const CatalogFormModal: React.FC<CatalogFormModalProps> = ({
         <div className="flex items-center justify-between border-b border-stone-800 pb-3">
           <h3 className="text-base font-bold text-amber-300 flex items-center gap-2">
             <FolderPlus className="w-5 h-5 text-amber-400" />
-            <span>{editingCatalog ? 'Edytuj katalog' : 'Utwórz nowy katalog'}</span>
+            <span>{editingCatalog ? t('Edytuj katalog') : t('Utwórz nowy katalog')}</span>
           </h3>
           <button
             onClick={onClose}
             className="text-stone-400 hover:text-stone-200 cursor-pointer"
-            aria-label="Zamknij"
+            aria-label={t('Zamknij')}
           >
             <X className="w-5 h-5" />
           </button>
@@ -57,12 +59,12 @@ export const CatalogFormModal: React.FC<CatalogFormModalProps> = ({
         <form onSubmit={onSubmit} className="space-y-4">
           <div>
             <label className="block text-xs font-bold text-stone-300 mb-1">
-              Nazwa katalogu *
+              {t('Nazwa katalogu *')}
             </label>
             <input
               type="text"
-              placeholder="np. Talia Commander Urza, Na Wymianę..."
-              value={name}
+              placeholder={t('np. Talia Commander Urza, Na Wymianę...')}
+              value={nameLocked ? binderName(name) : name}
               onChange={(e) => onNameChange(e.target.value)}
               disabled={nameLocked}
               maxLength={150}
@@ -70,17 +72,17 @@ export const CatalogFormModal: React.FC<CatalogFormModalProps> = ({
               autoFocus={!nameLocked}
             />
             {nameLocked && (
-              <p className="text-[11px] text-stone-400 mt-1">Główny klaser zawsze nazywa się tak samo i nie można go usunąć. Możesz zmienić opis i kolor.</p>
+              <p className="text-[11px] text-stone-400 mt-1">{t('Główny klaser zawsze nazywa się tak samo i nie można go usunąć. Możesz zmienić opis i kolor.')}</p>
             )}
           </div>
 
           <div>
             <label className="block text-xs font-bold text-stone-300 mb-1">
-              Opis (opcjonalnie)
+              {t('Opis (opcjonalnie)')}
             </label>
             <input
               type="text"
-              placeholder="np. Główne karty formatu Modern..."
+              placeholder={t('np. Główne karty formatu Modern...')}
               value={description}
               onChange={(e) => onDescriptionChange(e.target.value)}
               className="w-full bg-stone-950 border border-stone-700 rounded-xl px-3 py-2 text-xs text-stone-100 placeholder-stone-500 focus:outline-none focus:border-amber-500"
@@ -89,7 +91,7 @@ export const CatalogFormModal: React.FC<CatalogFormModalProps> = ({
 
           <div>
             <label className="block text-xs font-bold text-stone-300 mb-1.5">
-              Kolor etykiety
+              {t('Kolor etykiety')}
             </label>
             <div className="flex items-center gap-2 flex-wrap">
               {Object.keys(COLOR_MAP).map(col => {
@@ -122,10 +124,10 @@ export const CatalogFormModal: React.FC<CatalogFormModalProps> = ({
             <div className="flex-1 text-xs">
               <span className="font-bold text-stone-200 flex items-center gap-1.5">
                 <Star className="w-3.5 h-3.5 text-amber-400 fill-amber-400" />
-                <span>Oznacz jako domyślny katalog</span>
+                <span>{t('Oznacz jako domyślny katalog')}</span>
               </span>
               <p className="text-[11px] text-stone-400 mt-0.5">
-                Nowe karty dodawane do kolekcji będą automatycznie przypisywane do tego katalogu.
+                {t('Nowe karty dodawane do kolekcji będą automatycznie przypisywane do tego katalogu.')}
               </p>
             </div>
           </label>
@@ -138,7 +140,7 @@ export const CatalogFormModal: React.FC<CatalogFormModalProps> = ({
                 className="px-3 py-2 bg-stone-900 hover:bg-rose-950/60 text-rose-400 border border-stone-800 hover:border-rose-800/60 rounded-xl text-xs font-semibold flex items-center gap-1.5 cursor-pointer transition-colors"
               >
                 <Trash2 className="w-3.5 h-3.5" />
-                <span>Usuń katalog</span>
+                <span>{t('Usuń katalog')}</span>
               </button>
             ) : (
               <div />
@@ -150,14 +152,14 @@ export const CatalogFormModal: React.FC<CatalogFormModalProps> = ({
                 onClick={onClose}
                 className="px-4 py-2 bg-stone-800 hover:bg-stone-700 text-stone-300 rounded-xl text-xs font-semibold cursor-pointer"
               >
-                Anuluj
+                {t('Anuluj')}
               </button>
               <button
                 type="submit"
                 disabled={isSaving || !name.trim()}
                 className="px-5 py-2 bg-amber-500 hover:bg-amber-400 text-stone-950 font-bold text-xs rounded-xl shadow transition-colors cursor-pointer disabled:opacity-50"
               >
-                {isSaving ? 'Zapisywanie...' : editingCatalog ? 'Zapisz zmiany' : 'Utwórz katalog'}
+                {isSaving ? t('Zapisywanie...') : editingCatalog ? t('Zapisz zmiany') : t('Utwórz katalog')}
               </button>
             </div>
           </div>

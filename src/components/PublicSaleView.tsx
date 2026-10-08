@@ -21,6 +21,8 @@ import {
   Mail,
   X
 } from 'lucide-react';
+import { LanguageSwitcher } from './ui/LanguageSwitcher';
+import { useT } from '../i18n';
 
 interface PublicSaleViewProps {
   seller: {
@@ -45,12 +47,13 @@ export const PublicSaleView: React.FC<PublicSaleViewProps> = ({
   showToast,
   currentUserId = null,
 }) => {
+  const t = useT();
   const [messageSubject, setMessageSubject] = useState<string | null>(null);
   const isOwnOffer = Boolean(currentUserId && currentUserId === seller.id);
   // Bez logowania przycisk prowadzi do logowania; po zalogowaniu otwiera okno wiadomości
   const writeToSeller = (subject = '') => {
     if (!currentUserId) {
-      showToast?.('Zaloguj się, aby napisać do sprzedawcy.');
+      showToast?.(t('Zaloguj się, aby napisać do sprzedawcy.'));
       onOpenLogin();
       return;
     }
@@ -85,7 +88,7 @@ export const PublicSaleView: React.FC<PublicSaleViewProps> = ({
   const handleCopyLink = () => {
     navigator.clipboard.writeText(currentUrl);
     setCopiedLink(true);
-    showToast?.('Skopiowano link do oferty!');
+    showToast?.(t('Skopiowano link do oferty!'));
     setTimeout(() => setCopiedLink(false), 2500);
   };
 
@@ -102,10 +105,10 @@ export const PublicSaleView: React.FC<PublicSaleViewProps> = ({
       })
       .join('\n');
 
-    const header = `=== KARTY NA SPRZEDAŻ OD: ${seller.username} ===\nŁącznie: ${totalCardsCount} szt. | Wartość: ${formatCurrency(totalValue, settings.currency)}\nLink do oferty: ${currentUrl}\n\n`;
+    const header = `=== ${t('KARTY NA SPRZEDAŻ OD:')} ${seller.username} ===\n${t('Łącznie: {n} szt.', { n: totalCardsCount })} | ${t('Wartość:')} ${formatCurrency(totalValue, settings.currency)}\n${t('Link do oferty:')} ${currentUrl}\n\n`;
     navigator.clipboard.writeText(header + textList);
     setCopiedText(true);
-    showToast?.('Skopiowano listę kart (.txt) do schowka!');
+    showToast?.(t('Skopiowano listę kart (.txt) do schowka!'));
     setTimeout(() => setCopiedText(false), 2500);
   };
 
@@ -167,39 +170,40 @@ export const PublicSaleView: React.FC<PublicSaleViewProps> = ({
             <div className="min-w-0">
               <div className="flex items-center gap-2">
                 <h1 className="text-base sm:text-lg font-bold tracking-tight text-emerald-200 truncate">
-                  <span className="hidden sm:inline">Mana Screw • </span>Oferta na sprzedaż
+                  <span className="hidden sm:inline">Mana Screw • </span>{t('Oferta na sprzedaż')}
                 </h1>
                 <span className="hidden md:inline text-[11px] tabular-nums px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-bold">
-                  Publiczny Klaser
+                  {t('Publiczny Klaser')}
                 </span>
               </div>
               <p className="text-xs text-stone-400">
-                Sprzedający: <strong className="text-emerald-300">@{seller.username}</strong>
+                {t('Sprzedający:')} <strong className="text-emerald-300">@{seller.username}</strong>
               </p>
             </div>
           </div>
 
           <div className="flex items-center gap-2 shrink-0">
+            <LanguageSwitcher />
             <button
               onClick={handleCopyLink}
               className="px-3.5 py-2 bg-stone-800 hover:bg-stone-750 text-stone-200 hover:text-white border border-stone-700 text-xs font-bold rounded-xl transition-all flex items-center gap-1.5 cursor-pointer shadow-sm"
-              title="Kopiuj link do tej oferty"
+              title={t('Kopiuj link do tej oferty')}
             >
               {copiedLink ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Share2 className="w-3.5 h-3.5 text-emerald-400" />}
-              <span className="hidden sm:inline">{copiedLink ? 'Skopiowano!' : 'Udostępnij link'}</span>
+              <span className="hidden sm:inline">{copiedLink ? t('Skopiowano!') : t('Udostępnij link')}</span>
             </button>
 
             {!isOwnOffer && (
-              <button type="button" onClick={() => writeToSeller()} className="btn btn-primary" title={`Napisz do @${seller.username}`}>
+              <button type="button" onClick={() => writeToSeller()} className="btn btn-primary" title={t('Napisz do @{name}', { name: seller.username })}>
                 <Mail className="w-4 h-4" />
-                <span className="sm:hidden">Napisz</span>
-                <span className="hidden sm:inline">Napisz do sprzedawcy</span>
+                <span className="sm:hidden">{t('Napisz')}</span>
+                <span className="hidden sm:inline">{t('Napisz do sprzedawcy')}</span>
               </button>
             )}
             {!currentUserId && (
-              <button type="button" onClick={onOpenLogin} className="btn btn-secondary" aria-label="Zaloguj się">
+              <button type="button" onClick={onOpenLogin} className="btn btn-secondary" aria-label={t('Zaloguj się')}>
                 <LogIn className="w-4 h-4" />
-                <span className="hidden sm:inline">Zaloguj się</span>
+                <span className="hidden sm:inline">{t('Zaloguj się')}</span>
               </button>
             )}
           </div>
@@ -213,24 +217,24 @@ export const PublicSaleView: React.FC<PublicSaleViewProps> = ({
         <div className="bg-stone-900 border border-stone-800 rounded-2xl p-6 shadow-2xl relative overflow-hidden flex flex-col md:flex-row md:items-center md:justify-between gap-6">
           <div className="space-y-2">
             <span className="px-2.5 py-0.5 rounded-full text-xs tabular-nums font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 ">
-              Oferta Sprzedaży
+              {t('Oferta Sprzedaży')}
             </span>
             <h2 className="text-2xl sm:text-3xl font-bold text-white tracking-tight">
-              Karty gracza @{seller.username}
+              {t('Karty gracza @{name}', { name: seller.username })}
             </h2>
             <p className="text-xs text-stone-400 max-w-xl">
-              Przeglądaj karty wystawione na sprzedaż. Ceny podane są w walucie <strong>{settings.currency}</strong> (wycena rynkowa Cardmarket / TCGPlayer lub cena ustalona przez sprzedawcę).
+              {t('Przeglądaj karty wystawione na sprzedaż. Ceny podane są w walucie')} <strong>{settings.currency}</strong> {t('(wycena rynkowa Cardmarket / TCGPlayer lub cena ustalona przez sprzedawcę).')}
             </p>
           </div>
 
           <div className="flex items-center gap-3 sm:gap-5 flex-wrap">
             <div className="bg-stone-950/80 px-4 py-2.5 rounded-2xl border border-stone-800 shadow-inner">
-              <span className="text-[11px] font-bold text-stone-400 block">Karty na sprzedaż</span>
-              <span className="text-lg font-bold text-stone-100 tabular-nums">{totalCardsCount} szt.</span>
+              <span className="text-[11px] font-bold text-stone-400 block">{t('Karty na sprzedaż')}</span>
+              <span className="text-lg font-bold text-stone-100 tabular-nums">{totalCardsCount} {t('szt.')}</span>
             </div>
 
             <div className="bg-stone-950/80 px-4 py-2.5 rounded-2xl border border-emerald-500/30 shadow-inner">
-              <span className="text-[11px] font-bold text-stone-400 block">Łączna wartość</span>
+              <span className="text-[11px] font-bold text-stone-400 block">{t('Łączna wartość')}</span>
               <span className="text-lg font-bold text-emerald-300 tabular-nums">{formatCurrency(totalValue, settings.currency)}</span>
             </div>
 
@@ -238,10 +242,10 @@ export const PublicSaleView: React.FC<PublicSaleViewProps> = ({
               type="button"
               onClick={handleCopyTextList}
               className="px-3.5 py-2.5 bg-stone-800 hover:bg-stone-750 text-stone-200 border border-stone-700 text-xs font-bold rounded-2xl transition-all flex items-center gap-2 cursor-pointer"
-              title="Kopiuj listę .txt"
+              title={t('Kopiuj listę .txt')}
             >
               {copiedText ? <Check className="w-4 h-4 text-emerald-400" /> : <FileText className="w-4 h-4 text-emerald-400" />}
-              <span>{copiedText ? 'Skopiowano listę!' : 'Kopiuj listę (.txt)'}</span>
+              <span>{copiedText ? t('Skopiowano listę!') : t('Kopiuj listę (.txt)')}</span>
             </button>
           </div>
         </div>
@@ -254,7 +258,7 @@ export const PublicSaleView: React.FC<PublicSaleViewProps> = ({
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Szukaj karty (nazwa, set, typ)..."
+              placeholder={t('Szukaj karty (nazwa, set, typ)...')}
               className="w-full bg-stone-950 border border-stone-800 focus:border-emerald-500 rounded-xl pl-9 pr-3.5 py-2 text-xs text-stone-100 placeholder-stone-500 focus:outline-none transition-colors"
             />
           </div>
@@ -270,7 +274,7 @@ export const PublicSaleView: React.FC<PublicSaleViewProps> = ({
               }`}
             >
               <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-              <span>Tylko foil</span>
+              <span>{t('Tylko foil')}</span>
             </button>
 
             <select
@@ -278,12 +282,12 @@ export const PublicSaleView: React.FC<PublicSaleViewProps> = ({
               onChange={(e) => setFilterCondition(e.target.value)}
               className="bg-stone-950 border border-stone-800 rounded-xl px-3 py-1.5 text-xs text-stone-300 focus:outline-none focus:border-emerald-500"
             >
-              <option value="all">Wszystkie stany</option>
-              <option value="NM">Stan NM (Near Mint)</option>
-              <option value="EX">Stan EX (Excellent)</option>
-              <option value="GD">Stan GD (Good)</option>
-              <option value="LP">Stan LP (Light Played)</option>
-              <option value="PL">Stan PL (Played)</option>
+              <option value="all">{t('Wszystkie stany')}</option>
+              <option value="NM">{t('Stan NM (Near Mint)')}</option>
+              <option value="EX">{t('Stan EX (Excellent)')}</option>
+              <option value="GD">{t('Stan GD (Good)')}</option>
+              <option value="LP">{t('Stan LP (Light Played)')}</option>
+              <option value="PL">{t('Stan PL (Played)')}</option>
             </select>
 
             <div className="flex items-center gap-1.5 bg-stone-950 border border-stone-800 rounded-xl px-2.5 py-1.5 text-xs text-stone-300">
@@ -293,10 +297,10 @@ export const PublicSaleView: React.FC<PublicSaleViewProps> = ({
                 onChange={(e) => setSortBy(e.target.value as any)}
                 className="bg-transparent text-xs text-stone-200 focus:outline-none cursor-pointer"
               >
-                <option value="price-desc">Cena: Najwyższa</option>
-                <option value="price-asc">Cena: Najniższa</option>
-                <option value="name">Nazwa A-Z</option>
-                <option value="edhrec">Popularność EDHREC</option>
+                <option value="price-desc">{t('Cena: Najwyższa')}</option>
+                <option value="price-asc">{t('Cena: Najniższa')}</option>
+                <option value="name">{t('Nazwa A-Z')}</option>
+                <option value="edhrec">{t('Popularność EDHREC')}</option>
               </select>
             </div>
           </div>
@@ -306,8 +310,8 @@ export const PublicSaleView: React.FC<PublicSaleViewProps> = ({
         {displayedCards.length === 0 ? (
           <div className="bg-stone-900/60 border border-dashed border-stone-800 rounded-2xl p-12 text-center space-y-3">
             <ShoppingBag className="w-12 h-12 text-stone-600 mx-auto" />
-            <h3 className="text-base font-bold text-white">Brak kart spełniających kryteria</h3>
-            <p className="text-xs text-stone-400">Zmień frazę wyszukiwania lub zresetuj filtry.</p>
+            <h3 className="text-base font-bold text-white">{t('Brak kart spełniających kryteria')}</h3>
+            <p className="text-xs text-stone-400">{t('Zmień frazę wyszukiwania lub zresetuj filtry.')}</p>
           </div>
         ) : (
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
@@ -328,7 +332,7 @@ export const PublicSaleView: React.FC<PublicSaleViewProps> = ({
                   {item.quantityFoil > 0 && (
                     <div className="absolute top-0 right-0 z-10 ms-foil-chip font-semibold text-[11px] px-2 py-0.5 rounded-bl-lg shadow-sm flex items-center gap-1 ">
                       <Sparkles className="w-3 h-3 fill-stone-950" />
-                      <span>Foil</span>
+                      <span>{t('Foil')}</span>
                     </div>
                   )}
 
@@ -349,7 +353,7 @@ export const PublicSaleView: React.FC<PublicSaleViewProps> = ({
                     )}
 
                     <div className="absolute bottom-2 right-2 bg-stone-950/95 backdrop-blur-md px-2.5 py-1 rounded-xl border border-emerald-500/40 shadow-xl">
-                      <p className="text-[11px] font-bold text-stone-400 leading-none">Cena</p>
+                      <p className="text-[11px] font-bold text-stone-400 leading-none">{t('Cena')}</p>
                       <p className="text-xs font-bold tabular-nums text-emerald-300 leading-tight">
                         {formatCurrency(effectivePrice, settings.currency)}
                       </p>
@@ -379,9 +383,9 @@ export const PublicSaleView: React.FC<PublicSaleViewProps> = ({
                     </div>
 
                     <div className="pt-2 border-t border-stone-800 flex items-center justify-between text-[11px] text-stone-400">
-                      <span>Dostępne: <strong className="text-stone-200">{item.quantity + item.quantityFoil} szt.</strong></span>
+                      <span>{t('Dostępne:')} <strong className="text-stone-200">{item.quantity + item.quantityFoil} {t('szt.')}</strong></span>
                       <span className="text-emerald-400 group-hover:translate-x-0.5 transition-transform font-bold text-[11px]">
-                        Szczegóły →
+                        {t('Szczegóły →')}
                       </span>
                     </div>
                   </div>
@@ -428,7 +432,7 @@ export const PublicSaleView: React.FC<PublicSaleViewProps> = ({
                 </div>
 
                 <div className="bg-stone-950 p-3 rounded-2xl border border-emerald-500/30 space-y-1">
-                  <span className="text-[11px] font-bold text-stone-400 block">Cena sprzedaży</span>
+                  <span className="text-[11px] font-bold text-stone-400 block">{t('Cena sprzedaży')}</span>
                   <div className="text-xl font-bold tabular-nums text-emerald-300">
                     {formatCurrency(
                       selectedPreviewCard.salePrice ?? getCardPrice(selectedPreviewCard.card, Boolean(selectedPreviewCard.quantityFoil > 0), settings),
@@ -438,12 +442,12 @@ export const PublicSaleView: React.FC<PublicSaleViewProps> = ({
                 </div>
 
                 <div className="text-xs space-y-1 text-stone-300">
-                  <p>Dodatek: <strong className="text-stone-100">{selectedPreviewCard.card.set_name} ({selectedPreviewCard.card.set.toUpperCase()})</strong></p>
-                  <p>Stan karty: <strong className="text-stone-100">{selectedPreviewCard.condition}</strong></p>
-                  <p>Język: <strong className="text-stone-100">{selectedPreviewCard.language}</strong></p>
-                  <p>Wersja: <strong className="text-stone-100">{selectedPreviewCard.quantityFoil > 0 ? 'Foil' : 'Standard'}</strong></p>
+                  <p>{t('Dodatek:')} <strong className="text-stone-100">{selectedPreviewCard.card.set_name} ({selectedPreviewCard.card.set.toUpperCase()})</strong></p>
+                  <p>{t('Stan karty:')} <strong className="text-stone-100">{selectedPreviewCard.condition}</strong></p>
+                  <p>{t('Język:')} <strong className="text-stone-100">{selectedPreviewCard.language}</strong></p>
+                  <p>{t('Wersja:')} <strong className="text-stone-100">{selectedPreviewCard.quantityFoil > 0 ? t('Foil') : t('Standard')}</strong></p>
                   {selectedPreviewCard.notes && (
-                    <p className="text-amber-300/90 pt-1 text-[11px]">Uwagi sprzedawcy: {selectedPreviewCard.notes}</p>
+                    <p className="text-amber-300/90 pt-1 text-[11px]">{t('Uwagi sprzedawcy:')} {selectedPreviewCard.notes}</p>
                   )}
                 </div>
               </div>
@@ -451,7 +455,7 @@ export const PublicSaleView: React.FC<PublicSaleViewProps> = ({
 
             <div className="pt-3 border-t border-stone-800 flex items-center justify-between gap-3">
               <span className="text-xs text-stone-400">
-                Sprzedający: <strong className="text-emerald-300">@{seller.username}</strong>
+                {t('Sprzedający:')} <strong className="text-emerald-300">@{seller.username}</strong>
               </span>
 
               <div className="flex items-center gap-2">
@@ -461,12 +465,12 @@ export const PublicSaleView: React.FC<PublicSaleViewProps> = ({
                     onClick={() => {
                       const c = selectedPreviewCard.card;
                       setSelectedPreviewCard(null);
-                      writeToSeller(`Pytanie o kartę: ${c.name} (${c.set.toUpperCase()})`);
+                      writeToSeller(t('Pytanie o kartę: {card}', { card: `${c.name} (${c.set.toUpperCase()})` }));
                     }}
                     className="btn btn-primary h-9"
                   >
                     <Mail className="w-4 h-4" />
-                    Napisz do sprzedawcy
+                    {t('Napisz do sprzedawcy')}
                   </button>
                 )}
                 <button
@@ -474,7 +478,7 @@ export const PublicSaleView: React.FC<PublicSaleViewProps> = ({
                   onClick={() => setSelectedPreviewCard(null)}
                   className="btn btn-ghost h-9"
                 >
-                  Zamknij
+                  {t('Zamknij')}
                 </button>
               </div>
             </div>

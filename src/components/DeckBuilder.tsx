@@ -28,6 +28,7 @@ import { DeckArenaExportModal } from './deck-builder/DeckArenaExportModal';
 import { DIGITAL_BLOCK_MESSAGE, computeWildcardCost, getDeckFormat, isDigitalOnly } from '../utils/mtgFormats';
 import type { EdhrecRecommendation } from '../services/api';
 import { wishlistApi } from '../services/api';
+import { useT, useLang } from '../i18n';
 
 // Re-export constants for external consumers if needed
 export { DECK_CATEGORIES, getCardCategory };
@@ -44,6 +45,7 @@ export const DeckBuilder: React.FC<DeckBuilderProps> = ({
   wishlist = [],
   onAddToWishlist,
 }) => {
+  const t = useT();
   // Hover preview state
   const [hoveredCard, setHoveredCard] = useState<ScryfallCard | null>(null);
   const [hoverPosition, setHoverPosition] = useState<{ x: number; y: number } | null>(null);
@@ -149,7 +151,7 @@ export const DeckBuilder: React.FC<DeckBuilderProps> = ({
       const prev = updatedCards[sameName];
       updatedCards[sameName] = { ...prev, card, isFoil: isFoil ?? prev.isFoil };
       if (prev.card.id !== card.id || Boolean(prev.isFoil) !== Boolean(isFoil ?? prev.isFoil)) {
-        showToast(`Zmieniono wersję „${card.name}” w talii.`);
+        showToast(t('Zmieniono wersję „{name}” w talii.', { name: card.name }));
       }
     } else if (samePrint >= 0) {
       updatedCards[samePrint].quantity += 1;
@@ -196,11 +198,11 @@ export const DeckBuilder: React.FC<DeckBuilderProps> = ({
   const handleAddRecommended = useCallback(async (rec: EdhrecRecommendation) => {
     const card = await resolveRecommendedCard(rec);
     if (!card) {
-      showToast(`Nie udało się pobrać karty "${rec.name}".`);
+      showToast(t('Nie udało się pobrać karty "{name}".', { name: rec.name }));
       return;
     }
     handleAddCardToDeck(card);
-    showToast(`Dodano "${card.name}" do talii.`);
+    showToast(t('Dodano "{name}" do talii.', { name: card.name }));
   }, [resolveRecommendedCard, handleAddCardToDeck, showToast]);
 
   const wishlistNames = useMemo(
@@ -212,7 +214,7 @@ export const DeckBuilder: React.FC<DeckBuilderProps> = ({
     if (!onAddToWishlist) return;
     const card = await resolveRecommendedCard(rec);
     if (!card) {
-      showToast(`Nie udało się pobrać karty "${rec.name}".`);
+      showToast(t('Nie udało się pobrać karty "{name}".', { name: rec.name }));
       return;
     }
     await onAddToWishlist(card);
@@ -221,7 +223,7 @@ export const DeckBuilder: React.FC<DeckBuilderProps> = ({
   const handleReplaceWithRecommended = useCallback(async (oldCard: ScryfallCard, rec: EdhrecRecommendation) => {
     const card = await resolveRecommendedCard(rec);
     if (!card) {
-      showToast(`Nie udało się pobrać karty "${rec.name}".`);
+      showToast(t('Nie udało się pobrać karty "{name}".', { name: rec.name }));
       return;
     }
     const cards = deck.cards
@@ -231,7 +233,7 @@ export const DeckBuilder: React.FC<DeckBuilderProps> = ({
       cards.push({ card, quantity: 1, isCommander: false });
     }
     onUpdateDeck({ ...deck, cards });
-    showToast(`Zamieniono "${oldCard.name}" na "${card.name}".`);
+    showToast(t('Zamieniono "{name}" na "{name2}".', { name: oldCard.name, name2: card.name }));
   }, [deck, onUpdateDeck, resolveRecommendedCard, showToast]);
 
   // Basic Lands w kolorach dowódcy (bezbarwny dowódca: Wastes)
@@ -247,7 +249,8 @@ export const DeckBuilder: React.FC<DeckBuilderProps> = ({
     return { color, name, count };
   });
   const [basicsBusy, setBasicsBusy] = useState<string | null>(null);
-  const legality = React.useMemo(() => checkDeckLegality(deck), [deck]);
+  const lang = useLang();
+  const legality = React.useMemo(() => checkDeckLegality(deck), [deck, lang]);
   const bracket = useDeckBracket(deck);
   const [sortMode, setSortMode] = useState<DeckCardSort>(loadDeckSort);
   const handleSortChange = useCallback((mode: DeckCardSort) => {
@@ -290,7 +293,7 @@ export const DeckBuilder: React.FC<DeckBuilderProps> = ({
             setBasicsBusy(null);
           }
           if (!card) {
-            showToast(`Nie udało się pobrać karty ${name}. Spróbuj ponownie.`);
+            showToast(t('Nie udało się pobrać karty {name}. Spróbuj ponownie.', { name }));
             return;
           }
           cards.push({ card, quantity: add, isCommander: false });
@@ -334,19 +337,19 @@ export const DeckBuilder: React.FC<DeckBuilderProps> = ({
       if (res.ok) {
         const card: ScryfallCard = await res.json();
         handleAddCardToDeck(card);
-        showToast(`Dodano kartę "${card.name}" do talii!`);
+        showToast(t('Dodano kartę "{name}" do talii!', { name: card.name }));
       } else {
         const fuzzyRes = await fetch(`/api/scryfall/named?fuzzy=${encodeURIComponent(cardName)}`);
         if (fuzzyRes.ok) {
           const card: ScryfallCard = await fuzzyRes.json();
           handleAddCardToDeck(card);
-          showToast(`Dodano kartę "${card.name}" do talii!`);
+          showToast(t('Dodano kartę "{name}" do talii!', { name: card.name }));
         } else {
-          showToast(`Nie znaleziono karty "${cardName}" w bazie Scryfall.`);
+          showToast(t('Nie znaleziono karty "{cardName}" w bazie Scryfall.', { cardName }));
         }
       }
     } catch (err: any) {
-      showToast(`Błąd dodawania karty: ${err.message}`);
+      showToast(t('Błąd dodawania karty: {message}', { message: err.message }));
     }
   }, [handleAddCardToDeck, showToast]);
 
@@ -364,11 +367,11 @@ export const DeckBuilder: React.FC<DeckBuilderProps> = ({
       }
 
       if (!card) {
-        showToast(`Nie znaleziono karty "${cardName}".`);
+        showToast(t('Nie znaleziono karty "{cardName}".', { cardName }));
         return;
       }
       if (isDigitalOnly(card)) {
-        showToast(DIGITAL_BLOCK_MESSAGE);
+        showToast(t(DIGITAL_BLOCK_MESSAGE));
         return;
       }
 
@@ -378,9 +381,9 @@ export const DeckBuilder: React.FC<DeckBuilderProps> = ({
         targetQuantity: 1,
         isFoil: false
       });
-      showToast(`Dodano "${card.name}" do Twojej Wishlisty!`);
+      showToast(t('Dodano "{name}" do Twojej Wishlisty!', { name: card.name }));
     } catch (err: any) {
-      showToast(`Błąd dodawania do Wishlisty: ${err.message}`);
+      showToast(t('Błąd dodawania do Wishlisty: {message}', { message: err.message }));
     }
   }, [showToast]);
 
@@ -495,21 +498,21 @@ export const DeckBuilder: React.FC<DeckBuilderProps> = ({
       {/* 2b. Board Toolbar: Categories Sorting Info & Card Preview Size Slider */}
       <div className="bg-stone-900 border border-stone-800 rounded-xl px-4 py-3 flex flex-col sm:flex-row items-center justify-between gap-3">
         <div className="flex items-center gap-3 w-full sm:w-auto">
-          <span className="text-sm text-stone-400 shrink-0">Sortuj karty</span>
-          <div className="inline-grid grid-cols-3 p-1 rounded-lg bg-stone-950 ring-1 ring-stone-800" role="radiogroup" aria-label="Kolejność kart w kategoriach">
+          <span className="text-sm text-stone-400 shrink-0">{t('Sortuj karty')}</span>
+          <div className="inline-grid grid-cols-3 p-1 rounded-lg bg-stone-950 ring-1 ring-stone-800" role="radiogroup" aria-label={t('Kolejność kart w kategoriach')}>
             {DECK_SORT_OPTIONS.map((o) => (
               <button
                 key={o.id}
                 type="button"
                 role="radio"
                 aria-checked={sortMode === o.id}
-                title={o.title}
+                title={t(o.title)}
                 onClick={() => handleSortChange(o.id)}
                 className={`h-8 px-3.5 rounded-md text-sm cursor-pointer ${
                   sortMode === o.id ? 'bg-stone-800 text-stone-50 font-medium' : 'text-stone-400 hover:text-stone-200'
                 }`}
               >
-                {o.label}
+                {t(o.label)}
               </button>
             ))}
           </div>
@@ -520,14 +523,14 @@ export const DeckBuilder: React.FC<DeckBuilderProps> = ({
           <div className="flex items-center gap-2.5 bg-stone-950 px-3.5 py-2 rounded-xl border border-stone-800 shadow-inner w-full sm:w-auto justify-between sm:justify-start">
             <span className="text-xs text-stone-300 font-semibold flex items-center gap-1.5 shrink-0">
               <Sliders className="w-3.5 h-3.5 text-amber-400" />
-              <span>Podgląd kart:</span>
+              <span>{t('Podgląd kart:')}</span>
             </span>
 
             <button
               type="button"
               onClick={() => handleScaleChange(previewScale - 10)}
               className="p-1 text-stone-400 hover:text-amber-300 hover:bg-stone-900 rounded-md transition-colors cursor-pointer"
-              title="Zmniejsz podgląd"
+              title={t('Zmniejsz podgląd')}
             >
               <ZoomOut className="w-4 h-4" />
             </button>
@@ -540,14 +543,14 @@ export const DeckBuilder: React.FC<DeckBuilderProps> = ({
               value={previewScale}
               onChange={(e) => handleScaleChange(Number(e.target.value))}
               className="w-24 sm:w-32 accent-amber-500 cursor-pointer h-1.5 bg-stone-800 rounded-lg"
-              title={`Skala podglądu kart: ${previewScale}%`}
+              title={t('Skala podglądu kart: {previewScale}%', { previewScale })}
             />
 
             <button
               type="button"
               onClick={() => handleScaleChange(previewScale + 10)}
               className="p-1 text-stone-400 hover:text-amber-300 hover:bg-stone-900 rounded-md transition-colors cursor-pointer"
-              title="Powiększ podgląd"
+              title={t('Powiększ podgląd')}
             >
               <ZoomIn className="w-4 h-4" />
             </button>
@@ -561,9 +564,9 @@ export const DeckBuilder: React.FC<DeckBuilderProps> = ({
                 type="button"
                 onClick={() => handleScaleChange(100)}
                 className="text-[11px] font-semibold text-stone-500 hover:text-amber-300 ml-1 underline transition-colors cursor-pointer"
-                title="Przywróć domyślne 100%"
+                title={t('Przywróć domyślne 100%')}
               >
-                Reset
+                {t('Reset')}
               </button>
             )}
           </div>

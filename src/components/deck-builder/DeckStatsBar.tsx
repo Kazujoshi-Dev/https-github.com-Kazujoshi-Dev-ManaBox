@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Minus, Plus, Loader2 } from 'lucide-react';
 import { DeckStatsBarProps, BasicLandCount } from './types';
 import { ManaSymbol } from '../ManaSymbol';
+import { useT } from '../../i18n';
 
 /** Licznik jednego Basic Land: −, pole z liczbą (można wpisać), +. */
 const BasicStepper: React.FC<{
@@ -9,6 +10,7 @@ const BasicStepper: React.FC<{
   busy: boolean;
   onSet: (name: string, count: number) => void | Promise<void>;
 }> = ({ basic, busy, onSet }) => {
+  const t = useT();
   const [draft, setDraft] = useState(String(basic.count));
   useEffect(() => setDraft(String(basic.count)), [basic.count]);
 
@@ -25,7 +27,7 @@ const BasicStepper: React.FC<{
       <ManaSymbol cost={`{${basic.color}}`} size="md" />
       <span className="text-sm text-stone-200 w-[4.75rem] truncate">{basic.name}</span>
       <div className="flex items-center rounded-lg ring-1 ring-stone-700 bg-stone-950">
-        <button type="button" onClick={() => onSet(basic.name, basic.count - 1)} disabled={busy || basic.count <= 0} className={btn} aria-label={`Usuń jeden ${basic.name}`}>
+        <button type="button" onClick={() => onSet(basic.name, basic.count - 1)} disabled={busy || basic.count <= 0} className={btn} aria-label={t('Usuń jeden {name}', { name: basic.name })}>
           <Minus className="w-3.5 h-3.5" />
         </button>
         <input
@@ -36,10 +38,10 @@ const BasicStepper: React.FC<{
           onChange={(e) => setDraft(e.target.value)}
           onBlur={commit}
           onKeyDown={(e) => e.key === 'Enter' && (e.currentTarget as HTMLInputElement).blur()}
-          aria-label={`Liczba ${basic.name} w talii`}
+          aria-label={t('Liczba {name} w talii', { name: basic.name })}
           className="w-9 h-8 bg-transparent text-center text-sm text-stone-50 tabular-nums focus:outline-none"
         />
-        <button type="button" onClick={() => onSet(basic.name, basic.count + 1)} disabled={busy} className={btn} aria-label={`Dodaj jeden ${basic.name}`}>
+        <button type="button" onClick={() => onSet(basic.name, basic.count + 1)} disabled={busy} className={btn} aria-label={t('Dodaj jeden {name}', { name: basic.name })}>
           {busy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />}
         </button>
       </div>
@@ -48,6 +50,7 @@ const BasicStepper: React.FC<{
 };
 
 export const DeckStatsBar: React.FC<DeckStatsBarProps> = ({ manaCurve, colorIdentity, basics, onSetBasicCount, basicsBusy = null }) => {
+  const t = useT();
   const maxVal = Math.max(...manaCurve, 1);
   const total = manaCurve.reduce((s, n) => s + n, 0);
   const showBasics = Boolean(basics && basics.length && onSetBasicCount);
@@ -58,9 +61,9 @@ export const DeckStatsBar: React.FC<DeckStatsBarProps> = ({ manaCurve, colorIden
         {/* Krzywa many */}
         <div>
           <h3 className="text-sm font-medium text-stone-200">
-            Krzywa many <span className="text-stone-500 font-normal">({total} kart bez Lands)</span>
+            {t('Krzywa many')} <span className="text-stone-500 font-normal">({t('{n} kart bez Lands', { n: total })})</span>
           </h3>
-          <div className="mt-3 flex items-end gap-2 h-24" role="img" aria-label={`Krzywa many: ${manaCurve.map((n, i) => `${i === 6 ? '6+' : i}: ${n}`).join(', ')}`}>
+          <div className="mt-3 flex items-end gap-2 h-24" role="img" aria-label={t('Krzywa many: {v1}', { v1: manaCurve.map((n, i) => `${i === 6 ? '6+' : i}: ${n}`).join(', ') })}>
             {manaCurve.map((count, cmc) => (
               <div key={cmc} className="flex-1 min-w-6 max-w-12 h-full flex flex-col items-center justify-end gap-1">
                 <span className="text-xs text-stone-300 tabular-nums h-4 leading-4">{count || ''}</span>
@@ -85,7 +88,7 @@ export const DeckStatsBar: React.FC<DeckStatsBarProps> = ({ manaCurve, colorIden
         {/* Tożsamość kolorów */}
         {colorIdentity.length > 0 && (
           <div>
-            <h3 className="text-sm font-medium text-stone-200">Tożsamość kolorów</h3>
+            <h3 className="text-sm font-medium text-stone-200">{t('Tożsamość kolorów')}</h3>
             <div className="mt-3">
               <ManaSymbol cost={colorIdentity.map((c) => `{${c}}`).join('')} size="lg" />
             </div>
@@ -96,8 +99,8 @@ export const DeckStatsBar: React.FC<DeckStatsBarProps> = ({ manaCurve, colorIden
       {/* Basic Lands w kolorach dowódcy */}
       {showBasics && (
         <div className="lg:border-l lg:border-stone-800 lg:pl-10">
-          <h3 className="text-sm font-medium text-stone-200">Basic Lands</h3>
-          <p className="text-xs text-stone-500 mb-3">W kolorach dowódcy. Wpisz liczbę albo użyj + i −.</p>
+          <h3 className="text-sm font-medium text-stone-200">{t('Basic Lands')}</h3>
+          <p className="text-xs text-stone-500 mb-3">{t('W kolorach dowódcy. Wpisz liczbę albo użyj + i −.')}</p>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-2">
             {basics!.map((b) => (
               <BasicStepper key={b.name} basic={b} busy={basicsBusy === b.name} onSet={onSetBasicCount!} />

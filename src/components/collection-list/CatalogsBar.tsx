@@ -16,6 +16,7 @@ import {
 import { formatCurrency } from '../../utils/formatters';
 import { CatalogsBarProps } from './types';
 import { COLOR_MAP } from './constants';
+import { useT, binderName } from '../../i18n';
 
 export const CatalogsBar: React.FC<CatalogsBarProps> = ({
   catalogs,
@@ -32,6 +33,7 @@ export const CatalogsBar: React.FC<CatalogsBarProps> = ({
   onSetDefaultCatalog,
   onOpenImportExport,
 }) => {
+  const t = useT();
   const activeCatalogObj = catalogs.find(c => c.name === activeBinder);
 
   const chip = (selected: boolean) =>
@@ -44,18 +46,18 @@ export const CatalogsBar: React.FC<CatalogsBarProps> = ({
   return (
     <div className="space-y-4">
       <PageHeader
-        title="Kolekcja"
+        title={t('Kolekcja')}
         actions={
           <>
             {onOpenImportExport && (
-              <button type="button" onClick={() => onOpenImportExport('export')} className="btn btn-secondary" title="Import i eksport kolekcji (.txt)">
+              <button type="button" onClick={() => onOpenImportExport('export')} className="btn btn-secondary" title={t('Import i eksport kolekcji (.txt)')}>
                 <FileText className="w-4 h-4" />
-                Import / eksport
+                {t('Import / eksport')}
               </button>
             )}
             <button type="button" onClick={onOpenCreateCatalog} className="btn btn-secondary">
               <FolderPlus className="w-4 h-4" />
-              Nowy katalog
+              {t('Nowy katalog')}
             </button>
           </>
         }
@@ -64,16 +66,16 @@ export const CatalogsBar: React.FC<CatalogsBarProps> = ({
       {/* Katalogi */}
       <div className="flex items-center gap-1 overflow-x-auto no-scrollbar -mx-1 px-1 py-0.5">
         <button type="button" onClick={() => onSelectBinder('ALL')} className={chip(activeBinder === 'ALL')}>
-          Wszystkie {count(totalCollectionCount)}
+          {t('Wszystkie')} {count(totalCollectionCount)}
         </button>
         <button
           type="button"
           onClick={() => onSelectBinder(FOR_SALE_BINDER)}
           className={chip(activeBinder === FOR_SALE_BINDER)}
-          title="Karty oznaczone na sprzedaż. Nie ma ich w klaserach, dopóki ich nie wycofasz"
+          title={t('Karty oznaczone na sprzedaż. Nie ma ich w klaserach, dopóki ich nie wycofasz')}
         >
           <CircleDollarSign className="w-4 h-4 text-emerald-400" />
-          Sprzedam {count(forSaleCount)}
+          {t('Sprzedam')} {count(forSaleCount)}
         </button>
         <span className="w-px h-5 bg-stone-800 mx-1 shrink-0" aria-hidden="true" />
         {catalogs.map((cat) => {
@@ -82,9 +84,9 @@ export const CatalogsBar: React.FC<CatalogsBarProps> = ({
           return (
             <button key={cat.id} type="button" onClick={() => onSelectBinder(cat.name)} className={chip(activeBinder === cat.name)}>
               <span className={`w-2 h-2 rounded-full ${colorStyle.dot}`} aria-hidden="true" />
-              <span className="truncate max-w-[160px]">{cat.name}</span>
-              {cat.isMain && <Lock className="w-3 h-3 text-stone-500" aria-label="Główny klaser, nie można go usunąć" />}
-              {cat.isDefault && <Star className="w-3.5 h-3.5 text-amber-400 fill-amber-400" aria-label="Domyślny katalog" />}
+              <span className="truncate max-w-[160px]">{binderName(cat.name)}</span>
+              {cat.isMain && <Lock className="w-3 h-3 text-stone-500" aria-label={t('Główny klaser, nie można go usunąć')} />}
+              {cat.isDefault && <Star className="w-3.5 h-3.5 text-amber-400 fill-amber-400" aria-label={t('Domyślny katalog')} />}
               {count(stats.count)}
             </button>
           );
@@ -95,9 +97,9 @@ export const CatalogsBar: React.FC<CatalogsBarProps> = ({
       {activeCatalogObj && (
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-sm">
           <p className="text-stone-400 min-w-0">
-            {activeCatalogObj.description || 'Katalog kart kolekcji'}
+            {activeCatalogObj.description ? binderName(activeCatalogObj.description) : t('Katalog kart kolekcji')}
             <span className="text-stone-600 mx-2">/</span>
-            Wartość <span className="text-stone-100 font-medium tabular-nums">{formatCurrency(activeStats?.totalValue || 0, currency)}</span>
+            {t('Wartość')} <span className="text-stone-100 font-medium tabular-nums">{formatCurrency(activeStats?.totalValue || 0, currency)}</span>
           </p>
           <div className="flex items-center gap-1 shrink-0 -ml-2 sm:ml-0">
             {!activeCatalogObj.isDefault && onSetDefaultCatalog && (
@@ -105,31 +107,31 @@ export const CatalogsBar: React.FC<CatalogsBarProps> = ({
                 type="button"
                 onClick={() => onSetDefaultCatalog(activeCatalogObj.id)}
                 className="btn btn-ghost h-8 px-2.5"
-                title="Nowo dodawane karty będą trafiać do tego katalogu"
+                title={t('Nowo dodawane karty będą trafiać do tego katalogu')}
               >
                 <Star className="w-4 h-4" />
-                Ustaw jako domyślny
+                {t('Ustaw jako domyślny')}
               </button>
             )}
             <button type="button" onClick={(e) => onOpenEditCatalog(activeCatalogObj, e)} className="btn btn-ghost h-8 px-2.5">
               <Edit2 className="w-4 h-4" />
-              Edytuj
+              {t('Edytuj')}
             </button>
             {onRequestEmptyCatalog && (activeStats?.count || 0) > 0 && (
               <button
                 type="button"
                 onClick={() => onRequestEmptyCatalog(activeCatalogObj)}
                 className="btn btn-ghost h-8 px-2.5 hover:text-rose-300"
-                title="Usuń z kolekcji wszystkie karty tego katalogu"
+                title={t('Usuń z kolekcji wszystkie karty tego katalogu')}
               >
                 <Eraser className="w-4 h-4" />
-                Opróżnij
+                {t('Opróżnij')}
               </button>
             )}
             {!activeCatalogObj.isMain && (
               <button type="button" onClick={() => onRequestDeleteCatalog(activeCatalogObj)} className="btn btn-ghost h-8 px-2.5 hover:text-rose-300">
                 <Trash2 className="w-4 h-4" />
-                Usuń
+                {t('Usuń')}
               </button>
             )}
           </div>

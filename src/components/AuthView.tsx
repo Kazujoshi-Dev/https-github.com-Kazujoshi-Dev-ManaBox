@@ -8,6 +8,8 @@ import { FeatureBento } from './auth/FeatureBento';
 import { useShowcaseCards } from './auth/useShowcaseCards';
 import { AuthUser } from '../types';
 import { emailAuthApi } from '../services/api';
+import { LanguageSwitcher } from './ui/LanguageSwitcher';
+import { useT, tServer } from '../i18n';
 
 interface AuthViewProps {
   onAuthSuccess: (user: AuthUser, token: string) => void;
@@ -21,6 +23,7 @@ type AuthMode = 'login' | 'register' | 'forgot';
 const RESEND_COOLDOWN_S = 60;
 
 export const AuthView: React.FC<AuthViewProps> = ({ onAuthSuccess, initialMode = 'login' }) => {
+  const t = useT();
   const [mode, setMode] = useState<AuthMode>(initialMode);
   // Po rejestracji (albo próbie logowania na niepotwierdzone konto): adres, na który poszedł link
   const [pendingEmail, setPendingEmail] = useState<string | null>(null);
@@ -55,8 +58,8 @@ export const AuthView: React.FC<AuthViewProps> = ({ onAuthSuccess, initialMode =
 
   useEffect(() => {
     if (resendIn <= 0) return;
-    const t = setTimeout(() => setResendIn((s) => s - 1), 1000);
-    return () => clearTimeout(t);
+    const timer = setTimeout(() => setResendIn((s) => s - 1), 1000);
+    return () => clearTimeout(timer);
   }, [resendIn]);
 
   const resendVerification = async (target: string) => {
@@ -65,10 +68,10 @@ export const AuthView: React.FC<AuthViewProps> = ({ onAuthSuccess, initialMode =
     setResending(true);
     try {
       await emailAuthApi.resendVerification(target);
-      setSuccessMsg('Wysłaliśmy nowy link. Sprawdź skrzynkę, także folder spam.');
+      setSuccessMsg(t('Wysłaliśmy nowy link. Sprawdź skrzynkę, także folder spam.'));
       setResendIn(RESEND_COOLDOWN_S);
     } catch (err: any) {
-      setError(err.message || 'Nie udało się wysłać linku.');
+      setError(err.message || t('Nie udało się wysłać linku.'));
     } finally {
       setResending(false);
     }
@@ -79,15 +82,15 @@ export const AuthView: React.FC<AuthViewProps> = ({ onAuthSuccess, initialMode =
     setError(null);
     setSuccessMsg(null);
     if (!email.trim()) {
-      setError('Podaj adres e-mail użyty przy rejestracji.');
+      setError(t('Podaj adres e-mail użyty przy rejestracji.'));
       return;
     }
     setIsLoading(true);
     try {
       await emailAuthApi.forgotPassword(email.trim().toLowerCase());
-      setSuccessMsg('Jeśli konto o tym adresie istnieje, wysłaliśmy na nie link do ustawienia nowego hasła. Link jest ważny 60 minut.');
+      setSuccessMsg(t('Jeśli konto o tym adresie istnieje, wysłaliśmy na nie link do ustawienia nowego hasła. Link jest ważny 60 minut.'));
     } catch (err: any) {
-      setError(err.message || 'Nie udało się wysłać linku.');
+      setError(err.message || t('Nie udało się wysłać linku.'));
     } finally {
       setIsLoading(false);
     }
@@ -100,17 +103,17 @@ export const AuthView: React.FC<AuthViewProps> = ({ onAuthSuccess, initialMode =
     setCanResend(false);
 
     if (!email.trim() || !password.trim()) {
-      setError('Podaj adres email oraz hasło.');
+      setError(t('Podaj adres email oraz hasło.'));
       return;
     }
 
     if (mode === 'register' && !username.trim()) {
-      setError('Podaj nazwę użytkownika.');
+      setError(t('Podaj nazwę użytkownika.'));
       return;
     }
 
     if (mode === 'register' && password.length < 8) {
-      setError('Hasło musi mieć co najmniej 8 znaków.');
+      setError(t('Hasło musi mieć co najmniej 8 znaków.'));
       return;
     }
 
@@ -138,23 +141,23 @@ export const AuthView: React.FC<AuthViewProps> = ({ onAuthSuccess, initialMode =
       } catch (parseErr) {
         // Fallback if response was plain text or HTML
         if (res.status === 404) {
-          throw new Error('Serwer chwilowo nie odpowiada (404). Odśwież stronę za moment.');
+          throw new Error(t('Serwer chwilowo nie odpowiada (404). Odśwież stronę za moment.'));
         }
-        throw new Error(`Wystąpił błąd komunikacji z serwerem (kod ${res.status}).`);
+        throw new Error(t('Wystąpił błąd komunikacji z serwerem (kod {code}).', { code: res.status }));
       }
 
       if (!res.ok) {
         if (data?.code === 'EMAIL_NOT_VERIFIED') {
           setCanResend(true);
         }
-        throw new Error(data?.error || `Błąd autoryzacji (${res.status})`);
+        throw new Error(data?.error ? (tServer(data.error) as string) : t('Błąd autoryzacji ({code})', { code: res.status }));
       }
 
       if (data?.pendingVerification) {
         setPendingEmail(data.email || email.trim().toLowerCase());
         setPassword('');
         if (data.mailSent === false) {
-          setError('Konto zostało założone, ale nie udało się wysłać maila. Kliknij „Wyślij link ponownie”.');
+          setError(t('Konto zostało założone, ale nie udało się wysłać maila. Kliknij „Wyślij link ponownie”.'));
         }
         return;
       }
@@ -162,10 +165,10 @@ export const AuthView: React.FC<AuthViewProps> = ({ onAuthSuccess, initialMode =
       if (data?.token && data?.user) {
         onAuthSuccess(data.user, data.token);
       } else {
-        throw new Error('Nieprawidłowa odpowiedź serwera autoryzacji.');
+        throw new Error(t('Nieprawidłowa odpowiedź serwera autoryzacji.'));
       }
     } catch (err: any) {
-      setError(err.message || 'Nie udało się połączyć z serwerem.');
+      setError(err.message || t('Nie udało się połączyć z serwerem.'));
     } finally {
       setIsLoading(false);
     }
@@ -211,9 +214,9 @@ export const AuthView: React.FC<AuthViewProps> = ({ onAuthSuccess, initialMode =
 
   const backToLogin = (
     <p className="text-sm text-stone-400">
-      Pamiętasz już?{' '}
+      {t('Pamiętasz już?')}{' '}
       <button type="button" onClick={() => switchMode('login')} className={linkCls}>
-        Wróć do logowania
+        {t('Wróć do logowania')}
       </button>
     </p>
   );
@@ -241,14 +244,15 @@ export const AuthView: React.FC<AuthViewProps> = ({ onAuthSuccess, initialMode =
           <div className="flex items-center gap-3">
             <img src="/logo.webp" alt="" width={48} height={48} className="w-12 h-12" />
             <span className="text-lg font-bold tracking-tight text-stone-50">Mana Screw</span>
+            <LanguageSwitcher className="ml-auto" />
           </div>
 
           <div className="space-y-3">
             <h1 className="text-[32px] sm:text-4xl xl:text-[44px] font-bold tracking-tight leading-[1.05] text-stone-50 text-balance">
-              Twoja kolekcja Magic: The Gathering, zawsze pod ręką
+              {t('Twoja kolekcja Magic: The Gathering, zawsze pod ręką')}
             </h1>
             <p className="text-base text-stone-400 leading-relaxed max-w-[46ch]">
-              Skanuj karty telefonem, buduj talie w każdym formacie, także do MTG Arena, i śledź wartość kolekcji w złotówkach. Sprzedawaj i wymieniaj z graczami z okolicy.
+              {t('Skanuj karty telefonem, buduj talie w każdym formacie, także do MTG Arena, i śledź wartość kolekcji w złotówkach. Sprzedawaj i wymieniaj z graczami z okolicy.')}
             </p>
           </div>
 
@@ -257,11 +261,11 @@ export const AuthView: React.FC<AuthViewProps> = ({ onAuthSuccess, initialMode =
             {pendingEmail ? (
               <div className="space-y-5">
                 <div className="space-y-2">
-                  <h2 className="text-xl font-semibold tracking-tight text-stone-50">Sprawdź skrzynkę</h2>
+                  <h2 className="text-xl font-semibold tracking-tight text-stone-50">{t('Sprawdź skrzynkę')}</h2>
                   <p className="text-sm text-stone-300 leading-relaxed">
-                    Wysłaliśmy link aktywacyjny na <strong className="font-semibold text-stone-50 break-all">{pendingEmail}</strong>. Kliknij go, aby potwierdzić adres i zalogować się. Link jest ważny 24 godziny.
+                    {t('Wysłaliśmy link aktywacyjny na')} <strong className="font-semibold text-stone-50 break-all">{pendingEmail}</strong>. {t('Kliknij go, aby potwierdzić adres i zalogować się. Link jest ważny 24 godziny.')}
                   </p>
-                  <p className="text-sm text-stone-500">Nie widzisz maila? Zajrzyj do folderu spam albo „Oferty”.</p>
+                  <p className="text-sm text-stone-500">{t('Nie widzisz maila? Zajrzyj do folderu spam albo „Oferty”.')}</p>
                 </div>
                 {notices}
                 <button
@@ -270,18 +274,18 @@ export const AuthView: React.FC<AuthViewProps> = ({ onAuthSuccess, initialMode =
                   onClick={() => resendVerification(pendingEmail)}
                   className={secondaryBtnCls}
                 >
-                  {resending ? 'Wysyłam...' : resendIn > 0 ? <span className="tabular-nums">Wyślij ponownie za {resendIn} s</span> : 'Wyślij link ponownie'}
+                  {resending ? t('Wysyłam...') : resendIn > 0 ? <span className="tabular-nums">{t('Wyślij ponownie za {s} s', { s: resendIn })}</span> : t('Wyślij link ponownie')}
                 </button>
                 {backToLogin}
               </div>
             ) : mode === 'forgot' ? (
               <form onSubmit={handleForgot} className="space-y-5">
                 <div className="space-y-2">
-                  <h2 className="text-xl font-semibold tracking-tight text-stone-50">Nowe hasło</h2>
-                  <p className="text-sm text-stone-400 leading-relaxed">Podaj adres e-mail użyty przy rejestracji. Wyślemy na niego link do ustawienia nowego hasła.</p>
+                  <h2 className="text-xl font-semibold tracking-tight text-stone-50">{t('Nowe hasło')}</h2>
+                  <p className="text-sm text-stone-400 leading-relaxed">{t('Podaj adres e-mail użyty przy rejestracji. Wyślemy na niego link do ustawienia nowego hasła.')}</p>
                 </div>
                 <div className="space-y-2">
-                  <label htmlFor="auth-forgot-email" className={labelCls}>Adres e-mail</label>
+                  <label htmlFor="auth-forgot-email" className={labelCls}>{t('Adres e-mail')}</label>
                   <input
                     id="auth-forgot-email"
                     type="email"
@@ -295,7 +299,7 @@ export const AuthView: React.FC<AuthViewProps> = ({ onAuthSuccess, initialMode =
                 </div>
                 {notices}
                 <button type="submit" disabled={isLoading} className={primaryBtnCls}>
-                  {isLoading ? 'Wysyłam...' : 'Wyślij link'}
+                  {isLoading ? t('Wysyłam...') : t('Wyślij link')}
                 </button>
                 {backToLogin}
               </form>
@@ -303,19 +307,19 @@ export const AuthView: React.FC<AuthViewProps> = ({ onAuthSuccess, initialMode =
               <form onSubmit={handleSubmit} className="space-y-5">
                 <div className="space-y-1.5">
                   <h2 className="text-xl font-semibold tracking-tight text-stone-50">
-                    {mode === 'register' ? 'Załóż konto' : 'Zaloguj się'}
+                    {mode === 'register' ? t('Załóż konto') : t('Zaloguj się')}
                   </h2>
                   <p className="text-sm text-stone-400">
-                    {mode === 'register' ? 'Masz już konto?' : 'Pierwszy raz tutaj?'}{' '}
+                    {mode === 'register' ? t('Masz już konto?') : t('Pierwszy raz tutaj?')}{' '}
                     <button type="button" onClick={() => switchMode(mode === 'register' ? 'login' : 'register')} className={linkCls}>
-                      {mode === 'register' ? 'Zaloguj się' : 'Załóż darmowe konto'}
+                      {mode === 'register' ? t('Zaloguj się') : t('Załóż darmowe konto')}
                     </button>
                   </p>
                 </div>
 
                 {mode === 'register' && (
                   <div className="space-y-2">
-                    <label htmlFor="auth-username" className={labelCls}>Nazwa gracza</label>
+                    <label htmlFor="auth-username" className={labelCls}>{t('Nazwa gracza')}</label>
                     <input
                       id="auth-username"
                       type="text"
@@ -327,12 +331,12 @@ export const AuthView: React.FC<AuthViewProps> = ({ onAuthSuccess, initialMode =
                       className={inputCls}
                       aria-describedby="auth-username-help"
                     />
-                    <p id="auth-username-help" className="text-xs text-stone-500">Widoczna dla innych graczy, np. w ofercie sprzedaży.</p>
+                    <p id="auth-username-help" className="text-xs text-stone-500">{t('Widoczna dla innych graczy, np. w ofercie sprzedaży.')}</p>
                   </div>
                 )}
 
                 <div className="space-y-2">
-                  <label htmlFor="auth-email" className={labelCls}>Adres e-mail</label>
+                  <label htmlFor="auth-email" className={labelCls}>{t('Adres e-mail')}</label>
                   <input
                     id="auth-email"
                     type="email"
@@ -346,14 +350,14 @@ export const AuthView: React.FC<AuthViewProps> = ({ onAuthSuccess, initialMode =
 
                 <div className="space-y-2">
                   <div className="flex items-baseline justify-between gap-3">
-                    <label htmlFor="auth-password" className={labelCls}>Hasło</label>
+                    <label htmlFor="auth-password" className={labelCls}>{t('Hasło')}</label>
                     {mode === 'login' && (
                       <button
                         type="button"
                         onClick={() => switchMode('forgot')}
                         className="text-xs font-medium text-stone-400 hover:text-amber-300 underline-offset-[3px] hover:underline cursor-pointer"
                       >
-                        Nie pamiętasz?
+                        {t('Nie pamiętasz?')}
                       </button>
                     )}
                   </div>
@@ -376,10 +380,10 @@ export const AuthView: React.FC<AuthViewProps> = ({ onAuthSuccess, initialMode =
                       aria-controls="auth-password"
                       className="absolute right-1.5 top-1/2 -translate-y-1/2 h-8 px-2.5 rounded-md text-xs font-medium text-stone-400 hover:text-stone-100 hover:bg-stone-800 cursor-pointer"
                     >
-                      {showPassword ? 'Ukryj' : 'Pokaż'}
+                      {showPassword ? t('Ukryj') : t('Pokaż')}
                     </button>
                   </div>
-                  {mode === 'register' && <p id="auth-password-help" className="text-xs text-stone-500">Co najmniej 8 znaków.</p>}
+                  {mode === 'register' && <p id="auth-password-help" className="text-xs text-stone-500">{t('Co najmniej 8 znaków.')}</p>}
                 </div>
 
                 {notices}
@@ -390,14 +394,14 @@ export const AuthView: React.FC<AuthViewProps> = ({ onAuthSuccess, initialMode =
                     onClick={() => resendVerification(email.trim().toLowerCase())}
                     className={secondaryBtnCls}
                   >
-                    {resending ? 'Wysyłam...' : resendIn > 0 ? <span className="tabular-nums">Wyślij link ponownie za {resendIn} s</span> : 'Wyślij link potwierdzający ponownie'}
+                    {resending ? t('Wysyłam...') : resendIn > 0 ? <span className="tabular-nums">{t('Wyślij link ponownie za {s} s', { s: resendIn })}</span> : t('Wyślij link potwierdzający ponownie')}
                   </button>
                 )}
 
                 <button type="submit" disabled={isLoading} className={primaryBtnCls}>
                   {isLoading
-                    ? mode === 'register' ? 'Zakładam konto...' : 'Loguję...'
-                    : mode === 'register' ? 'Załóż konto' : 'Zaloguj się'}
+                    ? mode === 'register' ? t('Zakładam konto...') : t('Loguję...')
+                    : mode === 'register' ? t('Załóż konto') : t('Zaloguj się')}
                 </button>
               </form>
             )}
@@ -419,7 +423,7 @@ export const AuthView: React.FC<AuthViewProps> = ({ onAuthSuccess, initialMode =
       {/* 2. Funkcje */}
       <section className="relative max-w-[1320px] mx-auto px-4 sm:px-6 lg:px-10 pb-16 lg:pb-24 space-y-8" aria-labelledby="auth-features">
         <h2 id="auth-features" className="text-2xl sm:text-3xl font-bold tracking-tight text-stone-50 max-w-xl">
-          Wszystko, czego potrzebuje kolekcjoner
+          {t('Wszystko, czego potrzebuje kolekcjoner')}
         </h2>
         <FeatureBento cards={cards} />
       </section>
@@ -429,15 +433,15 @@ export const AuthView: React.FC<AuthViewProps> = ({ onAuthSuccess, initialMode =
         <section className="relative max-w-[1320px] mx-auto px-4 sm:px-6 lg:px-10 pb-16">
           <div className="rounded-2xl bg-stone-900 ring-1 ring-stone-800 p-6 sm:p-8 flex flex-col sm:flex-row sm:items-center justify-between gap-5">
             <div className="space-y-1">
-              <h2 className="text-xl font-bold text-stone-50">Konto jest darmowe</h2>
-              <p className="text-sm text-stone-400">Wystarczy e-mail i hasło. Kolekcję możesz zaimportować z pliku tekstowego.</p>
+              <h2 className="text-xl font-bold text-stone-50">{t('Konto jest darmowe')}</h2>
+              <p className="text-sm text-stone-400">{t('Wystarczy e-mail i hasło. Kolekcję możesz zaimportować z pliku tekstowego.')}</p>
             </div>
             <button
               type="button"
               onClick={startRegistration}
               className="h-11 px-6 rounded-lg bg-amber-400 hover:bg-amber-300 active:translate-y-px text-stone-950 font-semibold text-sm shrink-0 cursor-pointer transition-colors"
             >
-              Załóż konto
+              {t('Załóż konto')}
             </button>
           </div>
         </section>
@@ -450,20 +454,20 @@ export const AuthView: React.FC<AuthViewProps> = ({ onAuthSuccess, initialMode =
             Mana Screw is unofficial Fan Content permitted under the Fan Content Policy. Not approved/endorsed by Wizards. Portions of the materials used are property of Wizards of the Coast. ©Wizards of the Coast LLC.
           </p>
           <p>
-            Dane i obrazy kart:{' '}
-            <a href="https://scryfall.com" target="_blank" rel="noopener noreferrer" className="underline hover:text-stone-300">Scryfall</a>. Ceny: Cardmarket i TCGPlayer. Mapa: ©{' '}
+            {t('Dane i obrazy kart:')}{' '}
+            <a href="https://scryfall.com" target="_blank" rel="noopener noreferrer" className="underline hover:text-stone-300">Scryfall</a>. {t('Ceny: Cardmarket i TCGPlayer. Mapa:')} ©{' '}
             <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer" className="underline hover:text-stone-300">OpenStreetMap</a>.
           </p>
           <p>
-            Lubisz Mana Screw?{' '}
-            <a href={SUPPORT_URL} target="_blank" rel="noopener noreferrer" className="text-amber-300 hover:text-amber-200 underline-offset-2 hover:underline">Postaw kawę</a>
+            {t('Lubisz Mana Screw?')}{' '}
+            <a href={SUPPORT_URL} target="_blank" rel="noopener noreferrer" className="text-amber-300 hover:text-amber-200 underline-offset-2 hover:underline">{t('Postaw kawę')}</a>
             <span className="text-stone-600"> · </span>
             <a href={DISCORD_URL} target="_blank" rel="noopener noreferrer" className="text-stone-400 hover:text-stone-200 underline-offset-2 hover:underline">Discord</a>
           </p>
           <p>
-            manascrew.eu nie odpowiada za oszustwa wynikające z handlu między graczami. <TermsLink />
+            {t('manascrew.eu nie odpowiada za oszustwa wynikające z handlu między graczami.')} <TermsLink />
             <span aria-hidden="true"> · </span>
-            <span className="tabular-nums">Wersja {versionLabel()}</span>
+            <span className="tabular-nums">{t('Wersja')} {versionLabel()}</span>
           </p>
         </div>
       </footer>

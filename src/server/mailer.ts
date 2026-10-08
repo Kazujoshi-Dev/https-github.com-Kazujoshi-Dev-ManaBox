@@ -72,7 +72,10 @@ export const resetPasswordLink = (token: string) => `${SITE_URL}/nowe-haslo?toke
 
 // ---------- Szablony ----------
 
-function layout(title: string, paragraphs: string[], button?: { label: string; href: string }, footnote?: string): string {
+export type MailLang = 'pl' | 'en';
+
+function layout(title: string, paragraphs: string[], button?: { label: string; href: string }, footnote?: string, lang: MailLang = 'pl'): string {
+  const L = (pl: string, en: string) => (lang === 'en' ? en : pl);
   const p = paragraphs
     .map((t) => `<p style="margin:0 0 16px;font-size:15px;line-height:1.6;color:#d6d3d1;">${t}</p>`)
     .join('');
@@ -80,11 +83,11 @@ function layout(title: string, paragraphs: string[], button?: { label: string; h
     ? `<table role="presentation" cellspacing="0" cellpadding="0" style="margin:8px 0 24px;"><tr><td style="border-radius:12px;background:#fbbf24;">
 <a href="${esc(button.href)}" style="display:inline-block;padding:14px 24px;font-size:15px;font-weight:700;color:#1c1917;text-decoration:none;border-radius:12px;">${esc(button.label)}</a>
 </td></tr></table>
-<p style="margin:0 0 16px;font-size:13px;line-height:1.6;color:#a8a29e;">Jeśli przycisk nie działa, skopiuj ten adres do przeglądarki:<br><a href="${esc(button.href)}" style="color:#fbbf24;word-break:break-all;">${esc(button.href)}</a></p>`
+<p style="margin:0 0 16px;font-size:13px;line-height:1.6;color:#a8a29e;">${L('Jeśli przycisk nie działa, skopiuj ten adres do przeglądarki:', 'If the button doesn\'t work, copy this address into your browser:')}<br><a href="${esc(button.href)}" style="color:#fbbf24;word-break:break-all;">${esc(button.href)}</a></p>`
     : '';
   const note = footnote ? `<p style="margin:0;font-size:13px;line-height:1.6;color:#a8a29e;">${footnote}</p>` : '';
   return `<!doctype html>
-<html lang="pl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(title)}</title></head>
+<html lang="${lang}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(title)}</title></head>
 <body style="margin:0;padding:0;background:#0c0a09;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
 <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#0c0a09;padding:32px 16px;"><tr><td align="center">
 <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:520px;background:#1c1917;border:1px solid #292524;border-radius:16px;">
@@ -93,13 +96,33 @@ function layout(title: string, paragraphs: string[], button?: { label: string; h
 <h1 style="margin:0 0 16px;font-size:22px;line-height:1.3;color:#fafaf9;">${esc(title)}</h1>
 ${p}${btn}${note}
 </td></tr></table>
-<p style="margin:16px 0 0;font-size:12px;color:#78716c;">Wiadomość wysłana automatycznie z <a href="${esc(SITE_URL)}" style="color:#a8a29e;">${esc(SITE_URL.replace(/^https?:\/\//, ''))}</a>. Nie odpowiadaj na nią.</p>
+<p style="margin:16px 0 0;font-size:12px;color:#78716c;">${L('Wiadomość wysłana automatycznie z', 'This message was sent automatically from')} <a href="${esc(SITE_URL)}" style="color:#a8a29e;">${esc(SITE_URL.replace(/^https?:\/\//, ''))}</a>. ${L('Nie odpowiadaj na nią.', 'Please do not reply.')}</p>
 </td></tr></table>
 </body></html>`;
 }
 
-export function verifyEmailMessage(to: string, username: string, token: string, validHours: number): MailMessage {
+export function verifyEmailMessage(to: string, username: string, token: string, validHours: number, lang: MailLang = 'pl'): MailMessage {
   const link = verifyEmailLink(token);
+  if (lang === 'en') {
+    return {
+      to,
+      subject: 'Confirm your email address for Mana Screw',
+      text:
+        `Hi ${username}!\n\n` +
+        `Thanks for creating a Mana Screw account. To activate it, open this link:\n${link}\n\n` +
+        `The link is valid for ${validHours} hours. If you didn't create an account, please ignore this message.\n`,
+      html: layout(
+        'Confirm your email address',
+        [
+          `Hi <strong style="color:#fafaf9;">${esc(username)}</strong>!`,
+          'Thanks for creating a Mana Screw account. Click the button below to confirm your email address and activate your account.'
+        ],
+        { label: 'Confirm email address', href: link },
+        `The link is valid for ${validHours} hours. If you didn't create an account, please ignore this message.`,
+        lang
+      )
+    };
+  }
   return {
     to,
     subject: 'Potwierdź adres e-mail w Mana Screw',
@@ -119,8 +142,28 @@ export function verifyEmailMessage(to: string, username: string, token: string, 
   };
 }
 
-export function resetPasswordMessage(to: string, username: string, token: string, validMinutes: number): MailMessage {
+export function resetPasswordMessage(to: string, username: string, token: string, validMinutes: number, lang: MailLang = 'pl'): MailMessage {
   const link = resetPasswordLink(token);
+  if (lang === 'en') {
+    return {
+      to,
+      subject: 'Set a new password for Mana Screw',
+      text:
+        `Hi ${username}!\n\n` +
+        `We received a request to change your account password. To set a new password, open this link:\n${link}\n\n` +
+        `The link is valid for ${validMinutes} minutes and works only once. If you didn't request a change, ignore this message: your password won't change.\n`,
+      html: layout(
+        'Set a new password',
+        [
+          `Hi <strong style="color:#fafaf9;">${esc(username)}</strong>!`,
+          'We received a request to change your account password. Click the button below to set a new password.'
+        ],
+        { label: 'Set a new password', href: link },
+        `The link is valid for ${validMinutes} minutes and works only once. If you didn't request a change, ignore this message: your password won't change.`,
+        lang
+      )
+    };
+  }
   return {
     to,
     subject: 'Ustaw nowe hasło w Mana Screw',
@@ -140,8 +183,29 @@ export function resetPasswordMessage(to: string, username: string, token: string
   };
 }
 
-export function passwordChangedMessage(to: string, username: string): MailMessage {
-  const when = new Date().toLocaleString('pl-PL', { timeZone: 'Europe/Warsaw', dateStyle: 'long', timeStyle: 'short' });
+export function passwordChangedMessage(to: string, username: string, lang: MailLang = 'pl'): MailMessage {
+  const when = new Date().toLocaleString(lang === 'en' ? 'en-GB' : 'pl-PL', { timeZone: 'Europe/Warsaw', dateStyle: 'long', timeStyle: 'short' });
+  const site = esc(SITE_URL.replace(/^https?:\/\//, ''));
+  if (lang === 'en') {
+    return {
+      to,
+      subject: 'Your Mana Screw password has been changed',
+      text:
+        `Hi ${username}!\n\n` +
+        `Your account password was changed (${when}) and we've logged you out of all devices.\n\n` +
+        `If this wasn't you, set a new password right away using “Forgot it?” at ${SITE_URL}\n`,
+      html: layout(
+        'Your password has been changed',
+        [
+          `Hi <strong style="color:#fafaf9;">${esc(username)}</strong>!`,
+          `Your account password was changed (${esc(when)}) and we've logged you out of all devices.`
+        ],
+        undefined,
+        `If this wasn't you, set a new password right away using “Forgot it?” at <a href="${esc(SITE_URL)}" style="color:#fbbf24;">${site}</a>.`,
+        lang
+      )
+    };
+  }
   return {
     to,
     subject: 'Hasło do Mana Screw zostało zmienione',
@@ -156,7 +220,7 @@ export function passwordChangedMessage(to: string, username: string): MailMessag
         `Hasło do Twojego konta zostało zmienione (${esc(when)}) i wylogowaliśmy Cię ze wszystkich urządzeń.`
       ],
       undefined,
-      `Jeśli to nie Ty, od razu ustaw nowe hasło przez „Nie pamiętasz hasła?” na <a href="${esc(SITE_URL)}" style="color:#fbbf24;">${esc(SITE_URL.replace(/^https?:\/\//, ''))}</a>.`
+      `Jeśli to nie Ty, od razu ustaw nowe hasło przez „Nie pamiętasz hasła?” na <a href="${esc(SITE_URL)}" style="color:#fbbf24;">${site}</a>.`
     )
   };
 }

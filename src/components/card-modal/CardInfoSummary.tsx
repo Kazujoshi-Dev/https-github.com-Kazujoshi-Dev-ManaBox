@@ -4,6 +4,7 @@ import { ScryfallCard } from '../../types';
 import { getRarityColor, getRarityLabel, getCardEdhrecRank } from '../../utils/formatters';
 import { EdhrecBadge } from '../EdhrecBadge';
 import { CardInfoSummaryProps } from './types';
+import { useT } from '../../i18n';
 
 const RECOGNIZED_FORMATS = ['commander', 'modern', 'standard', 'pioneer', 'legacy', 'pauper', 'vintage'];
 
@@ -14,6 +15,7 @@ export const CardInfoSummary: React.FC<CardInfoSummaryProps> = ({
   printsCount,
   onOpenPrintsTab,
 }) => {
+  const t = useT();
   return (
     <div>
       {/* Active Set, Rarity & Artist */}
@@ -52,10 +54,10 @@ export const CardInfoSummary: React.FC<CardInfoSummaryProps> = ({
           <Layers className="w-4 h-4 text-amber-400 shrink-0" />
           <div>
             <p className="font-bold text-stone-200">
-              Wydanie: <span className="text-amber-300">[{activeCard.set.toUpperCase()}] #{activeCard.collector_number}</span>
+              {t('Wydanie:')} <span className="text-amber-300">[{activeCard.set.toUpperCase()}] #{activeCard.collector_number}</span>
             </p>
             <p className="text-[11px] text-stone-400">
-              Dostępnych {printsCount} różnych wydań i grafik
+              {t('Dostępnych {n} różnych wydań i grafik', { n: printsCount })}
             </p>
           </div>
         </div>
@@ -65,7 +67,7 @@ export const CardInfoSummary: React.FC<CardInfoSummaryProps> = ({
           onClick={onOpenPrintsTab}
           className="px-3 py-1.5 bg-stone-800 hover:bg-stone-700 text-amber-300 rounded-lg text-xs font-bold border border-amber-500/30 transition-colors cursor-pointer shrink-0"
         >
-          Zmień wersję printu
+          {t('Zmień wersję printu')}
         </button>
       </div>
 
@@ -74,7 +76,7 @@ export const CardInfoSummary: React.FC<CardInfoSummaryProps> = ({
         <div className="mt-4">
           <p className="text-[11px] font-semibold text-stone-400 tabular-nums mb-1.5 flex items-center gap-1">
             <ShieldCheck className="w-3.5 h-3.5 text-stone-400" />
-            <span>Formaty i Legalność</span>
+            <span>{t('Formaty i Legalność')}</span>
           </p>
           <div className="flex flex-wrap gap-1.5">
             {RECOGNIZED_FORMATS.map((format) => {

@@ -1,5 +1,6 @@
 import React from 'react';
 import { WILDCARD_RARITIES, type WildcardCost as Cost, type WildcardRarity } from '../../utils/mtgFormats';
+import { useT } from '../../i18n';
 
 /** Kolory wildcardów jak w MTG Arena: szary, srebrny, złoty, pomarańczowy. */
 const DOT: Record<WildcardRarity, string> = {
@@ -17,12 +18,13 @@ interface WildcardCostProps {
 
 /** Koszt talii MTG Arena w wildcardach, z podziałem na rzadkości. */
 export const WildcardCost: React.FC<WildcardCostProps> = ({ cost, compact = false }) => {
-  const title = WILDCARD_RARITIES.map((r) => `${r.label}: ${cost[r.id]}`).join(', ');
+  const t = useT();
+  const title = WILDCARD_RARITIES.map((r) => `${t(r.label)}: ${cost[r.id]}`).join(', ');
   return (
     <span
       className={`inline-flex items-center tabular-nums ${compact ? 'gap-2 text-sm' : 'gap-2.5 text-sm font-bold'}`}
-      title={`Wildcardy potrzebne do stworzenia talii od zera (bez lądów podstawowych). ${title}`}
-      aria-label={`Koszt w wildcardach: ${title}`}
+      title={`${t('Wildcardy potrzebne do stworzenia talii od zera (bez lądów podstawowych).')} ${title}`}
+      aria-label={`${t('Koszt w wildcardach:')} ${title}`}
     >
       {WILDCARD_RARITIES.map((r) => (
         <span key={r.id} className={`inline-flex items-center gap-1 ${cost[r.id] ? 'text-stone-100' : 'text-stone-500'}`}>

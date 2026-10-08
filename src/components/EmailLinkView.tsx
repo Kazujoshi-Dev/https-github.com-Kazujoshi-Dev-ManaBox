@@ -3,6 +3,7 @@ import { AlertCircle, CheckCircle2, KeyRound, Loader2, MailCheck } from 'lucide-
 import { emailAuthApi } from '../services/api';
 import type { AuthUser } from '../types';
 import type { EmailLink } from '../utils/emailLinks';
+import { useT } from '../i18n';
 
 interface Props {
   link: EmailLink;
@@ -39,6 +40,7 @@ const ErrorNote: React.FC<{ text: string }> = ({ text }) => (
 
 /** Potwierdzenie adresu e-mail: token zużywamy od razu po otwarciu linku. */
 const VerifyEmail: React.FC<Props> = ({ link, onAuthSuccess, onDone }) => {
+  const t = useT();
   const [state, setState] = useState<'loading' | 'done' | 'error'>('loading');
   const [error, setError] = useState('');
   const started = useRef(false);
@@ -50,7 +52,7 @@ const VerifyEmail: React.FC<Props> = ({ link, onAuthSuccess, onDone }) => {
       .verifyEmail(link.token)
       .then((res) => {
         if (res.token && res.user) {
-          onAuthSuccess(res.user, res.token, 'Adres e-mail potwierdzony. Witaj w Mana Screw!');
+          onAuthSuccess(res.user, res.token, t('Adres e-mail potwierdzony. Witaj w Mana Screw!'));
         } else {
           setState('done');
         }
@@ -67,7 +69,7 @@ const VerifyEmail: React.FC<Props> = ({ link, onAuthSuccess, onDone }) => {
         {state === 'loading' && (
           <div className="flex items-center gap-3 text-sm text-stone-300" role="status">
             <Loader2 className="w-5 h-5 animate-spin text-amber-300" aria-hidden="true" />
-            Potwierdzamy adres e-mail...
+            {t('Potwierdzamy adres e-mail...')}
           </div>
         )}
         {state === 'done' && (
@@ -75,10 +77,10 @@ const VerifyEmail: React.FC<Props> = ({ link, onAuthSuccess, onDone }) => {
             <div className={`${iconBox} bg-emerald-500/10 ring-1 ring-emerald-500/30 text-emerald-300`}>
               <CheckCircle2 className="w-6 h-6" aria-hidden="true" />
             </div>
-            <h1 className="text-xl font-bold">Adres potwierdzony</h1>
-            <p className="text-sm text-stone-400">Możesz się teraz zalogować.</p>
+            <h1 className="text-xl font-bold">{t('Adres potwierdzony')}</h1>
+            <p className="text-sm text-stone-400">{t('Możesz się teraz zalogować.')}</p>
             <button type="button" className={primaryBtn} onClick={() => onDone('login')}>
-              Przejdź do logowania
+              {t('Przejdź do logowania')}
             </button>
           </>
         )}
@@ -87,11 +89,11 @@ const VerifyEmail: React.FC<Props> = ({ link, onAuthSuccess, onDone }) => {
             <div className={`${iconBox} bg-rose-500/10 ring-1 ring-rose-500/30 text-rose-300`}>
               <MailCheck className="w-6 h-6" aria-hidden="true" />
             </div>
-            <h1 className="text-xl font-bold">Nie udało się potwierdzić adresu</h1>
+            <h1 className="text-xl font-bold">{t('Nie udało się potwierdzić adresu')}</h1>
             <ErrorNote text={error} />
-            <p className="text-xs text-stone-500">Nowy link wyślesz z ekranu logowania: spróbuj się zalogować i wybierz „Wyślij link potwierdzający ponownie”.</p>
+            <p className="text-xs text-stone-500">{t('Nowy link wyślesz z ekranu logowania: spróbuj się zalogować i wybierz „Wyślij link potwierdzający ponownie”.')}</p>
             <button type="button" className={primaryBtn} onClick={() => onDone('login')}>
-              Przejdź do logowania
+              {t('Przejdź do logowania')}
             </button>
           </>
         )}
@@ -102,6 +104,7 @@ const VerifyEmail: React.FC<Props> = ({ link, onAuthSuccess, onDone }) => {
 
 /** Ustawienie nowego hasła z linku: najpierw sprawdzamy token, potem pokazujemy formularz. */
 const ResetPassword: React.FC<Props> = ({ link, onAuthSuccess, onDone }) => {
+  const t = useT();
   const [state, setState] = useState<'checking' | 'form' | 'invalid' | 'done'>('checking');
   const [password, setPassword] = useState('');
   const [repeat, setRepeat] = useState('');
@@ -127,13 +130,13 @@ const ResetPassword: React.FC<Props> = ({ link, onAuthSuccess, onDone }) => {
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
-    if (password.length < 8) return setError('Hasło musi mieć co najmniej 8 znaków.');
-    if (password !== repeat) return setError('Hasła nie są takie same.');
+    if (password.length < 8) return setError(t('Hasło musi mieć co najmniej 8 znaków.'));
+    if (password !== repeat) return setError(t('Hasła nie są takie same.'));
     setSaving(true);
     try {
       const res = await emailAuthApi.resetPassword(link.token, password);
       if (res.token && res.user) {
-        onAuthSuccess(res.user, res.token, 'Hasło zostało zmienione.');
+        onAuthSuccess(res.user, res.token, t('Hasło zostało zmienione.'));
       } else {
         setState('done');
       }
@@ -150,7 +153,7 @@ const ResetPassword: React.FC<Props> = ({ link, onAuthSuccess, onDone }) => {
         {state === 'checking' && (
           <div className="flex items-center gap-3 text-sm text-stone-300" role="status">
             <Loader2 className="w-5 h-5 animate-spin text-amber-300" aria-hidden="true" />
-            Sprawdzamy link...
+            {t('Sprawdzamy link...')}
           </div>
         )}
         {state === 'invalid' && (
@@ -158,15 +161,15 @@ const ResetPassword: React.FC<Props> = ({ link, onAuthSuccess, onDone }) => {
             <div className={`${iconBox} bg-rose-500/10 ring-1 ring-rose-500/30 text-rose-300`}>
               <KeyRound className="w-6 h-6" aria-hidden="true" />
             </div>
-            <h1 className="text-xl font-bold">Link wygasł</h1>
+            <h1 className="text-xl font-bold">{t('Link wygasł')}</h1>
             <p className="text-sm text-stone-400">
-              Ten link jest nieprawidłowy, wygasł albo został już użyty. Link do zmiany hasła działa 60 minut i tylko raz.
+              {t('Ten link jest nieprawidłowy, wygasł albo został już użyty. Link do zmiany hasła działa 60 minut i tylko raz.')}
             </p>
             <button type="button" className={primaryBtn} onClick={() => onDone('forgot')}>
-              Wyślij nowy link
+              {t('Wyślij nowy link')}
             </button>
             <button type="button" className={secondaryBtn} onClick={() => onDone('login')}>
-              Wróć do logowania
+              {t('Wróć do logowania')}
             </button>
           </>
         )}
@@ -175,10 +178,10 @@ const ResetPassword: React.FC<Props> = ({ link, onAuthSuccess, onDone }) => {
             <div className={`${iconBox} bg-emerald-500/10 ring-1 ring-emerald-500/30 text-emerald-300`}>
               <CheckCircle2 className="w-6 h-6" aria-hidden="true" />
             </div>
-            <h1 className="text-xl font-bold">Hasło zmienione</h1>
-            <p className="text-sm text-stone-400">Możesz zalogować się nowym hasłem.</p>
+            <h1 className="text-xl font-bold">{t('Hasło zmienione')}</h1>
+            <p className="text-sm text-stone-400">{t('Możesz zalogować się nowym hasłem.')}</p>
             <button type="button" className={primaryBtn} onClick={() => onDone('login')}>
-              Przejdź do logowania
+              {t('Przejdź do logowania')}
             </button>
           </>
         )}
@@ -188,24 +191,24 @@ const ResetPassword: React.FC<Props> = ({ link, onAuthSuccess, onDone }) => {
               <KeyRound className="w-6 h-6" aria-hidden="true" />
             </div>
             <div className="space-y-1">
-              <h1 className="text-xl font-bold">Ustaw nowe hasło</h1>
-              <p className="text-sm text-stone-400">Po zapisaniu wylogujemy Cię ze wszystkich innych urządzeń.</p>
+              <h1 className="text-xl font-bold">{t('Ustaw nowe hasło')}</h1>
+              <p className="text-sm text-stone-400">{t('Po zapisaniu wylogujemy Cię ze wszystkich innych urządzeń.')}</p>
             </div>
             {error && <ErrorNote text={error} />}
             <label className="block space-y-1.5">
-              <span className="block text-sm font-medium text-stone-300">Nowe hasło</span>
+              <span className="block text-sm font-medium text-stone-300">{t('Nowe hasło')}</span>
               <input
                 type="password"
                 autoComplete="new-password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder="Co najmniej 8 znaków"
+                placeholder={t('Co najmniej 8 znaków')}
                 className={input}
                 autoFocus
               />
             </label>
             <label className="block space-y-1.5">
-              <span className="block text-sm font-medium text-stone-300">Powtórz hasło</span>
+              <span className="block text-sm font-medium text-stone-300">{t('Powtórz hasło')}</span>
               <input
                 type="password"
                 autoComplete="new-password"
@@ -216,10 +219,10 @@ const ResetPassword: React.FC<Props> = ({ link, onAuthSuccess, onDone }) => {
             </label>
             <button type="submit" disabled={saving} className={primaryBtn}>
               {saving && <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />}
-              Zapisz nowe hasło
+              {t('Zapisz nowe hasło')}
             </button>
             <button type="button" className={secondaryBtn} onClick={() => onDone('login')}>
-              Anuluj
+              {t('Anuluj')}
             </button>
           </form>
         )}

@@ -2,12 +2,14 @@ import React, { useEffect, useRef, useState } from 'react';
 import { MapPin, Loader2, X, Check } from 'lucide-react';
 import { profileApi } from '../services/api';
 import type { CitySuggestion, UserProfile } from '../types';
+import { useT } from '../i18n';
 
 /**
  * Opcjonalna miejscowość użytkownika (do mapy sprzedawców).
  * Podpowiedzi z OpenStreetMap; zapis od razu po wybraniu z listy.
  */
 export const CityPicker: React.FC = () => {
+  const t = useT();
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [query, setQuery] = useState('');
   const [suggestions, setSuggestions] = useState<CitySuggestion[]>([]);
@@ -50,7 +52,7 @@ export const CityPicker: React.FC = () => {
       setProfile(saved);
       setQuery('');
       setSuggestions([]);
-      setMessage({ kind: 'ok', text: label ? 'Zapisano miejscowość.' : 'Usunięto miejscowość.' });
+      setMessage({ kind: 'ok', text: label ? t('Zapisano miejscowość.') : t('Usunięto miejscowość.') });
     } catch (err: any) {
       setMessage({ kind: 'error', text: err.message });
     } finally {
@@ -63,10 +65,9 @@ export const CityPicker: React.FC = () => {
       <div className="flex items-start gap-2.5">
         <MapPin className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
         <div className="space-y-0.5">
-          <p className="text-xs font-bold text-stone-200">Miejscowość (opcjonalnie)</p>
+          <p className="text-xs font-bold text-stone-200">{t('Miejscowość (opcjonalnie)')}</p>
           <p className="text-[11px] text-stone-400">
-            Pojawisz się na mapie sprzedawców, gdy masz karty na sprzedaż. Inni użytkownicy zobaczą tylko nazwę miasta,
-            nigdy dokładny adres.
+            {t('Pojawisz się na mapie sprzedawców, gdy masz karty na sprzedaż. Inni użytkownicy zobaczą tylko nazwę miasta, nigdy dokładny adres.')}
           </p>
         </div>
       </div>
@@ -81,7 +82,7 @@ export const CityPicker: React.FC = () => {
             className="shrink-0 h-9 px-2.5 rounded-lg text-xs font-semibold text-stone-300 hover:text-rose-300 hover:bg-stone-800 flex items-center gap-1 cursor-pointer disabled:opacity-50"
           >
             <X className="w-3.5 h-3.5" />
-            Usuń
+            {t('Usuń')}
           </button>
         </div>
       )}
@@ -94,8 +95,8 @@ export const CityPicker: React.FC = () => {
             setQuery(e.target.value);
             setMessage(null);
           }}
-          placeholder={profile?.city ? 'Zmień miejscowość...' : 'Wpisz nazwę miejscowości, np. Kraków'}
-          aria-label="Miejscowość"
+          placeholder={profile?.city ? t('Zmień miejscowość...') : t('Wpisz nazwę miejscowości, np. Kraków')}
+          aria-label={t('Miejscowość')}
           autoComplete="off"
           className="w-full bg-stone-900 border border-stone-700 focus:border-amber-500 rounded-lg px-3 py-2 text-sm text-stone-100 placeholder-stone-500 focus:outline-none"
         />
@@ -103,7 +104,7 @@ export const CityPicker: React.FC = () => {
       </div>
 
       {suggestions.length > 0 && (
-        <ul className="rounded-lg border border-stone-800 divide-y divide-stone-800 overflow-hidden" role="listbox" aria-label="Podpowiedzi miejscowości">
+        <ul className="rounded-lg border border-stone-800 divide-y divide-stone-800 overflow-hidden" role="listbox" aria-label={t('Podpowiedzi miejscowości')}>
           {suggestions.map((s) => (
             <li key={s.label}>
               <button
@@ -120,7 +121,7 @@ export const CityPicker: React.FC = () => {
         </ul>
       )}
       {query.trim().length >= 3 && !isSearching && suggestions.length === 0 && !message && (
-        <p className="text-[11px] text-stone-500">Brak wyników. Spróbuj innej pisowni.</p>
+        <p className="text-[11px] text-stone-500">{t('Brak wyników. Spróbuj innej pisowni.')}</p>
       )}
 
       {message && (
@@ -129,7 +130,7 @@ export const CityPicker: React.FC = () => {
           {message.text}
         </p>
       )}
-      <p className="text-[11px] text-stone-500">Dane miejscowości: © OpenStreetMap</p>
+      <p className="text-[11px] text-stone-500">{t('Dane miejscowości: © OpenStreetMap')}</p>
     </div>
   );
 };

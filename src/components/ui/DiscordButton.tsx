@@ -1,4 +1,5 @@
 import React from 'react';
+import { useT } from '../../i18n';
 
 export const DISCORD_URL = 'https://discord.gg/9BHwGqksGW';
 
@@ -17,11 +18,12 @@ interface DiscordButtonProps {
 
 /** Link do serwera Discord społeczności Mana Screw (otwiera się w nowej karcie). */
 export const DiscordButton: React.FC<DiscordButtonProps> = ({ variant = 'icon', className = '' }) => {
+  const t = useT();
   const common = {
     href: DISCORD_URL,
     target: '_blank',
     rel: 'noopener noreferrer',
-    title: 'Dołącz do nas na Discordzie'
+    title: t('Dołącz do nas na Discordzie')
   };
   if (variant === 'link') {
     return (

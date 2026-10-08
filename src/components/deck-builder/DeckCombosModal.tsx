@@ -28,6 +28,7 @@ import { DeckItem, SpellbookCard, SpellbookVariant } from '../../types';
 import { spellbookApi } from '../../services/api';
 
 import { useBackToClose } from '../../hooks/useBackButton';
+import { useT, t as tr } from '../../i18n';
 interface DeckCombosModalProps {
   isOpen: boolean;
   deck: DeckItem;
@@ -39,29 +40,29 @@ interface DeckCombosModalProps {
 
 // Map zone abbreviations from Commander Spellbook to readable Polish labels
 const formatZoneLocation = (zoneStr?: string): string => {
-  if (!zoneStr) return 'Pole bitwy (Battlefield)';
+  if (!zoneStr) return tr('Pole bitwy (Battlefield)');
   const z = zoneStr.toLowerCase().trim();
   switch (z) {
     case 'b':
     case 'battlefield':
-      return 'Pole bitwy (Battlefield)';
+      return tr('Pole bitwy (Battlefield)');
     case 'h':
     case 'hand':
-      return 'W ręce (Hand)';
+      return tr('W ręce (Hand)');
     case 'g':
     case 'graveyard':
-      return 'Na cmentarzu (Graveyard)';
+      return tr('Na cmentarzu (Graveyard)');
     case 'c':
     case 'command':
     case 'command-zone':
     case 'command_zone':
-      return 'Strefa dowódcy (Command Zone)';
+      return tr('Strefa dowódcy (Command Zone)');
     case 'l':
     case 'library':
-      return 'W bibliotece (Library)';
+      return tr('W bibliotece (Library)');
     case 'e':
     case 'exile':
-      return 'Na wygnaniu (Exile)';
+      return tr('Na wygnaniu (Exile)');
     default:
       return zoneStr;
   }
@@ -147,6 +148,7 @@ export const DeckCombosModal: React.FC<DeckCombosModalProps> = ({
   onAddToWishlist,
   onViewCardDetails,
 }) => {
+  const t = useT();
   // „Wstecz” na telefonie zamyka to okno zamiast opuszczać stronę
   useBackToClose(isOpen, onClose);
 
@@ -205,7 +207,7 @@ export const DeckCombosModal: React.FC<DeckCombosModalProps> = ({
       }
     } catch (err: any) {
       console.error('Failed to fetch Spellbook combos:', err);
-      setError(err.message || 'Nie udało się połączyć z API Commander Spellbook');
+      setError(err.message || t('Nie udało się połączyć z API Commander Spellbook'));
     } finally {
       setIsLoading(false);
     }
@@ -302,14 +304,14 @@ export const DeckCombosModal: React.FC<DeckCombosModalProps> = ({
             <div>
               <div className="flex items-center gap-2">
                 <h2 className="text-xl font-bold text-stone-100 tracking-tight">
-                  Kombinacje Commander Spellbook
+                  {t('Kombinacje Commander Spellbook')}
                 </h2>
                 <span className="text-[11px] tabular-nums px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30 font-bold">
-                  API Spellbook
+                  {t('API Spellbook')}
                 </span>
               </div>
               <p className="text-xs text-stone-400">
-                Wykrywanie synergii i nieskończonych pętli w talii <span className="text-amber-300 font-semibold">{deck.name}</span>
+                {t('Wykrywanie synergii i nieskończonych pętli w talii')} <span className="text-amber-300 font-semibold">{deck.name}</span>
               </p>
             </div>
           </div>
@@ -319,14 +321,14 @@ export const DeckCombosModal: React.FC<DeckCombosModalProps> = ({
               onClick={fetchCombos}
               disabled={isLoading}
               className="p-2 bg-stone-850 hover:bg-stone-800 text-stone-300 border border-stone-700/60 rounded-xl transition-all cursor-pointer disabled:opacity-50"
-              title="Odśwież analizę kombinacji"
+              title={t('Odśwież analizę kombinacji')}
             >
               <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin text-amber-400' : ''}`} />
             </button>
             <button
               onClick={onClose}
               className="p-2 bg-stone-850 hover:bg-stone-800 text-stone-400 hover:text-stone-100 border border-stone-700/60 rounded-xl transition-colors cursor-pointer"
-              aria-label="Zamknij"
+              aria-label={t('Zamknij')}
             >
               <X className="w-4 h-4" />
             </button>
@@ -351,7 +353,7 @@ export const DeckCombosModal: React.FC<DeckCombosModalProps> = ({
                 }`}
               >
                 <CheckCircle2 className="w-4 h-4" />
-                <span>Gotowe w talii ({includedCombos.length})</span>
+                <span>{t('Gotowe w talii')} ({includedCombos.length})</span>
               </button>
 
               <button
@@ -367,7 +369,7 @@ export const DeckCombosModal: React.FC<DeckCombosModalProps> = ({
                 }`}
               >
                 <Flame className="w-4 h-4" />
-                <span>Brakuje 1 karty ({almostIncludedCombos.length})</span>
+                <span>{t('Brakuje 1 karty')} ({almostIncludedCombos.length})</span>
               </button>
             </div>
 
@@ -376,7 +378,7 @@ export const DeckCombosModal: React.FC<DeckCombosModalProps> = ({
               <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-stone-500" />
               <input
                 type="text"
-                placeholder="Szukaj karty lub rezultatu..."
+                placeholder={t('Szukaj karty lub rezultatu...')}
                 value={searchFilter}
                 onChange={(e) => setSearchFilter(e.target.value)}
                 className="w-full bg-stone-950 border border-stone-800 rounded-xl pl-9 pr-3 py-2 text-xs sm:text-sm text-stone-200 placeholder-stone-500 focus:outline-none focus:border-amber-500 shadow-inner"
@@ -388,7 +390,7 @@ export const DeckCombosModal: React.FC<DeckCombosModalProps> = ({
           <div className="space-y-2 pt-1">
             <div className="flex items-center gap-2 text-xs text-stone-400 font-bold ">
               <Filter className="w-3.5 h-3.5 text-amber-400" />
-              <span>Filtruj efekt:</span>
+              <span>{t('Filtruj efekt:')}</span>
             </div>
 
             <div className="flex items-center gap-2 flex-wrap">
@@ -402,7 +404,7 @@ export const DeckCombosModal: React.FC<DeckCombosModalProps> = ({
                 }`}
               >
                 {getEffectIcon('ALL')}
-                <span>Wszystkie efekty</span>
+                <span>{t('Wszystkie efekty')}</span>
                 <span className={`px-2 py-0.5 rounded-full text-xs tabular-nums font-bold ${
                   selectedEffectFilter === 'ALL' ? 'bg-stone-950/20 text-stone-950' : 'bg-stone-800 text-stone-400'
                 }`}>
@@ -450,10 +452,10 @@ export const DeckCombosModal: React.FC<DeckCombosModalProps> = ({
             <div className="py-20 flex flex-col items-center justify-center space-y-3">
               <RefreshCw className="w-8 h-8 text-amber-400 animate-spin" />
               <p className="text-sm font-semibold text-stone-300">
-                Pobieranie i analizowanie kombinacji z Commander Spellbook...
+                {t('Pobieranie i analizowanie kombinacji z Commander Spellbook...')}
               </p>
               <p className="text-xs text-stone-500">
-                Sprawdzamy {deck.cards.length + (deck.commander ? 1 : 0)} kart w bazie ponad 20,000 znanych combosów.
+                {t('Sprawdzamy {n} kart w bazie ponad 20 000 znanych combosów.', { n: deck.cards.length + (deck.commander ? 1 : 0) })}
               </p>
             </div>
           )}
@@ -465,13 +467,13 @@ export const DeckCombosModal: React.FC<DeckCombosModalProps> = ({
               </div>
               <h3 className="text-base font-bold text-stone-200">
                 {activeTab === 'included'
-                  ? 'Brak gotowych combosów w talii'
-                  : 'Brak kombinacji bliskich ukończenia'}
+                  ? t('Brak gotowych combosów w talii')
+                  : t('Brak kombinacji bliskich ukończenia')}
               </h3>
               <p className="text-xs text-stone-400 max-w-md mx-auto">
                 {activeTab === 'included'
-                  ? 'Twoja talia nie zawiera obecnie żadnej kompletnej, znanej kombinacji Spellbooka. Sprawdź zakładkę "Brakuje 1 karty", aby zobaczyć rekomendacje!'
-                  : 'Nie znaleziono kombinacji, do których brakuje tylko jednej karty, lub żaden wynik nie pasuje do wybranych filtrów.'}
+                  ? t('Twoja talia nie zawiera obecnie żadnej kompletnej, znanej kombinacji Spellbooka. Sprawdź zakładkę "Brakuje 1 karty", aby zobaczyć rekomendacje!')
+                  : t('Nie znaleziono kombinacji, do których brakuje tylko jednej karty, lub żaden wynik nie pasuje do wybranych filtrów.')}
               </p>
             </div>
           )}
@@ -518,7 +520,7 @@ export const DeckCombosModal: React.FC<DeckCombosModalProps> = ({
 
                   {variant.manaNeeded && (
                     <div className="flex items-center gap-2 text-xs text-stone-300 shrink-0">
-                      <span className="text-stone-400 tabular-nums">Wymagana mana:</span>
+                      <span className="text-stone-400 tabular-nums">{t('Wymagana mana:')}</span>
                       <span className="font-bold text-amber-300 bg-stone-900 px-2.5 py-1 rounded-lg border border-stone-700 tabular-nums text-sm">
                         {variant.manaNeeded}
                       </span>
@@ -530,7 +532,7 @@ export const DeckCombosModal: React.FC<DeckCombosModalProps> = ({
                 <div>
                   <h4 className="text-xs font-bold text-stone-400 mb-2.5 flex items-center gap-1.5">
                     <Layers className="w-3.5 h-3.5 text-amber-400" />
-                    <span>Wymagane karty w combo:</span>
+                    <span>{t('Wymagane karty w combo:')}</span>
                   </h4>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -558,7 +560,7 @@ export const DeckCombosModal: React.FC<DeckCombosModalProps> = ({
                               });
                             }}
                             onMouseLeave={() => setHoveredPreviewCard(null)}
-                            title={`Kliknij, aby otworzyć szczegóły karty ${item.name}`}
+                            title={t('Kliknij, aby otworzyć szczegóły karty {name}', { name: item.name })}
                           >
                             <img
                               src={item.imageUrl}
@@ -582,12 +584,12 @@ export const DeckCombosModal: React.FC<DeckCombosModalProps> = ({
                               {item.inDeck ? (
                                 <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-400 bg-emerald-500/15 px-2 py-0.5 rounded border border-emerald-500/30">
                                   <CheckCircle2 className="w-3 h-3" />
-                                  <span>W talii</span>
+                                  <span>{t('W talii')}</span>
                                 </span>
                               ) : (
                                 <span className="inline-flex items-center gap-1 text-[11px] font-bold text-rose-300 bg-rose-500/20 px-2 py-0.5 rounded border border-rose-500/40">
                                   <ShieldAlert className="w-3 h-3 text-rose-400" />
-                                  <span>Brak w talii</span>
+                                  <span>{t('Brak w talii')}</span>
                                 </span>
                               )}
                             </div>
@@ -602,12 +604,12 @@ export const DeckCombosModal: React.FC<DeckCombosModalProps> = ({
                             </button>
 
                             <div className="text-[11px] text-stone-400 truncate">
-                              Strefa: <span className="text-stone-300 font-medium">{formatZoneLocation(item.zone)}</span>
+                              {t('Strefa:')} <span className="text-stone-300 font-medium">{formatZoneLocation(item.zone)}</span>
                             </div>
 
                             {item.state && (
                               <div className="text-[11px] text-amber-300/80 truncate">
-                                Stan: {item.state}
+                                {t('Stan:')} {item.state}
                               </div>
                             )}
                           </div>
@@ -621,7 +623,7 @@ export const DeckCombosModal: React.FC<DeckCombosModalProps> = ({
                                 type="button"
                                 onClick={() => onAddToWishlist(item.name)}
                                 className="p-2 rounded-xl bg-stone-850 hover:bg-rose-500/20 text-stone-300 hover:text-rose-300 border border-stone-700/80 transition-colors cursor-pointer shadow-sm"
-                                title="Dodaj brakującą kartę do Wishlisty"
+                                title={t('Dodaj brakującą kartę do Wishlisty')}
                               >
                                 <Heart className="w-4 h-4" />
                               </button>
@@ -631,7 +633,7 @@ export const DeckCombosModal: React.FC<DeckCombosModalProps> = ({
                                 type="button"
                                 onClick={() => onAddCardToDeck(item.name)}
                                 className="p-2 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 transition-colors cursor-pointer shadow-sm"
-                                title="Dodaj kartę do talii"
+                                title={t('Dodaj kartę do talii')}
                               >
                                 <Plus className="w-4 h-4" />
                               </button>
@@ -649,10 +651,10 @@ export const DeckCombosModal: React.FC<DeckCombosModalProps> = ({
                     <div className="flex items-center justify-between">
                       <span className="text-xs font-bold text-amber-300 flex items-center gap-1.5 tabular-nums">
                         <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-                        <span>Kroki wykonania (Instrukcja combo):</span>
+                        <span>{t('Kroki wykonania (Instrukcja combo):')}</span>
                       </span>
                       <span className="text-[11px] text-stone-500 tabular-nums">
-                        Liczba kroków: {comboSteps.length}
+                        {t('Liczba kroków:')} {comboSteps.length}
                       </span>
                     </div>
 
@@ -679,7 +681,7 @@ export const DeckCombosModal: React.FC<DeckCombosModalProps> = ({
                   <div className="text-xs text-stone-400 bg-stone-900/60 p-3 rounded-xl border border-stone-800 flex items-start gap-2.5">
                     <HelpCircle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
                     <div>
-                      <span className="font-bold text-stone-200">Wymagania wstępne: </span>
+                      <span className="font-bold text-stone-200">{t('Wymagania wstępne:')} </span>
                       <span>{variant.easyPrerequisites || variant.notablePrerequisites}</span>
                     </div>
                   </div>
@@ -687,14 +689,14 @@ export const DeckCombosModal: React.FC<DeckCombosModalProps> = ({
 
                 {/* Footer Link to Commander Spellbook */}
                 <div className="flex items-center justify-between text-xs text-stone-500 pt-1">
-                  <span>Baza wiedzy: Commander Spellbook DB</span>
+                  <span>{t('Baza wiedzy: Commander Spellbook DB')}</span>
                   <a
                     href={`https://commanderspellbook.com/combo/${variant.id}/`}
                     target="_blank"
                     rel="noreferrer"
                     className="flex items-center gap-1.5 text-amber-400/90 hover:text-amber-300 font-semibold transition-colors"
                   >
-                    <span>Zobacz w Commander Spellbook</span>
+                    <span>{t('Zobacz w Commander Spellbook')}</span>
                     <ExternalLink className="w-3.5 h-3.5" />
                   </a>
                 </div>
@@ -708,14 +710,14 @@ export const DeckCombosModal: React.FC<DeckCombosModalProps> = ({
           <div className="flex items-center gap-2">
             <Sparkles className="w-4 h-4 text-amber-400" />
             <span>
-              API Commander Spellbook zawiera ponad 20,000 sprawdzonych kombinacji Magic: The Gathering.
+              {t('API Commander Spellbook zawiera ponad 20,000 sprawdzonych kombinacji Magic: The Gathering.')}
             </span>
           </div>
           <button
             onClick={onClose}
             className="px-5 py-2 bg-stone-800 hover:bg-stone-700 text-stone-200 rounded-xl font-bold transition-colors cursor-pointer"
           >
-            Zamknij
+            {t('Zamknij')}
           </button>
         </div>
       </div>

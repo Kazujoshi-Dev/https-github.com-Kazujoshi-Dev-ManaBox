@@ -6,6 +6,7 @@ import { DEFAULT_FORMAT, digitalLabel, isDigitalOnly } from '../../utils/mtgForm
 import { DeckAddCardModalProps } from './types';
 
 import { useBackToClose } from '../../hooks/useBackButton';
+import { useT } from '../../i18n';
 export const DeckAddCardModal: React.FC<DeckAddCardModalProps> = ({
   isOpen,
   deckName,
@@ -22,6 +23,7 @@ export const DeckAddCardModal: React.FC<DeckAddCardModalProps> = ({
   onAddCard,
   settings,
 }) => {
+  const t = useT();
   // „Wstecz” na telefonie zamyka to okno zamiast opuszczać stronę
   useBackToClose(isOpen, onClose);
   // Drugi krok: wybór wydania i wersji foil dla klikniętej karty
@@ -51,7 +53,7 @@ export const DeckAddCardModal: React.FC<DeckAddCardModalProps> = ({
           <div className="flex items-center gap-2">
             <Plus className="w-5 h-5 text-amber-400" />
             <h3 className="font-semibold text-base text-stone-50">
-              {picking ? (picking.asCommander ? 'Wybierz wersję dowódcy' : `Wybierz wersję: ${picking.card.name}`) : `Dodaj kartę do talii „${deckName}”`}
+              {picking ? (picking.asCommander ? t('Wybierz wersję dowódcy') : t('Wybierz wersję: {name}', { name: picking.card.name })) : t('Dodaj kartę do talii „{deckName}”', { deckName })}
             </h3>
           </div>
           <button
@@ -88,7 +90,7 @@ export const DeckAddCardModal: React.FC<DeckAddCardModalProps> = ({
           {isArena ? (
             <p className="flex items-center gap-2 text-xs text-stone-400">
               <Gamepad2 className="w-3.5 h-3.5 text-amber-400" />
-              Format {deckFormat.label}: wyniki obejmują karty dostępne w MTG Arena, także karty cyfrowe.
+              {t('Format {format}: wyniki obejmują karty dostępne w MTG Arena, także karty cyfrowe.', { format: deckFormat.label })}
             </p>
           ) : (
           <div className="grid grid-cols-2 p-1 bg-stone-950 rounded-xl border border-stone-800 text-xs font-bold">
@@ -105,7 +107,7 @@ export const DeckAddCardModal: React.FC<DeckAddCardModalProps> = ({
               }`}
             >
               <Layers className="w-3.5 h-3.5" />
-              <span>Tylko moja kolekcja ({collection.length})</span>
+              <span>{t('Tylko moja kolekcja')} ({collection.length})</span>
             </button>
             <button
               type="button"
@@ -120,7 +122,7 @@ export const DeckAddCardModal: React.FC<DeckAddCardModalProps> = ({
               }`}
             >
               <Globe className="w-3.5 h-3.5" />
-              <span>Wszystkie karty MTG (Scryfall)</span>
+              <span>{t('Wszystkie karty MTG (Scryfall)')}</span>
             </button>
           </div>
           )}
@@ -131,10 +133,10 @@ export const DeckAddCardModal: React.FC<DeckAddCardModalProps> = ({
               type="text"
               placeholder={
                 searchSource === 'collection'
-                  ? 'Wyszukaj kartę wyłącznie w Twojej kolekcji...'
+                  ? t('Wyszukaj kartę wyłącznie w Twojej kolekcji...')
                   : isArena
-                  ? 'Wyszukaj kartę dostępną w MTG Arena...'
-                  : 'Wyszukaj kartę w kolekcji lub w bazie Scryfall...'
+                  ? t('Wyszukaj kartę dostępną w MTG Arena...')
+                  : t('Wyszukaj kartę w kolekcji lub w bazie Scryfall...')
               }
               value={searchQuery}
               onChange={(e) => onSearchChange(e.target.value)}
@@ -148,29 +150,29 @@ export const DeckAddCardModal: React.FC<DeckAddCardModalProps> = ({
         <div className="flex-1 overflow-y-auto p-4 space-y-2">
           {isSearchingScryfall && (
             <div className="text-center py-4 text-xs text-amber-400 animate-pulse tabular-nums">
-              Wyszukiwanie w pełnej bazie Scryfall API...
+              {t('Wyszukiwanie w pełnej bazie Scryfall API...')}
             </div>
           )}
 
           {searchResults.length === 0 && searchQuery.trim().length === 1 && !isSearchingScryfall && (
             <div className="text-center py-8 text-xs text-stone-400">
-              Wpisz co najmniej 2 znaki, aby rozpocząć dokładne wyszukiwanie kart...
+              {t('Wpisz co najmniej 2 znaki, aby rozpocząć dokładne wyszukiwanie kart...')}
             </div>
           )}
 
           {searchResults.length === 0 && searchQuery.trim().length >= 2 && !isSearchingScryfall && (
             <div className="text-center py-8 text-xs text-stone-500">
               {searchSource === 'collection'
-                ? 'Nie znaleziono pasujących kart w Twojej kolekcji. Możesz przełączyć na "Wszystkie karty MTG (Scryfall)".'
-                : 'Nie znaleziono pasujących kart w bazie Scryfall.'}
+                ? t('Nie znaleziono pasujących kart w Twojej kolekcji. Możesz przełączyć na "Wszystkie karty MTG (Scryfall)".')
+                : t('Nie znaleziono pasujących kart w bazie Scryfall.')}
             </div>
           )}
 
           {searchResults.length === 0 && !searchQuery.trim() && (
             <div className="text-center py-8 text-xs text-stone-400">
               {searchSource === 'collection'
-                ? 'Wpisz nazwę karty (min. 2 znaki), aby przeszukać Twoją kolekcję.'
-                : 'Wpisz nazwę karty (min. 2 znaki), aby przeszukać pełną bazę Scryfall.'}
+                ? t('Wpisz nazwę karty (min. 2 znaki), aby przeszukać Twoją kolekcję.')
+                : t('Wpisz nazwę karty (min. 2 znaki), aby przeszukać pełną bazę Scryfall.')}
             </div>
           )}
 
@@ -207,15 +209,15 @@ export const DeckAddCardModal: React.FC<DeckAddCardModalProps> = ({
                       {digital ? (
                         <span className="text-[11px] text-stone-200 bg-stone-800 px-1.5 py-0.5 rounded border border-stone-600 flex items-center gap-1">
                           <Gamepad2 className="w-3 h-3" />
-                          {digitalLabel(card)}
+                          {t(digitalLabel(card))}
                         </span>
                       ) : ownedItem ? (
                         <span className="text-[11px] tabular-nums text-emerald-300 bg-emerald-950/60 px-1.5 py-0.5 rounded border border-emerald-500/30">
-                          W kolekcji: {ownedItem.quantity} szt.
+                          {t('W kolekcji:')} {ownedItem.quantity} {t('szt.')}
                         </span>
                       ) : isArena ? null : (
                         <span className="text-[11px] tabular-nums text-amber-300 bg-amber-950/40 px-1.5 py-0.5 rounded border border-amber-500/30">
-                          Scryfall
+                          {t('Scryfall')}
                         </span>
                       )}
                     </div>
@@ -232,7 +234,7 @@ export const DeckAddCardModal: React.FC<DeckAddCardModalProps> = ({
                       className="px-2.5 py-1.5 bg-amber-600/30 hover:bg-amber-600 text-amber-200 hover:text-white rounded-lg text-xs font-bold transition-colors flex items-center gap-1 border border-amber-500/40 cursor-pointer"
                     >
                       <Crown className="w-3.5 h-3.5" />
-                      <span>Dowódca</span>
+                      <span>{t('Dowódca')}</span>
                     </button>
                   )}
 
@@ -241,7 +243,7 @@ export const DeckAddCardModal: React.FC<DeckAddCardModalProps> = ({
                     className="px-3 py-1.5 bg-amber-500 hover:bg-amber-400 text-stone-950 rounded-lg text-xs font-bold transition-colors flex items-center gap-1 cursor-pointer"
                   >
                     <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
-                    <span>Dodaj ({inDeck?.quantity || 0})</span>
+                    <span>{t('Dodaj')} ({inDeck?.quantity || 0})</span>
                   </button>
                 </div>
               </div>

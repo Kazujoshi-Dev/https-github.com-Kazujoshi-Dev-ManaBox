@@ -7,6 +7,7 @@ import { exportDeckToTxt, downloadTxtFile } from '../utils/textCardList';
 import { DECK_FORMATS, computeWildcardCost, getDeckFormat, type DeckFormat } from '../utils/mtgFormats';
 import { WildcardCost } from './deck-builder/WildcardCost';
 import { Swords, Plus, Crown, Trash2, Download, Copy, Check, Upload, FileText, Pencil, FolderInput, Loader2 } from 'lucide-react';
+import { useT, MAIN_BINDER, binderName } from '../i18n';
 
 interface DeckListProps {
   decks: DeckItem[];
@@ -32,8 +33,9 @@ export const DeckList: React.FC<DeckListProps> = ({
   onOpenImportDeck,
   showToast,
   onCopyToCollection,
-  defaultBinder = 'Klaser Główny',
+  defaultBinder = MAIN_BINDER,
 }) => {
+  const t = useT();
   const [copiedDeckId, setCopiedDeckId] = useState<string | null>(null);
   const [confirmCopyId, setConfirmCopyId] = useState<string | null>(null);
   const [copyingId, setCopyingId] = useState<string | null>(null);
@@ -51,7 +53,7 @@ export const DeckList: React.FC<DeckListProps> = ({
 
   // Ostatnia talia formatu usunięta lub przeniesiona: wracamy do „Wszystkie”
   useEffect(() => {
-    if (formatTab !== 'all' && !formatTabs.some((t) => t.format.id === formatTab)) setFormatTab('all');
+    if (formatTab !== 'all' && !formatTabs.some((ft) => ft.format.id === formatTab)) setFormatTab('all');
   }, [formatTab, formatTabs]);
 
   const visibleDecks = formatTab === 'all' ? decks : decks.filter((d) => getDeckFormat(d.format).id === formatTab);
@@ -66,7 +68,7 @@ export const DeckList: React.FC<DeckListProps> = ({
       .replace(/^-|-$/g, '');
     const filename = `${safeName}-${new Date().toISOString().slice(0, 10)}.txt`;
     downloadTxtFile(filename, content);
-    showToast?.(`Pobrano plik: ${filename}`);
+    showToast?.(t('Pobrano plik: {name}', { name: filename }));
   };
 
   const handleCopyDeckList = (e: React.MouseEvent, deck: DeckItem) => {
@@ -74,26 +76,26 @@ export const DeckList: React.FC<DeckListProps> = ({
     const content = exportDeckToTxt(deck);
     navigator.clipboard.writeText(content);
     setCopiedDeckId(deck.id);
-    showToast?.(`Skopiowano listę talii „${deck.name}” w formacie .txt!`);
+    showToast?.(t('Skopiowano listę talii „{name}” w formacie .txt!', { name: deck.name }));
     setTimeout(() => setCopiedDeckId(null), 2500);
   };
 
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Talie"
-        description="Talie papierowe i MTG Arena w różnych formatach. Import i eksport w formacie list Moxfield i Archidekt."
+        title={t('Talie')}
+        description={t('Talie papierowe i MTG Arena w różnych formatach. Import i eksport w formacie list Moxfield i Archidekt.')}
         actions={
           <>
             {onOpenImportDeck && (
-              <button type="button" onClick={onOpenImportDeck} className="btn btn-secondary" title="Importuj talię z pliku .txt">
+              <button type="button" onClick={onOpenImportDeck} className="btn btn-secondary" title={t('Importuj talię z pliku .txt')}>
                 <Upload className="w-4 h-4" />
-                Importuj
+                {t('Importuj')}
               </button>
             )}
             <button type="button" onClick={onCreateDeckClick} className="btn btn-primary">
               <Plus className="w-4 h-4" strokeWidth={2.5} />
-              Nowa talia
+              {t('Nowa talia')}
             </button>
           </>
         }
@@ -106,9 +108,9 @@ export const DeckList: React.FC<DeckListProps> = ({
             <Swords className="w-8 h-8" />
           </div>
           <div>
-            <h3 className="text-base font-bold text-white">Nie masz jeszcze żadnych talii</h3>
+            <h3 className="text-base font-bold text-white">{t('Nie masz jeszcze żadnych talii')}</h3>
             <p className="text-xs text-stone-400 max-w-sm mx-auto mt-1">
-              Utwórz swoją pierwszą talię EDH Commander lub zaimportuj gotową listę z pliku .txt (Moxfield, Archidekt).
+              {t('Utwórz swoją pierwszą talię EDH Commander lub zaimportuj gotową listę z pliku .txt (Moxfield, Archidekt).')}
             </p>
           </div>
           <div className="flex items-center justify-center gap-3 flex-wrap">
@@ -117,7 +119,7 @@ export const DeckList: React.FC<DeckListProps> = ({
               className="px-4 py-2 bg-amber-500 hover:bg-amber-400 text-stone-950 text-xs font-bold rounded-xl shadow-md cursor-pointer transition-all inline-flex items-center gap-2"
             >
               <Plus className="w-4 h-4" />
-              <span>Utwórz nową talię</span>
+              <span>{t('Utwórz nową talię')}</span>
             </button>
 
             {onOpenImportDeck && (
@@ -126,7 +128,7 @@ export const DeckList: React.FC<DeckListProps> = ({
                 className="px-4 py-2 bg-stone-800 hover:bg-stone-750 text-amber-300 border border-amber-500/40 text-xs font-bold rounded-xl shadow-md cursor-pointer transition-all inline-flex items-center gap-2"
               >
                 <Upload className="w-4 h-4 text-amber-400" />
-                <span>Importuj z pliku .txt</span>
+                <span>{t('Importuj z pliku .txt')}</span>
               </button>
             )}
           </div>
@@ -136,25 +138,25 @@ export const DeckList: React.FC<DeckListProps> = ({
         <div
           className="flex gap-1.5 overflow-x-auto no-scrollbar -mx-4 px-4 sm:mx-0 sm:px-0"
           role="tablist"
-          aria-label="Talie według formatu"
+          aria-label={t('Talie według formatu')}
         >
-          {[{ id: 'all', label: 'Wszystkie', count: decks.length }, ...formatTabs.map((t) => ({ id: t.format.id, label: tabLabel(t.format), count: t.count }))].map((t) => {
-            const active = formatTab === t.id;
+          {[{ id: 'all', label: t('Wszystkie'), count: decks.length }, ...formatTabs.map((ft) => ({ id: ft.format.id, label: tabLabel(ft.format), count: ft.count }))].map((ft) => {
+            const active = formatTab === ft.id;
             return (
               <button
-                key={t.id}
+                key={ft.id}
                 type="button"
                 role="tab"
                 aria-selected={active}
-                onClick={() => setFormatTab(t.id)}
+                onClick={() => setFormatTab(ft.id)}
                 className={`shrink-0 h-9 px-3.5 rounded-lg text-sm flex items-center gap-2 cursor-pointer border ${
                   active
                     ? 'bg-stone-800 border-stone-700 text-stone-50 font-medium'
                     : 'bg-stone-900 border-stone-800 text-stone-400 hover:text-stone-200 hover:border-stone-700'
                 }`}
               >
-                {t.label}
-                <span className={`text-xs tabular-nums ${active ? 'text-amber-300' : 'text-stone-500'}`}>{t.count}</span>
+                {ft.label}
+                <span className={`text-xs tabular-nums ${active ? 'text-amber-300' : 'text-stone-500'}`}>{ft.count}</span>
               </button>
             );
           })}
@@ -192,8 +194,8 @@ export const DeckList: React.FC<DeckListProps> = ({
                     {fmt.label.replace(/^EDH /, '')}
                   </span>
                   {deck.isPublic && (
-                    <span className="absolute top-2 left-2 px-2 py-0.5 rounded-md text-[11px] font-medium bg-stone-950/80 text-emerald-300" title="Talia dostępna pod publicznym linkiem">
-                      Publiczna
+                    <span className="absolute top-2 left-2 px-2 py-0.5 rounded-md text-[11px] font-medium bg-stone-950/80 text-emerald-300" title={t('Talia dostępna pod publicznym linkiem')}>
+                      {t('Publiczna')}
                     </span>
                   )}
                 </div>
@@ -202,7 +204,7 @@ export const DeckList: React.FC<DeckListProps> = ({
                   <div className="min-w-0">
                     <h3 className="text-base font-semibold text-stone-50 truncate">{deck.name}</h3>
                     <p className="text-sm text-stone-400 truncate">
-                      {fmt.commander ? (deck.commander ? deck.commander.name : 'Bez dowódcy') : fmt.description}
+                      {fmt.commander ? (deck.commander ? deck.commander.name : t('Bez dowódcy')) : t(fmt.description)}
                     </p>
                     {deck.description && <p className="mt-1.5 text-sm text-stone-500 line-clamp-2">{deck.description}</p>}
                   </div>
@@ -211,7 +213,7 @@ export const DeckList: React.FC<DeckListProps> = ({
                     <div className="flex items-center gap-3 text-sm tabular-nums">
                       <span
                         className={sizeOk ? 'text-emerald-400' : sizeOver ? 'text-rose-400' : 'text-stone-300'}
-                        title={`${fmt.label}: ${count} ${fmt.exactSize ? 'z' : 'kart, minimum'} ${fmt.deckSize}`}
+                        title={`${fmt.label}: ${fmt.exactSize ? t('{n} z {total}', { n: count, total: fmt.deckSize }) : t('{n} kart, minimum {total}', { n: count, total: fmt.deckSize })}`}
                       >
                         {count}/{fmt.deckSize}
                       </span>
@@ -222,10 +224,10 @@ export const DeckList: React.FC<DeckListProps> = ({
                       )}
                     </div>
                     <div className="flex items-center -mr-1.5" onClick={(e) => e.stopPropagation()}>
-                      <button type="button" onClick={(e) => handleExportDeckFile(e, deck)} className={iconBtn} title="Pobierz listę .txt" aria-label="Pobierz listę .txt">
+                      <button type="button" onClick={(e) => handleExportDeckFile(e, deck)} className={iconBtn} title={t('Pobierz listę .txt')} aria-label={t('Pobierz listę .txt')}>
                         <Download className="w-4 h-4" />
                       </button>
-                      <button type="button" onClick={(e) => handleCopyDeckList(e, deck)} className={iconBtn} title="Kopiuj listę do schowka" aria-label="Kopiuj listę do schowka">
+                      <button type="button" onClick={(e) => handleCopyDeckList(e, deck)} className={iconBtn} title={t('Kopiuj listę do schowka')} aria-label={t('Kopiuj listę do schowka')}>
                         {copiedDeckId === deck.id ? <Check className="w-4 h-4 text-emerald-400" /> : <Copy className="w-4 h-4" />}
                       </button>
                       {onCopyToCollection && count > 0 && fmt.platform === 'paper' && (
@@ -233,15 +235,15 @@ export const DeckList: React.FC<DeckListProps> = ({
                           type="button"
                           onClick={() => setConfirmCopyId(confirmCopyId === deck.id ? null : deck.id)}
                           className={iconBtn}
-                          title={`Dodaj karty talii do klasera „${defaultBinder}”`}
-                          aria-label="Dodaj karty talii do kolekcji"
+                          title={t('Dodaj karty talii do klasera „{name}”', { name: binderName(defaultBinder) })}
+                          aria-label={t('Dodaj karty talii do kolekcji')}
                           aria-expanded={confirmCopyId === deck.id}
                         >
                           <FolderInput className="w-4 h-4" />
                         </button>
                       )}
                       {onEditDeck && (
-                        <button type="button" onClick={() => onEditDeck(deck)} className={iconBtn} title="Edytuj nazwę, opis i dowódcę" aria-label="Edytuj talię">
+                        <button type="button" onClick={() => onEditDeck(deck)} className={iconBtn} title={t('Edytuj nazwę, opis i dowódcę')} aria-label={t('Edytuj talię')}>
                           <Pencil className="w-4 h-4" />
                         </button>
                       )}
@@ -249,8 +251,8 @@ export const DeckList: React.FC<DeckListProps> = ({
                         type="button"
                         onClick={() => onDeleteDeck(deck.id)}
                         className={`${iconBtn} hover:text-rose-400`}
-                        title="Usuń talię"
-                        aria-label="Usuń talię"
+                        title={t('Usuń talię')}
+                        aria-label={t('Usuń talię')}
                       >
                         <Trash2 className="w-4 h-4" />
                       </button>
@@ -260,12 +262,11 @@ export const DeckList: React.FC<DeckListProps> = ({
                   {confirmCopyId === deck.id && onCopyToCollection && (
                     <div className="rounded-lg bg-stone-950 ring-1 ring-stone-700 p-3 space-y-2.5" onClick={(e) => e.stopPropagation()}>
                       <p className="text-sm text-stone-300">
-                        Dodać <span className="text-stone-50 font-medium tabular-nums">{count}</span> kart do klasera{' '}
-                        <span className="text-stone-50 font-medium">„{defaultBinder}”</span>? Te same wydania i wersje foil co w talii.
+                        {t('Dodać {n} kart do klasera „{name}”? Te same wydania i wersje foil co w talii.', { n: count, name: binderName(defaultBinder) })}
                       </p>
                       <div className="flex justify-end gap-1.5">
                         <button type="button" onClick={() => setConfirmCopyId(null)} className="btn btn-ghost h-8 px-3">
-                          Anuluj
+                          {t('Anuluj')}
                         </button>
                         <button
                           type="button"
@@ -279,7 +280,7 @@ export const DeckList: React.FC<DeckListProps> = ({
                           className="btn btn-primary h-8 px-3"
                         >
                           {copyingId === deck.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <FolderInput className="w-4 h-4" />}
-                          Dodaj do kolekcji
+                          {t('Dodaj do kolekcji')}
                         </button>
                       </div>
                     </div>

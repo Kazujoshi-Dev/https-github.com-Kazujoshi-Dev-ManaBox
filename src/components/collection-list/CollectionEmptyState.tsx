@@ -2,6 +2,7 @@ import { FOR_SALE_BINDER } from './constants';
 import React from 'react';
 import { FolderOpen, Plus, Camera, Upload } from 'lucide-react';
 import { CollectionEmptyStateProps } from './types';
+import { useT, binderName } from '../../i18n';
 
 export const CollectionEmptyState: React.FC<CollectionEmptyStateProps> = ({
   activeBinder,
@@ -9,6 +10,7 @@ export const CollectionEmptyState: React.FC<CollectionEmptyStateProps> = ({
   onOpenScannerModal,
   onOpenImportExport,
 }) => {
+  const t = useT();
   const isCatalogFiltered = activeBinder !== 'ALL';
 
   return (
@@ -18,12 +20,12 @@ export const CollectionEmptyState: React.FC<CollectionEmptyStateProps> = ({
       </div>
       <div>
         <h3 className="text-lg font-bold text-stone-200">
-          {activeBinder === FOR_SALE_BINDER ? 'Brak kart na sprzedaż. Oznacz kartę przyciskiem $' : isCatalogFiltered ? `Brak kart w katalogu "${activeBinder}"` : 'Brak kart w kolekcji'}
+          {activeBinder === FOR_SALE_BINDER ? t('Brak kart na sprzedaż. Oznacz kartę przyciskiem $') : isCatalogFiltered ? t('Brak kart w katalogu "{name}"', { name: binderName(activeBinder) }) : t('Brak kart w kolekcji')}
         </h3>
         <p className="text-xs text-stone-400 mt-1 max-w-md mx-auto">
           {isCatalogFiltered 
-            ? 'W tym katalogu nie ma jeszcze kart spełniających filtry. Możesz dodać do niego kartę z wyszukiwarki lub zaimportować listę z pliku .txt.'
-            : 'Nie znaleziono kart spełniających kryteria wyszukiwania. Dodaj nową kartę ze Scryfall, zeskanuj kamerą lub zaimportuj listę kart z pliku .txt.'}
+            ? t('W tym katalogu nie ma jeszcze kart spełniających filtry. Możesz dodać do niego kartę z wyszukiwarki lub zaimportować listę z pliku .txt.')
+            : t('Nie znaleziono kart spełniających kryteria wyszukiwania. Dodaj nową kartę ze Scryfall, zeskanuj kamerą lub zaimportuj listę kart z pliku .txt.')}
         </p>
       </div>
       <div className="flex flex-wrap items-center justify-center gap-3">
@@ -33,7 +35,7 @@ export const CollectionEmptyState: React.FC<CollectionEmptyStateProps> = ({
             className="px-4 py-2.5 rounded-xl bg-stone-800 hover:bg-stone-750 text-amber-300 border border-amber-500/30 font-bold text-xs inline-flex items-center gap-2 shadow-lg transition-colors cursor-pointer"
           >
             <Upload className="w-4 h-4 text-amber-400" />
-            <span>Importuj listę z pliku .txt</span>
+            <span>{t('Importuj listę z pliku .txt')}</span>
           </button>
         )}
         {onOpenScannerModal && (
@@ -42,7 +44,7 @@ export const CollectionEmptyState: React.FC<CollectionEmptyStateProps> = ({
             className="px-4 py-2.5 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 font-bold text-xs inline-flex items-center gap-2 shadow-lg transition-colors cursor-pointer"
           >
             <Camera className="w-4 h-4 text-emerald-400" />
-            <span>Skanuj karty kamerą (OCR)</span>
+            <span>{t('Skanuj karty kamerą (OCR)')}</span>
           </button>
         )}
         <button
@@ -50,7 +52,7 @@ export const CollectionEmptyState: React.FC<CollectionEmptyStateProps> = ({
           className="px-4 py-2.5 rounded-xl bg-amber-500 text-stone-950 font-bold text-xs inline-flex items-center gap-2 shadow-lg hover:bg-amber-400 transition-colors cursor-pointer"
         >
           <Plus className="w-4 h-4 stroke-[3]" />
-          <span>Szukaj i dodaj kartę do katalogu</span>
+          <span>{t('Szukaj i dodaj kartę do katalogu')}</span>
         </button>
       </div>
     </div>

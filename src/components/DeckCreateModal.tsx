@@ -5,6 +5,7 @@ import { Crown, Swords, X, Check, Search, Layers, Globe, Gamepad2 } from 'lucide
 import { DECK_FORMATS, DEFAULT_FORMAT, getDeckFormat } from '../utils/mtgFormats';
 
 import { useBackToClose } from '../hooks/useBackButton';
+import { useT } from '../i18n';
 interface DeckCreateModalProps {
   isOpen: boolean;
   deckToEdit?: DeckItem | null;
@@ -28,6 +29,7 @@ export const DeckCreateModal: React.FC<DeckCreateModalProps> = ({
   onCreateDeck,
   onUpdateDeck,
 }) => {
+  const t = useT();
   // „Wstecz” na telefonie zamyka to okno zamiast opuszczać stronę
   useBackToClose(isOpen, onClose);
 
@@ -118,7 +120,7 @@ export const DeckCreateModal: React.FC<DeckCreateModalProps> = ({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim()) {
-      setError('Podaj nazwę talii.');
+      setError(t('Podaj nazwę talii.'));
       return;
     }
 
@@ -146,7 +148,7 @@ export const DeckCreateModal: React.FC<DeckCreateModalProps> = ({
       }
       onClose();
     } catch (err: any) {
-      setError(err.message || 'Wystąpił błąd podczas zapisywania talii.');
+      setError(err.message || t('Wystąpił błąd podczas zapisywania talii.'));
     } finally {
       setIsLoading(false);
     }
@@ -174,10 +176,10 @@ export const DeckCreateModal: React.FC<DeckCreateModalProps> = ({
             </div>
             <div>
               <h3 className="font-bold text-base text-white">
-                {deckToEdit ? 'Edytuj talię' : 'Utwórz nową talię'}
+                {deckToEdit ? t('Edytuj talię') : t('Utwórz nową talię')}
               </h3>
               <p className="text-xs text-stone-400">
-                {deckToEdit ? 'Zmień nazwę, format, opis lub źródło kart' : 'Wybierz format: karty papierowe albo MTG Arena'}
+                {deckToEdit ? t('Zmień nazwę, format, opis lub źródło kart') : t('Wybierz format: karty papierowe albo MTG Arena')}
               </p>
             </div>
           </div>
@@ -201,12 +203,12 @@ export const DeckCreateModal: React.FC<DeckCreateModalProps> = ({
           {/* Deck Name */}
           <div>
             <label className="block text-[11px] font-bold text-stone-400 mb-1.5">
-              Nazwa talii *
+              {t('Nazwa talii *')}
             </label>
             <input
               type="text"
               required
-              placeholder="np. Atraxa Praetors' Voice, Smoki Miirym..."
+              placeholder={t('np. Atraxa Praetors\' Voice, Smoki Miirym...')}
               value={name}
               onChange={(e) => setName(e.target.value)}
               className="w-full bg-stone-950 border border-stone-700 focus:border-amber-500 rounded-xl px-3.5 py-2.5 text-sm text-stone-100 placeholder-stone-600 focus:outline-none"
@@ -216,7 +218,7 @@ export const DeckCreateModal: React.FC<DeckCreateModalProps> = ({
           {/* Format gry: karty papierowe i MTG Arena */}
           <div>
             <label htmlFor="deck-format" className="block text-[11px] font-bold text-stone-400 mb-1.5">
-              Format gry *
+              {t('Format gry *')}
             </label>
             <div className="flex items-center gap-2 p-2.5 bg-stone-950 border border-stone-800 rounded-xl focus-within:border-amber-500">
               {isArena ? (
@@ -239,14 +241,14 @@ export const DeckCreateModal: React.FC<DeckCreateModalProps> = ({
                   style={{ colorScheme: 'dark' }}
                   className="w-full bg-stone-950 text-xs font-bold text-amber-300 focus:outline-none cursor-pointer"
                 >
-                  <optgroup label="Karty papierowe" className="bg-stone-900 text-stone-400">
+                  <optgroup label={t('Karty papierowe')} className="bg-stone-900 text-stone-400">
                     {DECK_FORMATS.filter((f) => f.platform === 'paper').map((f) => (
                       <option key={f.id} value={f.label} className="bg-stone-900 text-stone-100">
-                        {f.id === 'commander' ? 'Commander (EDH)' : f.name}
+                        {f.id === 'commander' ? t('Commander (EDH)') : f.name}
                       </option>
                     ))}
                   </optgroup>
-                  <optgroup label="MTG Arena (MTGA)" className="bg-stone-900 text-stone-400">
+                  <optgroup label={t('MTG Arena (MTGA)')} className="bg-stone-900 text-stone-400">
                     {DECK_FORMATS.filter((f) => f.platform === 'arena').map((f) => (
                       <option key={f.id} value={f.label} className="bg-stone-900 text-stone-100">
                         {f.name} (MTGA)
@@ -254,18 +256,18 @@ export const DeckCreateModal: React.FC<DeckCreateModalProps> = ({
                     ))}
                   </optgroup>
                 </select>
-                <span className="text-[11px] text-stone-500 block">{fmt.description}</span>
+                <span className="text-[11px] text-stone-500 block">{t(fmt.description)}</span>
               </div>
               {isArena && (
                 <span className="text-[11px] px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 font-bold border border-amber-500/30 shrink-0">
-                  MTGA
+                  {t('MTGA')}
                 </span>
               )}
             </div>
             {deckToEdit && getDeckFormat(deckToEdit.format).id !== fmt.id && (
               <p className="text-[11px] text-stone-400 mt-1.5">
-                Po zmianie formatu talia zostanie sprawdzona według nowych zasad.
-                {deckToEdit.commander && !fmt.commander ? ' Ten format nie ma dowódcy, więc dowódca zostanie usunięty.' : ''}
+                {t('Po zmianie formatu talia zostanie sprawdzona według nowych zasad.')}
+                {deckToEdit.commander && !fmt.commander ? t(' Ten format nie ma dowódcy, więc dowódca zostanie usunięty.') : ''}
               </p>
             )}
           </div>
@@ -273,14 +275,14 @@ export const DeckCreateModal: React.FC<DeckCreateModalProps> = ({
           {isArena ? (
             <p className="flex items-start gap-2 text-[11px] text-stone-400 p-2.5 bg-stone-950 border border-stone-800 rounded-xl">
               <Globe className="w-3.5 h-3.5 text-amber-400 shrink-0 mt-0.5" />
-              Talie MTG Arena budujesz z pełnej bazy kart Areny, także kart dostępnych wyłącznie cyfrowo.
+              {t('Talie MTG Arena budujesz z pełnej bazy kart Areny, także kart dostępnych wyłącznie cyfrowo.')}
             </p>
           ) : (
           <>
           {/* Card Source Selection: Collection vs All MTG Cards */}
           <div>
             <label className="block text-[11px] font-bold text-stone-400 mb-1.5">
-              Zasób kart do budowy talii *
+              {t('Zasób kart do budowy talii *')}
             </label>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
               {/* Option 1: Tylko z mojej kolekcji */}
@@ -301,12 +303,12 @@ export const DeckCreateModal: React.FC<DeckCreateModalProps> = ({
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center justify-between">
                     <span className={`text-xs font-bold ${cardSource === 'collection' ? 'text-amber-300' : 'text-stone-200'}`}>
-                      Tylko z mojej kolekcji
+                      {t('Tylko z mojej kolekcji')}
                     </span>
                     {cardSource === 'collection' && <Check className="w-3.5 h-3.5 text-amber-400" />}
                   </div>
                   <p className="text-[11px] text-stone-400 mt-1 leading-snug">
-                    Buduj talię wyłącznie z kart, które posiadasz fizycznie w swojej kolekcji ({collection.length} pozycji).
+                    {t('Buduj talię wyłącznie z kart, które posiadasz fizycznie w swojej kolekcji ({n} pozycji).', { n: collection.length })}
                   </p>
                 </div>
               </button>
@@ -329,12 +331,12 @@ export const DeckCreateModal: React.FC<DeckCreateModalProps> = ({
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center justify-between">
                     <span className={`text-xs font-bold ${cardSource === 'all' ? 'text-amber-300' : 'text-stone-200'}`}>
-                      Wszystkie karty MTG
+                      {t('Wszystkie karty MTG')}
                     </span>
                     {cardSource === 'all' && <Check className="w-3.5 h-3.5 text-amber-400" />}
                   </div>
                   <p className="text-[11px] text-stone-400 mt-1 leading-snug">
-                    Dostęp do pełnej bazy Scryfall (ponad 30 000 kart) do projektowania talii marzeń.
+                    {t('Dostęp do pełnej bazy Scryfall (ponad 30 000 kart) do projektowania talii marzeń.')}
                   </p>
                 </div>
               </button>
@@ -348,7 +350,7 @@ export const DeckCreateModal: React.FC<DeckCreateModalProps> = ({
           {/* Optional Commander Picker */}
           <div>
             <label className="block text-[11px] font-bold text-stone-400 mb-1.5">
-              Wybierz Dowódcę (opcjonalnie, można wybrać później)
+              {t('Wybierz Dowódcę (opcjonalnie, można wybrać później)')}
             </label>
             
             {selectedCommander ? (
@@ -375,7 +377,7 @@ export const DeckCreateModal: React.FC<DeckCreateModalProps> = ({
                   onClick={() => setSelectedCommander(null)}
                   className="text-stone-400 hover:text-rose-400 p-1 text-xs cursor-pointer"
                 >
-                  Zmień
+                  {t('Zmień')}
                 </button>
               </div>
             ) : (
@@ -386,10 +388,10 @@ export const DeckCreateModal: React.FC<DeckCreateModalProps> = ({
                     type="text"
                     placeholder={
                       effectiveSource === 'collection'
-                        ? 'Szukaj Legendary Creature w kolekcji...'
+                        ? t('Szukaj Legendary Creature w kolekcji...')
                         : isArena
-                        ? 'Szukaj legendarnego stwora lub planeswalkera w MTG Arena...'
-                        : 'Szukaj Legendary Creature w kolekcji lub Scryfall...'
+                        ? t('Szukaj legendarnego stwora lub planeswalkera w MTG Arena...')
+                        : t('Szukaj Legendary Creature w kolekcji lub Scryfall...')
                     }
                     value={commanderSearch}
                     onChange={(e) => setCommanderSearch(e.target.value)}
@@ -397,7 +399,7 @@ export const DeckCreateModal: React.FC<DeckCreateModalProps> = ({
                   />
                   {isSearchingScryfall && (
                     <span className="absolute right-3 top-2.5 text-[11px] text-amber-400 animate-pulse tabular-nums">
-                      Szukam w Scryfall...
+                      {t('Szukam w Scryfall...')}
                     </span>
                   )}
                 </div>
@@ -434,11 +436,11 @@ export const DeckCreateModal: React.FC<DeckCreateModalProps> = ({
           {/* Description */}
           <div>
             <label className="block text-[11px] font-bold text-stone-400 mb-1.5">
-              Opis lub strategia talii
+              {t('Opis lub strategia talii')}
             </label>
             <textarea
               rows={2}
-              placeholder="Główna strategia, combosy, zamierzone tempo gry..."
+              placeholder={t('Główna strategia, combosy, zamierzone tempo gry...')}
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               className="w-full bg-stone-950 border border-stone-700 focus:border-amber-500 rounded-xl px-3.5 py-2 text-xs text-stone-100 placeholder-stone-600 focus:outline-none"
@@ -452,7 +454,7 @@ export const DeckCreateModal: React.FC<DeckCreateModalProps> = ({
               onClick={onClose}
               className="px-4 py-2 text-xs font-semibold text-stone-400 hover:text-stone-200 cursor-pointer"
             >
-              Anuluj
+              {t('Anuluj')}
             </button>
             <button
               type="submit"
@@ -460,8 +462,8 @@ export const DeckCreateModal: React.FC<DeckCreateModalProps> = ({
               className="px-4 py-2 bg-amber-500 hover:bg-amber-400 text-stone-950 font-bold text-xs rounded-xl shadow-md transition-all cursor-pointer disabled:opacity-50"
             >
               {isLoading 
-                ? (deckToEdit ? 'Zapisywanie...' : 'Tworzenie...') 
-                : (deckToEdit ? 'Zapisz zmiany' : 'Utwórz talię')}
+                ? (deckToEdit ? t('Zapisywanie...') : t('Tworzenie...')) 
+                : (deckToEdit ? t('Zapisz zmiany') : t('Utwórz talię'))}
             </button>
           </div>
 

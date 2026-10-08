@@ -29,6 +29,7 @@ import {
   Mail
 } from 'lucide-react';
 import { SendMessageModal } from './messages/SendMessageModal';
+import { useT, locale, plural } from '../i18n';
 
 interface UsersListProps {
   settings: AppSettings;
@@ -48,6 +49,7 @@ export const UsersList: React.FC<UsersListProps> = ({
   profileRequest,
   onProfileRequestHandled,
 }) => {
+  const t = useT();
   const [users, setUsers] = useState<RegisteredUserSummary[]>([]);
   // Ile kart z MOJEJ listy życzeń ma każdy użytkownik (w kolekcji / na sprzedaż)
   const [matches, setMatches] = useState<WishlistMatches>({});
@@ -111,7 +113,7 @@ export const UsersList: React.FC<UsersListProps> = ({
       setUsers(data);
     } catch (err: any) {
       console.error('Error loading users:', err);
-      setError(err.message || 'Nie udało się pobrać listy użytkowników.');
+      setError(err.message || t('Nie udało się pobrać listy użytkowników.'));
     } finally {
       setIsLoading(false);
     }
@@ -131,7 +133,7 @@ export const UsersList: React.FC<UsersListProps> = ({
       setSellerOffers(data);
     } catch (err: any) {
       console.error('Error fetching seller offers:', err);
-      setOffersError(err.message || 'Nie udało się pobrać oferty sprzedaży tego użytkownika.');
+      setOffersError(err.message || t('Nie udało się pobrać oferty sprzedaży tego użytkownika.'));
       setSellerOffers(null);
     } finally {
       setIsLoadingOffers(false);
@@ -147,7 +149,7 @@ export const UsersList: React.FC<UsersListProps> = ({
       setUserWishlist(data.wishlist || []);
     } catch (err: any) {
       console.error('Error fetching user wishlist:', err);
-      setWishlistError(err.message || 'Nie udało się pobrać listy życzeń tego użytkownika.');
+      setWishlistError(err.message || t('Nie udało się pobrać listy życzeń tego użytkownika.'));
       setUserWishlist(null);
     } finally {
       setIsLoadingWishlist(false);
@@ -193,7 +195,7 @@ export const UsersList: React.FC<UsersListProps> = ({
     const url = publicUrl('sale', username);
     navigator.clipboard.writeText(url);
     setCopiedLinkUser(username);
-    showToast?.(`Skopiowano publiczny link do oferty użytkownika @${username}!`);
+    showToast?.(t('Skopiowano publiczny link do oferty użytkownika @{name}!', { name: username }));
     setTimeout(() => setCopiedLinkUser(null), 2500);
   };
 
@@ -375,10 +377,10 @@ export const UsersList: React.FC<UsersListProps> = ({
       .join('\n');
 
     const shareUrl = publicUrl('sale', sellerOffers.seller.username);
-    const header = `=== KARTY NA SPRZEDAŻ OD: @${sellerOffers.seller.username} ===\nŁącznie: ${sellerOffers.cards.length} pozycji | Wartość: ${formatCurrency(selectedUserTotalValue, effSettings.currency)}\nPubliczny link: ${shareUrl}\n\n`;
+    const header = `=== ${t('KARTY NA SPRZEDAŻ OD:')} @${sellerOffers.seller.username} ===\n${t('Łącznie: {n} pozycji', { n: sellerOffers.cards.length })} | ${t('Wartość:')} ${formatCurrency(selectedUserTotalValue, effSettings.currency)}\n${t('Publiczny link:')} ${shareUrl}\n\n`;
     navigator.clipboard.writeText(header + textList);
     setCopiedText(true);
-    showToast?.(`Skopiowano listę kart (.txt) użytkownika @${sellerOffers.seller.username} do schowka!`);
+    showToast?.(t('Skopiowano listę kart (.txt) użytkownika @{name} do schowka!', { name: sellerOffers.seller.username }));
     setTimeout(() => setCopiedText(false), 2500);
   };
 
@@ -389,14 +391,14 @@ export const UsersList: React.FC<UsersListProps> = ({
       .map((item) => {
         const foilTag = item.isFoil ? ' [FOIL]' : '';
         const price = formatCurrency(getCardPrice(item.card, item.isFoil, effSettings), effSettings.currency);
-        return `${item.targetQuantity || 1}x ${item.card.name} (${item.card.set.toUpperCase()}) #${item.card.collector_number}${foilTag} - ${price}${item.notes ? ` (Notatka: ${item.notes})` : ''}`;
+        return `${item.targetQuantity || 1}x ${item.card.name} (${item.card.set.toUpperCase()}) #${item.card.collector_number}${foilTag} - ${price}${item.notes ? ` (${t('Notatka:')} ${item.notes})` : ''}`;
       })
       .join('\n');
 
-    const header = `=== LISTA ŻYCZEŃ UŻYTKOWNIKA @${selectedUser.username} ===\nSzacowany koszt: ${formatCurrency(selectedUserWishlistCost, effSettings.currency)} | Liczba kart: ${selectedUserWishlistCount} szt.\n\n`;
+    const header = `=== ${t('LISTA ŻYCZEŃ UŻYTKOWNIKA')} @${selectedUser.username} ===\n${t('Szacowany koszt:')} ${formatCurrency(selectedUserWishlistCost, effSettings.currency)} | ${t('Liczba kart:')} ${selectedUserWishlistCount} ${t('szt.')}\n\n`;
     navigator.clipboard.writeText(header + textList);
     setCopiedWishlistText(true);
-    showToast?.(`Skopiowano listę życzeń użytkownika @${selectedUser.username} do schowka!`);
+    showToast?.(t('Skopiowano listę życzeń użytkownika @{name} do schowka!', { name: selectedUser.username }));
     setTimeout(() => setCopiedWishlistText(false), 2500);
   };
 
@@ -404,9 +406,9 @@ export const UsersList: React.FC<UsersListProps> = ({
   const formatJoinDate = (isoStr: string) => {
     try {
       const d = new Date(isoStr);
-      return d.toLocaleDateString('pl-PL', { year: 'numeric', month: 'short', day: 'numeric' });
+      return d.toLocaleDateString(locale(), { year: 'numeric', month: 'short', day: 'numeric' });
     } catch {
-      return 'Niedawno';
+      return t('Niedawno');
     }
   };
 
@@ -445,7 +447,7 @@ export const UsersList: React.FC<UsersListProps> = ({
             className="btn btn-ghost -ml-3 group"
           >
             <ArrowLeft className="w-4 h-4 group-hover:-translate-x-0.5 transition-transform" />
-            <span>Wszyscy gracze</span>
+            <span>{t('Wszyscy gracze')}</span>
           </button>
 
           <div className="flex items-center gap-2">
@@ -454,10 +456,10 @@ export const UsersList: React.FC<UsersListProps> = ({
                 type="button"
                 onClick={() => handleOpenSendMessage(selectedUser)}
                 className="btn btn-primary"
-                title={`Napisz wiadomość do @${selectedUser.username}`}
+                title={t('Napisz wiadomość do @{name}', { name: selectedUser.username })}
               >
                 <Mail className="w-4 h-4" />
-                <span>{profileTab === 'for-sale' ? 'Napisz do sprzedawcy' : 'Napisz wiadomość'}</span>
+                <span>{profileTab === 'for-sale' ? t('Napisz do sprzedawcy') : t('Napisz wiadomość')}</span>
               </button>
             )}
 
@@ -465,14 +467,14 @@ export const UsersList: React.FC<UsersListProps> = ({
               type="button"
               onClick={() => handleCopyUserLink(selectedUser.username)}
               className="btn btn-secondary"
-              title="Kopiuj publiczny link do oferty tego użytkownika"
+              title={t('Kopiuj publiczny link do oferty tego użytkownika')}
             >
               {copiedLinkUser === selectedUser.username ? (
                 <Check className="w-3.5 h-3.5 text-emerald-400" />
               ) : (
                 <Share2 className="w-4 h-4" />
               )}
-              <span>{copiedLinkUser === selectedUser.username ? 'Skopiowano link!' : 'Udostępnij ofertę'}</span>
+              <span>{copiedLinkUser === selectedUser.username ? t('Skopiowano link!') : t('Udostępnij ofertę')}</span>
             </button>
 
             <a
@@ -480,10 +482,10 @@ export const UsersList: React.FC<UsersListProps> = ({
               target="_blank"
               rel="noreferrer"
               className="btn btn-secondary"
-              title="Otwórz publiczny podgląd kupującego w nowej karcie"
+              title={t('Otwórz publiczny podgląd kupującego w nowej karcie')}
             >
               <ExternalLink className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Podgląd kupującego</span>
+              <span className="hidden sm:inline">{t('Podgląd kupującego')}</span>
             </a>
           </div>
         </div>
@@ -496,35 +498,35 @@ export const UsersList: React.FC<UsersListProps> = ({
             <div className="min-w-0">
               <h2 className="text-2xl font-semibold tracking-tight text-stone-50 truncate">
                 {selectedUser.username}
-                {currentUser?.id === selectedUser.id && <span className="ml-2 text-sm font-normal text-stone-500">(Twoje konto)</span>}
+                {currentUser?.id === selectedUser.id && <span className="ml-2 text-sm font-normal text-stone-500">{t('(Twoje konto)')}</span>}
               </h2>
               <p className="text-sm text-stone-400 flex items-center gap-1.5">
                 <Calendar className="w-3.5 h-3.5" />
-                Na Mana Screw od {formatJoinDate(selectedUser.createdAt)}
+                {t('Na Mana Screw od {date}', { date: formatJoinDate(selectedUser.createdAt) })}
               </p>
             </div>
           </div>
 
-          <div role="tablist" aria-label="Profil gracza" className="flex items-center gap-1 border-b border-stone-800">
+          <div role="tablist" aria-label={t('Profil gracza')} className="flex items-center gap-1 border-b border-stone-800">
             {([
-              { id: 'for-sale', label: 'Na sprzedaż', icon: CircleDollarSign, count: forSaleBadgeCount, tone: 'text-emerald-400' },
-              { id: 'wishlist', label: 'Lista życzeń', icon: FolderHeart, count: wishlistBadgeCount, tone: 'text-rose-400' }
-            ] as const).map((t) => {
-              const active = profileTab === t.id;
+              { id: 'for-sale', label: t('Na sprzedaż'), icon: CircleDollarSign, count: forSaleBadgeCount, tone: 'text-emerald-400' },
+              { id: 'wishlist', label: t('Lista życzeń'), icon: FolderHeart, count: wishlistBadgeCount, tone: 'text-rose-400' }
+            ] as const).map((tab) => {
+              const active = profileTab === tab.id;
               return (
                 <button
-                  key={t.id}
+                  key={tab.id}
                   type="button"
                   role="tab"
                   aria-selected={active}
-                  onClick={() => setProfileTab(t.id)}
+                  onClick={() => setProfileTab(tab.id)}
                   className={`-mb-px h-11 px-3 flex items-center gap-2 text-sm border-b-2 cursor-pointer ${
                     active ? 'border-amber-400 text-stone-50 font-medium' : 'border-transparent text-stone-400 hover:text-stone-200'
                   }`}
                 >
-                  <t.icon className={`w-4 h-4 ${active ? t.tone : 'text-stone-500'}`} />
-                  {t.label}
-                  <span className="text-xs text-stone-500 tabular-nums">{t.count}</span>
+                  <tab.icon className={`w-4 h-4 ${active ? tab.tone : 'text-stone-500'}`} />
+                  {tab.label}
+                  <span className="text-xs text-stone-500 tabular-nums">{tab.count}</span>
                 </button>
               );
             })}
@@ -540,7 +542,7 @@ export const UsersList: React.FC<UsersListProps> = ({
               <div className="flex flex-col items-center justify-center py-20 space-y-4">
                 <div className="w-12 h-12 rounded-full border-4 border-emerald-500/20 border-t-emerald-500 animate-spin" />
                 <p className="text-sm font-bold text-stone-400">
-                  Pobieranie oferty sprzedaży użytkownika @{selectedUser.username}...
+                  {t('Pobieranie oferty sprzedaży użytkownika @{name}...', { name: selectedUser.username })}
                 </p>
               </div>
             ) : offersError ? (
@@ -550,7 +552,7 @@ export const UsersList: React.FC<UsersListProps> = ({
                   onClick={() => loadOffers(selectedUser.username || selectedUser.id)}
                   className="px-4 py-2 bg-stone-800 hover:bg-stone-700 text-stone-200 rounded-xl text-xs font-semibold"
                 >
-                  Spróbuj ponownie
+                  {t('Spróbuj ponownie')}
                 </button>
               </div>
             ) : !sellerOffers || sellerOffers.cards.length === 0 ? (
@@ -560,10 +562,10 @@ export const UsersList: React.FC<UsersListProps> = ({
                 </div>
                 <div className="max-w-md mx-auto space-y-1">
                   <h3 className="text-base font-bold text-white">
-                    Brak kart wystawionych na sprzedaż
+                    {t('Brak kart wystawionych na sprzedaż')}
                   </h3>
                   <p className="text-xs text-stone-400">
-                    Użytkownik @{selectedUser.username} nie posiada aktualnie żadnych kart w kategorii „Sprzedam”.
+                    {t('Użytkownik @{name} nie posiada aktualnie żadnych kart w kategorii „Sprzedam”.', { name: selectedUser.username })}
                   </p>
                 </div>
                 <button
@@ -572,7 +574,7 @@ export const UsersList: React.FC<UsersListProps> = ({
                   className="px-4 py-2 bg-stone-800 hover:bg-stone-750 text-rose-300 border border-rose-500/30 rounded-xl text-xs font-semibold cursor-pointer inline-flex items-center gap-1.5"
                 >
                   <FolderHeart className="w-3.5 h-3.5 text-rose-400" />
-                  <span>Zobacz listę życzeń użytkownika</span>
+                  <span>{t('Zobacz listę życzeń użytkownika')}</span>
                 </button>
               </div>
             ) : (
@@ -581,11 +583,11 @@ export const UsersList: React.FC<UsersListProps> = ({
                 <div className="bg-stone-900/80 border border-stone-800 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                   <div className="flex items-center gap-3">
                     <span className="text-xs font-semibold text-stone-400">
-                      Wycena oferty: <strong className="text-emerald-300 tabular-nums text-sm">{formatCurrency(selectedUserTotalValue, effSettings.currency)}</strong>
+                      {t('Wycena oferty:')} <strong className="text-emerald-300 tabular-nums text-sm">{formatCurrency(selectedUserTotalValue, effSettings.currency)}</strong>
                     </span>
                     <span className="text-xs text-stone-500">•</span>
                     <span className="text-xs text-stone-400">
-                      Pozycji: <strong className="text-stone-200 tabular-nums">{sellerOffers.cards.length}</strong>
+                      {t('Pozycji:')} <strong className="text-stone-200 tabular-nums">{sellerOffers.cards.length}</strong>
                     </span>
                   </div>
 
@@ -593,10 +595,10 @@ export const UsersList: React.FC<UsersListProps> = ({
                     type="button"
                     onClick={handleCopySellerTextList}
                     className="px-3.5 py-2 bg-stone-800 hover:bg-stone-750 text-stone-200 border border-stone-700 text-xs font-bold rounded-xl transition-all flex items-center gap-2 cursor-pointer shadow-sm self-start sm:self-auto"
-                    title="Skopiuj listę kart (.txt)"
+                    title={t('Skopiuj listę kart (.txt)')}
                   >
                     {copiedText ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <FileText className="w-3.5 h-3.5 text-emerald-400" />}
-                    <span>{copiedText ? 'Skopiowano listę!' : 'Kopiuj listę (.txt)'}</span>
+                    <span>{copiedText ? t('Skopiowano listę!') : t('Kopiuj listę (.txt)')}</span>
                   </button>
                 </div>
 
@@ -608,7 +610,7 @@ export const UsersList: React.FC<UsersListProps> = ({
                       type="text"
                       value={cardSearchQuery}
                       onChange={(e) => setCardSearchQuery(e.target.value)}
-                      placeholder={`Szukaj w ofercie @${selectedUser.username}...`}
+                      placeholder={t('Szukaj w ofercie @{name}...', { name: selectedUser.username })}
                       className="w-full bg-stone-950 border border-stone-800 focus:border-emerald-500 rounded-xl pl-9 pr-3.5 py-2 text-xs text-stone-100 placeholder-stone-500 focus:outline-none transition-colors"
                     />
                   </div>
@@ -624,7 +626,7 @@ export const UsersList: React.FC<UsersListProps> = ({
                       }`}
                     >
                       <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-                      <span>Tylko foil</span>
+                      <span>{t('Tylko foil')}</span>
                     </button>
 
                     <select
@@ -632,12 +634,12 @@ export const UsersList: React.FC<UsersListProps> = ({
                       onChange={(e) => setCardConditionFilter(e.target.value)}
                       className="bg-stone-950 border border-stone-800 rounded-xl px-3 py-1.5 text-xs text-stone-300 focus:outline-none focus:border-emerald-500 cursor-pointer"
                     >
-                      <option value="all">Wszystkie stany</option>
-                      <option value="NM">Stan NM (Near Mint)</option>
-                      <option value="EX">Stan EX (Excellent)</option>
-                      <option value="GD">Stan GD (Good)</option>
-                      <option value="LP">Stan LP (Light Played)</option>
-                      <option value="PL">Stan PL (Played)</option>
+                      <option value="all">{t('Wszystkie stany')}</option>
+                      <option value="NM">{t('Stan NM (Near Mint)')}</option>
+                      <option value="EX">{t('Stan EX (Excellent)')}</option>
+                      <option value="GD">{t('Stan GD (Good)')}</option>
+                      <option value="LP">{t('Stan LP (Light Played)')}</option>
+                      <option value="PL">{t('Stan PL (Played)')}</option>
                     </select>
 
                     <div className="flex items-center gap-1.5 bg-stone-950 border border-stone-800 rounded-xl px-2.5 py-1.5 text-xs text-stone-300">
@@ -647,10 +649,10 @@ export const UsersList: React.FC<UsersListProps> = ({
                         onChange={(e) => setCardSortBy(e.target.value as any)}
                         className="bg-transparent text-xs text-stone-200 focus:outline-none cursor-pointer"
                       >
-                        <option value="price-desc">Cena: Najwyższa</option>
-                        <option value="price-asc">Cena: Najniższa</option>
-                        <option value="name">Nazwa A-Z</option>
-                        <option value="edhrec">Popularność EDHREC</option>
+                        <option value="price-desc">{t('Cena: Najwyższa')}</option>
+                        <option value="price-asc">{t('Cena: Najniższa')}</option>
+                        <option value="name">{t('Nazwa A-Z')}</option>
+                        <option value="edhrec">{t('Popularność EDHREC')}</option>
                       </select>
                     </div>
                   </div>
@@ -677,7 +679,7 @@ export const UsersList: React.FC<UsersListProps> = ({
                         {isFoil && (
                           <div className="absolute top-0 right-0 z-10 ms-foil-chip font-semibold text-[11px] px-2 py-0.5 rounded-bl-lg shadow-sm flex items-center gap-1 ">
                             <Sparkles className="w-3 h-3 fill-stone-950" />
-                            <span>Foil</span>
+                            <span>{t('Foil')}</span>
                           </div>
                         )}
 
@@ -701,7 +703,7 @@ export const UsersList: React.FC<UsersListProps> = ({
                           <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
                             <div className="px-3 py-1.5 rounded-full bg-stone-900/90 text-amber-300 text-xs font-semibold flex items-center gap-1.5 border border-amber-500/40 shadow-lg">
                               <Eye className="w-3.5 h-3.5" />
-                              <span>Szczegóły Scryfall</span>
+                              <span>{t('Szczegóły Scryfall')}</span>
                             </div>
                           </div>
 
@@ -734,16 +736,16 @@ export const UsersList: React.FC<UsersListProps> = ({
 
                           <div className="pt-2 border-t border-stone-800/80 flex items-center justify-between text-xs">
                             <span className="tabular-nums text-stone-400 text-[11px] flex items-center gap-1.5">
-                              Ilość: <strong className="text-stone-200">{item.quantity + item.quantityFoil}x</strong>
+                              {t('Ilość:')} <strong className="text-stone-200">{item.quantity + item.quantityFoil}x</strong>
                               {currentUser && currentUser.id !== selectedUser.id && (
                                 <button
                                   type="button"
                                   onClick={(e) =>
-                                    handleOpenSendMessage(selectedUser, e, `Pytanie o kartę: ${item.card.name} (${item.card.set.toUpperCase()})`)
+                                    handleOpenSendMessage(selectedUser, e, t('Pytanie o kartę: {card}', { card: `${item.card.name} (${item.card.set.toUpperCase()})` }))
                                   }
                                   className="ml-1 w-7 h-7 rounded-md flex items-center justify-center text-stone-400 hover:text-amber-300 hover:bg-stone-800 cursor-pointer"
-                                  title="Napisz do sprzedawcy o tej karcie"
-                                  aria-label={`Napisz do sprzedawcy o karcie ${item.card.name}`}
+                                  title={t('Napisz do sprzedawcy o tej karcie')}
+                                  aria-label={t('Napisz do sprzedawcy o karcie {name}', { name: item.card.name })}
                                 >
                                   <Mail className="w-4 h-4" />
                                 </button>
@@ -755,7 +757,7 @@ export const UsersList: React.FC<UsersListProps> = ({
                                 {formatCurrency(effectivePrice, effSettings.currency)}
                               </span>
                               {item.salePrice !== undefined && item.salePrice !== null && (
-                                <span className="block text-[11px] text-emerald-400/80 tabular-nums">Cena sprzedawcy</span>
+                                <span className="block text-[11px] text-emerald-400/80 tabular-nums">{t('Cena sprzedawcy')}</span>
                               )}
                             </div>
                           </div>
@@ -778,7 +780,7 @@ export const UsersList: React.FC<UsersListProps> = ({
               <div className="flex flex-col items-center justify-center py-20 space-y-4">
                 <div className="w-12 h-12 rounded-full border-4 border-rose-500/20 border-t-rose-500 animate-spin" />
                 <p className="text-sm font-bold text-stone-400">
-                  Pobieranie listy życzeń użytkownika @{selectedUser.username}...
+                  {t('Pobieranie listy życzeń użytkownika @{name}...', { name: selectedUser.username })}
                 </p>
               </div>
             ) : wishlistError ? (
@@ -788,7 +790,7 @@ export const UsersList: React.FC<UsersListProps> = ({
                   onClick={() => loadWishlist(selectedUser.username || selectedUser.id)}
                   className="px-4 py-2 bg-stone-800 hover:bg-stone-700 text-stone-200 rounded-xl text-xs font-semibold"
                 >
-                  Spróbuj ponownie
+                  {t('Spróbuj ponownie')}
                 </button>
               </div>
             ) : !userWishlist || userWishlist.length === 0 ? (
@@ -798,10 +800,10 @@ export const UsersList: React.FC<UsersListProps> = ({
                 </div>
                 <div className="max-w-md mx-auto space-y-1">
                   <h3 className="text-base font-bold text-white">
-                    Lista życzeń jest pusta
+                    {t('Lista życzeń jest pusta')}
                   </h3>
                   <p className="text-xs text-stone-400">
-                    Użytkownik @{selectedUser.username} nie posiada jeszcze żadnych kart na swojej liście życzeń.
+                    {t('Użytkownik @{name} nie posiada jeszcze żadnych kart na swojej liście życzeń.', { name: selectedUser.username })}
                   </p>
                 </div>
                 <button
@@ -810,7 +812,7 @@ export const UsersList: React.FC<UsersListProps> = ({
                   className="px-4 py-2 bg-stone-800 hover:bg-stone-750 text-emerald-300 border border-emerald-500/30 rounded-xl text-xs font-semibold cursor-pointer inline-flex items-center gap-1.5"
                 >
                   <CircleDollarSign className="w-3.5 h-3.5 text-emerald-400" />
-                  <span>Zobacz karty na sprzedaż</span>
+                  <span>{t('Zobacz karty na sprzedaż')}</span>
                 </button>
               </div>
             ) : (
@@ -819,11 +821,11 @@ export const UsersList: React.FC<UsersListProps> = ({
                 <div className="bg-stone-900/80 border border-stone-800 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                   <div className="flex items-center gap-3">
                     <span className="text-xs font-semibold text-stone-400">
-                      Szacowany koszt rynkowy: <strong className="text-emerald-300 tabular-nums text-sm">{formatCurrency(selectedUserWishlistCost, effSettings.currency)}</strong>
+                      {t('Szacowany koszt rynkowy:')} <strong className="text-emerald-300 tabular-nums text-sm">{formatCurrency(selectedUserWishlistCost, effSettings.currency)}</strong>
                     </span>
                     <span className="text-xs text-stone-500">•</span>
                     <span className="text-xs text-stone-400">
-                      Poszukiwanych kart: <strong className="text-rose-300 tabular-nums">{selectedUserWishlistCount} szt.</strong> ({userWishlist.length} pozycji)
+                      {t('Poszukiwanych kart:')} <strong className="text-rose-300 tabular-nums">{selectedUserWishlistCount} {t('szt.')}</strong> ({plural(userWishlist.length, ['{n} pozycja', '{n} pozycje', '{n} pozycji'], ['{n} entry', '{n} entries'])})
                     </span>
                   </div>
 
@@ -831,10 +833,10 @@ export const UsersList: React.FC<UsersListProps> = ({
                     type="button"
                     onClick={handleCopyWishlistTextList}
                     className="px-3.5 py-2 bg-stone-800 hover:bg-stone-750 text-stone-200 border border-stone-700 text-xs font-bold rounded-xl transition-all flex items-center gap-2 cursor-pointer shadow-sm self-start sm:self-auto"
-                    title="Skopiuj listę życzeń (.txt)"
+                    title={t('Skopiuj listę życzeń (.txt)')}
                   >
                     {copiedWishlistText ? <Check className="w-3.5 h-3.5 text-rose-400" /> : <FileText className="w-3.5 h-3.5 text-rose-400" />}
-                    <span>{copiedWishlistText ? 'Skopiowano listę!' : 'Kopiuj listę życzeń (.txt)'}</span>
+                    <span>{copiedWishlistText ? t('Skopiowano listę!') : t('Kopiuj listę życzeń (.txt)')}</span>
                   </button>
                 </div>
 
@@ -846,7 +848,7 @@ export const UsersList: React.FC<UsersListProps> = ({
                       type="text"
                       value={wishlistSearchQuery}
                       onChange={(e) => setWishlistSearchQuery(e.target.value)}
-                      placeholder={`Szukaj na liście życzeń @${selectedUser.username}...`}
+                      placeholder={t('Szukaj na liście życzeń @{name}...', { name: selectedUser.username })}
                       className="w-full bg-stone-950 border border-stone-800 focus:border-rose-500 rounded-xl pl-9 pr-3.5 py-2 text-xs text-stone-100 placeholder-stone-500 focus:outline-none transition-colors"
                     />
                   </div>
@@ -862,7 +864,7 @@ export const UsersList: React.FC<UsersListProps> = ({
                       }`}
                     >
                       <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-                      <span>Tylko foil</span>
+                      <span>{t('Tylko foil')}</span>
                     </button>
 
                     <div className="flex items-center gap-1.5 bg-stone-950 border border-stone-800 rounded-xl px-2.5 py-1.5 text-xs text-stone-300">
@@ -872,10 +874,10 @@ export const UsersList: React.FC<UsersListProps> = ({
                         onChange={(e) => setWishlistSortBy(e.target.value as any)}
                         className="bg-transparent text-xs text-stone-200 focus:outline-none cursor-pointer"
                       >
-                        <option value="price-desc">Cena: Najwyższa</option>
-                        <option value="price-asc">Cena: Najniższa</option>
-                        <option value="name">Nazwa A-Z</option>
-                        <option value="edhrec">Popularność EDHREC</option>
+                        <option value="price-desc">{t('Cena: Najwyższa')}</option>
+                        <option value="price-asc">{t('Cena: Najniższa')}</option>
+                        <option value="name">{t('Nazwa A-Z')}</option>
+                        <option value="edhrec">{t('Popularność EDHREC')}</option>
                       </select>
                     </div>
                   </div>
@@ -899,13 +901,13 @@ export const UsersList: React.FC<UsersListProps> = ({
                         {isFoil && (
                           <div className="absolute top-0 right-0 z-10 ms-foil-chip font-semibold text-[11px] px-2 py-0.5 rounded-bl-lg shadow-sm flex items-center gap-1 ">
                             <Sparkles className="w-3 h-3 fill-stone-950" />
-                            <span>Foil</span>
+                            <span>{t('Foil')}</span>
                           </div>
                         )}
 
                         <div className="absolute top-2 left-2 z-10 bg-rose-950/90 backdrop-blur-md text-rose-300 text-[11px] tabular-nums font-bold px-2 py-0.5 rounded-full border border-rose-500/40 shadow flex items-center gap-1">
                           <Heart className="w-2.5 h-2.5 fill-rose-400 text-rose-400" />
-                          <span>Szuka: {item.targetQuantity || 1}x</span>
+                          <span>{t('Szuka:')} {item.targetQuantity || 1}x</span>
                         </div>
 
                         <div
@@ -924,7 +926,7 @@ export const UsersList: React.FC<UsersListProps> = ({
                           <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
                             <div className="px-3 py-1.5 rounded-full bg-stone-900/90 text-amber-300 text-xs font-semibold flex items-center gap-1.5 border border-amber-500/40 shadow-lg">
                               <Eye className="w-3.5 h-3.5" />
-                              <span>Szczegóły Scryfall</span>
+                              <span>{t('Szczegóły Scryfall')}</span>
                             </div>
                           </div>
 
@@ -963,14 +965,14 @@ export const UsersList: React.FC<UsersListProps> = ({
 
                           <div className="pt-2 border-t border-stone-800/80 flex items-center justify-between text-xs">
                             <span className="tabular-nums text-stone-400 text-[11px]">
-                              Szuka: <strong className="text-rose-300 font-bold">{item.targetQuantity || 1}x</strong>
+                              {t('Szuka:')} <strong className="text-rose-300 font-bold">{item.targetQuantity || 1}x</strong>
                             </span>
 
                             <div className="text-right">
                               <span className="tabular-nums font-bold text-emerald-300 text-sm">
                                 {formatCurrency(effectivePrice, effSettings.currency)}
                               </span>
-                              <span className="block text-[11px] text-stone-500 tabular-nums">Cena rynkowa</span>
+                              <span className="block text-[11px] text-stone-500 tabular-nums">{t('Cena rynkowa')}</span>
                             </div>
                           </div>
                         </div>
@@ -993,20 +995,20 @@ export const UsersList: React.FC<UsersListProps> = ({
   return (
     <div className="space-y-6 pb-12">
       <PageHeader
-        title="Gracze"
-        description="Zarejestrowani gracze, ich karty na sprzedaż i listy życzeń."
+        title={t('Gracze')}
+        description={t('Zarejestrowani gracze, ich karty na sprzedaż i listy życzeń.')}
         meta={
           <>
-            <span><span className="text-stone-100 font-medium tabular-nums">{stats.totalUsers}</span> graczy</span>
-            <span><span className="text-stone-100 font-medium tabular-nums">{stats.sellersCount}</span> sprzedaje</span>
-            <span><span className="text-stone-100 font-medium tabular-nums">{stats.totalCardsOnSale}</span> kart na sprzedaż</span>
-            <span><span className="text-stone-100 font-medium tabular-nums">{stats.totalWishlistItems}</span> kart na listach życzeń</span>
+            <span><span className="text-stone-100 font-medium tabular-nums">{stats.totalUsers}</span> {plural(stats.totalUsers, ['gracz', 'graczy', 'graczy'], ['player', 'players'])}</span>
+            <span><span className="text-stone-100 font-medium tabular-nums">{stats.sellersCount}</span> {t('sprzedaje')}</span>
+            <span><span className="text-stone-100 font-medium tabular-nums">{stats.totalCardsOnSale}</span> {t('kart na sprzedaż')}</span>
+            <span><span className="text-stone-100 font-medium tabular-nums">{stats.totalWishlistItems}</span> {t('kart na listach życzeń')}</span>
           </>
         }
         actions={
-          <button type="button" onClick={loadUsers} disabled={isLoading} className="btn btn-secondary" title="Odśwież listę graczy">
+          <button type="button" onClick={loadUsers} disabled={isLoading} className="btn btn-secondary" title={t('Odśwież listę graczy')}>
             <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
-            Odśwież
+            {t('Odśwież')}
           </button>
         }
       />
@@ -1018,8 +1020,8 @@ export const UsersList: React.FC<UsersListProps> = ({
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Szukaj gracza po nazwie"
-            aria-label="Szukaj gracza po nazwie"
+            placeholder={t('Szukaj gracza po nazwie')}
+            aria-label={t('Szukaj gracza po nazwie')}
             className="w-full h-10 bg-stone-900 border border-stone-800 focus:border-amber-500 rounded-lg pl-10 pr-3.5 text-sm text-stone-100 placeholder-stone-500 focus:outline-none"
           />
         </div>
@@ -1033,22 +1035,22 @@ export const UsersList: React.FC<UsersListProps> = ({
             }`}
           >
             <CircleDollarSign className="w-4 h-4 text-emerald-400" />
-            Tylko sprzedający
+            {t('Tylko sprzedający')}
           </button>
           <label className="h-10 flex items-center gap-2 bg-stone-900 border border-stone-800 rounded-lg px-3 text-sm text-stone-400">
             <ArrowUpDown className="w-4 h-4" />
-            <span className="sr-only">Sortuj</span>
+            <span className="sr-only">{t('Sortuj')}</span>
             <select
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value as any)}
               className="bg-transparent text-sm text-stone-200 focus:outline-none cursor-pointer"
             >
-              <option value="matches-desc">Najwięcej kart z mojej listy życzeń</option>
-              <option value="sale-desc">Najwięcej kart na sprzedaż</option>
-              <option value="wishlist-desc">Najdłuższa lista życzeń</option>
-              <option value="created-desc">Najnowsi gracze</option>
-              <option value="name">Nazwa gracza (A-Z)</option>
-              <option value="cards-desc">Największa kolekcja</option>
+              <option value="matches-desc">{t('Najwięcej kart z mojej listy życzeń')}</option>
+              <option value="sale-desc">{t('Najwięcej kart na sprzedaż')}</option>
+              <option value="wishlist-desc">{t('Najdłuższa lista życzeń')}</option>
+              <option value="created-desc">{t('Najnowsi gracze')}</option>
+              <option value="name">{t('Nazwa gracza (A-Z)')}</option>
+              <option value="cards-desc">{t('Największa kolekcja')}</option>
             </select>
           </label>
         </div>
@@ -1058,7 +1060,7 @@ export const UsersList: React.FC<UsersListProps> = ({
       {isLoading ? (
         <div className="flex flex-col items-center justify-center py-20 space-y-4">
           <div className="w-12 h-12 rounded-full border-4 border-amber-500/20 border-t-amber-400 animate-spin" />
-          <p className="text-sm font-bold text-stone-400">Ładowanie zarejestrowanych graczy...</p>
+          <p className="text-sm font-bold text-stone-400">{t('Ładowanie zarejestrowanych graczy...')}</p>
         </div>
       ) : error ? (
         <div className="bg-stone-900 border border-rose-800/50 rounded-2xl p-8 text-center space-y-3">
@@ -1067,7 +1069,7 @@ export const UsersList: React.FC<UsersListProps> = ({
             onClick={loadUsers}
             className="px-4 py-2 bg-stone-800 hover:bg-stone-700 text-stone-200 rounded-xl text-xs font-semibold"
           >
-            Spróbuj ponownie
+            {t('Spróbuj ponownie')}
           </button>
         </div>
       ) : filteredUsers.length === 0 ? (
@@ -1075,11 +1077,11 @@ export const UsersList: React.FC<UsersListProps> = ({
           <div className="w-16 h-16 rounded-2xl bg-stone-800/80 text-stone-500 mx-auto flex items-center justify-center">
             <Users className="w-8 h-8" />
           </div>
-          <h3 className="text-base font-bold text-white">Nie znaleziono użytkowników</h3>
+          <h3 className="text-base font-bold text-white">{t('Nie znaleziono użytkowników')}</h3>
           <p className="text-xs text-stone-400">
             {searchQuery || filterForSaleOnly
-              ? 'Żaden użytkownik nie spełnia wybranych kryteriów wyszukiwania.'
-              : 'Brak zarejestrowanych użytkowników w systemie.'}
+              ? t('Żaden użytkownik nie spełnia wybranych kryteriów wyszukiwania.')
+              : t('Brak zarejestrowanych użytkowników w systemie.')}
           </p>
         </div>
       ) : (
@@ -1105,10 +1107,10 @@ export const UsersList: React.FC<UsersListProps> = ({
                   <div className="min-w-0 flex-1">
                     <h3 className="text-sm font-semibold text-stone-50 truncate">
                       {u.username}
-                      {isSelf && <span className="ml-2 text-xs font-normal text-stone-500">(Ty)</span>}
+                      {isSelf && <span className="ml-2 text-xs font-normal text-stone-500">{t('(Ty)')}</span>}
                     </h3>
                     <p className="text-xs text-stone-400 truncate">
-                      {u.city ? `${u.city}, ` : ''}od {formatJoinDate(u.createdAt)}
+                      {u.city ? `${u.city}, ` : ''}{t('od')} {formatJoinDate(u.createdAt)}
                     </p>
                   </div>
                 </div>
@@ -1116,12 +1118,12 @@ export const UsersList: React.FC<UsersListProps> = ({
                 {wishSale > 0 ? (
                   <p className="text-sm text-rose-300 flex items-center gap-1.5 -mt-1">
                     <Heart className="w-3.5 h-3.5 fill-rose-400 text-rose-400 shrink-0" />
-                    {wishSale === 1 ? 'Sprzedaje 1 kartę' : `Sprzedaje ${wishSale} ${kartyPl(wishSale)}`} z Twojej listy życzeń
+                    {plural(wishSale, ['Sprzedaje {n} kartę z Twojej listy życzeń', 'Sprzedaje {n} karty z Twojej listy życzeń', 'Sprzedaje {n} kart z Twojej listy życzeń'], ['Sells {n} card from your wishlist', 'Sells {n} cards from your wishlist'])}
                   </p>
                 ) : wishOwned > 0 ? (
-                  <p className="text-xs text-stone-400 flex items-center gap-1.5 -mt-1" title="Karty są w kolekcji gracza, ale nie wystawił ich na sprzedaż. Możesz do niego napisać.">
+                  <p className="text-xs text-stone-400 flex items-center gap-1.5 -mt-1" title={t('Karty są w kolekcji gracza, ale nie wystawił ich na sprzedaż. Możesz do niego napisać.')}>
                     <Heart className="w-3.5 h-3.5 text-stone-500 shrink-0" />
-                    Ma {wishOwned} z Twojej listy, ale nie sprzedaje
+                    {t('Ma {n} z Twojej listy, ale nie sprzedaje', { n: wishOwned })}
                   </p>
                 ) : null}
 
@@ -1133,9 +1135,9 @@ export const UsersList: React.FC<UsersListProps> = ({
                       handleOpenUserProfile(u, 'for-sale');
                     }}
                     className="bg-stone-900 hover:bg-stone-850 px-3 py-2 text-left cursor-pointer"
-                    title="Zobacz karty na sprzedaż"
+                    title={t('Zobacz karty na sprzedaż')}
                   >
-                    <span className="block text-xs text-stone-400">Sprzedaje</span>
+                    <span className="block text-xs text-stone-400">{t('Sprzedaje')}</span>
                     <span className={`block tabular-nums font-medium ${hasForSale ? 'text-emerald-300' : 'text-stone-500'}`}>
                       {hasForSale ? kartyLabel(u.forSaleCount) : 'nic'}
                     </span>
@@ -1147,9 +1149,9 @@ export const UsersList: React.FC<UsersListProps> = ({
                       handleOpenUserProfile(u, 'wishlist');
                     }}
                     className="bg-stone-900 hover:bg-stone-850 px-3 py-2 text-left cursor-pointer"
-                    title="Zobacz listę życzeń"
+                    title={t('Zobacz listę życzeń')}
                   >
-                    <span className="block text-xs text-stone-400">Szuka</span>
+                    <span className="block text-xs text-stone-400">{t('Szuka')}</span>
                     <span className={`block tabular-nums font-medium ${hasWishlist ? 'text-stone-100' : 'text-stone-500'}`}>
                       {hasWishlist ? kartyLabel(u.wishlistCount || 0) : 'nic'}
                     </span>
@@ -1158,7 +1160,7 @@ export const UsersList: React.FC<UsersListProps> = ({
 
                 <div className="flex items-center justify-end -mr-1.5 -mt-1" onClick={(e) => e.stopPropagation()}>
                   {currentUser && currentUser.id !== u.id && (
-                    <button type="button" onClick={(e) => handleOpenSendMessage(u, e)} className={iconBtn} title={`Napisz do ${u.username}`} aria-label={`Napisz do ${u.username}`}>
+                    <button type="button" onClick={(e) => handleOpenSendMessage(u, e)} className={iconBtn} title={t('Napisz do {name}', { name: u.username })} aria-label={t('Napisz do {name}', { name: u.username })}>
                       <Mail className="w-4 h-4" />
                     </button>
                   )}
@@ -1166,8 +1168,8 @@ export const UsersList: React.FC<UsersListProps> = ({
                     type="button"
                     onClick={(e) => handleCopyUserLink(u.username, e)}
                     className={iconBtn}
-                    title="Kopiuj publiczny link do oferty"
-                    aria-label="Kopiuj publiczny link do oferty"
+                    title={t('Kopiuj publiczny link do oferty')}
+                    aria-label={t('Kopiuj publiczny link do oferty')}
                   >
                     {copiedLinkUser === u.username ? <Check className="w-4 h-4 text-emerald-400" /> : <Share2 className="w-4 h-4" />}
                   </button>
@@ -1183,14 +1185,7 @@ export const UsersList: React.FC<UsersListProps> = ({
   );
 };
 
-/** „karty” / „kart” dla liczby większej niż 1. */
-function kartyPl(n: number): string {
-  const d = n % 10;
-  const h = n % 100;
-  return d >= 2 && d <= 4 && (h < 12 || h > 14) ? 'karty' : 'kart';
-}
-
 /** „1 karta”, „3 karty”, „5 kart”. */
 function kartyLabel(n: number): string {
-  return n === 1 ? '1 karta' : `${n} ${kartyPl(n)}`;
+  return plural(n, ['{n} karta', '{n} karty', '{n} kart'], ['{n} card', '{n} cards']);
 }

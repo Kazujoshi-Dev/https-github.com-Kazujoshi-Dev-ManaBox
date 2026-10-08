@@ -1,5 +1,6 @@
 import React from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { useT } from '../../i18n';
 
 interface CollectionPaginationProps {
   page: number;
@@ -31,11 +32,12 @@ export const CollectionPagination: React.FC<CollectionPaginationProps> = ({
   onPageChange,
   rangeLabel,
 }) => {
+  const t = useT();
   if (pageCount <= 1) return null;
 
   return (
     <nav
-      aria-label="Strony kolekcji"
+      aria-label={t('Strony kolekcji')}
       className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-2"
     >
       <span className="text-xs text-stone-400 tabular-nums">{rangeLabel}</span>
@@ -45,7 +47,7 @@ export const CollectionPagination: React.FC<CollectionPaginationProps> = ({
             type="button"
             onClick={() => onPageChange(page - 1)}
             disabled={page <= 1}
-            aria-label="Poprzednia strona"
+            aria-label={t('Poprzednia strona')}
             className={`${pageBtn} text-stone-300 hover:bg-stone-800`}
           >
             <ChevronLeft className="w-4 h-4" />
@@ -53,7 +55,7 @@ export const CollectionPagination: React.FC<CollectionPaginationProps> = ({
 
           {/* Telefon: zwięzły licznik zamiast numerów */}
           <span className="sm:hidden px-2 text-xs text-stone-300 tabular-nums">
-            Strona {page} z {pageCount}
+            {t('Strona {page} z {count}', { page, count: pageCount })}
           </span>
 
           <div className="max-sm:hidden flex items-center gap-1">
@@ -82,7 +84,7 @@ export const CollectionPagination: React.FC<CollectionPaginationProps> = ({
             type="button"
             onClick={() => onPageChange(page + 1)}
             disabled={page >= pageCount}
-            aria-label="Następna strona"
+            aria-label={t('Następna strona')}
             className={`${pageBtn} text-stone-300 hover:bg-stone-800`}
           >
             <ChevronRight className="w-4 h-4" />

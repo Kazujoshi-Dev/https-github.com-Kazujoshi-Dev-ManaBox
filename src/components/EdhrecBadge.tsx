@@ -1,5 +1,6 @@
 import React from 'react';
 import { Trophy } from 'lucide-react';
+import { useT } from '../i18n';
 
 interface EdhrecBadgeProps {
   rank: number | null | undefined;
@@ -8,6 +9,7 @@ interface EdhrecBadgeProps {
 }
 
 export const EdhrecBadge: React.FC<EdhrecBadgeProps> = ({ rank, className = '', size = 'sm' }) => {
+  const t = useT();
   if (rank === null || rank === undefined) return null;
   const numRank = typeof rank === 'number' ? rank : parseInt(String(rank), 10);
   if (isNaN(numRank) || numRank <= 0) return null;
@@ -26,7 +28,7 @@ export const EdhrecBadge: React.FC<EdhrecBadgeProps> = ({ rank, className = '', 
 
   return (
     <div
-      title={`Pozycja w rankingu EDHREC: #${numRank.toLocaleString()} (popularność w formacie Commander)`}
+      title={t('Pozycja w rankingu EDHREC: #{v1} (popularność w formacie Commander)', { v1: numRank.toLocaleString() })}
       className={`bg-stone-950/90 text-amber-300 ring-1 ring-amber-400/40 font-semibold rounded shadow-md flex items-center border border-white/20 select-none ${sizeClasses} ${className}`}
     >
       <Trophy className={`${iconSizes} fill-stone-950 stroke-[1.5] shrink-0`} />

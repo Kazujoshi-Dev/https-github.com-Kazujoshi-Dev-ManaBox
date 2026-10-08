@@ -4,6 +4,7 @@ import { formatCurrency, getCardPrice, getCardImageUri, getRarityColor, getRarit
 import { CircleDollarSign, X, Plus, Minus, Sparkles, Tag, Layers } from 'lucide-react';
 
 import { useBackToClose } from '../hooks/useBackButton';
+import { useT } from '../i18n';
 interface SellQuantityModalProps {
   isOpen: boolean;
   item: CollectionItem | null;
@@ -24,6 +25,7 @@ export const SellQuantityModal: React.FC<SellQuantityModalProps> = ({
   onClose,
   onConfirm,
 }) => {
+  const t = useT();
   // „Wstecz” na telefonie zamyka to okno zamiast opuszczać stronę
   useBackToClose(isOpen, onClose);
 
@@ -106,8 +108,8 @@ export const SellQuantityModal: React.FC<SellQuantityModalProps> = ({
               <CircleDollarSign className="w-5 h-5 stroke-[2.2]" />
             </div>
             <div>
-              <h3 className="text-base font-bold text-white">Wystaw na sprzedaż</h3>
-              <p className="text-xs text-stone-400">Wybierz ile sztuk chcesz wystawić</p>
+              <h3 className="text-base font-bold text-white">{t('Wystaw na sprzedaż')}</h3>
+              <p className="text-xs text-stone-400">{t('Wybierz ile sztuk chcesz wystawić')}</p>
             </div>
           </div>
 
@@ -146,7 +148,7 @@ export const SellQuantityModal: React.FC<SellQuantityModalProps> = ({
                 <span className="tabular-nums text-stone-300 font-bold">{item.condition} / {item.language}</span>
               </div>
               <div className="flex items-center gap-1.5 text-xs text-stone-400">
-                <span>Cena rynkowa:</span>
+                <span>{t('Cena rynkowa:')}</span>
                 <strong className="text-emerald-300 tabular-nums font-bold">{formatCurrency(marketPrice, settings.currency)}</strong>
               </div>
             </div>
@@ -156,7 +158,7 @@ export const SellQuantityModal: React.FC<SellQuantityModalProps> = ({
           {normalQty > 0 && foilQty > 0 && (
             <div>
               <label className="block text-xs font-bold text-stone-300 mb-1.5">
-                Wersja karty
+                {t('Wersja karty')}
               </label>
               <div className="grid grid-cols-2 gap-2">
                 <button
@@ -169,7 +171,7 @@ export const SellQuantityModal: React.FC<SellQuantityModalProps> = ({
                   }`}
                 >
                   <Layers className="w-3.5 h-3.5" />
-                  <span>Zwykła ({normalQty} szt.)</span>
+                  <span>{t('Zwykła')} ({normalQty} {t('szt.')})</span>
                 </button>
 
                 <button
@@ -182,7 +184,7 @@ export const SellQuantityModal: React.FC<SellQuantityModalProps> = ({
                   }`}
                 >
                   <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-                  <span>Foil ({foilQty} szt.)</span>
+                  <span>Foil ({foilQty} {t('szt.')})</span>
                 </button>
               </div>
             </div>
@@ -192,10 +194,10 @@ export const SellQuantityModal: React.FC<SellQuantityModalProps> = ({
           <div>
             <div className="flex items-center justify-between mb-2">
               <label className="text-xs font-bold text-stone-300 ">
-                Ilość wystawianych sztuk
+                {t('Ilość wystawianych sztuk')}
               </label>
               <span className="text-xs text-stone-400 tabular-nums">
-                W kolekcji: <strong className="text-stone-200">{maxAvailable} szt.</strong>
+                {t('W kolekcji:')} <strong className="text-stone-200">{maxAvailable} {t('szt.')}</strong>
               </span>
             </div>
 
@@ -240,7 +242,7 @@ export const SellQuantityModal: React.FC<SellQuantityModalProps> = ({
                 onClick={() => setQuantityToSell(maxAvailable)}
                 className="px-3.5 py-2.5 bg-stone-950 hover:bg-stone-850 text-stone-300 hover:text-emerald-300 border border-stone-800 rounded-2xl text-xs font-bold transition-all cursor-pointer"
               >
-                Wszystkie ({maxAvailable})
+                {t('Wszystkie')} ({maxAvailable})
               </button>
             </div>
           </div>
@@ -250,7 +252,7 @@ export const SellQuantityModal: React.FC<SellQuantityModalProps> = ({
             <div className="flex items-center justify-between mb-1.5">
               <label className="text-xs font-bold text-stone-300 flex items-center gap-1.5">
                 <Tag className="w-3.5 h-3.5 text-emerald-400" />
-                <span>Własna cena za sztukę (opcjonalnie)</span>
+                <span>{t('Własna cena za sztukę (opcjonalnie)')}</span>
               </label>
               <span className="text-[11px] tabular-nums text-stone-500">{settings.currency}</span>
             </div>
@@ -258,11 +260,11 @@ export const SellQuantityModal: React.FC<SellQuantityModalProps> = ({
               type="text"
               value={customPriceInput}
               onChange={(e) => setCustomPriceInput(e.target.value)}
-              placeholder={`np. ${formatCurrency(marketPrice, settings.currency)} (domyślnie rynkowa)`}
+              placeholder={t('np. {price} (domyślnie rynkowa)', { price: formatCurrency(marketPrice, settings.currency) })}
               className="w-full bg-stone-950 border border-stone-800 focus:border-emerald-500 rounded-xl px-3.5 py-2.5 text-sm text-stone-100 placeholder-stone-600 focus:outline-none transition-colors tabular-nums"
             />
             <p className="text-[11px] text-stone-500 mt-1">
-              Pozostaw puste, aby cena była automatycznie pobierana z rynkowych notowań Cardmarket/TCGPlayer.
+              {t('Pozostaw puste, aby cena była automatycznie pobierana z rynkowych notowań Cardmarket/TCGPlayer.')}
             </p>
           </div>
 
@@ -273,7 +275,7 @@ export const SellQuantityModal: React.FC<SellQuantityModalProps> = ({
               onClick={onClose}
               className="px-4 py-2 text-xs font-bold text-stone-400 hover:text-stone-200 hover:bg-stone-800 rounded-xl transition-colors cursor-pointer"
             >
-              Anuluj
+              {t('Anuluj')}
             </button>
             <button
               type="submit"
@@ -281,7 +283,7 @@ export const SellQuantityModal: React.FC<SellQuantityModalProps> = ({
               className="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white font-bold text-xs shadow-lg shadow-emerald-950/60 transition-all flex items-center gap-2 cursor-pointer"
             >
               <CircleDollarSign className="w-4 h-4 stroke-[2.2]" />
-              <span>{isSubmitting ? 'Zapisywanie...' : `Wystaw ${quantityToSell} szt. na sprzedaż`}</span>
+              <span>{isSubmitting ? t('Zapisywanie...') : t('Wystaw {n} szt. na sprzedaż', { n: quantityToSell })}</span>
             </button>
           </div>
         </form>

@@ -1,5 +1,6 @@
 import { AdminUser, AdminStats, AdminAuditEntry, AuthUser, AppSettings, Catalog, CollectionItem, DeckItem, ScryfallCard, WishlistItem, SpellbookFindCombosResponse, SpellbookVariant, RegisteredUserSummary, UserMessage, UserProfile, CitySuggestion, MapCity, WishlistMatches } from '../types';
 import { noteResponseVersion } from '../utils/appVersion';
+import { t, tServer, tk } from '../i18n';
 
 const TOKEN_KEY = 'mtg_auth_token';
 const USER_KEY = 'mtg_auth_user';
@@ -57,7 +58,7 @@ export const authApi = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ password, confirm: 'USUŃ' })
     });
-    await jsonOrThrow(res, 'Nie udało się usunąć konta.');
+    await jsonOrThrow(res, tk('Nie udało się usunąć konta.'));
   },
   changePassword: async (newPassword: string, currentPassword?: string): Promise<{ token: string; user: AuthUser }> => {
     const res = await fetchWithAuth('/api/auth/change-password', {
@@ -65,7 +66,7 @@ export const authApi = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ newPassword, currentPassword })
     });
-    return jsonOrThrow(res, 'Nie udało się zmienić hasła.');
+    return jsonOrThrow(res, tk('Nie udało się zmienić hasła.'));
   }
 };
 
@@ -81,15 +82,15 @@ const publicAuthPost = async <T,>(url: string, body: unknown, fallback: string):
 
 export const emailAuthApi = {
   resendVerification: (email: string) =>
-    publicAuthPost<{ success: true }>('/api/auth/resend-verification', { email }, 'Nie udało się wysłać linku.'),
+    publicAuthPost<{ success: true }>('/api/auth/resend-verification', { email }, tk('Nie udało się wysłać linku.')),
   verifyEmail: (token: string) =>
-    publicAuthPost<{ success: true; token?: string; user?: AuthUser }>('/api/auth/verify-email', { token }, 'Nie udało się potwierdzić adresu.'),
+    publicAuthPost<{ success: true; token?: string; user?: AuthUser }>('/api/auth/verify-email', { token }, tk('Nie udało się potwierdzić adresu.')),
   forgotPassword: (email: string) =>
-    publicAuthPost<{ success: true }>('/api/auth/forgot-password', { email }, 'Nie udało się wysłać linku.'),
+    publicAuthPost<{ success: true }>('/api/auth/forgot-password', { email }, tk('Nie udało się wysłać linku.')),
   checkResetToken: (token: string) =>
-    publicAuthPost<{ valid: boolean }>('/api/auth/reset-password/check', { token }, 'Nie udało się sprawdzić linku.'),
+    publicAuthPost<{ valid: boolean }>('/api/auth/reset-password/check', { token }, tk('Nie udało się sprawdzić linku.')),
   resetPassword: (token: string, newPassword: string) =>
-    publicAuthPost<{ success: true; token?: string; user?: AuthUser }>('/api/auth/reset-password', { token, newPassword }, 'Nie udało się zmienić hasła.')
+    publicAuthPost<{ success: true; token?: string; user?: AuthUser }>('/api/auth/reset-password', { token, newPassword }, tk('Nie udało się zmienić hasła.'))
 };
 
 /** Panel administratora — serwer sprawdza uprawnienia przy każdym zapytaniu. */
@@ -99,16 +100,16 @@ const adminPost = async (url: string, body: unknown = {}, method = 'POST') => {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body)
   });
-  return jsonOrThrow<any>(res, 'Operacja nie powiodła się.');
+  return jsonOrThrow<any>(res, tk('Operacja nie powiodła się.'));
 };
 export const adminApi = {
-  stats: async (): Promise<AdminStats> => jsonOrThrow(await fetchWithAuth('/api/admin/stats'), 'Błąd pobierania statystyk.'),
+  stats: async (): Promise<AdminStats> => jsonOrThrow(await fetchWithAuth('/api/admin/stats'), tk('Błąd pobierania statystyk.')),
   users: async (q: string, offset = 0, limit = 50): Promise<{ users: AdminUser[]; total: number }> =>
     jsonOrThrow(
       await fetchWithAuth(`/api/admin/users?q=${encodeURIComponent(q)}&offset=${offset}&limit=${limit}`),
-      'Błąd pobierania użytkowników.'
+      tk('Błąd pobierania użytkowników.')
     ),
-  audit: async (): Promise<AdminAuditEntry[]> => jsonOrThrow(await fetchWithAuth('/api/admin/audit'), 'Błąd pobierania dziennika.'),
+  audit: async (): Promise<AdminAuditEntry[]> => jsonOrThrow(await fetchWithAuth('/api/admin/audit'), tk('Błąd pobierania dziennika.')),
   rename: (id: string, username: string) => adminPost(`/api/admin/users/${encodeURIComponent(id)}/rename`, { username }),
   resetPassword: (id: string): Promise<{ tempPassword: string }> => adminPost(`/api/admin/users/${encodeURIComponent(id)}/reset-password`),
   ban: (id: string, body: { days?: number; until?: string; permanent?: boolean; reason?: string }) =>
@@ -126,7 +127,7 @@ export const collectionApi = {
   /** Dzienna historia wartości i liczby kart kolekcji. */
   history: async (days: number): Promise<{ currency: string; points: Array<{ day: string; value: number; cards: number; currency: string }> }> => {
     const res = await fetchWithAuth(`/api/collection/history?days=${days}`);
-    if (!res.ok) throw new Error('Nie udało się pobrać historii kolekcji.');
+    if (!res.ok) throw new Error(t('Nie udało się pobrać historii kolekcji.'));
     return res.json();
   },
   create: (data: unknown, onUnauthorized?: () => void) =>
@@ -224,14 +225,14 @@ export const decksApi = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ isPublic })
     });
-    await jsonOrThrow(res, 'Nie udało się zmienić udostępniania talii.');
+    await jsonOrThrow(res, tk('Nie udało się zmienić udostępniania talii.'));
   }
 };
 
 export const publicDeckApi = {
   get: async (id: string): Promise<{ deck: DeckItem; owner: { username: string }; settings: AppSettings }> => {
     const res = await fetch(`/api/public/deck/${encodeURIComponent(id)}`);
-    return jsonOrThrow(res, 'Nie udało się pobrać talii.');
+    return jsonOrThrow(res, tk('Nie udało się pobrać talii.'));
   }
 };
 
@@ -275,8 +276,8 @@ export const spellbookApi = {
       body: JSON.stringify({ commanders, main: mainCards })
     });
     if (!res.ok) {
-      const err = await res.json().catch(() => ({ error: 'Błąd pobierania combo' }));
-      throw new Error(err.error || `Błąd serwera (${res.status})`);
+      const err = await res.json().catch(() => ({ error: tk('Błąd pobierania combo') }));
+      throw new Error(tServer(err.error) || t('Błąd serwera ({status})', { status: res.status }));
     }
     return res.json();
   },
@@ -284,8 +285,8 @@ export const spellbookApi = {
   getCardCombos: async (cardName: string): Promise<{ results: SpellbookVariant[]; count: number }> => {
     const res = await fetch(`/api/spellbook/card-combos?cardName=${encodeURIComponent(cardName)}`);
     if (!res.ok) {
-      const err = await res.json().catch(() => ({ error: 'Błąd pobierania combosów dla karty' }));
-      throw new Error(err.error || `Błąd serwera (${res.status})`);
+      const err = await res.json().catch(() => ({ error: tk('Błąd pobierania combosów dla karty') }));
+      throw new Error(tServer(err.error) || t('Błąd serwera ({status})', { status: res.status }));
     }
     return res.json();
   },
@@ -305,7 +306,7 @@ export const publicSaleApi = {
     const res = await fetch(`/api/public/sale/${encodeURIComponent(userRef)}`);
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
-      throw new Error(err.error || `Błąd pobierania oferty (${res.status})`);
+      throw new Error(tServer(err.error) || t('Błąd pobierania oferty ({status})', { status: res.status }));
     }
     return res.json();
   }
@@ -316,7 +317,7 @@ export const usersApi = {
     const res = await fetch('/api/users');
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
-      throw new Error(err.error || `Błąd pobierania listy użytkowników (${res.status})`);
+      throw new Error(tServer(err.error) || t('Błąd pobierania listy użytkowników ({status})', { status: res.status }));
     }
     return res.json();
   },
@@ -329,7 +330,7 @@ export const usersApi = {
     const res = await fetch(`/api/public/wishlist/${encodeURIComponent(userRef)}`);
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
-      throw new Error(err.error || `Błąd pobierania listy życzeń (${res.status})`);
+      throw new Error(tServer(err.error) || t('Błąd pobierania listy życzeń ({status})', { status: res.status }));
     }
     return res.json();
   }
@@ -338,7 +339,7 @@ export const usersApi = {
 async function jsonOrThrow<T>(res: Response, fallback: string): Promise<T> {
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
-    throw new Error(err.error || `${fallback} (${res.status})`);
+    throw new Error(tServer(err.error) || `${t(fallback)} (${res.status})`);
   }
   return res.json();
 }
@@ -359,12 +360,12 @@ export interface EdhrecCommanderData {
 }
 export const edhrecApi = {
   commander: async (name: string): Promise<EdhrecCommanderData> =>
-    jsonOrThrow(await fetchWithAuth(`/api/edhrec/commander?name=${encodeURIComponent(name)}`), 'Nie udało się pobrać rekomendacji EDHREC.')
+    jsonOrThrow(await fetchWithAuth(`/api/edhrec/commander?name=${encodeURIComponent(name)}`), tk('Nie udało się pobrać rekomendacji EDHREC.'))
 };
 
 export const profileApi = {
   get: async (): Promise<UserProfile> =>
-    jsonOrThrow(await fetchWithAuth('/api/profile'), 'Błąd pobierania profilu'),
+    jsonOrThrow(await fetchWithAuth('/api/profile'), tk('Błąd pobierania profilu')),
   /** Zapis miejscowości wybranej z podpowiedzi; null usuwa miejscowość. */
   saveCity: async (label: string | null): Promise<UserProfile> =>
     jsonOrThrow(
@@ -373,17 +374,17 @@ export const profileApi = {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ label })
       }),
-      'Błąd zapisu miejscowości'
+      tk('Błąd zapisu miejscowości')
     ),
   searchCities: async (q: string): Promise<CitySuggestion[]> =>
-    jsonOrThrow(await fetchWithAuth(`/api/geo/cities?q=${encodeURIComponent(q)}`), 'Błąd wyszukiwania miejscowości')
+    jsonOrThrow(await fetchWithAuth(`/api/geo/cities?q=${encodeURIComponent(q)}`), tk('Błąd wyszukiwania miejscowości'))
 };
 
 export const sellersApi = {
   getMap: async (): Promise<{ cities: MapCity[]; myCity: string | null }> =>
-    jsonOrThrow(await fetchWithAuth('/api/sellers/map'), 'Błąd pobierania mapy sprzedawców'),
+    jsonOrThrow(await fetchWithAuth('/api/sellers/map'), tk('Błąd pobierania mapy sprzedawców')),
   getWishlistMatches: async (): Promise<WishlistMatches> =>
-    jsonOrThrow(await fetchWithAuth('/api/users/wishlist-matches'), 'Błąd pobierania dopasowań')
+    jsonOrThrow(await fetchWithAuth('/api/users/wishlist-matches'), tk('Błąd pobierania dopasowań'))
 };
 
 export const messagesApi = {
@@ -391,7 +392,7 @@ export const messagesApi = {
     const res = await fetchWithAuth('/api/messages/inbox');
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
-      throw new Error(err.error || `Błąd pobierania skrzynki odbiorczej (${res.status})`);
+      throw new Error(tServer(err.error) || t('Błąd pobierania skrzynki odbiorczej ({status})', { status: res.status }));
     }
     return res.json();
   },
@@ -400,7 +401,7 @@ export const messagesApi = {
     const res = await fetchWithAuth('/api/messages/sent');
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
-      throw new Error(err.error || `Błąd pobierania skrzynki nadawczej (${res.status})`);
+      throw new Error(tServer(err.error) || t('Błąd pobierania skrzynki nadawczej ({status})', { status: res.status }));
     }
     return res.json();
   },
@@ -421,7 +422,7 @@ export const messagesApi = {
     });
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
-      throw new Error(err.error || `Błąd wysyłania wiadomości (${res.status})`);
+      throw new Error(tServer(err.error) || t('Błąd wysyłania wiadomości ({status})', { status: res.status }));
     }
     return res.json();
   },
@@ -432,7 +433,7 @@ export const messagesApi = {
     });
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
-      throw new Error(err.error || `Błąd aktualizacji statusu (${res.status})`);
+      throw new Error(tServer(err.error) || t('Błąd aktualizacji statusu ({status})', { status: res.status }));
     }
     return res.json();
   },
@@ -443,7 +444,7 @@ export const messagesApi = {
     });
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
-      throw new Error(err.error || `Błąd aktualizacji wiadomości (${res.status})`);
+      throw new Error(tServer(err.error) || t('Błąd aktualizacji wiadomości ({status})', { status: res.status }));
     }
     return res.json();
   },
@@ -454,7 +455,7 @@ export const messagesApi = {
     });
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
-      throw new Error(err.error || `Błąd usuwania wiadomości (${res.status})`);
+      throw new Error(tServer(err.error) || t('Błąd usuwania wiadomości ({status})', { status: res.status }));
     }
     return res.json();
   },
@@ -462,7 +463,7 @@ export const messagesApi = {
   /** Zablokowani użytkownicy (nie mogą do mnie pisać). */
   listBlocked: async (): Promise<Array<{ id: string; username: string; blockedAt: string }>> => {
     const res = await fetchWithAuth('/api/messages/blocked');
-    if (!res.ok) throw new Error('Nie udało się pobrać listy zablokowanych.');
+    if (!res.ok) throw new Error(t('Nie udało się pobrać listy zablokowanych.'));
     return res.json();
   },
 
@@ -473,13 +474,13 @@ export const messagesApi = {
       body: JSON.stringify(who)
     });
     const data = await res.json().catch(() => ({}));
-    if (!res.ok) throw new Error(data.error || 'Nie udało się zablokować użytkownika.');
+    if (!res.ok) throw new Error(tServer(data.error) || t('Nie udało się zablokować użytkownika.'));
     return data;
   },
 
   unblock: async (userId: string): Promise<void> => {
     const res = await fetchWithAuth(`/api/messages/block/${encodeURIComponent(userId)}`, { method: 'DELETE' });
-    if (!res.ok) throw new Error('Nie udało się odblokować użytkownika.');
+    if (!res.ok) throw new Error(t('Nie udało się odblokować użytkownika.'));
   }
 };
 
@@ -506,20 +507,20 @@ export interface ChangelogPendingDraft extends ChangelogItem {
 export const changelogApi = {
   list: async (limit = 60): Promise<{ releases: ChangelogRelease[]; publishTime: string }> => {
     const res = await fetch(`/api/changelog?limit=${limit}`);
-    return jsonOrThrow(res, 'Nie udało się pobrać dziennika zmian.');
+    return jsonOrThrow(res, tk('Nie udało się pobrać dziennika zmian.'));
   },
   pending: async (): Promise<{ drafts: ChangelogPendingDraft[]; cutoff: string }> =>
-    jsonOrThrow(await fetchWithAuth('/api/admin/changelog/pending'), 'Nie udało się pobrać zmian do publikacji.'),
+    jsonOrThrow(await fetchWithAuth('/api/admin/changelog/pending'), tk('Nie udało się pobrać zmian do publikacji.')),
   add: async (draft: { type: ChangelogType; area?: string; text: string; day?: string }): Promise<{ id: string }> =>
     jsonOrThrow(
       await fetchWithAuth('/api/admin/changelog/drafts', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(draft) }),
-      'Nie udało się dodać zmiany.'
+      tk('Nie udało się dodać zmiany.')
     ),
   remove: async (id: string): Promise<void> => {
-    await jsonOrThrow(await fetchWithAuth(`/api/admin/changelog/drafts/${encodeURIComponent(id)}`, { method: 'DELETE' }), 'Nie udało się usunąć wpisu.');
+    await jsonOrThrow(await fetchWithAuth(`/api/admin/changelog/drafts/${encodeURIComponent(id)}`, { method: 'DELETE' }), tk('Nie udało się usunąć wpisu.'));
   },
   publishNow: async (): Promise<{ published: number }> =>
-    jsonOrThrow(await fetchWithAuth('/api/admin/changelog/publish', { method: 'POST' }), 'Nie udało się opublikować zmian.')
+    jsonOrThrow(await fetchWithAuth('/api/admin/changelog/publish', { method: 'POST' }), tk('Nie udało się opublikować zmian.'))
 };
 
 // --- Zgłoszenia błędów ---
@@ -541,23 +542,23 @@ export const bugReportsApi = {
   send: async (data: { description: string; page?: string; screenshot?: string | null }): Promise<{ id: number }> =>
     jsonOrThrow(
       await fetchWithAuth('/api/bug-reports', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) }),
-      'Nie udało się wysłać zgłoszenia.'
+      tk('Nie udało się wysłać zgłoszenia.')
     ),
   list: async (status: BugReportStatus | 'open' | 'all' = 'open'): Promise<{ reports: BugReport[]; newCount: number }> =>
-    jsonOrThrow(await fetchWithAuth(`/api/admin/bug-reports?status=${status}`), 'Nie udało się pobrać zgłoszeń.'),
+    jsonOrThrow(await fetchWithAuth(`/api/admin/bug-reports?status=${status}`), tk('Nie udało się pobrać zgłoszeń.')),
   setStatus: async (id: number, status: BugReportStatus): Promise<void> => {
     await jsonOrThrow(
       await fetchWithAuth(`/api/admin/bug-reports/${id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status }) }),
-      'Nie udało się zmienić statusu.'
+      tk('Nie udało się zmienić statusu.')
     );
   },
   remove: async (id: number): Promise<void> => {
-    await jsonOrThrow(await fetchWithAuth(`/api/admin/bug-reports/${id}`, { method: 'DELETE' }), 'Nie udało się usunąć zgłoszenia.');
+    await jsonOrThrow(await fetchWithAuth(`/api/admin/bug-reports/${id}`, { method: 'DELETE' }), tk('Nie udało się usunąć zgłoszenia.'));
   },
   /** Zrzut ekranu jako adres blob: (wymaga nagłówka autoryzacji, więc nie da się go podać wprost w <img>). */
   screenshotUrl: async (id: number): Promise<string> => {
     const res = await fetchWithAuth(`/api/admin/bug-reports/${id}/screenshot`);
-    if (!res.ok) throw new Error('Nie udało się wczytać zrzutu ekranu.');
+    if (!res.ok) throw new Error(t('Nie udało się wczytać zrzutu ekranu.'));
     return URL.createObjectURL(await res.blob());
   }
 };

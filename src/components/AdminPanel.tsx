@@ -9,6 +9,7 @@ import {
 import { adminApi } from '../services/api';
 import { useBackToClose } from '../hooks/useBackButton';
 import type { AdminAuditEntry, AdminStats, AdminUser, AuthUser } from '../types';
+import { useT, locale, tk, t as tr } from '../i18n';
 
 interface AdminPanelProps {
   currentUser: AuthUser | null;
@@ -19,26 +20,26 @@ const PAGE = 50;
 
 const fmtDate = (iso: string | null | undefined, withTime = false) =>
   iso
-    ? new Date(iso).toLocaleString('pl-PL', withTime ? { dateStyle: 'medium', timeStyle: 'short' } : { dateStyle: 'medium' })
+    ? new Date(iso).toLocaleString(locale(), withTime ? { dateStyle: 'medium', timeStyle: 'short' } : { dateStyle: 'medium' })
     : '—';
 
-const fmtNum = (n: number) => n.toLocaleString('pl-PL');
+const fmtNum = (n: number) => n.toLocaleString(locale());
 
 function banLabel(u: AdminUser) {
   if (!u.banned) return null;
-  return u.banPermanent ? 'Zablokowany na stałe' : `Zablokowany do ${fmtDate(u.bannedUntil, true)}`;
+  return u.banPermanent ? tr('Zablokowany na stałe') : tr('Zablokowany do {date}', { date: fmtDate(u.bannedUntil, true) });
 }
 
 const ACTION_LABELS: Record<string, string> = {
-  rename: 'Zmiana nazwy',
-  reset_password: 'Reset hasła',
-  ban: 'Blokada',
-  unban: 'Zdjęcie blokady',
-  logout_all: 'Wylogowanie ze wszystkich urządzeń',
-  hide_sale: 'Ukrycie oferty',
-  show_sale: 'Przywrócenie oferty',
-  verify_email: 'Ręczne potwierdzenie e-mail',
-  delete: 'Usunięcie konta'
+  rename: tk('Zmiana nazwy'),
+  reset_password: tk('Reset hasła'),
+  ban: tk('Blokada'),
+  unban: tk('Zdjęcie blokady'),
+  logout_all: tk('Wylogowanie ze wszystkich urządzeń'),
+  hide_sale: tk('Ukrycie oferty'),
+  show_sale: tk('Przywrócenie oferty'),
+  verify_email: tk('Ręczne potwierdzenie e-mail'),
+  delete: tk('Usunięcie konta')
 };
 
 function auditDetails(e: AdminAuditEntry): string {
@@ -47,9 +48,9 @@ function auditDetails(e: AdminAuditEntry): string {
     case 'rename':
       return `${d.from} → ${d.to}`;
     case 'ban':
-      return [d.permanent ? 'na stałe' : `do ${fmtDate(d.until, true)}`, d.reason ? `powód: ${d.reason}` : ''].filter(Boolean).join(', ');
+      return [d.permanent ? tr('na stałe') : tr('do {date}', { date: fmtDate(d.until, true) }), d.reason ? tr('powód: {reason}', { reason: d.reason }) : ''].filter(Boolean).join(', ');
     case 'logout_all':
-      return `sesji: ${d.sessions ?? 0}`;
+      return tr('sesji: {n}', { n: d.sessions ?? 0 });
     case 'delete':
       return d.email ? String(d.email) : '';
     default:
@@ -58,6 +59,7 @@ function auditDetails(e: AdminAuditEntry): string {
 }
 
 export const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, showToast }) => {
+  const t = useT();
   const [view, setView] = useState<'users' | 'audit' | 'changelog' | 'bugs'>('users');
   const [bugCount, setBugCount] = useState(0);
   useEffect(() => {
@@ -96,8 +98,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, showToast }
 
   // Wyszukiwanie z krótkim opóźnieniem po wpisaniu
   useEffect(() => {
-    const t = setTimeout(() => loadUsers(query), query ? 300 : 0);
-    return () => clearTimeout(t);
+    const timer = setTimeout(() => loadUsers(query), query ? 300 : 0);
+    return () => clearTimeout(timer);
   }, [query, loadUsers]);
 
   useEffect(() => {
@@ -114,12 +116,12 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, showToast }
 
   const statTiles = stats
     ? [
-        { label: 'Użytkownicy', value: fmtNum(stats.users), icon: Users, color: 'text-amber-400' },
-        { label: 'Nowi (7 dni)', value: fmtNum(stats.newUsers7d), icon: UserPlus, color: 'text-emerald-400' },
-        { label: 'Aktywni (7 dni)', value: fmtNum(stats.activeUsers7d), icon: Activity, color: 'text-amber-400' },
-        { label: 'Zablokowani', value: fmtNum(stats.bannedUsers), icon: Ban, color: 'text-rose-400' },
-        { label: 'Karty w kolekcjach', value: fmtNum(stats.totalCards), icon: Layers, color: 'text-amber-300' },
-        { label: 'Karty na sprzedaż', value: fmtNum(stats.forSaleCards), icon: CircleDollarSign, color: 'text-emerald-400' }
+        { label: t('Użytkownicy'), value: fmtNum(stats.users), icon: Users, color: 'text-amber-400' },
+        { label: t('Nowi (7 dni)'), value: fmtNum(stats.newUsers7d), icon: UserPlus, color: 'text-emerald-400' },
+        { label: t('Aktywni (7 dni)'), value: fmtNum(stats.activeUsers7d), icon: Activity, color: 'text-amber-400' },
+        { label: t('Zablokowani'), value: fmtNum(stats.bannedUsers), icon: Ban, color: 'text-rose-400' },
+        { label: t('Karty w kolekcjach'), value: fmtNum(stats.totalCards), icon: Layers, color: 'text-amber-300' },
+        { label: t('Karty na sprzedaż'), value: fmtNum(stats.forSaleCards), icon: CircleDollarSign, color: 'text-emerald-400' }
       ]
     : [];
 
@@ -130,15 +132,15 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, showToast }
         <div className="flex items-start justify-between gap-3">
           <div className="flex items-center gap-3 min-w-0">
             <div className="min-w-0">
-              <h2 className="text-2xl font-semibold tracking-tight text-stone-50">Panel administratora</h2>
-              <p className="text-xs text-stone-400 truncate">Zalogowano jako {currentUser?.username} · wszystkie działania trafiają do dziennika</p>
+              <h2 className="text-2xl font-semibold tracking-tight text-stone-50">{t('Panel administratora')}</h2>
+              <p className="text-xs text-stone-400 truncate">{t('Zalogowano jako {name} · wszystkie działania trafiają do dziennika', { name: currentUser?.username })}</p>
             </div>
           </div>
           <button
             type="button"
             onClick={refreshAll}
-            aria-label="Odśwież"
-            title="Odśwież"
+            aria-label={t('Odśwież')}
+            title={t('Odśwież')}
             className="w-10 h-10 rounded-xl bg-stone-800 hover:bg-stone-700 text-stone-300 flex items-center justify-center shrink-0 cursor-pointer"
           >
             <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
@@ -154,24 +156,24 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, showToast }
               <p className="text-xl font-semibold text-stone-50 mt-0.5 tabular-nums">{value}</p>
             </div>
           ))}
-          {!stats && <p className="col-span-full text-xs text-stone-500">Ładowanie statystyk...</p>}
+          {!stats && <p className="col-span-full text-xs text-stone-500">{t('Ładowanie statystyk...')}</p>}
         </div>
 
         {stats && (
           <p className="text-xs text-stone-400 flex items-start gap-1.5">
             <Database className={`w-3.5 h-3.5 shrink-0 mt-px ${stats.cardDb.ready ? 'text-emerald-400' : 'text-amber-400'}`} />
             <span>
-              Baza kart Scryfall:{' '}
+              {t('Baza kart Scryfall:')}{' '}
               {stats.cardDb.ready ? (
                 <>
-                  <strong className="text-stone-200">{fmtNum(stats.cardDb.cards)}</strong> wydań, ostatnia synchronizacja{' '}
+                  <strong className="text-stone-200">{fmtNum(stats.cardDb.cards)}</strong> {t('wydań, ostatnia synchronizacja')}{' '}
                   {fmtDate(stats.cardDb.lastSyncAt, true)}
                 </>
               ) : (
-                <strong className="text-amber-300">niedostępna</strong>
+                <strong className="text-amber-300">{t('niedostępna')}</strong>
               )}
-              {stats.cardDb.syncing && ' · trwa synchronizacja'}
-              {stats.cardDb.lastSyncError && <span className="text-rose-300"> · błąd: {stats.cardDb.lastSyncError}</span>}
+              {stats.cardDb.syncing && t(' · trwa synchronizacja')}
+              {stats.cardDb.lastSyncError && <span className="text-rose-300"> · {t('błąd:')} {stats.cardDb.lastSyncError}</span>}
             </span>
           </p>
         )}
@@ -180,10 +182,10 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, showToast }
       {/* Przełącznik widoku */}
       <div className="flex flex-wrap gap-2">
         {[
-          { id: 'users' as const, label: 'Użytkownicy', icon: Users },
-          { id: 'audit' as const, label: 'Dziennik działań', icon: ScrollText },
-          { id: 'bugs' as const, label: bugCount ? `Zgłoszenia (${bugCount})` : 'Zgłoszenia', icon: Bug },
-          { id: 'changelog' as const, label: 'Dziennik zmian', icon: Newspaper }
+          { id: 'users' as const, label: t('Użytkownicy'), icon: Users },
+          { id: 'audit' as const, label: t('Dziennik działań'), icon: ScrollText },
+          { id: 'bugs' as const, label: bugCount ? `${t('Zgłoszenia')} (${bugCount})` : t('Zgłoszenia'), icon: Bug },
+          { id: 'changelog' as const, label: t('Dziennik zmian'), icon: Newspaper }
         ].map(({ id, label, icon: Icon }) => (
           <button
             key={id}
@@ -213,13 +215,13 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, showToast }
               type="search"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Szukaj po nazwie lub e-mailu..."
-              aria-label="Szukaj użytkownika"
+              placeholder={t('Szukaj po nazwie lub e-mailu...')}
+              aria-label={t('Szukaj użytkownika')}
               className="w-full bg-stone-900 border border-stone-800 focus:border-rose-500 rounded-xl pl-10 pr-3 py-3 text-sm text-stone-100 placeholder-stone-500 focus:outline-none"
             />
           </div>
           <p className="text-xs text-stone-500">
-            {loading && users.length === 0 ? 'Ładowanie...' : `Znaleziono: ${fmtNum(total)}`}
+            {loading && users.length === 0 ? t('Ładowanie...') : t('Znaleziono: {n}', { n: fmtNum(total) })}
           </p>
 
           <ul className="space-y-2">
@@ -240,19 +242,19 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, showToast }
                   <div className="min-w-0 flex-1 space-y-1">
                     <div className="flex items-center gap-1.5 flex-wrap">
                       <span className="text-sm font-bold text-stone-100 truncate max-w-[60vw] sm:max-w-none">{u.username}</span>
-                      {u.isAdmin && <Badge tone="rose">Admin</Badge>}
-                      {u.banned && <Badge tone="red">{u.banPermanent ? 'Ban stały' : 'Ban czasowy'}</Badge>}
-                      {u.saleHidden && <Badge tone="amber">Oferta ukryta</Badge>}
-                      {u.mustChangePassword && <Badge tone="stone">Hasło tymczasowe</Badge>}
-                      {!u.emailVerified && <Badge tone="amber">E-mail niepotwierdzony</Badge>}
+                      {u.isAdmin && <Badge tone="rose">{t('Admin')}</Badge>}
+                      {u.banned && <Badge tone="red">{u.banPermanent ? t('Ban stały') : t('Ban czasowy')}</Badge>}
+                      {u.saleHidden && <Badge tone="amber">{t('Oferta ukryta')}</Badge>}
+                      {u.mustChangePassword && <Badge tone="stone">{t('Hasło tymczasowe')}</Badge>}
+                      {!u.emailVerified && <Badge tone="amber">{t('E-mail niepotwierdzony')}</Badge>}
                     </div>
                     <p className="text-xs text-stone-400 truncate">{u.email}</p>
                     <p className="text-[11px] text-stone-500 flex flex-wrap gap-x-3 gap-y-0.5">
-                      <span>Rejestracja: {fmtDate(u.createdAt)}</span>
-                      <span>Aktywność: {fmtDate(u.lastActiveAt)}</span>
-                      <span>Karty: {fmtNum(u.totalCards)}</span>
-                      <span>Sprzedaż: {fmtNum(u.forSaleCards)}</span>
-                      <span>Lista życzeń: {fmtNum(u.wishlistCount)}</span>
+                      <span>{t('Rejestracja:')} {fmtDate(u.createdAt)}</span>
+                      <span>{t('Aktywność:')} {fmtDate(u.lastActiveAt)}</span>
+                      <span>{t('Karty:')} {fmtNum(u.totalCards)}</span>
+                      <span>{t('Sprzedaż:')} {fmtNum(u.forSaleCards)}</span>
+                      <span>{t('Lista życzeń:')} {fmtNum(u.wishlistCount)}</span>
                       {u.city && <span>{u.city}</span>}
                     </p>
                   </div>
@@ -269,26 +271,26 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, showToast }
               disabled={loading}
               className="w-full h-11 rounded-xl bg-stone-900 border border-stone-800 text-sm font-semibold text-stone-300 hover:text-stone-100 cursor-pointer disabled:opacity-50"
             >
-              {loading ? 'Ładowanie...' : `Pokaż więcej (${fmtNum(total - users.length)})`}
+              {loading ? t('Ładowanie...') : t('Pokaż więcej ({v1})', { v1: fmtNum(total - users.length) })}
             </button>
           )}
         </div>
       ) : (
         <div className="bg-stone-900 border border-stone-800 rounded-2xl divide-y divide-stone-800">
           {audit === null ? (
-            <p className="p-4 text-sm text-stone-400">Ładowanie...</p>
+            <p className="p-4 text-sm text-stone-400">{t('Ładowanie...')}</p>
           ) : audit.length === 0 ? (
-            <p className="p-4 text-sm text-stone-400">Brak wpisów. Tu pojawią się działania administratorów.</p>
+            <p className="p-4 text-sm text-stone-400">{t('Brak wpisów. Tu pojawią się działania administratorów.')}</p>
           ) : (
             audit.map((e) => (
               <div key={e.id} className="p-3 sm:p-4 text-sm flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-4">
                 <span className="text-xs text-stone-500 sm:w-40 shrink-0">{fmtDate(e.createdAt, true)}</span>
                 <span className="flex-1 min-w-0">
-                  <strong className="text-stone-100">{ACTION_LABELS[e.action] || e.action}</strong>
+                  <strong className="text-stone-100">{ACTION_LABELS[e.action] ? t(ACTION_LABELS[e.action]) : e.action}</strong>
                   {e.targetUsername && <span className="text-stone-300"> · {e.targetUsername}</span>}
                   {auditDetails(e) && <span className="text-stone-400"> · {auditDetails(e)}</span>}
                 </span>
-                <span className="text-xs text-stone-500 shrink-0">przez {e.adminUsername || '—'}</span>
+                <span className="text-xs text-stone-500 shrink-0">{t('przez')} {e.adminUsername || '—'}</span>
               </div>
             ))
           )}
@@ -333,9 +335,9 @@ const Section: React.FC<{ title: string; icon: React.ElementType; danger?: boole
 );
 
 const BAN_PRESETS = [
-  { label: '1 dzień', days: 1 },
-  { label: '7 dni', days: 7 },
-  { label: '30 dni', days: 30 }
+  { label: tk('1 dzień'), days: 1 },
+  { label: tk('7 dni'), days: 7 },
+  { label: tk('30 dni'), days: 30 }
 ];
 
 interface UserDialogProps {
@@ -346,6 +348,7 @@ interface UserDialogProps {
 }
 
 const UserDialog: React.FC<UserDialogProps> = ({ user, isSelf, onClose, onChanged }) => {
+  const t = useT();
   useBackToClose(true, onClose);
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -382,7 +385,7 @@ const UserDialog: React.FC<UserDialogProps> = ({ user, isSelf, onClose, onChange
       onClick={(e) => e.target === e.currentTarget && onClose()}
       role="dialog"
       aria-modal="true"
-      aria-label={`Zarządzanie kontem ${user.username}`}
+      aria-label={t('Zarządzanie kontem {username}', { username: user.username })}
     >
       <div className="w-full sm:max-w-xl max-h-[92dvh] overflow-y-auto bg-stone-900 border border-stone-800 rounded-t-3xl sm:rounded-2xl shadow-2xl pb-[env(safe-area-inset-bottom)] max-sm:animate-[slideUp_.2s_ease-out]">
         <div className="sticky top-0 z-10 bg-stone-900 border-b border-stone-800 px-4 py-3 flex items-center justify-between gap-3">
@@ -393,7 +396,7 @@ const UserDialog: React.FC<UserDialogProps> = ({ user, isSelf, onClose, onChange
           <button
             type="button"
             onClick={onClose}
-            aria-label="Zamknij"
+            aria-label={t('Zamknij')}
             className="w-10 h-10 rounded-full bg-stone-800 hover:bg-stone-700 text-stone-300 flex items-center justify-center shrink-0 cursor-pointer"
           >
             <X className="w-5 h-5" />
@@ -409,34 +412,34 @@ const UserDialog: React.FC<UserDialogProps> = ({ user, isSelf, onClose, onChange
           )}
           {protectedAccount && (
             <p className="text-xs text-amber-200 bg-amber-500/10 border border-amber-500/30 rounded-lg p-2.5">
-              To konto administratora: blokada, reset hasła, ukrycie oferty i usunięcie są niedostępne.
+              {t('To konto administratora: blokada, reset hasła, ukrycie oferty i usunięcie są niedostępne.')}
             </p>
           )}
 
           <div className="text-xs text-stone-400 grid grid-cols-2 gap-x-3 gap-y-1">
-            <span>Rejestracja: <strong className="text-stone-200">{fmtDate(user.createdAt)}</strong></span>
-            <span>Aktywność: <strong className="text-stone-200">{fmtDate(user.lastActiveAt, true)}</strong></span>
-            <span>Karty: <strong className="text-stone-200">{fmtNum(user.totalCards)}</strong></span>
-            <span>Na sprzedaż: <strong className="text-stone-200">{fmtNum(user.forSaleCards)}</strong></span>
-            <span>Lista życzeń: <strong className="text-stone-200">{fmtNum(user.wishlistCount)}</strong></span>
-            <span>Miejscowość: <strong className="text-stone-200">{user.city || '—'}</strong></span>
+            <span>{t('Rejestracja:')} <strong className="text-stone-200">{fmtDate(user.createdAt)}</strong></span>
+            <span>{t('Aktywność:')} <strong className="text-stone-200">{fmtDate(user.lastActiveAt, true)}</strong></span>
+            <span>{t('Karty:')} <strong className="text-stone-200">{fmtNum(user.totalCards)}</strong></span>
+            <span>{t('Na sprzedaż:')} <strong className="text-stone-200">{fmtNum(user.forSaleCards)}</strong></span>
+            <span>{t('Lista życzeń:')} <strong className="text-stone-200">{fmtNum(user.wishlistCount)}</strong></span>
+            <span>{t('Miejscowość:')} <strong className="text-stone-200">{user.city || '—'}</strong></span>
           </div>
 
           {/* Blokada */}
-          <Section title="Blokada konta" icon={Ban}>
+          <Section title={t('Blokada konta')} icon={Ban}>
             {user.banned ? (
               <div className="space-y-2.5">
                 <p className="text-sm text-red-200">
                   {banLabel(user)}
-                  {user.banReason && <span className="block text-xs text-stone-400 mt-0.5">Powód: {user.banReason}</span>}
+                  {user.banReason && <span className="block text-xs text-stone-400 mt-0.5">{t('Powód:')} {user.banReason}</span>}
                 </p>
                 <button
                   type="button"
                   disabled={!!busy}
-                  onClick={() => run('unban', async () => { await adminApi.unban(user.id); return `Zdjęto blokadę z konta ${user.username}.`; })}
+                  onClick={() => run('unban', async () => { await adminApi.unban(user.id); return t('Zdjęto blokadę z konta {name}.', { name: user.username }); })}
                   className={`${btn} bg-emerald-600 hover:bg-emerald-500 text-white`}
                 >
-                  {spin('unban')}Zdejmij blokadę
+                  {spin('unban')}{t('Zdejmij blokadę')}
                 </button>
               </div>
             ) : (
@@ -449,7 +452,7 @@ const UserDialog: React.FC<UserDialogProps> = ({ user, isSelf, onClose, onChange
                       onClick={() => setBanMode(p.days)}
                       className={`h-9 px-3 rounded-lg text-xs font-semibold border cursor-pointer ${banMode === p.days ? 'bg-rose-500/20 border-rose-500/50 text-rose-100' : 'bg-stone-900 border-stone-700 text-stone-300'}`}
                     >
-                      {p.label}
+                      {t(p.label)}
                     </button>
                   ))}
                   <button
@@ -457,14 +460,14 @@ const UserDialog: React.FC<UserDialogProps> = ({ user, isSelf, onClose, onChange
                     onClick={() => setBanMode('custom')}
                     className={`h-9 px-3 rounded-lg text-xs font-semibold border cursor-pointer ${banMode === 'custom' ? 'bg-rose-500/20 border-rose-500/50 text-rose-100' : 'bg-stone-900 border-stone-700 text-stone-300'}`}
                   >
-                    Do daty
+                    {t('Do daty')}
                   </button>
                   <button
                     type="button"
                     onClick={() => setBanMode('permanent')}
                     className={`h-9 px-3 rounded-lg text-xs font-semibold border cursor-pointer ${banMode === 'permanent' ? 'bg-red-600/30 border-red-500/60 text-red-100' : 'bg-stone-900 border-stone-700 text-stone-300'}`}
                   >
-                    Na stałe
+                    {t('Na stałe')}
                   </button>
                 </div>
                 {banMode === 'custom' && (
@@ -472,7 +475,7 @@ const UserDialog: React.FC<UserDialogProps> = ({ user, isSelf, onClose, onChange
                     type="datetime-local"
                     value={banUntil}
                     onChange={(e) => setBanUntil(e.target.value)}
-                    aria-label="Blokada do"
+                    aria-label={t('Blokada do')}
                     className={input}
                   />
                 )}
@@ -481,8 +484,8 @@ const UserDialog: React.FC<UserDialogProps> = ({ user, isSelf, onClose, onChange
                   value={banReason}
                   onChange={(e) => setBanReason(e.target.value)}
                   maxLength={500}
-                  placeholder="Powód (zobaczy go użytkownik przy logowaniu)"
-                  aria-label="Powód blokady"
+                  placeholder={t('Powód (zobaczy go użytkownik przy logowaniu)')}
+                  aria-label={t('Powód blokady')}
                   className={input}
                 />
                 <button
@@ -496,46 +499,46 @@ const UserDialog: React.FC<UserDialogProps> = ({ user, isSelf, onClose, onChange
                         until: banMode === 'custom' ? new Date(banUntil).toISOString() : undefined,
                         reason: banReason.trim() || undefined
                       });
-                      return `Zablokowano konto ${user.username}.`;
+                      return t('Zablokowano konto {name}.', { name: user.username });
                     })
                   }
                   className={`${btn} bg-rose-600 hover:bg-rose-500 text-white`}
                 >
-                  {spin('ban')}Zablokuj
+                  {spin('ban')}{t('Zablokuj')}
                 </button>
-                <p className="text-[11px] text-stone-500">Blokada od razu wylogowuje użytkownika i ukrywa jego ofertę, listę życzeń i miejsce na mapie.</p>
+                <p className="text-[11px] text-stone-500">{t('Blokada od razu wylogowuje użytkownika i ukrywa jego ofertę, listę życzeń i miejsce na mapie.')}</p>
               </div>
             )}
           </Section>
 
           {/* Nazwa */}
-          <Section title="Nazwa użytkownika" icon={Pencil}>
+          <Section title={t('Nazwa użytkownika')} icon={Pencil}>
             <div className="flex gap-2">
               <input
                 type="text"
                 value={newName}
                 onChange={(e) => setNewName(e.target.value)}
                 maxLength={32}
-                aria-label="Nowa nazwa"
+                aria-label={t('Nowa nazwa')}
                 className={input}
               />
               <button
                 type="button"
                 disabled={!!busy || newName.trim() === user.username || newName.trim().length < 2}
-                onClick={() => run('rename', async () => { await adminApi.rename(user.id, newName.trim()); return `Zmieniono nazwę na ${newName.trim()}.`; })}
+                onClick={() => run('rename', async () => { await adminApi.rename(user.id, newName.trim()); return t('Zmieniono nazwę na {name}.', { name: newName.trim() }); })}
                 className={`${btn} bg-stone-700 hover:bg-stone-600 text-stone-100 shrink-0`}
               >
-                {spin('rename')}Zapisz
+                {spin('rename')}{t('Zapisz')}
               </button>
             </div>
-            <p className="text-[11px] text-stone-500">Publiczne linki ze starą nazwą (oferta, lista życzeń) przestaną działać.</p>
+            <p className="text-[11px] text-stone-500">{t('Publiczne linki ze starą nazwą (oferta, lista życzeń) przestaną działać.')}</p>
           </Section>
 
           {/* Hasło */}
-          <Section title="Reset hasła" icon={KeyRound}>
+          <Section title={t('Reset hasła')} icon={KeyRound}>
             {tempPassword ? (
               <div className="space-y-2">
-                <p className="text-xs text-stone-300">Hasło tymczasowe. Przekaż je użytkownikowi. <strong>Pokazujemy je tylko raz.</strong></p>
+                <p className="text-xs text-stone-300">{t('Hasło tymczasowe. Przekaż je użytkownikowi.')} <strong>{t('Pokazujemy je tylko raz.')}</strong></p>
                 <div className="flex gap-2">
                   <code className="flex-1 min-w-0 bg-stone-900 border border-amber-500/40 rounded-lg px-3 py-2 text-base font-mono text-amber-200 select-all break-all">
                     {tempPassword}
@@ -554,14 +557,14 @@ const UserDialog: React.FC<UserDialogProps> = ({ user, isSelf, onClose, onChange
                     className={`${btn} bg-stone-700 hover:bg-stone-600 text-stone-100 shrink-0`}
                   >
                     {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
-                    {copied ? 'Skopiowano' : 'Kopiuj'}
+                    {copied ? t('Skopiowano') : t('Kopiuj')}
                   </button>
                 </div>
-                <p className="text-[11px] text-stone-500">Po zalogowaniu użytkownik musi ustawić własne hasło.</p>
+                <p className="text-[11px] text-stone-500">{t('Po zalogowaniu użytkownik musi ustawić własne hasło.')}</p>
               </div>
             ) : confirmReset ? (
               <div className="flex flex-wrap gap-2 items-center">
-                <span className="text-xs text-stone-300">Na pewno? Obecne hasło przestanie działać, a użytkownik zostanie wylogowany.</span>
+                <span className="text-xs text-stone-300">{t('Na pewno? Obecne hasło przestanie działać, a użytkownik zostanie wylogowany.')}</span>
                 <button
                   type="button"
                   disabled={!!busy}
@@ -575,10 +578,10 @@ const UserDialog: React.FC<UserDialogProps> = ({ user, isSelf, onClose, onChange
                   }
                   className={`${btn} bg-amber-500 hover:bg-amber-400 text-stone-950`}
                 >
-                  {spin('reset')}Tak, resetuj
+                  {spin('reset')}{t('Tak, resetuj')}
                 </button>
                 <button type="button" onClick={() => setConfirmReset(false)} className={`${btn} text-stone-300 hover:bg-stone-800`}>
-                  Anuluj
+                  {t('Anuluj')}
                 </button>
               </div>
             ) : (
@@ -588,13 +591,13 @@ const UserDialog: React.FC<UserDialogProps> = ({ user, isSelf, onClose, onChange
                 onClick={() => setConfirmReset(true)}
                 className={`${btn} bg-stone-700 hover:bg-stone-600 text-stone-100`}
               >
-                Wygeneruj hasło tymczasowe
+                {t('Wygeneruj hasło tymczasowe')}
               </button>
             )}
           </Section>
 
           {/* Sesje i oferta */}
-          <Section title="Sesje i oferta" icon={LogOut}>
+          <Section title={t('Sesje i oferta')} icon={LogOut}>
             <div className="flex flex-wrap gap-2">
               <button
                 type="button"
@@ -602,14 +605,14 @@ const UserDialog: React.FC<UserDialogProps> = ({ user, isSelf, onClose, onChange
                 onClick={() =>
                   run('logout', async () => {
                     const r = await adminApi.logoutAll(user.id);
-                    return `Wylogowano ${user.username} z ${r.revoked ?? 0} sesji.`;
+                    return t('Wylogowano {name} z {n} sesji.', { name: user.username, n: r.revoked ?? 0 });
                   })
                 }
                 className={`${btn} bg-stone-700 hover:bg-stone-600 text-stone-100`}
               >
                 {spin('logout')}
                 <LogOut className="w-4 h-4" />
-                Wyloguj ze wszystkich urządzeń
+                {t('Wyloguj ze wszystkich urządzeń')}
               </button>
               <button
                 type="button"
@@ -617,46 +620,46 @@ const UserDialog: React.FC<UserDialogProps> = ({ user, isSelf, onClose, onChange
                 onClick={() =>
                   run('sale', async () => {
                     await adminApi.setSaleHidden(user.id, !user.saleHidden);
-                    return user.saleHidden ? 'Oferta znów jest widoczna.' : 'Ukryto ofertę sprzedaży.';
+                    return user.saleHidden ? t('Oferta znów jest widoczna.') : t('Ukryto ofertę sprzedaży.');
                   })
                 }
                 className={`${btn} ${user.saleHidden ? 'bg-emerald-700 hover:bg-emerald-600' : 'bg-amber-500 hover:bg-amber-400'} text-stone-950`}
               >
                 {spin('sale')}
                 {user.saleHidden ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
-                {user.saleHidden ? 'Pokaż ofertę' : 'Ukryj ofertę sprzedaży'}
+                {user.saleHidden ? t('Pokaż ofertę') : t('Ukryj ofertę sprzedaży')}
               </button>
             </div>
-            {user.saleHidden && <p className="text-[11px] text-amber-300/90">Oferta jest ukryta: nie ma jej w publicznym linku, na mapie ani na liście graczy.</p>}
+            {user.saleHidden && <p className="text-[11px] text-amber-300/90">{t('Oferta jest ukryta: nie ma jej w publicznym linku, na mapie ani na liście graczy.')}</p>}
           </Section>
 
           {!user.emailVerified && (
-            <Section title="Adres e-mail" icon={Check}>
-              <p className="text-xs text-stone-300">Użytkownik nie kliknął jeszcze linku z maila i nie może się zalogować.</p>
+            <Section title={t('Adres e-mail')} icon={Check}>
+              <p className="text-xs text-stone-300">{t('Użytkownik nie kliknął jeszcze linku z maila i nie może się zalogować.')}</p>
               <button
                 type="button"
                 disabled={!!busy}
                 onClick={() =>
                   run('verify', async () => {
                     await adminApi.verifyEmail(user.id);
-                    return `Potwierdzono adres e-mail ${user.username}.`;
+                    return t('Potwierdzono adres e-mail {name}.', { name: user.username });
                   })
                 }
                 className={`${btn} bg-stone-700 hover:bg-stone-600 text-stone-100`}
               >
                 {spin('verify')}
                 <Check className="w-4 h-4" />
-                Potwierdź e-mail ręcznie
+                {t('Potwierdź e-mail ręcznie')}
               </button>
             </Section>
           )}
 
           {/* Usunięcie */}
           {!protectedAccount && !isSelf && (
-            <Section title="Usuń konto" icon={Trash2} danger>
+            <Section title={t('Usuń konto')} icon={Trash2} danger>
               <p className="text-xs text-stone-300">
-                Usuwa konto i wszystkie dane: kolekcję, talie, listę życzeń i wiadomości. Tego nie da się cofnąć. Wpisz{' '}
-                <strong className="text-rose-200 select-all">{user.username}</strong>, aby potwierdzić.
+                {t('Usuwa konto i wszystkie dane: kolekcję, talie, listę życzeń i wiadomości. Tego nie da się cofnąć. Wpisz')}{' '}
+                <strong className="text-rose-200 select-all">{user.username}</strong>{t(', aby potwierdzić.')}
               </p>
               <div className="flex gap-2">
                 <input
@@ -664,7 +667,7 @@ const UserDialog: React.FC<UserDialogProps> = ({ user, isSelf, onClose, onChange
                   value={confirmDelete}
                   onChange={(e) => setConfirmDelete(e.target.value)}
                   placeholder={user.username}
-                  aria-label="Potwierdź nazwę"
+                  aria-label={t('Potwierdź nazwę')}
                   className={input}
                 />
                 <button
@@ -673,12 +676,12 @@ const UserDialog: React.FC<UserDialogProps> = ({ user, isSelf, onClose, onChange
                   onClick={() =>
                     run('delete', async () => {
                       await adminApi.remove(user.id, confirmDelete);
-                      return `Usunięto konto ${user.username}.`;
+                      return t('Usunięto konto {name}.', { name: user.username });
                     }, true)
                   }
                   className={`${btn} bg-red-700 hover:bg-red-600 text-white shrink-0`}
                 >
-                  {spin('delete')}Usuń
+                  {spin('delete')}{t('Usuń')}
                 </button>
               </div>
             </Section>

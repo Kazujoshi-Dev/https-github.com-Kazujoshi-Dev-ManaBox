@@ -5,6 +5,7 @@ import { X, MapPin, Heart, Store, Loader2, ChevronRight, Info } from 'lucide-rea
 import { sellersApi } from '../services/api';
 import { useBackToClose } from '../hooks/useBackButton';
 import type { MapCity, MapSeller } from '../types';
+import { useT, plural } from '../i18n';
 
 interface SellersMapModalProps {
   onClose: () => void;
@@ -20,6 +21,7 @@ const EUROPE_BOUNDS = L.latLngBounds([30, -32], [73, 50]);
  * Mapa: Leaflet + kafelki OpenStreetMap (darmowe, wymagają podpisu © OpenStreetMap).
  */
 const SellersMapModal: React.FC<SellersMapModalProps> = ({ onClose, onOpenSeller }) => {
+  const t = useT();
   useBackToClose(true, onClose);
   const mapEl = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<L.Map | null>(null);
@@ -57,9 +59,9 @@ const SellersMapModal: React.FC<SellersMapModalProps> = ({ onClose, onOpenSeller
     }).addTo(map);
     mapRef.current = map;
     // rozmiar kontenera ustala się po animacji wysunięcia okna
-    const t = setTimeout(() => map.invalidateSize(), 250);
+    const timer = setTimeout(() => map.invalidateSize(), 250);
     return () => {
-      clearTimeout(t);
+      clearTimeout(timer);
       map.remove();
       mapRef.current = null;
     };
@@ -80,7 +82,7 @@ const SellersMapModal: React.FC<SellersMapModalProps> = ({ onClose, onOpenSeller
         iconSize: [size, size],
         iconAnchor: [size / 2, size / 2]
       });
-      L.marker([city.lat, city.lon], { icon, title: `${city.city}: ${n} ${n === 1 ? 'sprzedawca' : 'sprzedawców'}`, keyboard: true })
+      L.marker([city.lat, city.lon], { icon, title: `${city.city}: ${plural(n, ['{n} sprzedawca', '{n} sprzedawców', '{n} sprzedawców'], ['{n} seller', '{n} sellers'])}`, keyboard: true })
         .on('click', () => setSelected(city))
         .addTo(layer);
     }
@@ -104,7 +106,9 @@ const SellersMapModal: React.FC<SellersMapModalProps> = ({ onClose, onOpenSeller
     mapRef.current?.setView([city.lat, city.lon], Math.max(mapRef.current.getZoom(), 7));
   };
 
-  const SellerRow: React.FC<{ s: MapSeller }> = ({ s }) => (
+  const SellerRow: React.FC<{ s: MapSeller }> = ({ s }) => {
+  const t = useT();
+  return (
     <li>
       <button
         type="button"
@@ -119,15 +123,15 @@ const SellersMapModal: React.FC<SellersMapModalProps> = ({ onClose, onOpenSeller
         </div>
         <div className="min-w-0 flex-1">
           <p className="text-sm font-bold text-stone-100 truncate">
-            @{s.username} {s.isMe && <span className="text-xs font-semibold text-amber-400">(Ty)</span>}
+            @{s.username} {s.isMe && <span className="text-xs font-semibold text-amber-400">{t('(Ty)')}</span>}
           </p>
           <p className="text-xs text-stone-400">
-            {s.forSaleCount} {s.forSaleCount === 1 ? 'karta' : 'kart'} na sprzedaż
+            {plural(s.forSaleCount, ['{n} karta na sprzedaż', '{n} karty na sprzedaż', '{n} kart na sprzedaż'], ['{n} card for sale', '{n} cards for sale'])}
           </p>
           {s.wishlistMatches > 0 && (
             <p className="text-xs font-semibold text-rose-300 flex items-center gap-1 mt-0.5">
               <Heart className="w-3 h-3 fill-rose-400 text-rose-400" />
-              {s.wishlistMatches} z Twojej listy życzeń
+              {t('{n} z Twojej listy życzeń', { n: s.wishlistMatches })}
             </p>
           )}
         </div>
@@ -135,6 +139,7 @@ const SellersMapModal: React.FC<SellersMapModalProps> = ({ onClose, onOpenSeller
       </button>
     </li>
   );
+};
 
   return (
     <div
@@ -142,7 +147,7 @@ const SellersMapModal: React.FC<SellersMapModalProps> = ({ onClose, onOpenSeller
       onClick={(e) => e.target === e.currentTarget && onClose()}
       role="dialog"
       aria-modal="true"
-      aria-label="Mapa sprzedawców"
+      aria-label={t('Mapa sprzedawców')}
     >
       <div className="relative w-full sm:max-w-6xl h-dvh sm:h-[88vh] bg-stone-900 sm:border border-stone-800 sm:rounded-2xl overflow-hidden flex flex-col pt-[env(safe-area-inset-top)] sm:pt-0">
         {/* Nagłówek */}
@@ -152,16 +157,20 @@ const SellersMapModal: React.FC<SellersMapModalProps> = ({ onClose, onOpenSeller
               <MapPin className="w-5 h-5" />
             </div>
             <div className="min-w-0">
-              <h2 className="text-base font-bold text-stone-100 truncate">Mapa sprzedawców</h2>
+              <h2 className="text-base font-bold text-stone-100 truncate">{t('Mapa sprzedawców')}</h2>
               <p className="text-xs text-stone-400 truncate">
-                {cities ? `${totalSellers} ${totalSellers === 1 ? 'sprzedawca' : 'sprzedawców'} w ${cities.length} ${cities.length === 1 ? 'mieście' : 'miastach'}` : 'Ładowanie...'}
+                {cities
+                  ? plural(totalSellers, ['{n} sprzedawca', '{n} sprzedawców', '{n} sprzedawców'], ['{n} seller', '{n} sellers']) +
+                    ' ' +
+                    plural(cities.length, ['w {n} mieście', 'w {n} miastach', 'w {n} miastach'], ['in {n} city', 'in {n} cities'])
+                  : t('Ładowanie...')}
               </p>
             </div>
           </div>
           <button
             type="button"
             onClick={onClose}
-            aria-label="Zamknij mapę"
+            aria-label={t('Zamknij mapę')}
             className="w-10 h-10 rounded-full bg-stone-800 hover:bg-stone-700 text-stone-300 flex items-center justify-center shrink-0 cursor-pointer"
           >
             <X className="w-5 h-5" />
@@ -171,7 +180,7 @@ const SellersMapModal: React.FC<SellersMapModalProps> = ({ onClose, onOpenSeller
         {!myCity && cities && (
           <div className="px-4 py-2 bg-amber-500/10 border-b border-amber-500/20 text-xs text-amber-200 flex items-start gap-2 shrink-0">
             <Info className="w-4 h-4 shrink-0 mt-px" />
-            <span>Chcesz być na mapie? Dodaj swoją miejscowość w <strong>Ustawieniach</strong> i oznacz karty na sprzedaż.</span>
+            <span>{t('Chcesz być na mapie? Dodaj swoją miejscowość w')} <strong>{t('Ustawieniach')}</strong> {t('i oznacz karty na sprzedaż.')}</span>
           </div>
         )}
 
@@ -205,7 +214,7 @@ const SellersMapModal: React.FC<SellersMapModalProps> = ({ onClose, onOpenSeller
                     onClick={() => setSelected(null)}
                     className="text-xs font-semibold text-stone-400 hover:text-stone-200 px-2 h-9 shrink-0 cursor-pointer"
                   >
-                    Wszystkie miasta
+                    {t('Wszystkie miasta')}
                   </button>
                 </div>
                 <ul className="space-y-2">
@@ -218,11 +227,11 @@ const SellersMapModal: React.FC<SellersMapModalProps> = ({ onClose, onOpenSeller
               cities && (
                 <>
                   <p className="text-xs font-bold text-stone-400">
-                    {cities.length ? 'Kliknij miasto, aby zobaczyć sprzedawców' : 'Brak sprzedawców na mapie'}
+                    {cities.length ? t('Kliknij miasto, aby zobaczyć sprzedawców') : t('Brak sprzedawców na mapie')}
                   </p>
                   {cities.length === 0 && (
                     <p className="text-sm text-stone-400">
-                      Na mapie pojawiają się użytkownicy, którzy podali miejscowość w ustawieniach i mają karty na sprzedaż.
+                      {t('Na mapie pojawiają się użytkownicy, którzy podali miejscowość w ustawieniach i mają karty na sprzedaż.')}
                     </p>
                   )}
                   <ul className="space-y-1.5">
@@ -242,7 +251,7 @@ const SellersMapModal: React.FC<SellersMapModalProps> = ({ onClose, onOpenSeller
                               <span className="block text-sm font-semibold text-stone-100 truncate">{c.city}</span>
                               <span className="block text-xs text-stone-500 truncate">{c.label}</span>
                             </span>
-                            {matches > 0 && <Heart className="w-4 h-4 fill-rose-400 text-rose-400 shrink-0" aria-label="Sprzedawcy z kartami z Twojej listy życzeń" />}
+                            {matches > 0 && <Heart className="w-4 h-4 fill-rose-400 text-rose-400 shrink-0" aria-label={t('Sprzedawcy z kartami z Twojej listy życzeń')} />}
                             <Store className="w-4 h-4 text-stone-500 shrink-0" />
                           </button>
                         </li>

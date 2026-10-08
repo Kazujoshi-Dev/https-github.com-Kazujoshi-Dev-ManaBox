@@ -3,6 +3,7 @@ import { useState, useMemo, useCallback, useEffect } from 'react';
 import { CollectionItem, FilterOptions, AppSettings } from '../../types';
 import { getCardPrice } from '../../utils/formatters';
 import { DEFAULT_FILTERS } from './constants';
+import { MAIN_BINDER } from '../../i18n';
 
 /** Dodatek na liście filtra: ile różnych kart z niego masz i ile kart liczy cały dodatek. */
 export interface SetOption {
@@ -56,7 +57,7 @@ export function matchesFilters(item: CollectionItem, filters: FilterOptions): bo
   if (filters.binder === FOR_SALE_BINDER) {
     if (!item.isForSale) return false;
   } else if (filters.binder !== 'ALL') {
-    if (item.isForSale || (item.binder || 'Klaser Główny') !== filters.binder) return false;
+    if (item.isForSale || (item.binder || MAIN_BINDER) !== filters.binder) return false;
   }
 
   // Only Foil filter

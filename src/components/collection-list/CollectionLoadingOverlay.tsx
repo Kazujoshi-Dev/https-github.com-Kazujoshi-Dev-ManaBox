@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Library } from 'lucide-react';
+import { useT, locale } from '../../i18n';
 
 interface CollectionLoadingOverlayProps {
   isLoading: boolean;
@@ -12,7 +13,9 @@ interface CollectionLoadingOverlayProps {
 const FADE_MS = 280;
 
 /** Nakładka z paskiem postępu, rozmywająca stronę na czas wczytywania dużej kolekcji. */
-export const CollectionLoadingOverlay: React.FC<CollectionLoadingOverlayProps> = ({ isLoading, loaded, total, title = 'Trwa wczytywanie kolekcji' }) => {
+export const CollectionLoadingOverlay: React.FC<CollectionLoadingOverlayProps> = ({ isLoading, loaded, total, title: titleProp }) => {
+  const t = useT();
+  const title = titleProp ?? t('Trwa wczytywanie kolekcji');
   const [mounted, setMounted] = useState(isLoading);
   const [leaving, setLeaving] = useState(false);
 
@@ -24,8 +27,8 @@ export const CollectionLoadingOverlay: React.FC<CollectionLoadingOverlayProps> =
     }
     if (!mounted) return;
     setLeaving(true);
-    const t = setTimeout(() => setMounted(false), FADE_MS);
-    return () => clearTimeout(t);
+    const timer = setTimeout(() => setMounted(false), FADE_MS);
+    return () => clearTimeout(timer);
   }, [isLoading]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Blokada przewijania strony pod nakładką
@@ -63,7 +66,7 @@ export const CollectionLoadingOverlay: React.FC<CollectionLoadingOverlayProps> =
           </div>
           <div className="min-w-0">
             <p className="text-sm font-semibold text-stone-100">{title}</p>
-            <p className="text-xs text-stone-400">Przygotowujemy Twoje karty, to potrwa chwilę.</p>
+            <p className="text-xs text-stone-400">{t('Przygotowujemy Twoje karty, to potrwa chwilę.')}</p>
           </div>
         </div>
 
@@ -73,7 +76,7 @@ export const CollectionLoadingOverlay: React.FC<CollectionLoadingOverlayProps> =
           aria-valuemin={0}
           aria-valuemax={100}
           aria-valuenow={pct}
-          aria-label="Postęp wczytywania kolekcji"
+          aria-label={t('Postęp wczytywania kolekcji')}
         >
           <div
             className="relative h-full rounded-full bg-gradient-to-r from-amber-600 to-amber-400 transition-[width] duration-150 ease-out"
@@ -84,7 +87,7 @@ export const CollectionLoadingOverlay: React.FC<CollectionLoadingOverlayProps> =
         </div>
 
         <div className="mt-2 flex items-center justify-between text-xs text-stone-400 tabular-nums">
-          <span>{shown.toLocaleString('pl-PL')} z {total.toLocaleString('pl-PL')} kart</span>
+          <span>{t('{shown} z {total} kart', { shown: shown.toLocaleString(locale()), total: total.toLocaleString(locale()) })}</span>
           <span className="font-semibold text-amber-400">{pct}%</span>
         </div>
       </div>

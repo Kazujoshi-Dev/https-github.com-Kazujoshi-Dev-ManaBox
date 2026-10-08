@@ -46,11 +46,13 @@ import { useCollectionStats } from './hooks/useCollectionStats';
 import { useAppData } from './hooks/useAppData';
 import { isArenaFormat } from './utils/mtgFormats';
 import { publicSaleApi, messagesApi, usersApi, publicDeckApi } from './services/api';
+import { useT, t, binderName, plural, MAIN_BINDER } from './i18n';
 
 export default function App() {
   const { toastMessage, showToast } = useToast();
   const { currentUser, handleAuthSuccess, handleLogout, handleLogoutAll, handleUnauthorized } = useAuth(showToast);
-  const { settings, updateSettings, applyRemoteSettings } = useSettings(handleUnauthorized);
+  useT();
+  const { settings, updateSettings, applyRemoteSettings, changeLanguage } = useSettings(handleUnauthorized);
 
   const {
     collection,
@@ -171,7 +173,7 @@ export default function App() {
             setPublicDeckData(data);
             setPublicSaleError(null);
           })
-          .catch(err => setPublicSaleError(err.message || 'Nie znaleziono talii.'))
+          .catch(err => setPublicSaleError(err.message || t('Nie znaleziono talii.')))
           .finally(() => setIsLoadingPublicSale(false));
       } else if (wishlistParam && !saleParam) {
         setIsLoadingPublicSale(true);
@@ -181,7 +183,7 @@ export default function App() {
             setPublicSaleError(null);
           })
           .catch(err => {
-            setPublicSaleError(err.message || 'Nie znaleziono listy życzeń tego użytkownika.');
+            setPublicSaleError(err.message || t('Nie znaleziono listy życzeń tego użytkownika.'));
           })
           .finally(() => setIsLoadingPublicSale(false));
       } else if (saleParam) {
@@ -193,7 +195,7 @@ export default function App() {
           })
           .catch(err => {
             console.warn('Public sale fetch error:', err);
-            setPublicSaleError(err.message || 'Nie znaleziono oferty dla tego użytkownika.');
+            setPublicSaleError(err.message || t('Nie znaleziono oferty dla tego użytkownika.'));
           })
           .finally(() => {
             setIsLoadingPublicSale(false);
@@ -419,7 +421,7 @@ export default function App() {
       }
     });
 
-    showToast(`Zaktualizowano wersję [${newCard.set.toUpperCase()}] #${newCard.collector_number} dla "${newCard.name}"!`);
+    showToast(t('Zaktualizowano wersję [{set}] #{number} dla "{name}"!', { set: newCard.set.toUpperCase(), number: newCard.collector_number, name: newCard.name }));
   }, [deckCardBeingViewed, selectedCardForModal, selectedCollectionItemForModal, selectedDeck, decks, updateDeck, showToast]);
 
   const handleCardFoilToggledInModal = useCallback((isFoil: boolean) => {
@@ -481,7 +483,7 @@ export default function App() {
 
     setDeckCardIsFoil(isFoil);
     if (deckCardBeingViewed) {
-      showToast(isFoil ? `Ustawiono wersję Foil dla "${targetCard.name}"!` : `Ustawiono wersję Standard dla "${targetCard.name}"!`);
+      showToast(isFoil ? t('Ustawiono wersję Foil dla "{name}"!', { name: targetCard.name }) : t('Ustawiono wersję Standard dla "{name}"!', { name: targetCard.name }));
     }
   }, [deckCardBeingViewed, selectedCardForModal, selectedCollectionItemForModal, selectedDeck, decks, updateDeck, showToast]);
 
@@ -584,7 +586,7 @@ export default function App() {
     if (selectedDeck && selectedDeck.id === updated.id) {
       setSelectedDeck(updated);
     }
-    showToast(`Zaktualizowano dane talii „${updated.name}”!`);
+    showToast(t('Zaktualizowano dane talii „{name}”!', { name: updated.name }));
   }, [updateDeck, selectedDeck, showToast]);
 
   const handleDeleteDeckAndReset = useCallback(async (deckId: string) => {
@@ -610,9 +612,9 @@ export default function App() {
       <div className="min-h-screen bg-stone-950 flex flex-col items-center justify-center p-6 text-stone-100">
         <div className="w-12 h-12 rounded-full border-4 border-emerald-500/20 border-t-emerald-500 animate-spin mb-4" />
         <p className="text-sm font-bold text-stone-300">
-          {publicKind === 'deck' ? 'Ładowanie talii...' : publicKind === 'wishlist' ? 'Ładowanie listy życzeń...' : 'Ładowanie oferty sprzedaży kart MTG...'}
+          {publicKind === 'deck' ? t('Ładowanie talii...') : publicKind === 'wishlist' ? t('Ładowanie listy życzeń...') : t('Ładowanie oferty sprzedaży kart MTG...')}
         </p>
-        <p className="text-xs text-stone-500 mt-1">{publicKind === 'deck' ? 'Sprawdzanie publicznej talii' : publicKind === 'wishlist' ? 'Sprawdzanie publicznej listy' : 'Sprawdzanie publicznego klasera'}</p>
+        <p className="text-xs text-stone-500 mt-1">{publicKind === 'deck' ? t('Sprawdzanie publicznej talii') : publicKind === 'wishlist' ? t('Sprawdzanie publicznej listy') : t('Sprawdzanie publicznego klasera')}</p>
       </div>
     );
   }
@@ -625,7 +627,7 @@ export default function App() {
           <div className="w-12 h-12 rounded-2xl bg-rose-500/10 border border-rose-500/30 text-rose-400 flex items-center justify-center mx-auto">
             <CircleDollarSign className="w-6 h-6" />
           </div>
-          <h2 className="text-xl font-bold text-white">{publicKind === 'deck' ? 'Nie znaleziono talii' : publicKind === 'wishlist' ? 'Nie znaleziono listy życzeń' : 'Nie znaleziono oferty'}</h2>
+          <h2 className="text-xl font-bold text-white">{publicKind === 'deck' ? t('Nie znaleziono talii') : publicKind === 'wishlist' ? t('Nie znaleziono listy życzeń') : t('Nie znaleziono oferty')}</h2>
           <p className="text-xs text-stone-400">{publicSaleError}</p>
           <button
             onClick={() => {
@@ -634,7 +636,7 @@ export default function App() {
             }}
             className="w-full py-2.5 bg-stone-800 hover:bg-stone-700 text-stone-200 text-xs font-bold rounded-xl transition-colors cursor-pointer"
           >
-            Przejdź do strony głównej / Logowanie
+            {t('Przejdź do strony głównej / Logowanie')}
           </button>
         </div>
       </div>
@@ -650,14 +652,14 @@ export default function App() {
             onClick={() => setShowLoginModalFromPublic(false)}
             className="mb-4 px-3 py-1.5 bg-stone-800 hover:bg-stone-750 text-stone-300 hover:text-white rounded-lg text-xs font-semibold border border-stone-700 transition-colors cursor-pointer flex items-center gap-1.5"
           >
-            <span>{publicKind === 'deck' ? '← Wróć do talii' : publicKind === 'wishlist' ? '← Wróć do listy życzeń' : '← Wróć do oferty sprzedaży'}</span>
+            <span>{publicKind === 'deck' ? t('← Wróć do talii') : publicKind === 'wishlist' ? t('← Wróć do listy życzeń') : t('← Wróć do oferty sprzedaży')}</span>
           </button>
         </div>
         <AuthView
           onAuthSuccess={(user, token) => {
             handleAuthSuccess(user, token);
             setShowLoginModalFromPublic(false);
-            showToast(`Witaj, ${user.username}!`);
+            showToast(t('Witaj, {name}!', { name: user.username }));
           }}
         />
         <Toast message={toastMessage} />
@@ -686,7 +688,7 @@ export default function App() {
               }}
               className="px-4 py-2.5 bg-amber-600 hover:bg-amber-500 text-stone-950 font-bold text-xs rounded-xl shadow-xl shadow-amber-950/50 flex items-center gap-2 cursor-pointer transition-all"
             >
-              <span>← Moja Kolekcja ({currentUser.username})</span>
+              <span>{t('← Moja Kolekcja ({name})', { name: currentUser.username })}</span>
             </button>
           </div>
         )}
@@ -716,7 +718,7 @@ export default function App() {
               }}
               className="px-4 py-2.5 bg-amber-600 hover:bg-amber-500 text-stone-950 font-bold text-xs rounded-xl shadow-xl shadow-amber-950/50 flex items-center gap-2 cursor-pointer transition-all"
             >
-              <span>← Moja Kolekcja ({currentUser.username})</span>
+              <span>{t('← Moja Kolekcja ({name})', { name: currentUser.username })}</span>
             </button>
           </div>
         )}
@@ -747,7 +749,7 @@ export default function App() {
               }}
               className="px-4 py-2.5 bg-amber-600 hover:bg-amber-500 text-stone-950 font-bold text-xs rounded-xl shadow-xl shadow-amber-950/50 flex items-center gap-2 cursor-pointer transition-all"
             >
-              <span>← Moja Kolekcja ({currentUser.username})</span>
+              <span>{t('← Moja Kolekcja ({name})', { name: currentUser.username })}</span>
             </button>
           </div>
         )}
@@ -762,7 +764,7 @@ export default function App() {
       <>
         <AuthView initialMode={authInitialMode} onAuthSuccess={(user, token) => {
           handleAuthSuccess(user, token);
-          showToast(`Witaj w kolekcji, ${user.username}!`);
+          showToast(t('Witaj w kolekcji, {name}!', { name: user.username }));
         }} />
         <Toast message={toastMessage} />
       </>
@@ -777,7 +779,7 @@ export default function App() {
           user={currentUser}
           onChanged={(user, token) => {
             handleAuthSuccess(user, token);
-            showToast('Hasło zostało zmienione.');
+            showToast(t('Hasło zostało zmienione.'));
           }}
           onLogout={handleLogout}
         />
@@ -815,12 +817,13 @@ export default function App() {
         onOpenMailbox={() => setIsMailboxOpen(true)}
         onOpenHistory={() => setIsHistoryOpen(true)}
         onOpenBugReport={() => setIsBugReportOpen(true)}
+        onChangeLanguage={(lang) => changeLanguage(lang, true)}
       />
       {isHistoryOpen && <CollectionHistoryModal currency={settings.currency} onClose={() => setIsHistoryOpen(false)} />}
       {isBugReportOpen && (
         <React.Suspense fallback={null}>
           <BugReportModal
-            page={`${TAB_LABELS[activeTab] || activeTab}${activeTab === 'decks' && selectedDeck ? `: ${selectedDeck.name}` : ''}`}
+            page={`${TAB_LABELS[activeTab] ? t(TAB_LABELS[activeTab]) : activeTab}${activeTab === 'decks' && selectedDeck ? `: ${selectedDeck.name}` : ''}`}
             onClose={() => setIsBugReportOpen(false)}
             showToast={showToast}
           />
@@ -832,7 +835,7 @@ export default function App() {
         {isLoading ? (
           <div className="flex flex-col items-center justify-center py-20 space-y-4">
             <div className="w-12 h-12 rounded-full border-4 border-amber-500/20 border-t-amber-500 animate-spin" />
-            <p className="text-sm font-bold text-stone-400">Ładowanie Twojej kolekcji i wycen rynkowych...</p>
+            <p className="text-sm font-bold text-stone-400">{t('Ładowanie Twojej kolekcji i wycen rynkowych...')}</p>
           </div>
         ) : (
           activeTab === 'settings' ? (
@@ -841,15 +844,16 @@ export default function App() {
               settings={settings}
               onSaveSettings={async (newSettings) => {
                 await updateSettings(newSettings);
-                showToast('Zapisano ustawienia wyceny i waluty.');
+                showToast(t('Zapisano ustawienia wyceny i waluty.'));
               }}
               onLogoutAll={handleLogoutAll}
               onPasswordChanged={(user, token) => handleAuthSuccess(user, token)}
               onOpenImportExport={handleOpenCollectionImportExport}
+              onChangeLanguage={(lang) => changeLanguage(lang, true)}
               onAccountDeleted={() => {
                 handleUnauthorized();
                 setActiveTab('collection');
-                showToast('Twoje konto zostało usunięte. Dziękujemy za korzystanie z Mana Screw.');
+                showToast(t('Twoje konto zostało usunięte. Dziękujemy za korzystanie z Mana Screw.'));
               }}
               showToast={showToast}
             />
@@ -873,10 +877,10 @@ export default function App() {
             onDeleteDeck={handleDeleteDeckAndReset}
             onCopyDeckToCollection={async (deck) => {
               if (isArenaFormat(deck.format)) {
-                showToast('Talie MTG Arena są cyfrowe, więc ich kart nie dodaje się do kolekcji.');
+                showToast(t('Talie MTG Arena są cyfrowe, więc ich kart nie dodaje się do kolekcji.'));
                 return false;
               }
-              const binder = catalogs.find((c) => c.isDefault)?.name || 'Klaser Główny';
+              const binder = catalogs.find((c) => c.isDefault)?.name || MAIN_BINDER;
               // Te same wydania i wersje foil co w talii; ta sama karta w tej samej wersji sumuje się,
               // a zwykła i foil to osobne pozycje
               const byKey = new Map<string, any>();
@@ -901,7 +905,12 @@ export default function App() {
               const items = [...byKey.values()];
               const total = items.reduce((sum, i) => sum + i.quantity + i.quantityFoil, 0);
               const ok = await bulkAddToCollection(items);
-              showToast(ok ? `Dodano ${total} kart z talii „${deck.name}” do klasera „${binder}”.` : 'Nie udało się dodać kart do kolekcji. Spróbuj ponownie.');
+              showToast(
+                ok
+                  ? plural(total, ['Dodano {n} kartę', 'Dodano {n} karty', 'Dodano {n} kart'], ['Added {n} card', 'Added {n} cards']) +
+                      ' ' + t('z talii „{deck}” do klasera „{binder}”.', { deck: deck.name, binder: binderName(binder) })
+                  : t('Nie udało się dodać kart do kolekcji. Spróbuj ponownie.')
+              );
               return ok;
             }}
             onOpenCreateDeckModal={() => {
@@ -959,6 +968,7 @@ export default function App() {
         user={currentUser}
         hasNewChangelog={changelogBadge.hasNew}
         onOpenBugReport={() => setIsBugReportOpen(true)}
+        onChangeLanguage={(lang) => changeLanguage(lang, true)}
       />
 
       {/* Settings Modal */}
@@ -984,7 +994,7 @@ export default function App() {
           catalogs={catalogs}
           onImportBulk={async (items, onProgress) => {
             const ok = await bulkAddToCollection(items, onProgress);
-            if (!ok) throw new Error('Nie udało się zapisać wszystkich kart. Część mogła zostać dodana, sprawdź kolekcję.');
+            if (!ok) throw new Error(t('Nie udało się zapisać wszystkich kart. Część mogła zostać dodana, sprawdź kolekcję.'));
           }}
           onClose={() => setIsCollectionImportExportOpen(false)}
           showToast={showToast}
@@ -1027,7 +1037,7 @@ export default function App() {
           onUpdateWishlistItem={handleUpdateWishlistItemFromModal}
           collectionBlockedReason={
             deckCardBeingViewed && selectedDeck && isArenaFormat(selectedDeck.format)
-              ? 'Karta z talii MTG Arena. Talie MTGA są cyfrowe, więc ich kart nie dodaje się do kolekcji.'
+              ? t('Karta z talii MTG Arena. Talie MTGA są cyfrowe, więc ich kart nie dodaje się do kolekcji.')
               : null
           }
         />

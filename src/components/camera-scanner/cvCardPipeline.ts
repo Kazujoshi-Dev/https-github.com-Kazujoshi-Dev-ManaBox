@@ -20,6 +20,7 @@
  */
 
 import { CardRarityDetection } from './types';
+import { t } from '../../i18n';
 
 export interface CardCropRect {
   x: number;
@@ -943,7 +944,7 @@ export function detectCardBoundsInFrame(
     sampleCanvas.width = sampleW;
     sampleCanvas.height = sampleH;
     const ctx = sampleCanvas.getContext('2d', { willReadFrequently: true });
-    if (!ctx) throw new Error('Brak kontekstu 2D do analizy krawędzi');
+    if (!ctx) throw new Error(t('Brak kontekstu 2D do analizy krawędzi'));
 
     ctx.drawImage(videoSource, 0, 0, sampleW, sampleH);
     const imgData = ctx.getImageData(0, 0, sampleW, sampleH);
@@ -1161,7 +1162,7 @@ export function extractAndSegmentDelverFeatures(
 
   const cardCtx = cardCanvas.getContext('2d', { willReadFrequently: true });
   if (!cardCtx) {
-    throw new Error('Nie udało się utworzyć kontekstu 2D karty.');
+    throw new Error(t('Nie udało się utworzyć kontekstu 2D karty.'));
   }
 
   cardCtx.imageSmoothingEnabled = true;

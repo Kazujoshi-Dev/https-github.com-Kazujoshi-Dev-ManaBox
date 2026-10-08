@@ -1,5 +1,6 @@
 import type { DeckItem, ScryfallCard } from '../../types';
 import { getDeckFormat, isDigitalOnly, isOnArena, type DeckFormat } from '../../utils/mtgFormats';
+import { t, plural, byLang } from '../../i18n';
 
 export interface LegalityIssue {
   cardId: string;
@@ -22,6 +23,7 @@ export interface LegalityReport {
 }
 
 const COLOR_NAME: Record<string, string> = { W: 'biały', U: 'niebieski', B: 'czarny', R: 'czerwony', G: 'zielony' };
+const COLOR_NAME_EN: Record<string, string> = { W: 'white', U: 'blue', B: 'black', R: 'red', G: 'green' };
 const NUMBER_WORDS: Record<string, number> = { two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9, ten: 10 };
 const RARITY_PLURAL: Record<string, string> = { common: 'pospolite', uncommon: 'niepospolite', rare: 'rzadkie', mythic: 'mityczne' };
 const RARITY_ONE: Record<string, string> = { common: 'pospolita', uncommon: 'niepospolita', rare: 'rzadka', mythic: 'mityczna' };
@@ -31,8 +33,8 @@ const oracleText = (card: ScryfallCard) =>
 
 const isBasicLand = (card: ScryfallCard) => /\bbasic\b/i.test(card.type_line || '') && /\bland\b/i.test(card.type_line || '');
 
-const pluralKopie = (n: number) => (n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 12 || n % 100 > 14) ? 'kopie' : 'kopii');
-const pluralKart = (n: number) => (n === 1 ? 'kartę' : n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 12 || n % 100 > 14) ? 'karty' : 'kart');
+/** „N kopii w talii” w bieżącym języku. */
+const copiesInDeck = (n: number) => plural(n, ['{n} kopia w talii', '{n} kopie w talii', '{n} kopii w talii'], ['{n} copy in the deck', '{n} copies in the deck']);
 
 /** Ile kopii karty wolno mieć w talii: limit formatu, „any number”, „up to seven”, lądy podstawowe. */
 function copyLimit(card: ScryfallCard, format: DeckFormat): number {
@@ -51,22 +53,26 @@ function cardReasons(card: ScryfallCard, format: DeckFormat, asCommander: boolea
   const name = format.label.replace(/^EDH /, '');
 
   if (format.platform === 'paper' && isDigitalOnly(card)) {
-    out.push('Ta wersja istnieje tylko w MTG Arena, w formacie papierowym jej nie użyjesz');
+    out.push(t('Ta wersja istnieje tylko w MTG Arena, w formacie papierowym jej nie użyjesz'));
     return out;
   }
   if (format.platform === 'arena' && !isOnArena(card)) {
-    out.push('Karta niedostępna w MTG Arena');
+    out.push(t('Karta niedostępna w MTG Arena'));
     return out;
   }
 
   const status = format.legalityKey ? card.legalities?.[format.legalityKey] : undefined;
   // brak danych o legalności (np. stara kopia karty): nie zgadujemy
-  if (status === 'banned') out.push(`${asCommander ? 'Zbanowany' : 'Zbanowana'} w formacie ${name}`);
-  else if (status === 'not_legal') out.push(`Niedozwolona w formacie ${name}`);
+  if (status === 'banned') out.push(asCommander ? t('Zbanowany w formacie {format}', { format: name }) : t('Zbanowana w formacie {format}', { format: name }));
+  else if (status === 'not_legal') out.push(t('Niedozwolona w formacie {format}', { format: name }));
 
   if (format.rarities && card.rarity && !format.rarities.includes(card.rarity) && !isBasicLand(card)) {
-    const allowed = format.rarities.map((r) => RARITY_PLURAL[r] || r).join(' i ');
-    out.push(`W formacie ${name} dozwolone są tylko karty ${allowed} (ta jest ${RARITY_ONE[card.rarity] || card.rarity})`);
+    out.push(
+      byLang(
+        `W formacie ${name} dozwolone są tylko karty ${format.rarities.map((r) => RARITY_PLURAL[r] || r).join(' i ')} (ta jest ${RARITY_ONE[card.rarity] || card.rarity})`,
+        `Only ${format.rarities.join(' and ')} cards are allowed in ${name} (this one is ${card.rarity})`
+      )
+    );
   }
   return out;
 }
@@ -103,8 +109,8 @@ export function checkDeckLegality(deck: DeckItem): LegalityReport {
     if (!canBeCommander(commander, format)) {
       commanderIssues.push(
         format.planeswalkerCommander
-          ? 'Ta karta nie może być dowódcą (to nie legendarny stwór ani planeswalker)'
-          : 'Ta karta nie może być dowódcą (to nie legendarny stwór)'
+          ? t('Ta karta nie może być dowódcą (to nie legendarny stwór ani planeswalker)')
+          : t('Ta karta nie może być dowódcą (to nie legendarny stwór)')
       );
     }
   }
@@ -123,9 +129,9 @@ export function checkDeckLegality(deck: DeckItem): LegalityReport {
     if (commander) {
       const outside = (card.color_identity || []).filter((c) => !identity.has(c));
       if (outside.length) {
-        add(card, `Kolor spoza tożsamości dowódcy: ${outside.map((c) => COLOR_NAME[c] || c).join(', ')}`);
+        add(card, `${t('Kolor spoza tożsamości dowódcy:')} ${outside.map((c) => byLang(COLOR_NAME, COLOR_NAME_EN)[c] || c).join(', ')}`);
       }
-      if (card.name === commander.name) add(card, 'To jest dowódca talii, nie może być też wśród pozostałych kart');
+      if (card.name === commander.name) add(card, t('To jest dowódca talii, nie może być też wśród pozostałych kart'));
     }
 
     const limit = copyLimit(card, format);
@@ -136,10 +142,10 @@ export function checkDeckLegality(deck: DeckItem): LegalityReport {
       add(
         card,
         restricted
-          ? `${n} ${pluralKopie(n)} w talii, a karta jest na liście ograniczonych (najwyżej 1)`
+          ? `${copiesInDeck(n)}${t(', a karta jest na liście ograniczonych (najwyżej 1)')}`
           : limit === 1
-            ? `${n} ${pluralKopie(n)} w talii, a w formacie ${fmt} dozwolona jest 1`
-            : `${n} ${pluralKopie(n)} w talii, limit to ${limit}`
+            ? `${copiesInDeck(n)}${t(', a w formacie {format} dozwolona jest 1', { format: fmt })}`
+            : `${copiesInDeck(n)}${t(', limit to {n}', { n: limit })}`
       );
     }
   }
@@ -151,19 +157,19 @@ export function checkDeckLegality(deck: DeckItem): LegalityReport {
     if (format.exactSize && mainCount !== format.deckSize) {
       deckIssues.push(
         mainCount < format.deckSize
-          ? `Brakuje ${format.deckSize - mainCount} ${pluralKart(format.deckSize - mainCount)} do ${format.deckSize}`
-          : `Talia ma ${mainCount} kart, o ${mainCount - format.deckSize} za dużo (dokładnie ${format.deckSize})`
+          ? plural(format.deckSize - mainCount, ['Brakuje {n} kartę do {size}', 'Brakuje {n} karty do {size}', 'Brakuje {n} kart do {size}'], ['{n} card short of {size}', '{n} cards short of {size}']).replace('{size}', String(format.deckSize))
+          : t('Talia ma {n} kart, o {over} za dużo (dokładnie {size})', { n: mainCount, over: mainCount - format.deckSize, size: format.deckSize })
       );
     } else if (!format.exactSize && mainCount < format.deckSize) {
-      deckIssues.push(`Talia ma ${mainCount} kart, minimum to ${format.deckSize}`);
+      deckIssues.push(t('Talia ma {n} kart, minimum to {size}', { n: mainCount, size: format.deckSize }));
     }
   }
-  if (format.commander && !commander && mainCount > 0) deckIssues.push('Wybierz dowódcę talii');
+  if (format.commander && !commander && mainCount > 0) deckIssues.push(t('Wybierz dowódcę talii'));
   if (sideCount > format.maxSideboard) {
     deckIssues.push(
       format.maxSideboard === 0
-        ? `W formacie ${format.label.replace(/^EDH /, '')} nie ma sideboardu (jest ${sideCount} ${pluralKart(sideCount)})`
-        : `Sideboard ma ${sideCount} kart, najwyżej ${format.maxSideboard}`
+        ? t('W formacie {format} nie ma sideboardu (kart w nim: {n})', { format: format.label.replace(/^EDH /, ''), n: sideCount })
+        : t('Sideboard ma {n} kart, najwyżej {max}', { n: sideCount, max: format.maxSideboard })
     );
   }
 

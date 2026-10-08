@@ -6,6 +6,8 @@ import { ManaSymbol } from './ManaSymbol';
 import { EdhrecBadge } from './EdhrecBadge';
 import { useBackToClose } from '../hooks/useBackButton';
 import { FolderHeart, Search, ArrowUpDown, Sparkles, Check, FileText, LogIn, Share2, X, HeartHandshake } from 'lucide-react';
+import { LanguageSwitcher } from './ui/LanguageSwitcher';
+import { useT } from '../i18n';
 
 interface PublicWishlistViewProps {
   owner: { id: string; username: string };
@@ -26,6 +28,7 @@ export const PublicWishlistView: React.FC<PublicWishlistViewProps> = ({
   isLoggedIn = false,
   showToast
 }) => {
+  const t = useT();
   const [searchQuery, setSearchQuery] = useState('');
   const [filterFoilOnly, setFilterFoilOnly] = useState(false);
   const [sortBy, setSortBy] = useState<'price-desc' | 'price-asc' | 'name' | 'added'>('price-desc');
@@ -49,17 +52,17 @@ export const PublicWishlistView: React.FC<PublicWishlistViewProps> = ({
       done();
       showToast?.(okMsg);
     } catch {
-      showToast?.('Nie udało się skopiować do schowka.');
+      showToast?.(t('Nie udało się skopiować do schowka.'));
     }
   };
 
   const handleCopyLink = () =>
-    copy(shareUrl, () => { setCopiedLink(true); setTimeout(() => setCopiedLink(false), 2500); }, 'Skopiowano link do listy życzeń!');
+    copy(shareUrl, () => { setCopiedLink(true); setTimeout(() => setCopiedLink(false), 2500); }, t('Skopiowano link do listy życzeń!'));
 
   const handleCopyTextList = () => {
     const lines = wishlist.map(i => `${i.targetQuantity}x ${i.card.name} (${i.card.set.toUpperCase()})${i.isFoil ? ' [FOIL]' : ''}`);
-    const header = `=== SZUKA KART: ${owner.username} ===\nŁącznie: ${totalCards} szt.\nLista życzeń: ${shareUrl}\n\n`;
-    copy(header + lines.join('\n'), () => { setCopiedText(true); setTimeout(() => setCopiedText(false), 2500); }, 'Skopiowano listę kart (.txt) do schowka!');
+    const header = `=== ${t('SZUKA KART:')} ${owner.username} ===\n${t('Łącznie: {n} szt.', { n: totalCards })}\n${t('Lista życzeń')}: ${shareUrl}\n\n`;
+    copy(header + lines.join('\n'), () => { setCopiedText(true); setTimeout(() => setCopiedText(false), 2500); }, t('Skopiowano listę kart (.txt) do schowka!'));
   };
 
   const displayed = useMemo(() => {
@@ -93,24 +96,25 @@ export const PublicWishlistView: React.FC<PublicWishlistViewProps> = ({
             </div>
             <div className="min-w-0">
               <h1 className="text-base sm:text-lg font-bold tracking-tight text-rose-200 truncate">
-                <span className="hidden sm:inline">Mana Screw • </span>Lista życzeń
+                <span className="hidden sm:inline">Mana Screw • </span>{t('Lista życzeń')}
               </h1>
               <p className="text-xs text-stone-400 truncate">
-                Szuka: <strong className="text-rose-300">@{owner.username}</strong>
+                {t('Szuka:')} <strong className="text-rose-300">@{owner.username}</strong>
               </p>
             </div>
           </div>
 
           <div className="flex items-center gap-2 shrink-0">
+            <LanguageSwitcher />
             <button
               type="button"
               onClick={handleCopyLink}
               className="h-10 px-3 bg-stone-800 hover:bg-stone-700 text-stone-200 border border-stone-700 text-xs font-bold rounded-xl flex items-center gap-1.5 cursor-pointer"
-              title="Kopiuj link do tej listy"
-              aria-label="Kopiuj link do tej listy"
+              title={t('Kopiuj link do tej listy')}
+              aria-label={t('Kopiuj link do tej listy')}
             >
               {copiedLink ? <Check className="w-4 h-4 text-emerald-400" /> : <Share2 className="w-4 h-4 text-rose-400" />}
-              <span className="hidden sm:inline">{copiedLink ? 'Skopiowano!' : 'Udostępnij link'}</span>
+              <span className="hidden sm:inline">{copiedLink ? t('Skopiowano!') : t('Udostępnij link')}</span>
             </button>
             {!isLoggedIn && (
               <button
@@ -119,7 +123,7 @@ export const PublicWishlistView: React.FC<PublicWishlistViewProps> = ({
                 className="h-10 px-4 bg-amber-600 hover:bg-amber-500 text-stone-950 font-bold text-xs rounded-xl shadow-lg shadow-amber-950/50 flex items-center gap-1.5 cursor-pointer"
               >
                 <LogIn className="w-4 h-4" />
-                <span>Zaloguj się</span>
+                <span>{t('Zaloguj się')}</span>
               </button>
             )}
           </div>
@@ -131,22 +135,22 @@ export const PublicWishlistView: React.FC<PublicWishlistViewProps> = ({
         <div className="bg-stone-900 border border-stone-800 rounded-2xl p-5 sm:p-6 shadow-2xl flex flex-col md:flex-row md:items-center md:justify-between gap-5">
           <div className="space-y-2">
             <span className="px-2.5 py-0.5 rounded-full text-xs tabular-nums font-bold bg-rose-500/20 text-rose-300 border border-rose-500/40 ">
-              Szukam kart
+              {t('Szukam kart')}
             </span>
-            <h2 className="text-2xl sm:text-3xl font-bold text-white tracking-tight">Lista życzeń gracza @{owner.username}</h2>
+            <h2 className="text-2xl sm:text-3xl font-bold text-white tracking-tight">{t('Lista życzeń gracza @{name}', { name: owner.username })}</h2>
             <p className="text-xs text-stone-400 max-w-xl">
-              Masz którąś z tych kart? {isLoggedIn ? 'Napisz do gracza w zakładce Wiadomości.' : 'Załóż darmowe konto lub zaloguj się, aby napisać do gracza i wystawić swoje karty.'}{' '}
-              Wycena orientacyjna w <strong>{settings.currency}</strong> ({settings.pricingSource === 'CARDMARKET' ? 'Cardmarket trend' : 'TCGPlayer market'}).
+              {t('Masz którąś z tych kart?')} {isLoggedIn ? t('Napisz do gracza w zakładce Wiadomości.') : t('Załóż darmowe konto lub zaloguj się, aby napisać do gracza i wystawić swoje karty.')}{' '}
+              {t('Wycena orientacyjna w')} <strong>{settings.currency}</strong> ({settings.pricingSource === 'CARDMARKET' ? t('Cardmarket trend') : t('TCGPlayer market')}).
             </p>
           </div>
 
           <div className="grid grid-cols-2 sm:flex sm:items-center gap-3 sm:flex-wrap">
             <div className="bg-stone-950/80 px-4 py-2.5 rounded-2xl border border-stone-800">
-              <span className="text-[11px] font-bold text-stone-400 block">Szukanych kart</span>
-              <span className="text-lg font-bold text-stone-100 tabular-nums">{totalCards} szt.</span>
+              <span className="text-[11px] font-bold text-stone-400 block">{t('Szukanych kart')}</span>
+              <span className="text-lg font-bold text-stone-100 tabular-nums">{totalCards} {t('szt.')}</span>
             </div>
             <div className="bg-stone-950/80 px-4 py-2.5 rounded-2xl border border-rose-500/30">
-              <span className="text-[11px] font-bold text-stone-400 block">Wartość rynkowa</span>
+              <span className="text-[11px] font-bold text-stone-400 block">{t('Wartość rynkowa')}</span>
               <span className="text-lg font-bold text-rose-200 tabular-nums">{formatCurrency(totalValue, settings.currency)}</span>
             </div>
             <button
@@ -156,7 +160,7 @@ export const PublicWishlistView: React.FC<PublicWishlistViewProps> = ({
               className="col-span-2 justify-center h-12 px-3.5 bg-stone-800 hover:bg-stone-700 text-stone-200 border border-stone-700 text-xs font-bold rounded-2xl flex items-center gap-2 cursor-pointer disabled:opacity-40"
             >
               {copiedText ? <Check className="w-4 h-4 text-emerald-400" /> : <FileText className="w-4 h-4 text-rose-400" />}
-              <span>{copiedText ? 'Skopiowano listę!' : 'Kopiuj listę (.txt)'}</span>
+              <span>{copiedText ? t('Skopiowano listę!') : t('Kopiuj listę (.txt)')}</span>
             </button>
           </div>
         </div>
@@ -169,8 +173,8 @@ export const PublicWishlistView: React.FC<PublicWishlistViewProps> = ({
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Szukaj karty (nazwa, set, typ)..."
-              aria-label="Szukaj karty"
+              placeholder={t('Szukaj karty (nazwa, set, typ)...')}
+              aria-label={t('Szukaj karty')}
               className="w-full bg-stone-950 border border-stone-800 focus:border-rose-500 rounded-xl pl-9 pr-3.5 py-2.5 text-sm text-stone-100 placeholder-stone-500 focus:outline-none"
             />
           </div>
@@ -184,20 +188,20 @@ export const PublicWishlistView: React.FC<PublicWishlistViewProps> = ({
               }`}
             >
               <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-              Tylko Foil
+              {t('Tylko Foil')}
             </button>
             <label className="h-10 flex items-center gap-1.5 bg-stone-950 border border-stone-800 rounded-xl px-2.5 text-xs text-stone-300">
               <ArrowUpDown className="w-3.5 h-3.5 text-rose-400" />
-              <span className="sr-only">Sortowanie</span>
+              <span className="sr-only">{t('Sortowanie')}</span>
               <select
                 value={sortBy}
                 onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
                 className="bg-transparent text-xs text-stone-200 focus:outline-none cursor-pointer"
               >
-                <option value="price-desc">Cena: najwyższa</option>
-                <option value="price-asc">Cena: najniższa</option>
-                <option value="name">Nazwa A–Z</option>
-                <option value="added">Ostatnio dodane</option>
+                <option value="price-desc">{t('Cena: najwyższa')}</option>
+                <option value="price-asc">{t('Cena: najniższa')}</option>
+                <option value="name">{t('Nazwa A–Z')}</option>
+                <option value="added">{t('Ostatnio dodane')}</option>
               </select>
             </label>
           </div>
@@ -208,9 +212,9 @@ export const PublicWishlistView: React.FC<PublicWishlistViewProps> = ({
           <div className="bg-stone-900/60 border border-dashed border-stone-800 rounded-2xl p-12 text-center space-y-3">
             <FolderHeart className="w-12 h-12 text-stone-600 mx-auto" />
             <h3 className="text-base font-bold text-white">
-              {wishlist.length === 0 ? 'Lista życzeń jest pusta' : 'Brak kart spełniających kryteria'}
+              {wishlist.length === 0 ? t('Lista życzeń jest pusta') : t('Brak kart spełniających kryteria')}
             </h3>
-            {wishlist.length > 0 && <p className="text-xs text-stone-400">Zmień frazę wyszukiwania lub filtry.</p>}
+            {wishlist.length > 0 && <p className="text-xs text-stone-400">{t('Zmień frazę wyszukiwania lub filtry.')}</p>}
           </div>
         ) : (
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 sm:gap-4">
@@ -227,7 +231,7 @@ export const PublicWishlistView: React.FC<PublicWishlistViewProps> = ({
                   {item.isFoil && (
                     <div className="absolute top-0 right-0 z-10 ms-foil-chip font-semibold text-[11px] px-2 py-0.5 rounded-bl-lg flex items-center gap-1 ">
                       <Sparkles className="w-3 h-3 fill-stone-950" />
-                      Foil
+                      {t('Foil')}
                     </div>
                   )}
                   <div className="relative aspect-[2.5/3.5] w-full overflow-hidden bg-stone-950">
@@ -264,7 +268,7 @@ export const PublicWishlistView: React.FC<PublicWishlistViewProps> = ({
                       </div>
                     </div>
                     <div className="pt-2 border-t border-stone-800 flex items-center justify-between text-[11px]">
-                      <span className="text-stone-400">Rynkowo</span>
+                      <span className="text-stone-400">{t('Rynkowo')}</span>
                       <span className="font-bold tabular-nums text-rose-200">{formatCurrency(unitPrice(item), settings.currency)}</span>
                     </div>
                   </div>
@@ -291,7 +295,7 @@ export const PublicWishlistView: React.FC<PublicWishlistViewProps> = ({
             <button
               type="button"
               onClick={() => setPreview(null)}
-              aria-label="Zamknij"
+              aria-label={t('Zamknij')}
               className="absolute top-4 right-4 w-10 h-10 flex items-center justify-center text-stone-400 hover:text-white rounded-xl bg-stone-800/80 hover:bg-stone-800 cursor-pointer"
             >
               <X className="w-5 h-5" />
@@ -312,15 +316,15 @@ export const PublicWishlistView: React.FC<PublicWishlistViewProps> = ({
                   <p className="text-xs text-stone-400">{preview.card.type_line}</p>
                 </div>
                 <div className="bg-stone-950 p-3 rounded-2xl border border-rose-500/30">
-                  <span className="text-[11px] font-bold text-stone-400 block">Szuka</span>
+                  <span className="text-[11px] font-bold text-stone-400 block">{t('Szuka')}</span>
                   <p className="text-xl font-bold text-rose-200">
-                    {preview.targetQuantity} szt.{preview.isFoil && <span className="text-amber-300 text-sm"> Foil</span>}
+                    {preview.targetQuantity} {t('szt.')}{preview.isFoil && <span className="text-amber-300 text-sm"> {t('Foil')}</span>}
                   </p>
                 </div>
                 <div className="text-xs space-y-1 text-stone-300">
-                  <p>Dodatek: <strong className="text-stone-100">{preview.card.set_name} ({preview.card.set.toUpperCase()})</strong></p>
-                  <p>Wycena rynkowa: <strong className="text-stone-100">{formatCurrency(unitPrice(preview), settings.currency)}</strong> / szt.</p>
-                  {preview.notes && <p className="text-amber-300/90 pt-1 text-[11px]">Uwagi: {preview.notes}</p>}
+                  <p>{t('Dodatek:')} <strong className="text-stone-100">{preview.card.set_name} ({preview.card.set.toUpperCase()})</strong></p>
+                  <p>{t('Wycena rynkowa:')} <strong className="text-stone-100">{formatCurrency(unitPrice(preview), settings.currency)}</strong> {t('/ szt.')}</p>
+                  {preview.notes && <p className="text-amber-300/90 pt-1 text-[11px]">{t('Uwagi:')} {preview.notes}</p>}
                 </div>
               </div>
             </div>
@@ -328,7 +332,7 @@ export const PublicWishlistView: React.FC<PublicWishlistViewProps> = ({
             <div className="pt-3 border-t border-stone-800 flex items-center justify-between gap-3">
               <span className="text-xs text-stone-400 flex items-center gap-1.5 min-w-0">
                 <HeartHandshake className="w-4 h-4 text-rose-400 shrink-0" />
-                <span className="truncate">Masz ją? Napisz do <strong className="text-rose-300">@{owner.username}</strong></span>
+                <span className="truncate">{t('Masz ją? Napisz do')} <strong className="text-rose-300">@{owner.username}</strong></span>
               </span>
               {!isLoggedIn ? (
                 <button
@@ -336,7 +340,7 @@ export const PublicWishlistView: React.FC<PublicWishlistViewProps> = ({
                   onClick={() => { setPreview(null); onOpenLogin(); }}
                   className="h-10 px-4 bg-amber-500 hover:bg-amber-400 text-stone-950 text-xs font-bold rounded-xl cursor-pointer shrink-0"
                 >
-                  Zaloguj się
+                  {t('Zaloguj się')}
                 </button>
               ) : (
                 <button
@@ -344,7 +348,7 @@ export const PublicWishlistView: React.FC<PublicWishlistViewProps> = ({
                   onClick={() => setPreview(null)}
                   className="h-10 px-4 bg-stone-800 hover:bg-stone-700 text-stone-200 text-xs font-bold rounded-xl cursor-pointer shrink-0"
                 >
-                  Zamknij
+                  {t('Zamknij')}
                 </button>
               )}
             </div>

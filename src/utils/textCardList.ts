@@ -1,4 +1,5 @@
 import { CollectionItem, DeckItem, ScryfallCard } from '../types';
+import { t } from '../i18n';
 
 export interface ParsedCardLine {
   rawLine: string;
@@ -193,7 +194,7 @@ export async function resolveCardsFromScryfall(
 ): Promise<ResolvedImportItem[]> {
   if (parsedLines.length === 0) return [];
 
-  onProgress?.(0, parsedLines.length, 'Przygotowywanie zapytania do Scryfall...');
+  onProgress?.(0, parsedLines.length, t('Przygotowywanie zapytania do Scryfall...'));
 
   // Build identifiers for Scryfall
   const identifiers = parsedLines.map((p) => {
@@ -214,7 +215,7 @@ export async function resolveCardsFromScryfall(
   for (let start = 0; start < total; start += CHUNK) {
     const chunkLines = parsedLines.slice(start, start + CHUNK);
     const chunkIdents = identifiers.slice(start, start + CHUNK);
-    onProgress?.(start, total, `Dopasowywanie kart: ${start} z ${total}`);
+    onProgress?.(start, total, t('Dopasowywanie kart: {n} z {total}', { n: start, total }));
 
     let foundCards: ScryfallCard[] = [];
     try {
@@ -225,7 +226,7 @@ export async function resolveCardsFromScryfall(
       });
       if (res.status === 429) {
         const data = await res.json().catch(() => ({}));
-        throw new Error(data.error || 'Za dużo importów w krótkim czasie. Spróbuj za kilka minut.');
+        throw new Error(data.error ? t(data.error) : t('Za dużo importów w krótkim czasie. Spróbuj za kilka minut.'));
       }
       if (res.ok) {
         const data = await res.json();
@@ -266,7 +267,7 @@ export async function resolveCardsFromScryfall(
       resolvedItems.push({
         parsed: p,
         card: matched || null,
-        error: matched ? undefined : 'Nie znaleziono w Scryfall',
+        error: matched ? undefined : t('Nie znaleziono w Scryfall'),
       });
     }
   }
@@ -277,7 +278,7 @@ export async function resolveCardsFromScryfall(
     onProgress?.(
       parsedLines.length - missingItems.length,
       parsedLines.length,
-      `Wyszukiwanie uzupełniające dla ${missingItems.length} kart...`
+      t('Wyszukiwanie uzupełniające dla {n} kart...', { n: missingItems.length })
     );
 
     for (let i = 0; i < missingItems.length; i++) {
@@ -286,7 +287,7 @@ export async function resolveCardsFromScryfall(
         onProgress?.(
           total - missingItems.length + i,
           total,
-          `Wyszukiwanie uzupełniające: ${i} z ${missingItems.length} kart`
+          t('Wyszukiwanie uzupełniające: {n} z {total} kart', { n: i, total: missingItems.length })
         );
       }
       try {
@@ -311,7 +312,7 @@ export async function resolveCardsFromScryfall(
     }
   }
 
-  onProgress?.(parsedLines.length, parsedLines.length, 'Gotowe');
+  onProgress?.(parsedLines.length, parsedLines.length, t('Gotowe'));
   return resolvedItems;
 }
 
@@ -322,10 +323,10 @@ export async function resolveCardsFromScryfall(
 export function exportCollectionToTxt(collection: CollectionItem[]): string {
   const header = [
     `// ==========================================`,
-    `// Mana Screw - Kolekcja Kart Magic: The Gathering`,
-    `// Liczba pozycji: ${collection.length}`,
-    `// Wygenerowano: ${new Date().toISOString().slice(0, 10)}`,
-    `// Format: [ilość]x [nazwa] ([kod_dodatku]) [numer_karty]`,
+    `// ${t('Mana Screw - Kolekcja Kart Magic: The Gathering')}`,
+    `// ${t('Liczba pozycji:')} ${collection.length}`,
+    `// ${t('Wygenerowano:')} ${new Date().toISOString().slice(0, 10)}`,
+    `// ${t('Format: [ilość]x [nazwa] ([kod_dodatku]) [numer_karty]')}`,
     `// ==========================================`,
     ``,
   ].join('\n');
@@ -378,10 +379,10 @@ export function exportCollectionToTxt(collection: CollectionItem[]): string {
 export function exportDeckToTxt(deck: DeckItem): string {
   const header = [
     `// ==========================================`,
-    `// Talia: ${deck.name}`,
+    `// ${t('Talia:')} ${deck.name}`,
     `// Format: ${deck.format || 'EDH Commander'}`,
-    `// Wygenerowano: ${new Date().toISOString().slice(0, 10)}`,
-    `// Format: [ilość]x [nazwa] ([kod_dodatku]) [numer_karty]`,
+    `// ${t('Wygenerowano:')} ${new Date().toISOString().slice(0, 10)}`,
+    `// ${t('Format: [ilość]x [nazwa] ([kod_dodatku]) [numer_karty]')}`,
     `// ==========================================`,
     ``,
   ];

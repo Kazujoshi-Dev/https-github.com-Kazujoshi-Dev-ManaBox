@@ -5,6 +5,7 @@ import { getCardImageUri, handleCardImageError } from '../../utils/formatters';
 import { edhrecApi, type EdhrecCommanderData, type EdhrecRecommendation } from '../../services/api';
 import { getCardCategory } from './constants';
 import { ReplaceCardModal } from './ReplaceCardModal';
+import { useT, locale } from '../../i18n';
 
 interface DeckSuggestionsProps {
   deck: DeckItem;
@@ -46,6 +47,7 @@ const isBasicLand = (card: ScryfallCard) => /\bbasic\b/i.test(card.type_line || 
 
 /** Sugestie z EDHREC: popularne karty dla dowódcy, których brak w talii, i lepsze odpowiedniki. */
 export const DeckSuggestions: React.FC<DeckSuggestionsProps> = ({ deck, collection, onViewCardDetails, onAddCard, onReplaceCard, wishlistNames, onAddToWishlist }) => {
+  const t = useT();
   const [wishBusy, setWishBusy] = useState<string | null>(null);
   const commanderName = deck.commander?.name || '';
   const [data, setData] = useState<EdhrecCommanderData | null>(null);
@@ -133,35 +135,37 @@ export const DeckSuggestions: React.FC<DeckSuggestionsProps> = ({ deck, collecti
     return (
       <section className="bg-stone-900 border border-stone-800 rounded-xl p-4 sm:p-5">
         <h3 className="text-sm font-bold text-stone-100 flex items-center gap-2">
-          <Sparkles className="w-4 h-4 text-amber-400" /> Sugestie kart (EDHREC)
+          <Sparkles className="w-4 h-4 text-amber-400" /> {t('Sugestie kart (EDHREC)')}
         </h3>
-        <p className="text-sm text-stone-400 mt-2">Wybierz dowódcę, aby zobaczyć karty najczęściej grane z nim przez innych graczy.</p>
+        <p className="text-sm text-stone-400 mt-2">{t('Wybierz dowódcę, aby zobaczyć karty najczęściej grane z nim przez innych graczy.')}</p>
       </section>
     );
   }
 
   const addDisabledReason = (rec: EdhrecRecommendation) =>
-    collectionOnly && !owned.has(frontName(rec.name)) ? 'Talia korzysta tylko z kart z kolekcji. Przełącz źródło na „Wszystkie karty”, aby dodać' : null;
+    collectionOnly && !owned.has(frontName(rec.name)) ? t('Talia korzysta tylko z kart z kolekcji. Przełącz źródło na „Wszystkie karty”, aby dodać') : null;
 
   return (
-    <div className="space-y-4" aria-label="Sugestie kart">
+    <div className="space-y-4" aria-label={t('Sugestie kart')}>
       <div className="flex flex-wrap items-end justify-between gap-2 px-1">
         <div>
-          <h2 className="text-lg font-semibold text-stone-50">Sugestie dla {deck.commander.name}</h2>
+          <h2 className="text-lg font-semibold text-stone-50">{t('Sugestie dla {name}', { name: deck.commander.name })}</h2>
           <p className="text-xs text-stone-400">
-            Na podstawie {data ? `${data.numDecks.toLocaleString('pl-PL')} talii` : 'talii'} z EDHREC: co grają inni gracze z tym dowódcą.
+            {data
+              ? t('Na podstawie {n} talii z EDHREC: co grają inni gracze z tym dowódcą.', { n: data.numDecks.toLocaleString(locale()) })
+              : t('Na podstawie talii z EDHREC: co grają inni gracze z tym dowódcą.')}
           </p>
         </div>
         {data && (
           <a href={data.url} target="_blank" rel="noopener noreferrer" className="text-xs font-semibold text-amber-300 hover:text-amber-200 flex items-center gap-1">
-            Zobacz na EDHREC <ExternalLink className="w-3.5 h-3.5" />
+            {t('Zobacz na EDHREC')} <ExternalLink className="w-3.5 h-3.5" />
           </a>
         )}
       </div>
 
       {loading && (
         <div className="bg-stone-900 border border-stone-800 rounded-2xl p-6 flex items-center gap-3 text-sm text-stone-400">
-          <Loader2 className="w-5 h-5 animate-spin text-amber-400" /> Pobieranie rekomendacji z EDHREC...
+          <Loader2 className="w-5 h-5 animate-spin text-amber-400" /> {t('Pobieranie rekomendacji z EDHREC...')}
         </div>
       )}
       {error && !loading && (
@@ -176,14 +180,14 @@ export const DeckSuggestions: React.FC<DeckSuggestionsProps> = ({ deck, collecti
           <section className="bg-stone-900 border border-stone-800 rounded-xl p-4 sm:p-5">
             <div className="flex items-start gap-2.5 mb-3">
               <div>
-                <h3 className="text-base font-semibold text-stone-50 flex items-center gap-2"><Repeat className="w-4 h-4 text-stone-400" />Lepsze odpowiedniki</h3>
+                <h3 className="text-base font-semibold text-stone-50 flex items-center gap-2"><Repeat className="w-4 h-4 text-stone-400" />{t('Lepsze odpowiedniki')}</h3>
                 <p className="text-sm text-stone-400 mt-0.5">
-                  Karty z talii, które gra mniej niż 10% graczy z tym dowódcą, i popularniejsze karty tego samego typu o podobnym koszcie.
+                  {t('Karty z talii, które gra mniej niż 10% graczy z tym dowódcą, i popularniejsze karty tego samego typu o podobnym koszcie.')}
                 </p>
               </div>
             </div>
             {upgrades.length === 0 ? (
-              <p className="text-sm text-stone-400">Nie znaleźliśmy oczywistych zamienników. Karty w talii są popularne wśród graczy tego dowódcy.</p>
+              <p className="text-sm text-stone-400">{t('Nie znaleźliśmy oczywistych zamienników. Karty w talii są popularne wśród graczy tego dowódcy.')}</p>
             ) : (
               <ul className="divide-y divide-stone-800">
                 {upgrades.map(({ from, fromInclusion, to }) => (
@@ -204,7 +208,7 @@ export const DeckSuggestions: React.FC<DeckSuggestionsProps> = ({ deck, collecti
                       onClick={() => onReplaceCard(from, to)}
                       className="h-9 px-3 rounded-lg bg-stone-800 hover:bg-stone-700 text-stone-100 text-xs font-bold flex items-center gap-1.5 self-start sm:self-auto shrink-0 cursor-pointer"
                     >
-                      <Repeat className="w-3.5 h-3.5" /> Zamień
+                      <Repeat className="w-3.5 h-3.5" /> {t('Zamień')}
                     </button>
                   </li>
                 ))}
@@ -217,37 +221,37 @@ export const DeckSuggestions: React.FC<DeckSuggestionsProps> = ({ deck, collecti
             <div className="flex flex-wrap items-start justify-between gap-3 mb-3">
               <div className="flex items-start gap-2.5">
                 <div>
-                  <h3 className="text-base font-semibold text-stone-50 flex items-center gap-2"><TrendingUp className="w-4 h-4 text-stone-400" />Najczęściej grane, których nie masz w talii</h3>
-                  <p className="text-sm text-stone-400 mt-0.5">Procent = ile talii z tym dowódcą gra kartę. Synergia = o ile częściej niż w innych taliach tych kolorów.</p>
+                  <h3 className="text-base font-semibold text-stone-50 flex items-center gap-2"><TrendingUp className="w-4 h-4 text-stone-400" />{t('Najczęściej grane, których nie masz w talii')}</h3>
+                  <p className="text-sm text-stone-400 mt-0.5">{t('Procent = ile talii z tym dowódcą gra kartę. Synergia = o ile częściej niż w innych taliach tych kolorów.')}</p>
                 </div>
               </div>
               <label className="flex items-center gap-2 text-xs text-stone-300 cursor-pointer h-9">
                 <input type="checkbox" checked={ownedOnly} onChange={(e) => setOwnedOnly(e.target.checked)} className="w-4 h-4 accent-amber-500" />
-                <Library className="w-3.5 h-3.5 text-amber-400" /> Tylko z mojej kolekcji
+                <Library className="w-3.5 h-3.5 text-amber-400" /> {t('Tylko z mojej kolekcji')}
               </label>
             </div>
 
             <div className="flex gap-1.5 overflow-x-auto no-scrollbar -mx-4 px-4 sm:mx-0 sm:px-0 pb-2 mb-2">
-              {CATEGORY_TABS.map((t) => {
-                const n = t === 'Wszystkie' ? missing.length : missing.filter((r) => categoryOf(r) === t).length;
-                if (t !== 'Wszystkie' && n === 0) return null;
+              {CATEGORY_TABS.map((tb) => {
+                const n = tb === 'Wszystkie' ? missing.length : missing.filter((r) => categoryOf(r) === tb).length;
+                if (tb !== 'Wszystkie' && n === 0) return null;
                 return (
                   <button
-                    key={t}
+                    key={tb}
                     type="button"
-                    onClick={() => { setTab(t); setLimit(18); }}
+                    onClick={() => { setTab(tb); setLimit(18); }}
                     className={`h-9 px-3 rounded-full text-xs font-semibold border whitespace-nowrap cursor-pointer ${
-                      tab === t ? 'bg-stone-800 border-stone-600 text-stone-50' : 'bg-transparent border-transparent text-stone-400 hover:text-stone-200 hover:bg-stone-800/60'
+                      tab === tb ? 'bg-stone-800 border-stone-600 text-stone-50' : 'bg-transparent border-transparent text-stone-400 hover:text-stone-200 hover:bg-stone-800/60'
                     }`}
                   >
-                    {t} <span className="opacity-60">{n}</span>
+                    {t(tb)} <span className="opacity-60">{n}</span>
                   </button>
                 );
               })}
             </div>
 
             {visible.length === 0 ? (
-              <p className="text-sm text-stone-400 py-2">Brak kart w tej kategorii{ownedOnly ? ' w Twojej kolekcji' : ''}.</p>
+              <p className="text-sm text-stone-400 py-2">{ownedOnly ? t('Brak kart w tej kategorii w Twojej kolekcji.') : t('Brak kart w tej kategorii.')}</p>
             ) : (
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
                 {visible.slice(0, limit).map((rec) => {
@@ -271,7 +275,7 @@ export const DeckSuggestions: React.FC<DeckSuggestionsProps> = ({ deck, collecti
                           <span className="absolute inset-0 flex items-center justify-center p-2 text-xs text-stone-300 text-center">{rec.name}</span>
                         )}
                         {isOwned && (
-                          <span className="absolute top-1.5 left-1.5 text-[11px] font-bold px-1.5 py-0.5 rounded bg-emerald-600 text-white">W kolekcji</span>
+                          <span className="absolute top-1.5 left-1.5 text-[11px] font-bold px-1.5 py-0.5 rounded bg-emerald-600 text-white">{t('W kolekcji')}</span>
                         )}
                       </button>
                       <div className="p-2 space-y-1.5 flex-1 flex flex-col">
@@ -280,10 +284,10 @@ export const DeckSuggestions: React.FC<DeckSuggestionsProps> = ({ deck, collecti
                           <div className="h-full bg-amber-500" style={{ width: pct(rec.inclusion) }} />
                         </div>
                         <p className="text-[11px] text-stone-400 flex justify-between gap-1">
-                          <span><strong className="text-stone-200">{pct(rec.inclusion)}</strong> talii</span>
+                          <span><strong className="text-stone-200">{pct(rec.inclusion)}</strong> {t('talii')}</span>
                           {rec.synergy !== 0 && (
                             <span className={rec.synergy > 0 ? 'text-emerald-400' : 'text-stone-500'}>
-                              synergia {rec.synergy > 0 ? '+' : ''}{Math.round(rec.synergy * 100)}%
+                              {t('synergia')} {rec.synergy > 0 ? '+' : ''}{Math.round(rec.synergy * 100)}%
                             </span>
                           )}
                         </p>
@@ -292,19 +296,19 @@ export const DeckSuggestions: React.FC<DeckSuggestionsProps> = ({ deck, collecti
                             type="button"
                             onClick={() => onAddCard(rec)}
                             disabled={Boolean(blocked)}
-                            title={blocked || 'Dodaj do talii'}
+                            title={blocked || t('Dodaj do talii')}
                             className="h-8 rounded-md bg-amber-400 hover:bg-amber-300 text-stone-950 text-xs font-semibold flex items-center justify-center gap-1 cursor-pointer disabled:bg-stone-800 disabled:text-stone-500 disabled:cursor-not-allowed"
                           >
-                            <Plus className="w-3.5 h-3.5" /> Dodaj
+                            <Plus className="w-3.5 h-3.5" /> {t('Dodaj')}
                           </button>
                           <button
                             type="button"
                             onClick={() => setReplaceRec(rec)}
                             disabled={Boolean(blocked) || deck.cards.length === 0}
-                            title={blocked || 'Wybierz kartę z talii, którą zastąpi'}
+                            title={blocked || t('Wybierz kartę z talii, którą zastąpi')}
                             className="h-8 rounded-md ring-1 ring-stone-700 hover:bg-stone-800 text-stone-100 text-xs font-medium flex items-center justify-center gap-1 cursor-pointer disabled:text-stone-500 disabled:cursor-not-allowed disabled:hover:bg-transparent"
                           >
-                            <Repeat className="w-3.5 h-3.5" /> Zastąp
+                            <Repeat className="w-3.5 h-3.5" /> {t('Zastąp')}
                           </button>
                           {onAddToWishlist && (() => {
                             const onList = wishlistNames?.has(frontName(rec.name));
@@ -321,8 +325,8 @@ export const DeckSuggestions: React.FC<DeckSuggestionsProps> = ({ deck, collecti
                                   }
                                 }}
                                 disabled={onList || wishBusy === rec.name}
-                                aria-label={onList ? `${rec.name} jest na liście życzeń` : `Dodaj ${rec.name} do listy życzeń`}
-                                title={onList ? 'Już na liście życzeń' : 'Dodaj do listy życzeń'}
+                                aria-label={onList ? t('{name} jest na liście życzeń', { name: rec.name }) : t('Dodaj {name} do listy życzeń', { name: rec.name })}
+                                title={onList ? t('Już na liście życzeń') : t('Dodaj do listy życzeń')}
                                 className={`h-8 w-8 rounded-md ring-1 flex items-center justify-center cursor-pointer disabled:cursor-default ${
                                   onList ? 'ring-rose-500/40 bg-rose-500/10 text-rose-400' : 'ring-stone-700 text-stone-300 hover:bg-stone-800 hover:text-rose-300'
                                 }`}
@@ -344,11 +348,11 @@ export const DeckSuggestions: React.FC<DeckSuggestionsProps> = ({ deck, collecti
                 onClick={() => setLimit((l) => l + 18)}
                 className="mt-3 w-full h-10 rounded-xl bg-stone-950 border border-stone-800 text-sm font-semibold text-stone-300 hover:text-stone-100 cursor-pointer"
               >
-                Pokaż więcej ({visible.length - limit})
+                {t('Pokaż więcej')} ({visible.length - limit})
               </button>
             )}
             <p className="mt-3 text-[11px] text-stone-500">
-              Dane: <a href="https://edhrec.com" target="_blank" rel="noopener noreferrer" className="underline hover:text-stone-300">EDHREC</a> (odświeżane raz na dobę).
+              {t('Dane:')} <a href="https://edhrec.com" target="_blank" rel="noopener noreferrer" className="underline hover:text-stone-300">EDHREC</a> {t('(odświeżane raz na dobę).')}
             </p>
           </section>
         </>

@@ -1,4 +1,5 @@
-/**
+
+import { locale } from '../i18n';/**
  * Wykrywanie nowej wersji aplikacji po wdrożeniu (git pull && docker compose up -d --build).
  *
  * Każdy build ma własny identyfikator (__BUILD_ID__, wpisywany przez Vite). Serwer zwraca
@@ -19,7 +20,7 @@ export function versionLabel(): string {
   if (!CLIENT_BUILT_AT) return CLIENT_VERSION;
   const d = new Date(CLIENT_BUILT_AT);
   if (Number.isNaN(d.getTime())) return CLIENT_VERSION;
-  const parts = new Intl.DateTimeFormat('pl-PL', { timeZone: 'Europe/Warsaw', year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(d);
+  const parts = new Intl.DateTimeFormat(locale(), { timeZone: 'Europe/Warsaw', year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(d);
   const get = (t: string) => parts.find((p) => p.type === t)?.value ?? '';
   return `${get('year')}.${get('month')}.${get('day')} · ${CLIENT_VERSION}`;
 }

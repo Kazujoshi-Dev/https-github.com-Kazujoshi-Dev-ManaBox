@@ -17,6 +17,7 @@ import {
   Gamepad2
 } from 'lucide-react';
 import { digitalLabel, isDigitalOnly } from '../utils/mtgFormats';
+import { useT, locale, tServer } from '../i18n';
 
 const ARENA_PREF_KEY = 'ms-search-arena';
 
@@ -26,6 +27,7 @@ interface CardSearchProps {
 }
 
 export const CardSearch: React.FC<CardSearchProps> = ({ onSelectCard, settings }) => {
+  const t = useT();
   const [query, setQuery] = useState('');
   const [autocomplete, setAutocomplete] = useState<string[]>([]);
   const [searchResults, setSearchResults] = useState<ScryfallCard[]>([]);
@@ -87,7 +89,7 @@ export const CardSearch: React.FC<CardSearchProps> = ({ onSelectCard, settings }
       const data = await res.json();
 
       if (!res.ok) {
-        throw new Error(data.error || 'Nie znaleziono kart dla podanego zapytania');
+        throw new Error(tServer(data.error) || t('Nie znaleziono kart dla podanego zapytania'));
       }
 
       if (data.data && Array.isArray(data.data)) {
@@ -96,7 +98,7 @@ export const CardSearch: React.FC<CardSearchProps> = ({ onSelectCard, settings }
         setSearchResults([]);
       }
     } catch (err: any) {
-      setError(err.message || 'Wystąpił błąd podczas wyszukiwania kart w Scryfall API');
+      setError(err.message || t('Wystąpił błąd podczas wyszukiwania kart w Scryfall API'));
       setSearchResults([]);
     } finally {
       setIsLoading(false);
@@ -109,10 +111,10 @@ export const CardSearch: React.FC<CardSearchProps> = ({ onSelectCard, settings }
       {/* Search Header Banner */}
       <div className="space-y-4">
         <PageHeader
-          title="Szukaj kart"
+          title={t('Szukaj kart')}
           description={
             <>
-              Nazwa karty, dodatek albo zapytanie Scryfall, np. <code className="text-stone-200">c:blue t:instant</code> lub <code className="text-stone-200">rarity:mythic cmc&lt;3</code>.
+              {t('Nazwa karty, dodatek albo zapytanie Scryfall, np.')} <code className="text-stone-200">c:blue t:instant</code> {t('lub')} <code className="text-stone-200">rarity:mythic cmc&lt;3</code>.
             </>
           }
         />
@@ -130,7 +132,7 @@ export const CardSearch: React.FC<CardSearchProps> = ({ onSelectCard, settings }
               <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-5 h-5 text-amber-400" />
               <input
                 type="text"
-                placeholder="Wpisz nazwę karty (np. Black Lotus, Counterspell, Ragavan)..."
+                placeholder={t('Wpisz nazwę karty (np. Black Lotus, Counterspell, Ragavan)...')}
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 onFocus={() => {
@@ -148,12 +150,12 @@ export const CardSearch: React.FC<CardSearchProps> = ({ onSelectCard, settings }
               {isLoading ? (
                 <>
                   <Loader2 className="w-4 h-4 animate-spin" />
-                  <span>Szukam...</span>
+                  <span>{t('Szukam...')}</span>
                 </>
               ) : (
                 <>
                   <Search className="w-4 h-4 stroke-[2.5]" />
-                  <span>Szukaj</span>
+                  <span>{t('Szukaj')}</span>
                 </>
               )}
             </button>
@@ -174,7 +176,7 @@ export const CardSearch: React.FC<CardSearchProps> = ({ onSelectCard, settings }
                   className="w-full px-4 py-2.5 text-left text-xs text-stone-200 hover:bg-stone-800/80 hover:text-amber-300 flex items-center justify-between transition-colors cursor-pointer"
                 >
                   <span className="font-semibold">{cardName}</span>
-                  <span className="text-[11px] tabular-nums text-stone-500 ">Scryfall</span>
+                  <span className="text-[11px] tabular-nums text-stone-500 ">{t('Scryfall')}</span>
                 </button>
               ))}
             </div>
@@ -198,8 +200,8 @@ export const CardSearch: React.FC<CardSearchProps> = ({ onSelectCard, settings }
             className="w-4 h-4 accent-amber-500 cursor-pointer"
           />
           <Gamepad2 className="w-4 h-4 text-amber-400" />
-          <span>Karty MTG Arena</span>
-          <span className="text-xs text-stone-500">(uwzględnij karty cyfrowe)</span>
+          <span>{t('Karty MTG Arena')}</span>
+          <span className="text-xs text-stone-500">{t('(uwzględnij karty cyfrowe)')}</span>
         </label>
 
       </div>
@@ -217,9 +219,9 @@ export const CardSearch: React.FC<CardSearchProps> = ({ onSelectCard, settings }
         <div className="space-y-4">
           <div className="flex items-center justify-between px-1">
             <h3 className="text-sm font-bold text-stone-200">
-              Wyniki wyszukiwania (<span className="text-amber-400 tabular-nums">{searchResults.length}</span>)
+              {t('Wyniki wyszukiwania')} (<span className="text-amber-400 tabular-nums">{searchResults.length}</span>)
             </h3>
-            <span className="text-xs text-stone-400">Kliknij kartę, aby dodać ją do kolekcji</span>
+            <span className="text-xs text-stone-400">{t('Kliknij kartę, aby dodać ją do kolekcji')}</span>
           </div>
 
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
@@ -250,28 +252,28 @@ export const CardSearch: React.FC<CardSearchProps> = ({ onSelectCard, settings }
                     <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
                       <div className="px-3 py-1.5 rounded-full bg-amber-500 text-stone-950 font-bold text-xs flex items-center gap-1.5 shadow-lg">
                         <Plus className="w-4 h-4 stroke-[3]" />
-                        <span>Dodaj / Szczegóły</span>
+                        <span>{t('Dodaj / Szczegóły')}</span>
                       </div>
                     </div>
 
                     {/* EDHREC Rank Banner on bottom-left corner */}
                     {edhrecRank != null && (
                       <div 
-                        title={`Ranking EDHREC: #${edhrecRank.toLocaleString()} (popularność w formacie Commander)`}
+                        title={t('Ranking EDHREC: #{rank} (popularność w formacie Commander)', { rank: edhrecRank.toLocaleString(locale()) })}
                         className="absolute bottom-0 left-0 z-10 ms-foil-chip font-semibold text-[11px] px-2 py-0.5 rounded-tr-lg shadow-sm flex items-center gap-1 select-none border-t border-r border-white/20"
                       >
                         <Trophy className="w-3 h-3 fill-stone-950 stroke-[1.5] shrink-0" />
-                        <span>EDH #{edhrecRank.toLocaleString()}</span>
+                        <span>EDH #{edhrecRank.toLocaleString(locale())}</span>
                       </div>
                     )}
 
                     {digital ? (
                       <div
                         className="absolute bottom-2 right-2 bg-stone-950/90 backdrop-blur-md px-2 py-0.5 rounded border border-amber-500/40 flex items-center gap-1"
-                        title="Karta dostępna tylko w grze cyfrowej"
+                        title={t('Karta dostępna tylko w grze cyfrowej')}
                       >
                         <Gamepad2 className="w-3 h-3 text-amber-400" />
-                        <span className="text-[11px] font-semibold text-amber-300">{digitalLabel(card)}</span>
+                        <span className="text-[11px] font-semibold text-amber-300">{t(digitalLabel(card))}</span>
                       </div>
                     ) : (
                     <div className="absolute bottom-2 right-2 bg-stone-950/90 backdrop-blur-md px-2 py-0.5 rounded border border-stone-800">
@@ -313,7 +315,7 @@ export const CardSearch: React.FC<CardSearchProps> = ({ onSelectCard, settings }
                       className="w-full py-1.5 rounded-lg bg-stone-800 hover:bg-amber-500 hover:text-stone-950 text-amber-300 font-bold text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
                     >
                       {digital ? <Eye className="w-3.5 h-3.5" /> : <Plus className="w-3.5 h-3.5 stroke-[2.5]" />}
-                      <span>{digital ? 'Szczegóły karty' : 'Dodaj do kolekcji'}</span>
+                      <span>{digital ? t('Szczegóły karty') : t('Dodaj do kolekcji')}</span>
                     </button>
                   </div>
                 </div>

@@ -4,6 +4,7 @@ import { X, Share2, Copy, Check, ExternalLink, Loader2, Lock, Globe, FileText } 
 import type { DeckItem } from '../../types';
 import { decksApi } from '../../services/api';
 import { useBackToClose } from '../../hooks/useBackButton';
+import { useT } from '../../i18n';
 
 /** Lista kart w formacie tekstowym (np. do Moxfield / Archidekt): „1 Nazwa karty”. */
 export function deckToText(deck: DeckItem): string {
@@ -25,6 +26,7 @@ interface DeckShareModalProps {
 }
 
 export const DeckShareModal: React.FC<DeckShareModalProps> = ({ deck, onClose, onChanged, showToast }) => {
+  const t = useT();
   useBackToClose(true, onClose);
   const [busy, setBusy] = useState(false);
   const [copied, setCopied] = useState<'link' | 'txt' | null>(null);
@@ -36,7 +38,7 @@ export const DeckShareModal: React.FC<DeckShareModalProps> = ({ deck, onClose, o
     try {
       await decksApi.setVisibility(deck.id, !isPublic);
       onChanged(!isPublic);
-      showToast(!isPublic ? 'Talia jest teraz dostępna pod publicznym linkiem.' : 'Publiczny link do talii został wyłączony.');
+      showToast(!isPublic ? t('Talia jest teraz dostępna pod publicznym linkiem.') : t('Publiczny link do talii został wyłączony.'));
     } catch (err: any) {
       showToast(err.message);
     } finally {
@@ -48,10 +50,10 @@ export const DeckShareModal: React.FC<DeckShareModalProps> = ({ deck, onClose, o
     try {
       await navigator.clipboard.writeText(what === 'link' ? url : deckToText(deck));
       setCopied(what);
-      showToast(what === 'link' ? 'Skopiowano link do talii.' : 'Skopiowano listę kart.');
+      showToast(what === 'link' ? t('Skopiowano link do talii.') : t('Skopiowano listę kart.'));
       setTimeout(() => setCopied(null), 2000);
     } catch {
-      showToast('Nie udało się skopiować do schowka.');
+      showToast(t('Nie udało się skopiować do schowka.'));
     }
   };
 
@@ -61,7 +63,7 @@ export const DeckShareModal: React.FC<DeckShareModalProps> = ({ deck, onClose, o
       onClick={(e) => e.target === e.currentTarget && onClose()}
       role="dialog"
       aria-modal="true"
-      aria-label="Udostępnij talię"
+      aria-label={t('Udostępnij talię')}
     >
       <div className="w-full sm:max-w-lg bg-stone-900 border border-stone-800 rounded-t-3xl sm:rounded-2xl shadow-2xl pb-[env(safe-area-inset-bottom)] max-sm:animate-[slideUp_.2s_ease-out]">
         <div className="flex items-center justify-between gap-3 px-5 py-4 border-b border-stone-800">
@@ -70,11 +72,11 @@ export const DeckShareModal: React.FC<DeckShareModalProps> = ({ deck, onClose, o
               <Share2 className="w-4.5 h-4.5" />
             </div>
             <div className="min-w-0">
-              <h3 className="text-base font-bold text-stone-100">Udostępnij talię</h3>
+              <h3 className="text-base font-bold text-stone-100">{t('Udostępnij talię')}</h3>
               <p className="text-xs text-stone-400 truncate">{deck.name}</p>
             </div>
           </div>
-          <button type="button" onClick={onClose} aria-label="Zamknij" className="w-10 h-10 rounded-full bg-stone-800 hover:bg-stone-700 text-stone-300 flex items-center justify-center cursor-pointer">
+          <button type="button" onClick={onClose} aria-label={t('Zamknij')} className="w-10 h-10 rounded-full bg-stone-800 hover:bg-stone-700 text-stone-300 flex items-center justify-center cursor-pointer">
             <X className="w-5 h-5" />
           </button>
         </div>
@@ -92,9 +94,9 @@ export const DeckShareModal: React.FC<DeckShareModalProps> = ({ deck, onClose, o
           >
             {isPublic ? <Globe className="w-5 h-5 text-emerald-400 shrink-0" /> : <Lock className="w-5 h-5 text-stone-400 shrink-0" />}
             <span className="flex-1 min-w-0">
-              <span className="block text-sm font-bold text-stone-100">{isPublic ? 'Publiczny link włączony' : 'Talia jest prywatna'}</span>
+              <span className="block text-sm font-bold text-stone-100">{isPublic ? t('Publiczny link włączony') : t('Talia jest prywatna')}</span>
               <span className="block text-xs text-stone-400">
-                {isPublic ? 'Każdy z linkiem zobaczy talię bez logowania. Wyłącz, aby link przestał działać.' : 'Włącz, aby wysłać talię znajomym lub wkleić link na forum.'}
+                {isPublic ? t('Każdy z linkiem zobaczy talię bez logowania. Wyłącz, aby link przestał działać.') : t('Włącz, aby wysłać talię znajomym lub wkleić link na forum.')}
               </span>
             </span>
             <span className={`relative w-11 h-6 rounded-full shrink-0 transition-colors ${isPublic ? 'bg-emerald-500' : 'bg-stone-700'}`}>
@@ -113,16 +115,16 @@ export const DeckShareModal: React.FC<DeckShareModalProps> = ({ deck, onClose, o
                   readOnly
                   value={url}
                   onFocus={(e) => e.currentTarget.select()}
-                  aria-label="Publiczny link do talii"
+                  aria-label={t('Publiczny link do talii')}
                   className="flex-1 min-w-0 bg-transparent px-1.5 text-xs tabular-nums text-stone-300 focus:outline-none"
                 />
                 <button type="button" onClick={() => copy('link')} className="h-9 px-3 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold flex items-center gap-1.5 shrink-0 cursor-pointer">
                   {copied === 'link' ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
-                  {copied === 'link' ? 'Skopiowano' : 'Kopiuj'}
+                  {copied === 'link' ? t('Skopiowano') : t('Kopiuj')}
                 </button>
               </div>
               <a href={url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 text-xs font-semibold text-stone-400 hover:text-emerald-300">
-                <ExternalLink className="w-3.5 h-3.5" /> Zobacz, jak widzą ją inni
+                <ExternalLink className="w-3.5 h-3.5" /> {t('Zobacz, jak widzą ją inni')}
               </a>
             </div>
           )}
@@ -133,7 +135,7 @@ export const DeckShareModal: React.FC<DeckShareModalProps> = ({ deck, onClose, o
             className="w-full h-11 rounded-xl bg-stone-800 hover:bg-stone-700 text-stone-200 text-sm font-semibold flex items-center justify-center gap-2 cursor-pointer"
           >
             {copied === 'txt' ? <Check className="w-4 h-4 text-emerald-400" /> : <FileText className="w-4 h-4" />}
-            Kopiuj listę kart (do Moxfield, Archidekt…)
+            {t('Kopiuj listę kart (do Moxfield, Archidekt…)')}
           </button>
         </div>
       </div>

@@ -3,6 +3,7 @@ import { Layers, Search, Loader2, Check, Sparkles, Plus } from 'lucide-react';
 import { ScryfallCard } from '../../types';
 import { formatCurrency, getCardImageUri, getCardPrice, getRarityColor, getRarityLabel, handleCardImageError, langFromCard } from '../../utils/formatters';
 import { CardPrintsTabProps } from './types';
+import { useT, binderName, MAIN_BINDER } from '../../i18n';
 
 export const CardPrintsTab: React.FC<CardPrintsTabProps> = ({
   cardName,
@@ -15,9 +16,10 @@ export const CardPrintsTab: React.FC<CardPrintsTabProps> = ({
   onFilterChange,
   onSelectPrint,
   onSwitchToDetails,
-  defaultBinderName = 'Klaser Główny',
+  defaultBinderName = MAIN_BINDER,
   onQuickAddToCollection,
 }) => {
+  const t = useT();
   // Stan przycisku „Dodaj do kolekcji” per wydanie: w trakcie zapisu / chwilowe potwierdzenie
   const [addingId, setAddingId] = useState<string | null>(null);
   const [addedId, setAddedId] = useState<string | null>(null);
@@ -48,10 +50,10 @@ export const CardPrintsTab: React.FC<CardPrintsTabProps> = ({
         <div>
           <h3 className="text-base font-bold text-amber-300 flex items-center gap-2">
             <Layers className="w-4 h-4 text-amber-400" />
-            <span>Wybierz wersję / rodzaj printu dla: {cardName}</span>
+            <span>{t('Wybierz wersję / rodzaj printu dla:')} {cardName}</span>
           </h3>
           <p className="text-xs text-stone-400 mt-0.5">
-            Kliknij wybraną wersję poniżej, aby przełączyć podgląd, zaktualizować wycenę i zapisać ten konkretny egzemplarz.
+            {t('Kliknij wybraną wersję poniżej, aby przełączyć podgląd, zaktualizować wycenę i zapisać ten konkretny egzemplarz.')}
           </p>
         </div>
 
@@ -59,7 +61,7 @@ export const CardPrintsTab: React.FC<CardPrintsTabProps> = ({
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-stone-500" />
           <input
             type="text"
-            placeholder="Filtruj wg setu lub numeru..."
+            placeholder={t('Filtruj wg setu lub numeru...')}
             value={printsFilter}
             onChange={(e) => onFilterChange(e.target.value)}
             className="w-full bg-stone-900 border border-stone-700 rounded-lg pl-8 pr-3 py-1.5 text-xs text-stone-200 placeholder-stone-500 focus:outline-none focus:border-amber-500"
@@ -70,11 +72,11 @@ export const CardPrintsTab: React.FC<CardPrintsTabProps> = ({
       {isLoading ? (
         <div className="py-12 flex flex-col items-center justify-center space-y-3">
           <Loader2 className="w-8 h-8 text-amber-400 animate-spin" />
-          <p className="text-xs text-stone-400">Pobieranie wszystkich wydań ze Scryfall API...</p>
+          <p className="text-xs text-stone-400">{t('Pobieranie wszystkich wydań ze Scryfall API...')}</p>
         </div>
       ) : filteredPrints.length === 0 ? (
         <div className="py-8 text-center text-xs text-stone-500">
-          Nie znaleziono wydań spełniających filtr "{printsFilter}".
+          {t('Nie znaleziono wydań spełniających filtr "{filter}".', { filter: printsFilter })}
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 max-h-[500px] overflow-y-auto pr-1">
@@ -124,7 +126,7 @@ export const CardPrintsTab: React.FC<CardPrintsTabProps> = ({
                         {getRarityLabel(p.rarity).slice(0, 3)}
                       </span>
                       {p.lang && p.lang !== 'en' && (
-                        <span className="text-[11px] px-1 rounded bg-stone-700 text-stone-100 font-semibold" title="Wersja językowa">
+                        <span className="text-[11px] px-1 rounded bg-stone-700 text-stone-100 font-semibold" title={t('Wersja językowa')}>
                           {langFromCard(p)}
                         </span>
                       )}
@@ -135,7 +137,7 @@ export const CardPrintsTab: React.FC<CardPrintsTabProps> = ({
                     </p>
 
                     <p className="text-[11px] text-stone-400">
-                      {p.released_at ? p.released_at.slice(0, 4) : '—'} • {p.artist || 'Artist'}
+                      {p.released_at ? p.released_at.slice(0, 4) : '—'} • {p.artist || t('Artist')}
                     </p>
                   </div>
 
@@ -157,7 +159,7 @@ export const CardPrintsTab: React.FC<CardPrintsTabProps> = ({
                     {isSelected ? (
                       <span className="text-[11px] font-bold text-amber-300 flex items-center gap-1 bg-amber-500/20 px-2 py-0.5 rounded-md border border-amber-500/30">
                         <Check className="w-3 h-3 stroke-[3]" />
-                        <span>{isExistingItem ? 'Zapisany print' : 'Wybrany print'}</span>
+                        <span>{isExistingItem ? t('Zapisany print') : t('Wybrany print')}</span>
                       </span>
                     ) : (
                       <button
@@ -168,7 +170,7 @@ export const CardPrintsTab: React.FC<CardPrintsTabProps> = ({
                         }}
                         className="text-[11px] font-bold text-stone-300 hover:text-stone-950 flex items-center gap-1 bg-stone-800 hover:bg-amber-400 px-2 py-0.5 rounded-md transition-colors cursor-pointer border border-stone-700 hover:border-amber-400"
                       >
-                        <span>{isExistingItem ? 'Zmień i zapisz print' : 'Wybierz ten print'}</span>
+                        <span>{isExistingItem ? t('Zmień i zapisz print') : t('Wybierz ten print')}</span>
                       </button>
                     )}
                     {onQuickAddToCollection && (
@@ -179,7 +181,7 @@ export const CardPrintsTab: React.FC<CardPrintsTabProps> = ({
                           handleQuickAdd(p);
                         }}
                         disabled={addingId !== null}
-                        title={`Dodaj 1 szt. tego wydania (NM) do klasera „${defaultBinderName}”`}
+                        title={t('Dodaj 1 szt. tego wydania (NM) do klasera „{name}”', { name: binderName(defaultBinderName) })}
                         className={`text-[11px] font-bold flex items-center gap-1 px-2 py-0.5 rounded-md transition-colors border disabled:cursor-wait ${
                           addedId === p.id
                             ? 'text-amber-300 bg-amber-500/20 border-amber-500/30'
@@ -193,7 +195,7 @@ export const CardPrintsTab: React.FC<CardPrintsTabProps> = ({
                         ) : (
                           <Plus className="w-3 h-3 stroke-[3]" />
                         )}
-                        <span>{addedId === p.id ? 'Dodano' : 'Dodaj do kolekcji'}</span>
+                        <span>{addedId === p.id ? t('Dodano') : t('Dodaj do kolekcji')}</span>
                       </button>
                     )}
                   </div>
@@ -202,7 +204,7 @@ export const CardPrintsTab: React.FC<CardPrintsTabProps> = ({
                 {isSelected && (
                   <div className="absolute -top-2 right-2 bg-amber-500 text-stone-950 text-[11px] font-bold px-2 py-0.5 rounded-full shadow flex items-center gap-1">
                     <Check className="w-2.5 h-2.5 stroke-[3]" />
-                    <span>Aktywny</span>
+                    <span>{t('Aktywny')}</span>
                   </div>
                 )}
               </div>
@@ -217,7 +219,7 @@ export const CardPrintsTab: React.FC<CardPrintsTabProps> = ({
           onClick={onSwitchToDetails}
           className="px-4 py-2 bg-amber-500 hover:bg-amber-400 text-stone-950 font-bold text-xs rounded-xl shadow transition-colors cursor-pointer"
         >
-          Przejdź do zapisu karty &rarr;
+          {t('Przejdź do zapisu karty →')}
         </button>
       </div>
     </div>

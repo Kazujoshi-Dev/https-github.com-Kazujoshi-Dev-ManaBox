@@ -24,6 +24,7 @@ import {
   ROWS_PER_PAGE_OPTIONS,
   DEFAULT_ROWS_PER_PAGE,
 } from './collection-list';
+import { useT, MAIN_BINDER, locale } from '../i18n';
 
 const ForSaleAddModal = lazyWithReload(() => import('./for-sale/ForSaleAddModal'));
 
@@ -50,6 +51,7 @@ export const CollectionList: React.FC<CollectionListProps> = ({
   onAddCardForSale,
   onUpdateSettings,
 }) => {
+  const t = useT();
   const [isForSaleAddOpen, setIsForSaleAddOpen] = useState(false);
   // Na telefonie domyślnie lista (więcej kart na ekranie), na większych ekranach siatka.
   const [viewMode, setViewMode] = useState<CollectionViewMode>(() =>
@@ -99,7 +101,7 @@ export const CollectionList: React.FC<CollectionListProps> = ({
   const pageStart = (currentPage - 1) * pageSize;
   const pagedCollection = filteredCollection.slice(pageStart, pageStart + pageSize);
   const rangeLabel = filteredCollection.length
-    ? `${(pageStart + 1).toLocaleString('pl-PL')}–${(pageStart + pagedCollection.length).toLocaleString('pl-PL')} z ${filteredCollection.length.toLocaleString('pl-PL')}`
+    ? `${(pageStart + 1).toLocaleString(locale())}–${(pageStart + pagedCollection.length).toLocaleString(locale())} z ${filteredCollection.length.toLocaleString(locale())}`
     : undefined;
 
   const listTopRef = useRef<HTMLDivElement>(null);
@@ -165,7 +167,7 @@ export const CollectionList: React.FC<CollectionListProps> = ({
         isLoading={progressive.isLoading}
         loaded={progressive.loaded}
         total={progressive.total}
-        title={filters.binder === 'ALL' ? undefined : 'Trwa wczytywanie katalogu'}
+        title={filters.binder === 'ALL' ? undefined : t('Trwa wczytywanie katalogu')}
       />
 
       {/* 1. Catalogs Bar */}
@@ -189,10 +191,10 @@ export const CollectionList: React.FC<CollectionListProps> = ({
       {filters.binder === FOR_SALE_BINDER && onAddCardForSale && (
         <div className="flex flex-col sm:flex-row sm:items-center gap-3 rounded-xl border border-emerald-900/50 bg-emerald-950/20 p-3.5">
           <CircleDollarSign className="w-5 h-5 text-emerald-400 shrink-0 max-sm:hidden" />
-          <p className="text-sm text-stone-300 flex-1">Wystaw dowolną kartę na sprzedaż, także taką, której nie masz jeszcze w kolekcji.</p>
+          <p className="text-sm text-stone-300 flex-1">{t('Wystaw dowolną kartę na sprzedaż, także taką, której nie masz jeszcze w kolekcji.')}</p>
           <button type="button" onClick={() => setIsForSaleAddOpen(true)} className="btn btn-primary shrink-0">
             <Plus className="w-4 h-4" strokeWidth={2.5} />
-            Dodaj kartę na sprzedaż
+            {t('Dodaj kartę na sprzedaż')}
           </button>
         </div>
       )}
@@ -222,15 +224,15 @@ export const CollectionList: React.FC<CollectionListProps> = ({
       {showSetsGrid ? (
         <div className="flex flex-col sm:flex-row sm:items-center justify-between px-2 text-xs gap-2 text-stone-400">
           <span>
-            Dodatki w kolekcji: <strong className="text-stone-100 tabular-nums">{viewSets.length}</strong>
-            <span className="max-sm:hidden"> · kliknij dodatek, aby zobaczyć jego karty</span>
+            {t('Dodatki w kolekcji:')} <strong className="text-stone-100 tabular-nums">{viewSets.length}</strong>
+            <span className="max-sm:hidden"> {t('· kliknij dodatek, aby zobaczyć jego karty')}</span>
           </span>
           {hasActiveFilters && (
             <button
               onClick={handleResetFilters}
               className="text-amber-400 hover:text-amber-300 underline text-xs cursor-pointer self-start sm:self-auto"
             >
-              Wyczyść wszystkie filtry
+              {t('Wyczyść wszystkie filtry')}
             </button>
           )}
         </div>
@@ -334,8 +336,8 @@ export const CollectionList: React.FC<CollectionListProps> = ({
       {(catalogToDelete || catalogToEmpty) && (() => {
         const mode = catalogToEmpty ? 'empty' : 'delete';
         const target = (catalogToEmpty || catalogToDelete)!;
-        const mainName = catalogs.find(c => c.isMain)?.name || 'Klaser Główny';
-        const inCatalog = collection.filter(i => (i.binder || 'Klaser Główny') === target.name);
+        const mainName = catalogs.find(c => c.isMain)?.name || MAIN_BINDER;
+        const inCatalog = collection.filter(i => (i.binder || MAIN_BINDER) === target.name);
         const kept = inCatalog.filter(i => !i.isForSale);
         const cardQuantity = kept.reduce((s, i) => s + (i.quantity || 0) + (i.quantityFoil || 0), 0);
 

@@ -14,6 +14,7 @@ import {
   ArrowRight
 } from 'lucide-react';
 import { createWorker, Worker } from 'tesseract.js';
+import { useT } from '../../i18n';
 
 /**
  * ============================================================================
@@ -317,6 +318,7 @@ export const DelverLensScanner: React.FC<DelverLensScannerProps> = ({
   backendApiUrl,
   onClose,
 }) => {
+  const t = useT();
   // Referencje do elementów DOM
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const viewfinderRef = useRef<HTMLDivElement | null>(null);
@@ -326,7 +328,7 @@ export const DelverLensScanner: React.FC<DelverLensScannerProps> = ({
   // Stany kamery i procesu skanowania
   const [isCameraActive, setIsCameraActive] = useState<boolean>(false);
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
-  const [statusMessage, setStatusMessage] = useState<string>('Umieść kartę MTG w jasnym prostokącie');
+  const [statusMessage, setStatusMessage] = useState<string>(() => t('Umieść kartę MTG w jasnym prostokącie'));
   const [scanResult, setScanResult] = useState<DelverLensScanResult | null>(null);
   const [cameraError, setCameraError] = useState<string | null>(null);
 
@@ -337,7 +339,7 @@ export const DelverLensScanner: React.FC<DelverLensScannerProps> = ({
     try {
       setCameraError(null);
       if (!navigator?.mediaDevices?.getUserMedia) {
-        throw new Error('Twoja przeglądarka nie obsługuje API kamery (navigator.mediaDevices).');
+        throw new Error(t('Twoja przeglądarka nie obsługuje API kamery (navigator.mediaDevices).'));
       }
 
       // Prosimy o tylny aparat urządzenia mobilnego z rozdzielczością Full HD
@@ -356,10 +358,10 @@ export const DelverLensScanner: React.FC<DelverLensScannerProps> = ({
         await videoRef.current.play();
       }
       setIsCameraActive(true);
-      setStatusMessage('Kamera gotowa. Dopasuj kartę do ramki i kliknij „Skanuj kartę”.');
+      setStatusMessage(t('Kamera gotowa. Dopasuj kartę do ramki i kliknij „Skanuj kartę”.'));
     } catch (err: any) {
       console.error('Błąd kamery:', err);
-      setCameraError(err.message || 'Nie udało się uzyskać dostępu do kamery.');
+      setCameraError(err.message || t('Nie udało się uzyskać dostępu do kamery.'));
       setIsCameraActive(false);
     }
   }, []);
@@ -389,7 +391,7 @@ export const DelverLensScanner: React.FC<DelverLensScannerProps> = ({
     if (video.videoWidth === 0 || video.videoHeight === 0) return;
 
     setIsProcessing(true);
-    setStatusMessage('1/4: Wycinanie obszaru karty (63x88mm)...');
+    setStatusMessage(t('1/4: Wycinanie obszaru karty (63x88mm)...'));
 
     try {
       // 1. OBLICZENIE WSPÓŁRZĘDNYCH KADROWANIA (DOM -> Matryca sensora kamery)
@@ -434,13 +436,13 @@ export const DelverLensScanner: React.FC<DelverLensScannerProps> = ({
       cardCanvas.width = cropW;
       cardCanvas.height = cropH;
       const cardCtx = cardCanvas.getContext('2d', { willReadFrequently: true });
-      if (!cardCtx) throw new Error('Nie udało się utworzyć kontekstu Canvas 2D.');
+      if (!cardCtx) throw new Error(t('Nie udało się utworzyć kontekstu Canvas 2D.'));
 
       cardCtx.imageSmoothingEnabled = true;
       cardCtx.imageSmoothingQuality = 'high';
       cardCtx.drawImage(video, cropX, cropY, cropW, cropH, 0, 0, cropW, cropH);
 
-      setStatusMessage('2/4: Segmentacja pasków (Górne 15% i Dolne 10%)...');
+      setStatusMessage(t('2/4: Segmentacja pasków (Górne 15% i Dolne 10%)...'));
 
       // 3. SEGMENTACJA:
       // Pasek górny (Tytuł i koszt) = 3.5% do 17% wysokości karty (odcinamy czarną zewnętrzną ramkę)
@@ -459,7 +461,7 @@ export const DelverLensScanner: React.FC<DelverLensScannerProps> = ({
         height: Math.round(cropH * 0.10), // 10%
       };
 
-      setStatusMessage('3/4: Binarizacja i usuwanie szumów (ImageData + Otsu)...');
+      setStatusMessage(t('3/4: Binarizacja i usuwanie szumów (ImageData + Otsu)...'));
 
       // 4. FILTROWANIE BINARNE (Manipulacja pikselami):
       const titleCanvas = preprocessCanvasStrip(cardCanvas, titleArea, 56);
@@ -544,14 +546,14 @@ export const DelverLensScanner: React.FC<DelverLensScannerProps> = ({
       };
 
       setScanResult(finalResult);
-      setStatusMessage(`Gotowe! Rozpoznano: "${cleanedTitle || 'Brak tekstu'}"`);
+      setStatusMessage(t('Gotowe! Rozpoznano: "{title}"', { title: cleanedTitle || t('Brak tekstu') }));
 
       if (onScanSuccess) {
         onScanSuccess(finalResult);
       }
     } catch (err: any) {
       console.error('Błąd potoku skanowania:', err);
-      setStatusMessage('Błąd przetwarzania: ' + (err.message || 'Nieznany błąd'));
+      setStatusMessage(t('Błąd przetwarzania:') + ' ' + (err.message || t('Nieznany błąd')));
     } finally {
       setIsProcessing(false);
     }
@@ -567,13 +569,13 @@ export const DelverLensScanner: React.FC<DelverLensScannerProps> = ({
           </div>
           <div>
             <h3 className="text-sm font-bold text-stone-100 flex items-center gap-1.5">
-              <span>Skaner Delver Lens (HTML5 Canvas Preprocessing)</span>
+              <span>{t('Skaner Delver Lens (HTML5 Canvas Preprocessing)')}</span>
               <span className="text-[11px] bg-amber-500/20 text-amber-300 tabular-nums px-1.5 py-0.5 rounded border border-amber-500/30">
-                63×88 mm
+                {t('63×88 mm')}
               </span>
             </h3>
             <p className="text-[11px] text-stone-400">
-              Wycina kartę, segmentuje tekst (górne 15% & dolne 10%) i filtruje binarnie metodą Otsu.
+              {t('Wycina kartę, segmentuje tekst (górne 15% & dolne 10%) i filtruje binarnie metodą Otsu.')}
             </p>
           </div>
         </div>
@@ -610,14 +612,14 @@ export const DelverLensScanner: React.FC<DelverLensScannerProps> = ({
               <div className="p-6 text-center space-y-3 max-w-sm">
                 <AlertCircle className="w-10 h-10 text-amber-400 mx-auto" />
                 <p className="text-xs text-stone-300">
-                  {cameraError || 'Trwa uruchamianie kamery... Upewnij się, że zezwoliłeś na dostęp.'}
+                  {cameraError || t('Trwa uruchamianie kamery... Upewnij się, że zezwoliłeś na dostęp.')}
                 </p>
                 <button
                   type="button"
                   onClick={startCamera}
                   className="px-4 py-2 bg-amber-500 hover:bg-amber-400 text-stone-950 text-xs font-bold rounded-xl transition-colors"
                 >
-                  Spróbuj ponownie
+                  {t('Spróbuj ponownie')}
                 </button>
               </div>
             )}
@@ -641,8 +643,8 @@ export const DelverLensScanner: React.FC<DelverLensScannerProps> = ({
 
                   {/* Strefa 1: Górne 15% (Nazwa i Koszt Many) */}
                   <div className="w-[92%] h-[15%] border-2 border-dashed border-amber-300 bg-amber-400/20 rounded-lg flex items-center justify-between px-2 text-[11px] text-amber-200 tabular-nums font-bold mx-auto mt-1 shadow-sm backdrop-blur-[1px]">
-                    <span>GÓRNE 15% (NAZWA KARTY)</span>
-                    <span className="text-[11px] bg-amber-500/30 px-1 py-0.5 rounded text-amber-300">OCR</span>
+                    <span>{t('GÓRNE 15% (NAZWA KARTY)')}</span>
+                    <span className="text-[11px] bg-amber-500/30 px-1 py-0.5 rounded text-amber-300">{t('OCR')}</span>
                   </div>
 
                   {/* Linia animacji skanowania */}
@@ -652,8 +654,8 @@ export const DelverLensScanner: React.FC<DelverLensScannerProps> = ({
 
                   {/* Strefa 2: Dolne 10% (Symbol Setu i Numer Kolekcjonera) */}
                   <div className="w-[92%] h-[10%] border border-dashed border-amber-300/80 bg-amber-400/15 rounded-lg flex items-center justify-between px-2 text-[11px] text-amber-300 tabular-nums font-bold mb-1 shadow-sm backdrop-blur-[1px]">
-                    <span>DOLNE 10% (SET & NR)</span>
-                    <span className="text-[11px] opacity-80">np. OTJ 125</span>
+                    <span>{t('DOLNE 10% (SET & NR)')}</span>
+                    <span className="text-[11px] opacity-80">{t('np. OTJ 125')}</span>
                   </div>
                 </div>
               </div>
@@ -678,12 +680,12 @@ export const DelverLensScanner: React.FC<DelverLensScannerProps> = ({
               {isProcessing ? (
                 <>
                   <RefreshCw className="w-4 h-4 animate-spin text-amber-500" />
-                  <span>Przetwarzanie...</span>
+                  <span>{t('Przetwarzanie...')}</span>
                 </>
               ) : (
                 <>
                   <Camera className="w-4 h-4 stroke-[2.5]" />
-                  <span>Skanuj kartę</span>
+                  <span>{t('Skanuj kartę')}</span>
                 </>
               )}
             </button>
@@ -695,16 +697,16 @@ export const DelverLensScanner: React.FC<DelverLensScannerProps> = ({
           <div className="space-y-3.5">
             <h4 className="text-xs font-bold text-amber-400 flex items-center gap-1.5">
               <Sparkles className="w-3.5 h-3.5" />
-              <span>Podgląd Image Preprocessing (W stylu Delver Lens)</span>
+              <span>{t('Podgląd Image Preprocessing (W stylu Delver Lens)')}</span>
             </h4>
 
             {scanResult ? (
               <div className="space-y-3">
                 {/* 1. Odczytany Tytuł */}
                 <div className="p-3 bg-stone-950 rounded-xl border border-stone-800 space-y-1">
-                  <span className="text-[11px] text-stone-400 block tabular-nums">Rozpoznana nazwa karty:</span>
+                  <span className="text-[11px] text-stone-400 block tabular-nums">{t('Rozpoznana nazwa karty:')}</span>
                   <div className="text-base font-bold text-amber-300">
-                    {scanResult.cleanedTitle || <span className="italic text-stone-500">Nie odczytano tekstu</span>}
+                    {scanResult.cleanedTitle || <span className="italic text-stone-500">{t('Nie odczytano tekstu')}</span>}
                   </div>
                   {scanResult.detectedSet && (
                     <div className="text-xs text-stone-300 pt-1 flex items-center gap-2">
@@ -723,31 +725,31 @@ export const DelverLensScanner: React.FC<DelverLensScannerProps> = ({
                 {/* 2. Zbinaryzowany Pasek Górny (Tytuł 15%) */}
                 <div className="p-2.5 bg-stone-950 rounded-xl border border-stone-800 space-y-1">
                   <div className="flex items-center justify-between text-[11px] text-stone-400">
-                    <span className="tabular-nums text-amber-300 font-bold">1. Pasek górny (15%): Filtr Otsu</span>
-                    <span className="text-[11px] text-emerald-400 font-semibold">Tylko czarny tekst</span>
+                    <span className="tabular-nums text-amber-300 font-bold">{t('1. Pasek górny (15%): Filtr Otsu')}</span>
+                    <span className="text-[11px] text-emerald-400 font-semibold">{t('Tylko czarny tekst')}</span>
                   </div>
                   <div className="bg-white rounded p-1 flex items-center justify-center border border-stone-300">
                     <img
                       src={scanResult.titleStripBase64}
-                      alt="Górny pasek po binarizacji"
+                      alt={t('Górny pasek po binarizacji')}
                       className="max-h-8 w-full object-contain filter contrast-125"
                     />
                   </div>
                   <p className="text-[11px] text-stone-500 tabular-nums pt-0.5 truncate">
-                    Surowy odczyt OCR: "{scanResult.rawTitleText.trim()}"
+                    {t('Surowy odczyt OCR:')} "{scanResult.rawTitleText.trim()}"
                   </p>
                 </div>
 
                 {/* 3. Zbinaryzowany Pasek Dolny (Set/Numer 10%) */}
                 <div className="p-2.5 bg-stone-950 rounded-xl border border-stone-800 space-y-1">
                   <div className="flex items-center justify-between text-[11px] text-stone-400">
-                    <span className="tabular-nums text-amber-300 font-bold">2. Pasek dolny (10%): Stopka</span>
-                    <span className="text-[11px] text-emerald-400 font-semibold">Kod setu & Numer</span>
+                    <span className="tabular-nums text-amber-300 font-bold">{t('2. Pasek dolny (10%): Stopka')}</span>
+                    <span className="text-[11px] text-emerald-400 font-semibold">{t('Kod setu & Numer')}</span>
                   </div>
                   <div className="bg-white rounded p-1 flex items-center justify-center border border-stone-300">
                     <img
                       src={scanResult.bottomStripBase64}
-                      alt="Dolny pasek po binarizacji"
+                      alt={t('Dolny pasek po binarizacji')}
                       className="max-h-6 w-full object-contain filter contrast-125"
                     />
                   </div>
@@ -756,12 +758,12 @@ export const DelverLensScanner: React.FC<DelverLensScannerProps> = ({
                 {/* 4. Wycięta karta 63x88mm */}
                 <div className="p-2.5 bg-stone-950 rounded-xl border border-stone-800 space-y-1">
                   <span className="text-[11px] text-stone-400 tabular-nums block">
-                    3. Wycięta zawartość wizjera (samej karty):
+                    {t('3. Wycięta zawartość wizjera (samej karty):')}
                   </span>
                   <div className="flex justify-center bg-black/40 rounded p-1">
                     <img
                       src={scanResult.cardImageBase64}
-                      alt="Wycięta karta"
+                      alt={t('Wycięta karta')}
                       className="max-h-36 object-contain rounded border border-stone-800"
                     />
                   </div>
@@ -771,7 +773,7 @@ export const DelverLensScanner: React.FC<DelverLensScannerProps> = ({
               <div className="p-5 text-center rounded-xl bg-stone-950/60 border border-dashed border-stone-800 space-y-2 text-stone-400">
                 <Info className="w-6 h-6 text-amber-400/60 mx-auto" />
                 <p className="text-xs leading-relaxed">
-                  Po kliknięciu <strong>„Skanuj kartę”</strong>, Canvas API wyodrębni samą kartę, odetnie grafiki i przekaże do OCR wyłącznie czarno-białe paski z tekstem.
+                  {t('Po kliknięciu')} <strong>{t('„Skanuj kartę”')}</strong>{t(', Canvas API wyodrębni samą kartę, odetnie grafiki i przekaże do OCR wyłącznie czarno-białe paski z tekstem.')}
                 </p>
               </div>
             )}
@@ -781,10 +783,10 @@ export const DelverLensScanner: React.FC<DelverLensScannerProps> = ({
           <div className="p-3 rounded-xl bg-stone-950 border border-stone-800/80 text-[11px] text-stone-400 space-y-1 leading-relaxed">
             <span className="font-bold text-stone-300 flex items-center gap-1">
               <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
-              <span>Dlaczego preprocessing Delver Lens działa tak skutecznie?</span>
+              <span>{t('Dlaczego preprocessing Delver Lens działa tak skutecznie?')}</span>
             </span>
             <p>
-              Ignoruje ilustrację karty, podbija kontrast i rozdziela tło od liter progowaniem Otsu. Tesseract otrzymuje wyłącznie pojedynczą linijkę tekstu w czerni i bieli (PSM 7), co eliminuje 95% pomyłek.
+              {t('Ignoruje ilustrację karty, podbija kontrast i rozdziela tło od liter progowaniem Otsu. Tesseract otrzymuje wyłącznie pojedynczą linijkę tekstu w czerni i bieli (PSM 7), co eliminuje 95% pomyłek.')}
             </p>
           </div>
         </div>

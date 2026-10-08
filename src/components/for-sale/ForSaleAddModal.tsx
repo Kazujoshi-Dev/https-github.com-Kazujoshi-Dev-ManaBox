@@ -4,6 +4,7 @@ import type { AppSettings, CardCondition, CardLanguage, CollectionItem, Scryfall
 import { AddCardVersionPicker } from '../deck-builder/AddCardVersionPicker';
 import { formatCurrency, getCardImageUri, getCardPrice, handleCardImageError, langFromCard } from '../../utils/formatters';
 import { useBackToClose } from '../../hooks/useBackButton';
+import { useT, tk } from '../../i18n';
 
 export interface ForSaleAddData {
   card: ScryfallCard;
@@ -30,15 +31,15 @@ const CONDITIONS: Array<{ id: CardCondition; label: string }> = [
 ];
 
 const LANGUAGES: Array<{ id: CardLanguage; label: string }> = [
-  { id: 'EN', label: 'Angielski' },
-  { id: 'PL', label: 'Polski' },
-  { id: 'DE', label: 'Niemiecki' },
-  { id: 'FR', label: 'Francuski' },
-  { id: 'IT', label: 'Włoski' },
-  { id: 'ES', label: 'Hiszpański' },
-  { id: 'JP', label: 'Japoński' },
+  { id: 'EN', label: tk('Angielski') },
+  { id: 'PL', label: tk('Polski') },
+  { id: 'DE', label: tk('Niemiecki') },
+  { id: 'FR', label: tk('Francuski') },
+  { id: 'IT', label: tk('Włoski') },
+  { id: 'ES', label: tk('Hiszpański') },
+  { id: 'JP', label: tk('Japoński') },
   { id: 'PH', label: 'Phyrexian' },
-  { id: 'OTHER', label: 'Inny' }
+  { id: 'OTHER', label: tk('Inny') }
 ];
 
 type Step = { kind: 'search' } | { kind: 'version'; card: ScryfallCard } | { kind: 'details'; card: ScryfallCard; isFoil: boolean };
@@ -48,6 +49,7 @@ type Step = { kind: 'search' } | { kind: 'version'; card: ScryfallCard } | { kin
  * wyszukanie → wydanie i foil → ilość, stan, język i cena.
  */
 export const ForSaleAddModal: React.FC<ForSaleAddModalProps> = ({ collection, settings, onClose, onAdd }) => {
+  const t = useT();
   useBackToClose(true, onClose);
   const [step, setStep] = useState<Step>({ kind: 'search' });
   const [query, setQuery] = useState('');
@@ -83,7 +85,7 @@ export const ForSaleAddModal: React.FC<ForSaleAddModalProps> = ({ collection, se
       return;
     }
     setSearching(true);
-    const t = window.setTimeout(async () => {
+    const timer = window.setTimeout(async () => {
       try {
         const res = await fetch(`/api/scryfall/search?q=${encodeURIComponent(q)}`);
         const data = res.ok ? await res.json() : { data: [] };
@@ -103,7 +105,7 @@ export const ForSaleAddModal: React.FC<ForSaleAddModalProps> = ({ collection, se
         if (id === searchId.current) setSearching(false);
       }
     }, 280);
-    return () => window.clearTimeout(t);
+    return () => window.clearTimeout(timer);
   }, [query]);
 
   const ownedByName = useMemo(() => {
@@ -139,7 +141,7 @@ export const ForSaleAddModal: React.FC<ForSaleAddModalProps> = ({ collection, se
   };
 
   const title =
-    step.kind === 'search' ? 'Dodaj kartę na sprzedaż' : step.kind === 'version' ? `Wybierz wersję: ${step.card.name}` : 'Szczegóły oferty';
+    step.kind === 'search' ? t('Dodaj kartę na sprzedaż') : step.kind === 'version' ? t('Wybierz wersję: {name}', { name: step.card.name }) : t('Szczegóły oferty');
 
   return (
     <div
@@ -153,7 +155,7 @@ export const ForSaleAddModal: React.FC<ForSaleAddModalProps> = ({ collection, se
         <div className="flex items-center gap-3 p-4 border-b border-stone-800">
           <CircleDollarSign className="w-5 h-5 text-emerald-400 shrink-0" />
           <h3 className="text-base font-semibold text-stone-50 truncate flex-1">{title}</h3>
-          <button type="button" onClick={onClose} aria-label="Zamknij" className="w-9 h-9 rounded-lg text-stone-400 hover:text-stone-100 hover:bg-stone-800 flex items-center justify-center cursor-pointer">
+          <button type="button" onClick={onClose} aria-label={t('Zamknij')} className="w-9 h-9 rounded-lg text-stone-400 hover:text-stone-100 hover:bg-stone-800 flex items-center justify-center cursor-pointer">
             <X className="w-5 h-5" />
           </button>
         </div>
@@ -168,21 +170,21 @@ export const ForSaleAddModal: React.FC<ForSaleAddModalProps> = ({ collection, se
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
                   autoFocus
-                  placeholder="Wpisz nazwę karty, np. Sol Ring"
-                  aria-label="Szukaj karty"
+                  placeholder={t('Wpisz nazwę karty, np. Sol Ring')}
+                  aria-label={t('Szukaj karty')}
                   className="w-full h-11 bg-stone-950 border border-stone-700 rounded-xl pl-10 pr-3 text-sm text-stone-100 placeholder-stone-500 focus:outline-none focus:border-amber-500"
                 />
               </div>
-              <p className="text-xs text-stone-500 mt-2">Szukasz we wszystkich kartach Magic: The Gathering, nie musisz mieć karty w kolekcji.</p>
+              <p className="text-xs text-stone-500 mt-2">{t('Szukasz we wszystkich kartach Magic: The Gathering, nie musisz mieć karty w kolekcji.')}</p>
             </div>
             <div className="flex-1 min-h-0 overflow-y-auto p-2 sm:p-3">
               {searching && (
                 <p className="text-sm text-stone-400 flex items-center gap-2 p-3">
-                  <Loader2 className="w-4 h-4 animate-spin" /> Szukanie…
+                  <Loader2 className="w-4 h-4 animate-spin" /> {t('Szukanie…')}
                 </p>
               )}
-              {!searching && query.trim().length >= 2 && results.length === 0 && <p className="text-sm text-stone-400 p-3">Nie znaleziono kart o tej nazwie.</p>}
-              {!searching && query.trim().length < 2 && <p className="text-sm text-stone-500 p-3">Wpisz co najmniej 2 znaki.</p>}
+              {!searching && query.trim().length >= 2 && results.length === 0 && <p className="text-sm text-stone-400 p-3">{t('Nie znaleziono kart o tej nazwie.')}</p>}
+              {!searching && query.trim().length < 2 && <p className="text-sm text-stone-500 p-3">{t('Wpisz co najmniej 2 znaki.')}</p>}
               <ul className="divide-y divide-stone-800/70">
                 {results.map((card) => {
                   const img = getCardImageUri(card, 'small') || getCardImageUri(card, 'normal');
@@ -201,7 +203,7 @@ export const ForSaleAddModal: React.FC<ForSaleAddModalProps> = ({ collection, se
                           <span className="block text-sm text-stone-100 truncate">{card.name}</span>
                           <span className="block text-xs text-stone-500 truncate">{card.type_line}</span>
                         </span>
-                        {owned > 0 && <span className="text-xs text-emerald-300 shrink-0">W kolekcji: {owned}</span>}
+                        {owned > 0 && <span className="text-xs text-emerald-300 shrink-0">{t('W kolekcji:')} {owned}</span>}
                       </button>
                     </li>
                   );
@@ -219,7 +221,7 @@ export const ForSaleAddModal: React.FC<ForSaleAddModalProps> = ({ collection, se
             deckCards={[]}
             settings={settings}
             collectionOnly={false}
-            confirmLabel="Dalej"
+            confirmLabel={t('Dalej')}
             onBack={() => setStep({ kind: 'search' })}
             onConfirm={(card, isFoil) => goDetails(card, isFoil)}
           />
@@ -241,7 +243,7 @@ export const ForSaleAddModal: React.FC<ForSaleAddModalProps> = ({ collection, se
                   </p>
                   {step.isFoil && (
                     <p className="text-xs text-amber-300 flex items-center gap-1 mt-0.5">
-                      <Sparkles className="w-3 h-3" /> Foil
+                      <Sparkles className="w-3 h-3" /> {t('Foil')}
                     </p>
                   )}
                 </div>
@@ -249,9 +251,9 @@ export const ForSaleAddModal: React.FC<ForSaleAddModalProps> = ({ collection, se
 
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm text-stone-300 mb-1.5">Ilość</label>
+                  <label className="block text-sm text-stone-300 mb-1.5">{t('Ilość')}</label>
                   <div className="inline-flex items-center rounded-lg bg-stone-950 ring-1 ring-stone-800">
-                    <button type="button" onClick={() => setQuantity((q) => Math.max(1, q - 1))} aria-label="Mniej" className="w-10 h-10 flex items-center justify-center text-stone-300 hover:text-stone-50 cursor-pointer">
+                    <button type="button" onClick={() => setQuantity((q) => Math.max(1, q - 1))} aria-label={t('Mniej')} className="w-10 h-10 flex items-center justify-center text-stone-300 hover:text-stone-50 cursor-pointer">
                       <Minus className="w-4 h-4" />
                     </button>
                     <input
@@ -260,10 +262,10 @@ export const ForSaleAddModal: React.FC<ForSaleAddModalProps> = ({ collection, se
                       max={999}
                       value={quantity}
                       onChange={(e) => setQuantity(Math.min(999, Math.max(1, Number(e.target.value) || 1)))}
-                      aria-label="Ilość"
+                      aria-label={t('Ilość')}
                       className="w-14 h-10 bg-transparent text-center text-sm text-stone-100 tabular-nums focus:outline-none"
                     />
-                    <button type="button" onClick={() => setQuantity((q) => Math.min(999, q + 1))} aria-label="Więcej" className="w-10 h-10 flex items-center justify-center text-stone-300 hover:text-stone-50 cursor-pointer">
+                    <button type="button" onClick={() => setQuantity((q) => Math.min(999, q + 1))} aria-label={t('Więcej')} className="w-10 h-10 flex items-center justify-center text-stone-300 hover:text-stone-50 cursor-pointer">
                       <Plus className="w-4 h-4" />
                     </button>
                   </div>
@@ -271,7 +273,7 @@ export const ForSaleAddModal: React.FC<ForSaleAddModalProps> = ({ collection, se
 
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label htmlFor="fs-cond" className="block text-sm text-stone-300 mb-1.5">Stan</label>
+                    <label htmlFor="fs-cond" className="block text-sm text-stone-300 mb-1.5">{t('Stan')}</label>
                     <select id="fs-cond" value={condition} onChange={(e) => setCondition(e.target.value as CardCondition)} className="w-full h-10 rounded-lg bg-stone-950 border border-stone-800 px-2.5 text-sm text-stone-100">
                       {CONDITIONS.map((c) => (
                         <option key={c.id} value={c.id}>
@@ -281,11 +283,11 @@ export const ForSaleAddModal: React.FC<ForSaleAddModalProps> = ({ collection, se
                     </select>
                   </div>
                   <div>
-                    <label htmlFor="fs-lang" className="block text-sm text-stone-300 mb-1.5">Język</label>
+                    <label htmlFor="fs-lang" className="block text-sm text-stone-300 mb-1.5">{t('Język')}</label>
                     <select id="fs-lang" value={language} onChange={(e) => setLanguage(e.target.value as CardLanguage)} className="w-full h-10 rounded-lg bg-stone-950 border border-stone-800 px-2.5 text-sm text-stone-100">
                       {LANGUAGES.map((l) => (
                         <option key={l.id} value={l.id}>
-                          {l.label}
+                          {t(l.label)}
                         </option>
                       ))}
                     </select>
@@ -293,30 +295,30 @@ export const ForSaleAddModal: React.FC<ForSaleAddModalProps> = ({ collection, se
                 </div>
 
                 <div>
-                  <label htmlFor="fs-price" className="block text-sm text-stone-300 mb-1.5">Cena za sztukę ({settings.currency})</label>
+                  <label htmlFor="fs-price" className="block text-sm text-stone-300 mb-1.5">{t('Cena za sztukę')} ({settings.currency})</label>
                   <input
                     id="fs-price"
                     inputMode="decimal"
                     value={price}
                     onChange={(e) => setPrice(e.target.value.replace(/[^\d.,]/g, ''))}
-                    placeholder={`Cena rynkowa: ${formatCurrency(getCardPrice(step.card, step.isFoil, settings), settings.currency)}`}
+                    placeholder={t('Cena rynkowa: {price}', { price: formatCurrency(getCardPrice(step.card, step.isFoil, settings), settings.currency) })}
                     className="w-full h-10 rounded-lg bg-stone-950 border border-stone-800 px-3 text-sm text-stone-100 placeholder-stone-500 tabular-nums"
                   />
-                  <p className="text-xs text-stone-500 mt-1.5">Zostaw puste, aby sprzedawać po aktualnej cenie rynkowej.</p>
+                  <p className="text-xs text-stone-500 mt-1.5">{t('Zostaw puste, aby sprzedawać po aktualnej cenie rynkowej.')}</p>
                 </div>
 
-                <p className="text-xs text-stone-500">Karta trafi do Twojej kolekcji, do kategorii „Sprzedam”.</p>
+                <p className="text-xs text-stone-500">{t('Karta trafi do Twojej kolekcji, do kategorii „Sprzedam”.')}</p>
               </div>
             </div>
 
             <div className="flex flex-col-reverse sm:flex-row sm:items-center gap-2 p-4 border-t border-stone-800">
               <button type="button" onClick={() => setStep({ kind: 'version', card: step.card })} className="btn btn-ghost">
                 <ArrowLeft className="w-4 h-4" />
-                Zmień wersję
+                {t('Zmień wersję')}
               </button>
               <button type="submit" disabled={saving} className="btn btn-primary sm:ml-auto">
                 {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <CircleDollarSign className="w-4 h-4" />}
-                Wystaw na sprzedaż
+                {t('Wystaw na sprzedaż')}
               </button>
             </div>
           </form>

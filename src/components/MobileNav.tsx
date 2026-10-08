@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { useT, tk } from '../i18n';
 import {
   Layers,
   Swords,
@@ -45,13 +46,13 @@ interface MobileNavProps {
 
 /** Zakładki dostępne pod „Więcej” — na telefonie nie mieszczą się w dolnym pasku. */
 const MORE_TABS: Array<{ tab: NavigationTab; label: string; icon: React.ElementType }> = [
-  { tab: 'set-top', label: 'Top z dodatku', icon: Trophy },
-  { tab: 'spoilers', label: 'Spoilery', icon: Telescope },
-  { tab: 'analytics', label: 'Statystyki', icon: BarChart3 },
-  { tab: 'wishlist', label: 'Lista życzeń', icon: FolderHeart },
-  { tab: 'for-sale', label: 'Sprzedam', icon: CircleDollarSign },
-  { tab: 'users', label: 'Gracze', icon: Users },
-  { tab: 'changelog', label: 'Dziennik zmian', icon: ScrollText }
+  { tab: 'set-top', label: tk('Top z dodatku'), icon: Trophy },
+  { tab: 'spoilers', label: tk('Spoilery'), icon: Telescope },
+  { tab: 'analytics', label: tk('Statystyki'), icon: BarChart3 },
+  { tab: 'wishlist', label: tk('Lista życzeń'), icon: FolderHeart },
+  { tab: 'for-sale', label: tk('Sprzedam'), icon: CircleDollarSign },
+  { tab: 'users', label: tk('Gracze'), icon: Users },
+  { tab: 'changelog', label: tk('Dziennik zmian'), icon: ScrollText }
 ];
 
 /**
@@ -101,6 +102,7 @@ export const MobileNav: React.FC<MobileNavProps> = ({
     fn();
   };
 
+  const t = useT();
   const NavButton = ({ tab, label, icon: Icon }: { tab: NavigationTab; label: string; icon: React.ElementType }) => {
     const active = activeTab === tab;
     return (
@@ -113,7 +115,7 @@ export const MobileNav: React.FC<MobileNavProps> = ({
         }`}
       >
         <Icon className="w-5 h-5" />
-        <span className="truncate">{label}</span>
+        <span className="truncate">{t(label)}</span>
       </button>
     );
   };
@@ -121,24 +123,24 @@ export const MobileNav: React.FC<MobileNavProps> = ({
   return (
     <>
       <nav
-        aria-label="Nawigacja główna"
+        aria-label={t('Nawigacja główna')}
         className="md:hidden fixed bottom-0 inset-x-0 z-40 bg-stone-900/95 backdrop-blur-md border-t border-stone-800 pb-[env(safe-area-inset-bottom)]"
       >
         <div className="flex items-stretch px-1">
-          <NavButton tab="collection" label="Kolekcja" icon={Layers} />
-          <NavButton tab="decks" label="Talie" icon={Swords} />
+          <NavButton tab="collection" label={tk('Kolekcja')} icon={Layers} />
+          <NavButton tab="decks" label={tk('Talie')} icon={Swords} />
           <div className="flex-1 flex justify-center">
             <button
               type="button"
               onClick={onOpenScanner}
-              aria-label="Skanuj kartę"
+              aria-label={t('Skanuj kartę')}
               className="-mt-5 w-16 h-16 rounded-full bg-amber-400 text-stone-950 flex flex-col items-center justify-center shadow-lg shadow-black/40 ring-4 ring-stone-950 active:scale-95 transition-transform"
             >
               <Camera className="w-6 h-6 stroke-[2.5]" />
-              <span className="text-[11px] font-semibold leading-none mt-0.5">Skanuj</span>
+              <span className="text-[11px] font-semibold leading-none mt-0.5">{t('Skanuj')}</span>
             </button>
           </div>
-          <NavButton tab="search" label="Szukaj" icon={Search} />
+          <NavButton tab="search" label={tk('Szukaj')} icon={Search} />
           <button
             type="button"
             onClick={() => setIsMoreOpen(true)}
@@ -149,7 +151,7 @@ export const MobileNav: React.FC<MobileNavProps> = ({
             }`}
           >
             <Menu className="w-5 h-5" />
-            <span>Więcej</span>
+            <span>{t('Więcej')}</span>
             {unreadMessagesCount === 0 && hasNewChangelog && (
               <span className="absolute top-2 right-[calc(50%-14px)] w-2 h-2 rounded-full bg-amber-400" aria-hidden="true" />
             )}
@@ -163,8 +165,8 @@ export const MobileNav: React.FC<MobileNavProps> = ({
       </nav>
 
       {isMoreOpen && (
-        <div className="md:hidden fixed inset-0 z-50 flex items-end" role="dialog" aria-modal="true" aria-label="Więcej opcji">
-          <button type="button" aria-label="Zamknij" className="absolute inset-0 bg-black/70" onClick={() => setIsMoreOpen(false)} />
+        <div className="md:hidden fixed inset-0 z-50 flex items-end" role="dialog" aria-modal="true" aria-label={t('Więcej opcji')}>
+          <button type="button" aria-label={t('Zamknij')} className="absolute inset-0 bg-black/70" onClick={() => setIsMoreOpen(false)} />
           <div className="relative w-full max-h-[85dvh] overflow-y-auto bg-stone-900 border-t border-stone-800 rounded-t-3xl pb-[calc(1rem+env(safe-area-inset-bottom))] animate-[slideUp_.2s_ease-out]">
             <div className="sticky top-0 bg-stone-900 pt-2.5 pb-3 px-5 border-b border-stone-800/70">
               <div className="mx-auto w-10 h-1.5 rounded-full bg-stone-700 mb-3" />
@@ -181,7 +183,7 @@ export const MobileNav: React.FC<MobileNavProps> = ({
                 <button
                   type="button"
                   onClick={() => setIsMoreOpen(false)}
-                  aria-label="Zamknij"
+                  aria-label={t('Zamknij')}
                   className="w-10 h-10 rounded-full bg-stone-800 text-stone-300 flex items-center justify-center shrink-0"
                 >
                   <X className="w-5 h-5" />
@@ -190,7 +192,7 @@ export const MobileNav: React.FC<MobileNavProps> = ({
             </div>
 
             <div className="px-4 pt-4 grid grid-cols-3 gap-2.5">
-              {[...MORE_TABS, ...(user.isAdmin ? [{ tab: 'admin' as NavigationTab, label: 'Admin', icon: ShieldCheck }] : [])].map(({ tab, label, icon: Icon }) => (
+              {[...MORE_TABS, ...(user.isAdmin ? [{ tab: 'admin' as NavigationTab, label: tk('Admin'), icon: ShieldCheck }] : [])].map(({ tab, label, icon: Icon }) => (
                 <button
                   key={tab}
                   type="button"
@@ -202,9 +204,9 @@ export const MobileNav: React.FC<MobileNavProps> = ({
                   }`}
                 >
                   <Icon className="w-5 h-5" />
-                  {label}
+                  {t(label)}
                   {tab === 'changelog' && hasNewChangelog && (
-                    <span className="absolute top-2.5 right-2.5 w-2 h-2 rounded-full bg-amber-400" aria-label="nowe wpisy" />
+                    <span className="absolute top-2.5 right-2.5 w-2 h-2 rounded-full bg-amber-400" aria-label={t('nowe wpisy')} />
                   )}
                 </button>
               ))}
@@ -214,7 +216,7 @@ export const MobileNav: React.FC<MobileNavProps> = ({
                 className="relative h-20 rounded-2xl border bg-stone-950/60 border-stone-800 text-stone-200 active:bg-stone-800 flex flex-col items-center justify-center gap-1.5 text-xs font-semibold"
               >
                 <Mail className="w-5 h-5 text-amber-400" />
-                Wiadomości
+                {t('Wiadomości')}
                 {unreadMessagesCount > 0 && (
                   <span className="absolute top-2 right-2 min-w-[20px] h-5 px-1.5 rounded-full bg-amber-500 text-stone-950 text-[11px] font-bold flex items-center justify-center">
                     {unreadMessagesCount}
@@ -225,11 +227,11 @@ export const MobileNav: React.FC<MobileNavProps> = ({
 
             <div className="px-4 pt-4 space-y-1.5">
               {[
-                { label: 'Odśwież ceny', icon: RefreshCw, onClick: onRefreshPrices, spin: isRefreshing },
-                { label: 'Import kolekcji', icon: Upload, onClick: () => onOpenImportExport('import') },
-                { label: 'Eksport kolekcji', icon: Download, onClick: () => onOpenImportExport('export') },
-                { label: 'Ustawienia', icon: Settings, onClick: onOpenSettings },
-                ...(onOpenBugReport ? [{ label: 'Zgłoś błąd', icon: Bug, onClick: onOpenBugReport }] : [])
+                { label: tk('Odśwież ceny'), icon: RefreshCw, onClick: onRefreshPrices, spin: isRefreshing },
+                { label: tk('Import kolekcji'), icon: Upload, onClick: () => onOpenImportExport('import') },
+                { label: tk('Eksport kolekcji'), icon: Download, onClick: () => onOpenImportExport('export') },
+                { label: tk('Ustawienia'), icon: Settings, onClick: onOpenSettings },
+                ...(onOpenBugReport ? [{ label: tk('Zgłoś błąd'), icon: Bug, onClick: onOpenBugReport }] : [])
               ].map(({ label, icon: Icon, onClick, spin }) => (
                 <button
                   key={label}
@@ -238,7 +240,7 @@ export const MobileNav: React.FC<MobileNavProps> = ({
                   className="w-full h-12 px-4 rounded-xl bg-stone-950/60 border border-stone-800 text-stone-200 active:bg-stone-800 flex items-center gap-3 text-sm font-medium"
                 >
                   <Icon className={`w-5 h-5 text-amber-400 ${spin ? 'animate-spin' : ''}`} />
-                  {label}
+                  {t(label)}
                 </button>
               ))}
               <button
@@ -247,7 +249,7 @@ export const MobileNav: React.FC<MobileNavProps> = ({
                 className="w-full h-12 px-4 rounded-xl bg-rose-950/30 border border-rose-900/50 text-rose-300 active:bg-rose-950/50 flex items-center gap-3 text-sm font-semibold"
               >
                 <LogOut className="w-5 h-5" />
-                Wyloguj
+                {t('Wyloguj')}
               </button>
             </div>
           </div>

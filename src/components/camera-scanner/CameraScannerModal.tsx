@@ -37,6 +37,7 @@ import { Quad, quadMovement } from './cardDetector';
 import { EdhrecBadge } from '../EdhrecBadge';
 
 import { useBackToClose } from '../../hooks/useBackButton';
+import { useT, MAIN_BINDER, binderName } from '../../i18n';
 export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
   isOpen,
   onClose,
@@ -45,6 +46,7 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
   onSaveToCollection,
   showToast,
 }) => {
+  const t = useT();
   // „Wstecz” na telefonie zamyka to okno zamiast opuszczać stronę
   useBackToClose(isOpen, onClose);
 
@@ -84,7 +86,7 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
   const [zoomLevel, setZoomLevel] = useState<number>(1);
   const [showTips, setShowTips] = useState<boolean>(false);
   const [isScanning, setIsScanning] = useState<boolean>(false);
-  const [scanStatus, setScanStatus] = useState<string>('Nakieruj kartę na ramkę');
+  const [scanStatus, setScanStatus] = useState<string>(() => t('Nakieruj kartę na ramkę'));
   const [isAutoScanEnabled, setIsAutoScanEnabled] = useState<boolean>(false);
   const [isBatchMode, setIsBatchMode] = useState<boolean>(true);
   const [sessionAddedCount, setSessionAddedCount] = useState<number>(0);
@@ -95,7 +97,7 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
   const [isFoil, setIsFoil] = useState<boolean>(false);
   const [selectedBinder, setSelectedBinder] = useState<string>(() => {
     const def = catalogs.find((c) => c.isDefault);
-    return def ? def.name : catalogs[0]?.name || 'Klaser Główny';
+    return def ? def.name : catalogs[0]?.name || MAIN_BINDER;
   });
   const [quantity, setQuantity] = useState<number>(1);
   const [condition, setCondition] = useState<CardCondition>('NM');
@@ -121,7 +123,7 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
         .filter((d) => d.kind === 'videoinput')
         .map((d, idx) => ({
           deviceId: d.deviceId,
-          label: d.label || `Kamera ${idx + 1}`,
+          label: d.label || t('Kamera {n}', { n: idx + 1 }),
         }));
 
       setCameraDevices(videoInputs);
@@ -333,17 +335,17 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
       setActiveCard(result.matchedCard);
       setManualQuery(result.matchedCard.name);
       const where = result.matchedCard.set ? ` [${result.matchedCard.set.toUpperCase()} #${result.matchedCard.collector_number}]` : '';
-      setScanStatus(`Rozpoznano: "${result.matchedCard.name}"${where}`);
+      setScanStatus(t('Rozpoznano: "{name}"', { name: result.matchedCard.name }) + where);
       if (soundEnabled) playScannerChime('success');
       return true;
     }
     if (result.cleanedTitle) {
       setManualQuery(result.cleanedTitle);
-      setScanStatus(`Odczytano: "${result.cleanedTitle}". Nie znaleziono pewnego dopasowania`);
+      setScanStatus(t('Odczytano: "{title}". Nie znaleziono pewnego dopasowania', { title: result.cleanedTitle }));
     } else {
       setScanStatus(result.isAutoCropped
-        ? 'Nie rozpoznano karty. Popraw oświetlenie (bez odblasków) i przytrzymaj nieruchomo.'
-        : 'Nie wykryto karty. Połóż ją na jasnym, jednolitym tle i wypełnij ramkę.');
+        ? t('Nie rozpoznano karty. Popraw oświetlenie (bez odblasków) i przytrzymaj nieruchomo.')
+        : t('Nie wykryto karty. Połóż ją na jasnym, jednolitym tle i wypełnij ramkę.'));
     }
     return false;
   }, [soundEnabled]);
@@ -364,7 +366,7 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
       applyScanResult(result);
     } catch (err: any) {
       console.error('Błąd skanowania:', err);
-      setScanStatus('Błąd przetwarzania klatki. Spróbuj ponownie lub wgraj zdjęcie.');
+      setScanStatus(t('Błąd przetwarzania klatki. Spróbuj ponownie lub wgraj zdjęcie.'));
     } finally {
       setIsScanning(false);
     }
@@ -423,7 +425,7 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
           scanArmedRef.current = false;
           performScan(det.quad);
         } else if (steady && !scanArmedRef.current) {
-          setScanStatus('Zabierz kartę i połóż następną');
+          setScanStatus(t('Zabierz kartę i połóż następną'));
         }
       } catch (_) {}
     }, 160);
@@ -442,7 +444,7 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
       if (!file || !file.type.startsWith('image/')) return;
 
       setIsScanning(true);
-      setScanStatus('Wczytywanie zdjęcia...');
+      setScanStatus(t('Wczytywanie zdjęcia...'));
 
       const img = new Image();
       img.onload = async () => {
@@ -451,7 +453,7 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
           applyScanResult(result);
         } catch (err: any) {
           console.error('Błąd przetwarzania zdjęcia:', err);
-          setScanStatus('Nie udało się przetworzyć wskazanego pliku.');
+          setScanStatus(t('Nie udało się przetworzyć wskazanego pliku.'));
         } finally {
           setIsScanning(false);
           URL.revokeObjectURL(img.src);
@@ -521,7 +523,7 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
   const handleSelectAlternatePrint = useCallback((printCard: ScryfallCard) => {
     setActiveCard(printCard);
     setIsPrintsOpen(false);
-    showToast(`Wybrano wersję [${printCard.set.toUpperCase()}] #${printCard.collector_number}`);
+    showToast(t('Wybrano wersję [{v1}] #{collector_number}', { v1: printCard.set.toUpperCase(), collector_number: printCard.collector_number }));
   }, [showToast]);
 
   // 6. Manual Query Search
@@ -532,9 +534,9 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
       const { matchedCard, possibleCards } = await searchCardInScryfall(manualQuery.trim());
       if (matchedCard) {
         setActiveCard(matchedCard);
-        setScanStatus(`Znaleziono: "${matchedCard.name}"`);
+        setScanStatus(t('Znaleziono: "{name}"', { name: matchedCard.name }));
       } else {
-        showToast(`Nie znaleziono karty dla "${manualQuery}"`);
+        showToast(t('Nie znaleziono karty dla "{manualQuery}"', { manualQuery }));
       }
     } catch (err) {
       console.error('Błąd wyszukiwania:', err);
@@ -566,7 +568,7 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
       });
 
       setSessionAddedCount((prev) => prev + 1);
-      const notice = `Dodano: "${activeCard.name}" [${activeCard.set.toUpperCase()}] (${isFoil ? 'Foil' : 'Standard'}) do katalogu "${selectedBinder}"`;
+      const notice = t('Dodano: "{name}" [{set}] ({finish}) do katalogu "{binder}"', { name: activeCard.name, set: activeCard.set.toUpperCase(), finish: isFoil ? 'Foil' : 'Standard', binder: binderName(selectedBinder) });
       setLastAddedNotice(notice);
       showToast(notice);
 
@@ -576,14 +578,14 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
         setScanResult(null);
         setQuantity(1);
         setIsPrintsOpen(false);
-        setScanStatus('Gotowy na następną kartę. Nakieruj na ramkę.');
+        setScanStatus(t('Gotowy na następną kartę. Nakieruj na ramkę.'));
       } else {
         // In Single mode, close the modal
         onClose();
       }
     } catch (err: any) {
       console.error('Błąd zapisu karty:', err);
-      showToast('Wystąpił błąd podczas zapisywania karty.');
+      showToast(t('Wystąpił błąd podczas zapisywania karty.'));
     } finally {
       setIsAdding(false);
     }
@@ -685,11 +687,11 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
             <div>
               <div className="flex items-center gap-2">
                 <h2 className="text-sm sm:text-base font-bold text-stone-100">
-                  Skaner Kart MTG
+                  {t('Skaner Kart MTG')}
                 </h2>
               </div>
               <p className="text-xs text-stone-400 hidden sm:block">
-                Rozpoznawanie karty, wydania i wyceny rynkowej
+                {t('Rozpoznawanie karty, wydania i wyceny rynkowej')}
               </p>
             </div>
           </div>
@@ -704,7 +706,7 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
                   ? 'bg-emerald-500/15 border-emerald-500/30 text-emerald-300'
                   : 'bg-stone-900 border-stone-800 text-stone-500 hover:text-stone-300'
               }`}
-              title={soundEnabled ? 'Dźwięk skanera włączony' : 'Dźwięk skanera wyciszony'}
+              title={soundEnabled ? t('Dźwięk skanera włączony') : t('Dźwięk skanera wyciszony')}
             >
               {soundEnabled ? <Zap className="w-3.5 h-3.5 text-emerald-400" /> : <ZapOff className="w-3.5 h-3.5" />}
             </button>
@@ -718,10 +720,10 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
                   ? 'bg-amber-500/20 border-amber-500/40 text-amber-300'
                   : 'bg-stone-900 border-stone-800 text-stone-300 hover:text-stone-100 hover:bg-stone-800'
               }`}
-              title="Porady jak uzyskać idealną ostrość i odczyt"
+              title={t('Porady jak uzyskać idealną ostrość i odczyt')}
             >
               <Lightbulb className="w-4 h-4 text-amber-400" />
-              <span className="hidden sm:inline font-semibold">Porady</span>
+              <span className="hidden sm:inline font-semibold">{t('Porady')}</span>
               {showTips ? <ChevronUp className="w-3 h-3 text-stone-400" /> : <ChevronDown className="w-3 h-3 text-stone-400" />}
             </button>
 
@@ -734,8 +736,8 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
 
             <button
               onClick={onClose}
-              title="Zamknij skaner"
-              aria-label="Zamknij skaner"
+              title={t('Zamknij skaner')}
+              aria-label={t('Zamknij skaner')}
               className="w-11 h-11 sm:w-auto sm:h-auto sm:p-1.5 flex items-center justify-center text-stone-300 sm:text-stone-400 bg-stone-800 sm:bg-transparent hover:text-stone-100 hover:bg-stone-800 rounded-full sm:rounded-lg transition-colors cursor-pointer ml-1"
             >
               <X className="w-5 h-5" />
@@ -748,36 +750,36 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
           <div className="bg-amber-500/10 border-b border-amber-500/20 px-5 py-3 text-xs text-stone-300 space-y-2 animate-fade-in">
             <div className="flex items-center gap-2 text-amber-300 font-bold">
               <Lightbulb className="w-4 h-4 text-amber-400 shrink-0" />
-              <span>Dlaczego aparat o dużej rozdzielczości miewa problem z odczytem i jak to natychmiast poprawić:</span>
+              <span>{t('Dlaczego aparat o dużej rozdzielczości miewa problem z odczytem i jak to natychmiast poprawić:')}</span>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-2.5 pt-1 text-[11px] leading-relaxed">
               <div className="p-2.5 rounded-lg bg-stone-950/80 border border-amber-500/20 space-y-1">
                 <span className="font-bold text-amber-300 flex items-center gap-1">
                   <ZoomIn className="w-3.5 h-3.5 text-amber-400" />
-                  <span>1. Odległość 20 cm + Zoom</span>
+                  <span>{t('1. Odległość 20 cm + Zoom')}</span>
                 </span>
                 <p className="text-stone-300">
-                  Kamery wysokiej rozdzielczości nie mają obiektywu makro i tracą ostrość z bliska. <strong>Nie przysuwaj karty pod sam obiektyw!</strong> Trzymaj kartę w odległości 15–25 cm i użyj suwaka <strong>Zoom</strong> poniżej, by wypełnić kadr.
+                  {t('Kamery wysokiej rozdzielczości nie mają obiektywu makro i tracą ostrość z bliska.')} <strong>{t('Nie przysuwaj karty pod sam obiektyw!')}</strong> {t('Trzymaj kartę w odległości 15–25 cm i użyj suwaka')} <strong>{t('Zoom')}</strong> {t('poniżej, by wypełnić kadr.')}
                 </p>
               </div>
 
               <div className="p-2.5 rounded-lg bg-stone-950/80 border border-emerald-500/20 space-y-1">
                 <span className="font-bold text-emerald-300 flex items-center gap-1">
                   <Zap className="w-3.5 h-3.5 text-emerald-400" />
-                  <span>2. Detekcja na białej kartce / stole</span>
+                  <span>{t('2. Detekcja na białej kartce / stole')}</span>
                 </span>
                 <p className="text-stone-300">
-                  Gdy karta leży na białej kartce papieru lub biurku, skaner analizuje całą powierzchnię kadru i <strong>automatycznie wykrywa obrys karty (auto-crop 63×88mm)</strong>, precyzyjnie dzieląc ją na sekcje bez wciągania białego tła.
+                  {t('Gdy karta leży na białej kartce papieru lub biurku, skaner analizuje całą powierzchnię kadru i')} <strong>{t('automatycznie wykrywa obrys karty (auto-crop 63×88mm)')}</strong>{t(', precyzyjnie dzieląc ją na sekcje bez wciągania białego tła.')}
                 </p>
               </div>
 
               <div className="p-2.5 rounded-lg bg-stone-950/80 border border-amber-500/20 space-y-1">
                 <span className="font-bold text-amber-300 flex items-center gap-1">
                   <Camera className="w-3.5 h-3.5 text-emerald-400" />
-                  <span>3. Kąt & Przycisk „Aparat”</span>
+                  <span>{t('3. Kąt & Przycisk „Aparat”')}</span>
                 </span>
                 <p className="text-stone-300">
-                  Pochyl kartę o 10°, by światło lampy nie odbijało się od koszulki. Na komputerze możesz też kliknąć zielony przycisk <strong>„Aparat”</strong>, który robi natywne zdjęcie z pełnym autofokusem!
+                  {t('Pochyl kartę o 10°, by światło lampy nie odbijało się od koszulki. Na komputerze możesz też kliknąć zielony przycisk')} <strong>{t('„Aparat”')}</strong>{t(', który robi natywne zdjęcie z pełnym autofokusem!')}
                 </p>
               </div>
             </div>
@@ -827,21 +829,21 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
                   <div className="space-y-1.5">
                     <h4 className="text-base font-bold text-stone-100">
                       {cameraError === 'PERMISSION_DENIED'
-                        ? 'Brak zgody na użycie kamery'
+                        ? t('Brak zgody na użycie kamery')
                         : cameraError === 'NO_CAMERA_FOUND'
-                        ? 'Nie znaleziono kamery'
+                        ? t('Nie znaleziono kamery')
                         : cameraError
-                        ? 'Przeglądarka nie udostępnia kamery'
-                        : 'Uruchamianie kamery...'}
+                        ? t('Przeglądarka nie udostępnia kamery')
+                        : t('Uruchamianie kamery...')}
                     </h4>
                     <p className="text-sm text-stone-300 leading-relaxed">
                       {cameraError === 'PERMISSION_DENIED'
-                        ? 'Zezwól na dostęp do kamery w ustawieniach przeglądarki (ikona kłódki obok adresu strony), a potem spróbuj ponownie.'
+                        ? t('Zezwól na dostęp do kamery w ustawieniach przeglądarki (ikona kłódki obok adresu strony), a potem spróbuj ponownie.')
                         : cameraError === 'NO_CAMERA_FOUND'
-                        ? 'To urządzenie nie ma dostępnej kamery. Możesz zrobić zdjęcie karty aparatem albo wybrać zdjęcie z galerii.'
+                        ? t('To urządzenie nie ma dostępnej kamery. Możesz zrobić zdjęcie karty aparatem albo wybrać zdjęcie z galerii.')
                         : cameraError
-                        ? 'Otwórz stronę bezpośrednio w przeglądarce (nie w podglądzie ani w ramce). Możesz też zrobić zdjęcie karty.'
-                        : 'Jeśli przeglądarka zapyta o dostęp do kamery, zezwól.'}
+                        ? t('Otwórz stronę bezpośrednio w przeglądarce (nie w podglądzie ani w ramce). Możesz też zrobić zdjęcie karty.')
+                        : t('Jeśli przeglądarka zapyta o dostęp do kamery, zezwól.')}
                     </p>
                   </div>
 
@@ -853,7 +855,7 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
                         className="w-full h-12 px-4 rounded-xl bg-emerald-500 text-stone-950 font-bold text-sm flex items-center justify-center gap-2 cursor-pointer"
                       >
                         <RefreshCw className="w-4 h-4" />
-                        <span>Spróbuj ponownie</span>
+                        <span>{t('Spróbuj ponownie')}</span>
                       </button>
                     )}
                     <button
@@ -862,7 +864,7 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
                       className="w-full h-12 px-4 rounded-xl bg-amber-500/20 border border-amber-500/40 text-amber-300 font-bold text-sm flex items-center justify-center gap-2 cursor-pointer"
                     >
                       <Camera className="w-4 h-4" />
-                      <span>Zrób zdjęcie karty</span>
+                      <span>{t('Zrób zdjęcie karty')}</span>
                     </button>
                     <button
                       type="button"
@@ -870,7 +872,7 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
                       className="w-full h-12 px-4 rounded-xl bg-stone-800 border border-stone-700 text-stone-200 font-bold text-sm flex items-center justify-center gap-2 cursor-pointer"
                     >
                       <Upload className="w-4 h-4 text-stone-400" />
-                      <span>Wybierz zdjęcie z dysku (lub wklej Ctrl+V)</span>
+                      <span>{t('Wybierz zdjęcie z dysku (lub wklej Ctrl+V)')}</span>
                     </button>
                   </div>
 
@@ -879,11 +881,11 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
                     <details className="text-left p-3 rounded-xl bg-stone-950/90 border border-stone-800 text-xs text-stone-300">
                       <summary className="cursor-pointer font-bold text-amber-400 flex items-center gap-1.5">
                         <Radio className="w-3.5 h-3.5" />
-                        <span>Kamera telefonu na komputerze (OBS)</span>
+                        <span>{t('Kamera telefonu na komputerze (OBS)')}</span>
                       </summary>
                       <ol className="list-decimal list-inside space-y-1 mt-2 leading-normal">
-                        <li>W OBS podłącz obraz z telefonu i kliknij <strong className="text-stone-100">„Uruchom kamerę wirtualną”</strong>.</li>
-                        <li>Odśwież tę stronę i wybierz z listy kamer <strong className="text-emerald-400">„OBS Virtual Camera”</strong>.</li>
+                        <li>{t('W OBS podłącz obraz z telefonu i kliknij')} <strong className="text-stone-100">{t('„Uruchom kamerę wirtualną”')}</strong>.</li>
+                        <li>{t('Odśwież tę stronę i wybierz z listy kamer')} <strong className="text-emerald-400">{t('„OBS Virtual Camera”')}</strong>.</li>
                       </ol>
                     </details>
                   )}
@@ -913,7 +915,7 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
                       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none">
                         <span className="px-3 py-1 rounded-full bg-emerald-500 text-stone-950 font-bold text-[11px] shadow-lg flex items-center gap-1 animate-pulse">
                           <CheckCircle2 className="w-3.5 h-3.5 stroke-[3]" />
-                          <span>KARTA WYKRYTA</span>
+                          <span>{t('KARTA WYKRYTA')}</span>
                         </span>
                       </div>
                     )}
@@ -986,7 +988,7 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
                       value={zoomLevel}
                       onChange={(e) => handleZoomChange(parseFloat(e.target.value))}
                       className="w-16 accent-amber-500 cursor-pointer h-1 bg-stone-800 rounded"
-                      title="Przybliżanie bez utraty ostrości"
+                      title={t('Przybliżanie bez utraty ostrości')}
                     />
                     <div className="flex items-center gap-0.5">
                       {[1, 1.5, 2].filter((z) => z >= zoomRange.min && z <= zoomRange.max).map((preset) => (
@@ -1011,7 +1013,7 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
                 {hasTorch && (
                   <button
                     onClick={toggleTorch}
-                    title="Włącz/wyłącz doświetlenie (latarkę)"
+                    title={t('Włącz/wyłącz doświetlenie (latarkę)')}
                     className={`p-2 rounded-lg border transition-colors cursor-pointer flex items-center gap-1 ${
                       isTorchOn
                         ? 'bg-amber-500 text-stone-950 border-amber-400'
@@ -1034,11 +1036,11 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
                 <button
                   type="button"
                   onClick={() => cameraSnapInputRef.current?.click()}
-                  title="Zrób zdjęcie natywnym aparatem w telefonie/laptopie (z autofokusem)"
+                  title={t('Zrób zdjęcie natywnym aparatem w telefonie/laptopie (z autofokusem)')}
                   className="hidden sm:flex px-2.5 py-1.5 rounded-lg bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/30 text-emerald-400 font-semibold items-center gap-1.5 transition-colors cursor-pointer"
                 >
                   <Camera className="w-3.5 h-3.5" />
-                  <span>Aparat</span>
+                  <span>{t('Aparat')}</span>
                 </button>
 
                 {/* Upload File Input */}
@@ -1051,11 +1053,11 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
                 />
                 <button
                   onClick={() => fileInputRef.current?.click()}
-                  title="Wgraj zdjęcie karty z pliku lub galerii (lub wklej Ctrl+V)"
+                  title={t('Wgraj zdjęcie karty z pliku lub galerii (lub wklej Ctrl+V)')}
                   className="hidden sm:flex px-2.5 py-1.5 rounded-lg bg-stone-900 hover:bg-stone-800 border border-stone-700 text-stone-300 hover:text-stone-100 items-center gap-1.5 transition-colors cursor-pointer"
                 >
                   <Upload className="w-3.5 h-3.5 text-stone-400" />
-                  <span className="hidden sm:inline">Plik / Zdjęcie</span>
+                  <span className="hidden sm:inline">{t('Plik / Zdjęcie')}</span>
                 </button>
               </div>
 
@@ -1068,27 +1070,27 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
                     onChange={(e) => setIsAutoScanEnabled(e.target.checked)}
                     className="rounded border-stone-700 text-amber-500 focus:ring-0 bg-stone-900"
                   />
-                  <span className="hidden sm:inline">Auto-skan</span>
-                  <span className="sm:hidden">Auto</span>
+                  <span className="hidden sm:inline">{t('Auto-skan')}</span>
+                  <span className="sm:hidden">{t('Auto')}</span>
                 </label>
 
                 <button
                   onClick={() => performScan(lastQuadRef.current)}
                   disabled={isScanning || !isCameraActive}
-                  title="Rozpocznij skanowanie (lub naciśnij Spację)"
+                  title={t('Rozpocznij skanowanie (lub naciśnij Spację)')}
                   className="h-12 sm:h-auto px-6 sm:px-4 sm:py-2 rounded-full sm:rounded-xl bg-emerald-400 hover:bg-emerald-300 text-stone-950 font-bold text-sm sm:text-xs flex items-center gap-2 shadow-lg shadow-emerald-950/60 transition-all cursor-pointer disabled:opacity-50 active:scale-95"
                 >
                   {isScanning ? (
                     <>
                       <RefreshCw className="w-4 h-4 animate-spin" />
-                      <span>Skanowanie...</span>
+                      <span>{t('Skanowanie...')}</span>
                     </>
                   ) : (
                     <>
                       <Zap className="w-4 h-4 fill-stone-950" />
-                      <span>Zeskanuj</span>
+                      <span>{t('Zeskanuj')}</span>
                       <kbd className="hidden sm:inline px-1.5 py-0.5 rounded bg-black/20 text-[11px] tabular-nums font-bold tracking-tight text-stone-900 border border-black/10">
-                        Spacja
+                        {t('Spacja')}
                       </kbd>
                     </>
                   )}
@@ -1110,16 +1112,16 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
                 <div className="flex items-center justify-between text-[11px] text-stone-400">
                   <span className="font-semibold text-stone-300 flex items-center gap-1.5">
                     <Zap className="w-3.5 h-3.5 text-emerald-400 fill-emerald-400" />
-                    <span className="text-emerald-400 font-bold">Podgląd skanu:</span>
+                    <span className="text-emerald-400 font-bold">{t('Podgląd skanu:')}</span>
                   </span>
                   <div className="flex items-center gap-2">
                     {scanResult.isBlackBorderDetected ? (
                       <span className="text-[11px] px-1.5 py-0.5 rounded font-bold border bg-emerald-500/20 text-emerald-300 border-emerald-500/40 flex items-center gap-1 shadow-sm">
-                        <span>Czarna ramka MTG</span>
+                        <span>{t('Czarna ramka MTG')}</span>
                       </span>
                     ) : scanResult.isAutoCropped ? (
                       <span className="text-[11px] px-1.5 py-0.5 rounded font-bold border bg-emerald-500/20 text-emerald-300 border-emerald-500/40 animate-pulse">
-                        Auto-Crop 63×88
+                        {t('Auto-Crop 63×88')}
                       </span>
                     ) : null}
                     {scanResult.detectedRarity && (
@@ -1134,7 +1136,7 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
                     )}
                     {scanResult.confidence > 0 && (
                       <span className="tabular-nums text-emerald-300 font-bold">
-                        Pewność: {Math.round(scanResult.confidence)}%
+                        {t('Pewność:')} {Math.round(scanResult.confidence)}%
                       </span>
                     )}
                   </div>
@@ -1150,7 +1152,7 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
                         <div className="flex items-center justify-between text-[11px] text-stone-400">
                           <span className="tabular-nums text-emerald-300 font-semibold flex items-center gap-1">
                             <Sparkles className="w-2.5 h-2.5" />
-                            <span>Ilustracja (Art Crop)</span>
+                            <span>{t('Ilustracja (Art Crop)')}</span>
                           </span>
                           {scanResult.perceptualHash && (
                             <span className="text-[8px] tabular-nums text-emerald-400/90 bg-black/40 px-1 rounded">
@@ -1161,7 +1163,7 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
                         <div className="bg-black/60 rounded p-1 flex items-center justify-center overflow-hidden border border-stone-800 max-h-16">
                           <img
                             src={scanResult.debugArtUrl}
-                            alt="Wycinek ilustracji"
+                            alt={t('Wycinek ilustracji')}
                             className="max-h-14 w-full object-contain rounded"
                           />
                         </div>
@@ -1170,17 +1172,17 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
                       {/* Set Symbol & Rarity Crop */}
                       <div className="col-span-4 p-1.5 rounded-lg bg-stone-900 border border-stone-800 space-y-1 flex flex-col justify-between">
                         <div className="text-[11px] text-stone-400 tabular-nums">
-                          <span>Symbol & Rarity</span>
+                          <span>{t('Symbol & Rarity')}</span>
                         </div>
                         <div className="bg-black/60 rounded p-1 flex items-center justify-center overflow-hidden border border-stone-800 flex-1 min-h-[36px]">
                           {scanResult.debugSetSymbolUrl ? (
                             <img
                               src={scanResult.debugSetSymbolUrl}
-                              alt="Symbol setu"
+                              alt={t('Symbol setu')}
                               className="max-h-8 object-contain"
                             />
                           ) : (
-                            <span className="text-[11px] text-stone-500 italic">Brak</span>
+                            <span className="text-[11px] text-stone-500 italic">{t('Brak')}</span>
                           )}
                         </div>
                       </div>
@@ -1192,17 +1194,17 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
                     <div className="p-1.5 rounded-lg bg-stone-900 border border-stone-800 space-y-1">
                       <div className="flex items-center justify-between text-[11px] text-stone-400">
                         <span className="tabular-nums text-amber-300 font-semibold flex items-center gap-1">
-                          <span>Pasek górny (Nazwa/Koszt)</span>
+                          <span>{t('Pasek górny (Nazwa/Koszt)')}</span>
                           {scanResult.isBlackBorderDetected && (
-                            <span className="text-[8px] text-emerald-400 bg-emerald-950/60 px-1 rounded border border-emerald-500/30">wewnątrz ramki</span>
+                            <span className="text-[8px] text-emerald-400 bg-emerald-950/60 px-1 rounded border border-emerald-500/30">{t('wewnątrz ramki')}</span>
                           )}
                         </span>
-                        <span className="text-stone-300 text-[8px] font-bold">Tytuł</span>
+                        <span className="text-stone-300 text-[8px] font-bold">{t('Tytuł')}</span>
                       </div>
                       <div className="bg-white rounded p-1 flex items-center justify-center overflow-hidden border border-stone-300">
                         <img
                           src={scanResult.debugTitleUrl}
-                          alt="Pasek tytułowy po binarizacji"
+                          alt={t('Pasek tytułowy po binarizacji')}
                           className="max-h-7 w-full object-contain filter contrast-125"
                         />
                       </div>
@@ -1214,17 +1216,17 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
                     <div className="p-1.5 rounded-lg bg-stone-900 border border-stone-800 space-y-1">
                       <div className="flex items-center justify-between text-[11px] text-stone-400">
                         <span className="tabular-nums text-amber-300 font-semibold flex items-center gap-1">
-                          <span>Stopka (Set/Numer)</span>
+                          <span>{t('Stopka (Set/Numer)')}</span>
                           {scanResult.isBlackBorderDetected && (
-                            <span className="text-[8px] text-emerald-400 bg-emerald-950/60 px-1 rounded border border-emerald-500/30">nad dolną ramką</span>
+                            <span className="text-[8px] text-emerald-400 bg-emerald-950/60 px-1 rounded border border-emerald-500/30">{t('nad dolną ramką')}</span>
                           )}
                         </span>
-                        <span className="text-stone-300 text-[8px] font-bold">Stopka</span>
+                        <span className="text-stone-300 text-[8px] font-bold">{t('Stopka')}</span>
                       </div>
                       <div className="bg-white rounded p-1 flex items-center justify-center overflow-hidden border border-stone-300">
                         <img
                           src={scanResult.debugBottomUrl}
-                          alt="Stopka karty po binarizacji"
+                          alt={t('Stopka karty po binarizacji')}
                           className="max-h-5 w-full object-contain filter contrast-125"
                         />
                       </div>
@@ -1293,7 +1295,7 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
                           }`}
                         >
                           <span className={`text-[11px] font-bold ${!isFoil ? 'text-amber-300' : 'text-stone-400'}`}>
-                            Standard
+                            {t('Standard')}
                           </span>
                           <span className="tabular-nums font-bold text-emerald-400 text-xs mt-0.5">
                             {formatCurrency(normPln, 'PLN')}
@@ -1311,7 +1313,7 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
                         >
                           <span className="text-[11px] font-bold text-amber-400 flex items-center gap-1">
                             <Sparkles className="w-2.5 h-2.5" />
-                            <span>Foil</span>
+                            <span>{t('Foil')}</span>
                           </span>
                           <span className="tabular-nums font-bold text-amber-300 text-xs mt-0.5">
                             {formatCurrency(foilPln, 'PLN')}
@@ -1324,7 +1326,7 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
                   {/* Print Correction Button */}
                   <div className="pt-2 border-t border-stone-800/80 flex items-center justify-between">
                     <span className="text-[11px] text-stone-400">
-                      Wydanie: <strong className="text-stone-200">{activeCard.set_name}</strong>
+                      {t('Wydanie:')} <strong className="text-stone-200">{activeCard.set_name}</strong>
                     </span>
                     <button
                       type="button"
@@ -1332,7 +1334,7 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
                       className="text-[11px] text-amber-400 hover:text-amber-300 font-semibold flex items-center gap-1 underline cursor-pointer"
                     >
                       <Layers className="w-3.5 h-3.5" />
-                      <span>Zmień print / edycję</span>
+                      <span>{t('Zmień print / edycję')}</span>
                     </button>
                   </div>
                 </div>
@@ -1342,20 +1344,20 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
                   <div className="p-3 bg-stone-950 rounded-xl border border-stone-800 space-y-2 max-h-56 overflow-y-auto">
                     <div className="flex items-center justify-between sticky top-0 bg-stone-950 pb-1 z-10 border-b border-stone-800/60">
                       <span className="text-[11px] font-bold text-amber-300 tabular-nums">
-                        Dostępne wydania ({prints.length}):
+                        {t('Dostępne wydania ({n}):', { n: prints.length })}
                       </span>
                       <button
                         onClick={() => setIsPrintsOpen(false)}
                         className="text-[11px] text-stone-400 hover:text-stone-200"
                       >
-                        ✕ Zamknij
+                        {t('✕ Zamknij')}
                       </button>
                     </div>
 
                     {isLoadingPrints ? (
                       <div className="py-6 flex items-center justify-center space-x-2 text-stone-400 text-xs">
                         <RefreshCw className="w-4 h-4 animate-spin text-amber-400" />
-                        <span>Pobieranie wydań...</span>
+                        <span>{t('Pobieranie wydań...')}</span>
                       </div>
                     ) : (
                       <div className="space-y-1.5">
@@ -1394,7 +1396,7 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
                   <div>
                     <label className="block text-[11px] font-bold text-amber-300 mb-1 flex items-center gap-1.5">
                       <FolderPlus className="w-3.5 h-3.5 text-amber-400" />
-                      <span>Docelowy klaser lub katalog</span>
+                      <span>{t('Docelowy klaser lub katalog')}</span>
                     </label>
                     <select
                       value={selectedBinder}
@@ -1403,7 +1405,7 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
                     >
                       {catalogs.map((c) => (
                         <option key={c.id} value={c.name}>
-                          {c.name} {c.isDefault ? '(Domyślny)' : ''}
+                          {binderName(c.name)} {c.isDefault ? t('(Domyślny)') : ''}
                         </option>
                       ))}
                     </select>
@@ -1413,7 +1415,7 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
                   <div className="grid grid-cols-2 gap-2">
                     <div>
                       <label className="block text-[11px] font-semibold text-stone-400 mb-1">
-                        Ilość sztuk
+                        {t('Ilość sztuk')}
                       </label>
                       <div className="flex items-center gap-1">
                         <button
@@ -1438,18 +1440,18 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
 
                     <div>
                       <label className="block text-[11px] font-semibold text-stone-400 mb-1">
-                        Stan karty
+                        {t('Stan karty')}
                       </label>
                       <select
                         value={condition}
                         onChange={(e) => setCondition(e.target.value as CardCondition)}
                         className="w-full bg-stone-900 border border-stone-700 rounded-lg px-2 py-1.5 text-stone-100 text-xs focus:outline-none focus:border-amber-500 cursor-pointer"
                       >
-                        <option value="NM">Near Mint (NM)</option>
-                        <option value="EX">Excellent (EX)</option>
-                        <option value="GD">Good (GD)</option>
-                        <option value="LP">Light Played (LP)</option>
-                        <option value="PL">Played (PL)</option>
+                        <option value="NM">{t('Near Mint (NM)')}</option>
+                        <option value="EX">{t('Excellent (EX)')}</option>
+                        <option value="GD">{t('Good (GD)')}</option>
+                        <option value="LP">{t('Light Played (LP)')}</option>
+                        <option value="PL">{t('Played (PL)')}</option>
                       </select>
                     </div>
                   </div>
@@ -1462,17 +1464,17 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
                   <ScanLine className="w-6 h-6 animate-pulse" />
                 </div>
                 <h3 className="text-sm font-bold text-stone-200">
-                  Brak aktywnego skanu
+                  {t('Brak aktywnego skanu')}
                 </h3>
                 <p className="text-xs text-stone-400 leading-relaxed max-w-xs mx-auto">
-                  Umieść kartę w kadrze kamery i kliknij <strong className="text-emerald-400">„Zeskanuj”</strong>. Karta zostanie rozpoznana po nazwie, numerze i ilustracji.
+                  {t('Umieść kartę w kadrze kamery i kliknij')} <strong className="text-emerald-400">{t('„Zeskanuj”')}</strong>. {t('Karta zostanie rozpoznana po nazwie, numerze i ilustracji.')}
                 </p>
 
                 {/* Suggested Cards if found */}
                 {scanResult?.possibleCards && scanResult.possibleCards.length > 0 && !activeCard && (
                   <div className="pt-3 border-t border-stone-800 text-left space-y-2">
                     <p className="text-[11px] font-bold text-amber-300">
-                      Podpowiedzi z bazy Scryfall (kliknij, aby wybrać):
+                      {t('Podpowiedzi z bazy Scryfall (kliknij, aby wybrać):')}
                     </p>
                     <div className="max-h-40 overflow-y-auto space-y-1.5 pr-1">
                       {scanResult.possibleCards.map((c) => (
@@ -1482,7 +1484,7 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
                           onClick={() => {
                             setActiveCard(c);
                             setManualQuery(c.name);
-                            setScanStatus(`Wybrano: "${c.name}"`);
+                            setScanStatus(t('Wybrano: "{name}"', { name: c.name }));
                           }}
                           className="w-full p-2 rounded-lg bg-stone-950 hover:bg-stone-800 border border-stone-800 hover:border-amber-500/50 text-stone-200 text-xs flex items-center justify-between transition-colors cursor-pointer text-left"
                         >
@@ -1497,12 +1499,12 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
                 {/* Manual text search fallback */}
                 <div className="pt-4 border-t border-stone-800/80 space-y-2">
                   <p className="text-[11px] text-stone-400">
-                    Lub wpisz nazwę karty ręcznie:
+                    {t('Lub wpisz nazwę karty ręcznie:')}
                   </p>
                   <div className="flex items-center gap-1.5">
                     <input
                       type="text"
-                      placeholder="np. Lightning Bolt, Sol Ring..."
+                      placeholder={t('np. Lightning Bolt, Sol Ring...')}
                       value={manualQuery}
                       onChange={(e) => setManualQuery(e.target.value)}
                       onKeyDown={(e) => e.key === 'Enter' && handleManualSearch()}
@@ -1513,7 +1515,7 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
                       disabled={isSearchingManual || !manualQuery.trim()}
                       className="px-3 py-1.5 rounded-lg bg-stone-800 hover:bg-stone-700 border border-stone-700 text-stone-200 text-xs font-semibold cursor-pointer disabled:opacity-40"
                     >
-                      {isSearchingManual ? 'Szukam...' : 'Znajdź'}
+                      {isSearchingManual ? t('Szukam...') : t('Znajdź')}
                     </button>
                   </div>
                 </div>
@@ -1537,7 +1539,7 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
                     onChange={(e) => setIsBatchMode(e.target.checked)}
                     className="rounded border-stone-700 text-amber-500 focus:ring-0 bg-stone-900"
                   />
-                  <span>Skanowanie seryjne (nie zamykaj po dodaniu)</span>
+                  <span>{t('Skanowanie seryjne (nie zamykaj po dodaniu)')}</span>
                 </label>
               </div>
 
@@ -1551,7 +1553,7 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
                     }}
                     className="px-4 sm:px-3 h-12 sm:h-auto sm:py-2.5 rounded-xl bg-stone-800 hover:bg-stone-700 text-stone-300 text-sm sm:text-xs font-semibold cursor-pointer transition-colors"
                   >
-                    Odrzuć
+                    {t('Odrzuć')}
                   </button>
                 )}
 
@@ -1559,22 +1561,22 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
                   type="button"
                   onClick={handleAddCardToCollection}
                   disabled={!activeCard || isAdding}
-                  title="Dodaj kartę do klasera (lub naciśnij Enter)"
+                  title={t('Dodaj kartę do klasera (lub naciśnij Enter)')}
                   className="flex-1 min-w-0 h-12 sm:h-auto sm:py-2.5 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-stone-950 font-bold text-sm sm:text-xs flex items-center justify-center gap-2 shadow-lg shadow-emerald-950/40 transition-all cursor-pointer disabled:opacity-40"
                 >
                   {isAdding ? (
                     <>
                       <RefreshCw className="w-4 h-4 animate-spin" />
-                      <span>Zapisywanie w klaserze...</span>
+                      <span>{t('Zapisywanie w klaserze...')}</span>
                     </>
                   ) : (
                     <>
                       <Plus className="w-4 h-4 stroke-[3]" />
                       <span className="truncate">
-                        Dodaj do klasera "{selectedBinder}"
+                        {t('Dodaj do klasera "{name}"', { name: binderName(selectedBinder) })}
                       </span>
                       <kbd className="hidden sm:inline px-1.5 py-0.5 rounded bg-black/20 text-[11px] tabular-nums font-bold tracking-tight text-stone-900 border border-black/10">
-                        Enter ↵
+                        {t('Enter ↵')}
                       </kbd>
                     </>
                   )}

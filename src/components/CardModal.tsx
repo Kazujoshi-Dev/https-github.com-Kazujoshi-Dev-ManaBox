@@ -17,6 +17,7 @@ import {
 import { CardCombosTab } from './card-modal/CardCombosTab';
 
 import { useBackToClose } from '../hooks/useBackButton';
+import { useT, locale, binderName } from '../i18n';
 export const CardModal: React.FC<CardModalProps> = ({
   card,
   existingItem,
@@ -34,6 +35,7 @@ export const CardModal: React.FC<CardModalProps> = ({
   onUpdateWishlistItem,
   collectionBlockedReason,
 }) => {
+  const t = useT();
   // „Wstecz” na telefonie zamyka to okno zamiast opuszczać stronę
   useBackToClose(true, onClose);
 
@@ -171,7 +173,7 @@ export const CardModal: React.FC<CardModalProps> = ({
               onFilterChange={setPrintsFilter}
               onSelectPrint={handleSelectPrint}
               onSwitchToDetails={() => setActiveTab('details')}
-              defaultBinderName={catalogs.find((c) => c.isDefault)?.name || catalogs[0]?.name || 'Klaser Główny'}
+              defaultBinderName={catalogs.find((c) => c.isDefault)?.name || catalogs[0]?.name || t('Klaser Główny')}
               onQuickAddToCollection={collectionBlockedReason ? undefined : onQuickAddToCollection}
             />
           )}
@@ -203,12 +205,12 @@ export const CardModal: React.FC<CardModalProps> = ({
                   {isSaved ? (
                     <>
                       <Check className="w-4 h-4 stroke-[3]" />
-                      <span>Zapisano w katalogu "{selectedBinder}"!</span>
+                      <span>{t('Zapisano w katalogu "{name}"!', { name: binderName(selectedBinder) })}</span>
                     </>
                   ) : (
                     <>
                       <Plus className="w-4 h-4 stroke-[3]" />
-                      <span>Zapisz w katalogu "{selectedBinder}"</span>
+                      <span>{t('Zapisz w katalogu "{name}"', { name: binderName(selectedBinder) })}</span>
                     </>
                   )}
                 </button>

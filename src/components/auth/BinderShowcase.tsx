@@ -1,5 +1,6 @@
 import React from 'react';
 import type { ShowcaseCard } from './useShowcaseCards';
+import { useT } from '../../i18n';
 
 /**
  * Strona klasera z popularnymi kartami (obrazy z Scryfall, karty z lokalnej bazy).
@@ -7,6 +8,7 @@ import type { ShowcaseCard } from './useShowcaseCards';
  * rozróżnia wersje foil. Przy prefers-reduced-motion refleks stoi w miejscu.
  */
 export const BinderShowcase: React.FC<{ cards: ShowcaseCard[]; compact?: boolean }> = ({ cards, compact = false }) => {
+  const t = useT();
   // Pełne rzędy po 3 karty (najwyżej 2 rzędy na telefonie, 3 na większym ekranie)
   const max = compact ? 6 : 9;
   const page = cards.slice(0, Math.min(max, Math.floor(cards.length / 3) * 3));
@@ -15,7 +17,7 @@ export const BinderShowcase: React.FC<{ cards: ShowcaseCard[]; compact?: boolean
   const tilt = ['-rotate-[1.2deg]', 'rotate-[0.6deg]', '-rotate-[0.4deg]', 'rotate-[1deg]', '-rotate-[0.8deg]', 'rotate-[0.3deg]', 'rotate-[1.1deg]', '-rotate-[0.5deg]', 'rotate-[0.7deg]'];
 
   return (
-    <figure className="auth-binder relative" aria-label="Przykładowa strona klasera z kartami">
+    <figure className="auth-binder relative" aria-label={t('Przykładowa strona klasera z kartami')}>
       <div className="relative rounded-[22px] bg-stone-900 ring-1 ring-stone-800 p-3 sm:p-4 lg:p-5 shadow-[0_30px_80px_-20px_rgba(12,10,9,0.9)]">
         {/* Kółka segregatora */}
         <div className="absolute left-0 top-0 bottom-0 hidden sm:flex flex-col justify-around -translate-x-1/2 py-10" aria-hidden="true">

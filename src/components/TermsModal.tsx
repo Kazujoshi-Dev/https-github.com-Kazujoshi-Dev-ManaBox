@@ -1,44 +1,46 @@
 import React, { useEffect } from 'react';
 import { ScrollText, X } from 'lucide-react';
 import { useBackToClose } from '../hooks/useBackButton';
+import { useT, tk } from '../i18n';
 
 /** Podstawowy regulamin serwisu. Kolejność punktów = numeracja. */
 const TERMS: { title: string; body: string }[] = [
   {
-    title: 'Postanowienia ogólne',
-    body: 'Serwis manascrew.eu (Mana Screw) to bezpłatne narzędzie do prowadzenia kolekcji kart Magic: The Gathering, budowania talii oraz wystawiania kart na sprzedaż lub wymianę. Korzystając z serwisu, akceptujesz niniejszy regulamin.',
+    title: tk('Postanowienia ogólne'),
+    body: tk('Serwis manascrew.eu (Mana Screw) to bezpłatne narzędzie do prowadzenia kolekcji kart Magic: The Gathering, budowania talii oraz wystawiania kart na sprzedaż lub wymianę. Korzystając z serwisu, akceptujesz niniejszy regulamin.'),
   },
   {
-    title: 'Konto użytkownika',
-    body: 'Odpowiadasz za dane podane przy rejestracji i za bezpieczeństwo swojego hasła. Konto możesz w każdej chwili usunąć w ustawieniach.',
+    title: tk('Konto użytkownika'),
+    body: tk('Odpowiadasz za dane podane przy rejestracji i za bezpieczeństwo swojego hasła. Konto możesz w każdej chwili usunąć w ustawieniach.'),
   },
   {
-    title: 'Handel między graczami',
-    body: 'Serwis jedynie umożliwia prezentowanie ofert i kontakt między graczami. Nie jest stroną transakcji, nie pośredniczy w płatnościach ani wysyłce i nie weryfikuje sprzedających, kupujących ani stanu kart.',
+    title: tk('Handel między graczami'),
+    body: tk('Serwis jedynie umożliwia prezentowanie ofert i kontakt między graczami. Nie jest stroną transakcji, nie pośredniczy w płatnościach ani wysyłce i nie weryfikuje sprzedających, kupujących ani stanu kart.'),
   },
   {
-    title: 'Wyłączenie odpowiedzialności',
-    body: 'manascrew.eu nie ponosi odpowiedzialności za oszustwa, niewywiązanie się z umowy, szkody ani spory wynikające z handlu lub wymiany między graczami. Wszelkie roszczenia należy kierować bezpośrednio do drugiej strony transakcji.',
+    title: tk('Wyłączenie odpowiedzialności'),
+    body: tk('manascrew.eu nie ponosi odpowiedzialności za oszustwa, niewywiązanie się z umowy, szkody ani spory wynikające z handlu lub wymiany między graczami. Wszelkie roszczenia należy kierować bezpośrednio do drugiej strony transakcji.'),
   },
   {
-    title: 'Bezpieczny handel',
-    body: 'Zalecamy ostrożność: korzystaj ze sprawdzonych form płatności, preferuj odbiór osobisty lub przesyłki za pobraniem, a podejrzane zachowania zgłaszaj administracji.',
+    title: tk('Bezpieczny handel'),
+    body: tk('Zalecamy ostrożność: korzystaj ze sprawdzonych form płatności, preferuj odbiór osobisty lub przesyłki za pobraniem, a podejrzane zachowania zgłaszaj administracji.'),
   },
   {
-    title: 'Zasady zachowania',
-    body: 'Zabronione jest publikowanie treści niezgodnych z prawem, obraźliwych lub wprowadzających w błąd. Administracja może usuwać takie treści oraz blokować konta naruszające regulamin.',
+    title: tk('Zasady zachowania'),
+    body: tk('Zabronione jest publikowanie treści niezgodnych z prawem, obraźliwych lub wprowadzających w błąd. Administracja może usuwać takie treści oraz blokować konta naruszające regulamin.'),
   },
   {
-    title: 'Ceny i dane kart',
-    body: 'Wyceny i dane kart pochodzą z zewnętrznych źródeł i mają charakter wyłącznie orientacyjny. Serwis nie gwarantuje ich aktualności ani dokładności.',
+    title: tk('Ceny i dane kart'),
+    body: tk('Wyceny i dane kart pochodzą z zewnętrznych źródeł i mają charakter wyłącznie orientacyjny. Serwis nie gwarantuje ich aktualności ani dokładności.'),
   },
   {
-    title: 'Zmiany regulaminu',
-    body: 'Regulamin może się zmieniać. Dalsze korzystanie z serwisu po zmianie oznacza akceptację nowej wersji.',
+    title: tk('Zmiany regulaminu'),
+    body: tk('Regulamin może się zmieniać. Dalsze korzystanie z serwisu po zmianie oznacza akceptację nowej wersji.'),
   },
 ];
 
 export const TermsModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
+  const t = useT();
   useBackToClose(true, onClose);
 
   useEffect(() => {
@@ -64,28 +66,28 @@ export const TermsModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
         <div className="flex items-center gap-3 p-4 border-b border-stone-800 shrink-0">
           <ScrollText className="w-5 h-5 text-amber-400 shrink-0" />
           <h3 id="terms-title" className="text-base font-semibold text-stone-50 flex-1">
-            Regulamin
+            {t('Regulamin')}
           </h3>
-          <button type="button" onClick={onClose} aria-label="Zamknij" className="w-9 h-9 rounded-lg text-stone-400 hover:text-stone-100 hover:bg-stone-800 flex items-center justify-center cursor-pointer">
+          <button type="button" onClick={onClose} aria-label={t('Zamknij')} className="w-9 h-9 rounded-lg text-stone-400 hover:text-stone-100 hover:bg-stone-800 flex items-center justify-center cursor-pointer">
             <X className="w-5 h-5" />
           </button>
         </div>
 
         <ol className="p-4 space-y-4 overflow-y-auto text-sm text-stone-300 leading-relaxed">
-          {TERMS.map((t, i) => (
-            <li key={t.title}>
+          {TERMS.map((term, i) => (
+            <li key={term.title}>
               <p className="font-medium text-stone-100">
                 <span className="tabular-nums text-stone-500 mr-1.5">{i + 1}.</span>
-                {t.title}
+                {t(term.title)}
               </p>
-              <p className="mt-1 text-stone-400">{t.body}</p>
+              <p className="mt-1 text-stone-400">{t(term.body)}</p>
             </li>
           ))}
         </ol>
 
         <div className="p-4 border-t border-stone-800 flex justify-end shrink-0">
           <button type="button" onClick={onClose} className="btn btn-secondary">
-            Rozumiem
+            {t('Rozumiem')}
           </button>
         </div>
       </div>

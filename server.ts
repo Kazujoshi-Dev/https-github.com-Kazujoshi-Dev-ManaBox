@@ -10,6 +10,9 @@ import type { PriceUpdate } from './src/server/db';
 import { hashPassword, verifyPassword, generateToken, verifyToken } from './src/server/auth';
 import { rateLimit, hit, clientIp } from './src/server/rateLimit';
 import * as mailer from './src/server/mailer';
+import { translateWith } from './src/i18n/translate';
+import { EN, EN_PATTERNS } from './src/i18n/en';
+const translateToEnglish = (message: string) => translateWith(EN, EN_PATTERNS, message);
 import { getCommanderRecommendations } from './src/server/edhrec';
 import * as cards from './src/server/cards/cardStore';
 import * as hashes from './src/server/cards/hashIndex';
@@ -32,6 +35,24 @@ app.use('/api/csp-report', express.json({
   type: ['application/csp-report', 'application/reports+json', 'application/json']
 }));
 app.use(express.json({ limit: '10mb' }));
+
+/** Język interfejsu klienta (nagłówek X-Lang); serwer odpowiada po polsku, po angielsku tylko dla 'en'. */
+function requestLang(req: express.Request): 'pl' | 'en' {
+  return req.get('x-lang') === 'en' ? 'en' : 'pl';
+}
+
+// Komunikaty błędów API w języku klienta
+app.use('/api', (req, res, next) => {
+  if (requestLang(req) !== 'en') return next();
+  const json = res.json.bind(res);
+  res.json = ((body: any) => {
+    if (body && typeof body === 'object' && typeof body.error === 'string') {
+      body = { ...body, error: translateToEnglish(body.error) };
+    }
+    return json(body);
+  }) as typeof res.json;
+  next();
+});
 
 // Content-Security-Policy (tylko produkcja — tryb deweloperski Vite wymaga skryptów inline).
 // Dozwolone źródła wynikają z tego, czego używa frontend:
@@ -128,10 +149,15 @@ function publicUser(user: { id: string; email: string; username: string; created
 }
 
 /** Komunikat o blokadzie konta. */
-function banMessage(user: { ban_permanent?: boolean; banned_until?: string | null; ban_reason?: string | null }) {
-  const until = user.ban_permanent
-    ? 'na stałe'
-    : `do ${new Date(user.banned_until!).toLocaleString('pl-PL', { timeZone: 'Europe/Warsaw', dateStyle: 'long', timeStyle: 'short' })}`;
+function banMessage(user: { ban_permanent?: boolean; banned_until?: string | null; ban_reason?: string | null }, lang: 'pl' | 'en' = 'pl') {
+  const date = user.ban_permanent
+    ? ''
+    : new Date(user.banned_until!).toLocaleString(lang === 'en' ? 'en-GB' : 'pl-PL', { timeZone: 'Europe/Warsaw', dateStyle: 'long', timeStyle: 'short' });
+  if (lang === 'en') {
+    const until = user.ban_permanent ? 'Your account has been permanently banned.' : `Your account is banned until ${date}.`;
+    return `${until}${user.ban_reason ? ` Reason: ${user.ban_reason}` : ''}`;
+  }
+  const until = user.ban_permanent ? 'na stałe' : `do ${date}`;
   return `Konto zostało zablokowane ${until}.${user.ban_reason ? ` Powód: ${user.ban_reason}` : ''}`;
 }
 
@@ -281,7 +307,7 @@ app.post(['/api/auth/register', '/api/auth/register/', '/api/register'], registe
     if (requireVerification) {
       let mailSent = true;
       try {
-        await sendVerificationEmail(user);
+        await sendVerificationEmail(user, requestLang(req));
       } catch (err: any) {
         mailSent = false;
         console.error(`[Mail] Nie wysłano linku potwierdzającego do ${user.id}:`, err?.message || err);
@@ -317,7 +343,7 @@ app.post(['/api/auth/login', '/api/auth/login/', '/api/login'], loginIpLimiter, 
 
     // Informację o blokadzie pokazujemy dopiero po poprawnym haśle (nie ujawniamy jej obcym)
     if (db.isBanActive(user)) {
-      return res.status(403).json({ error: banMessage(user), code: 'BANNED' });
+      return res.status(403).json({ error: banMessage(user, requestLang(req)), code: 'BANNED' });
     }
 
     if (!db.isEmailVerified(user)) {
@@ -346,7 +372,7 @@ app.get('/api/auth/me', authMiddleware, async (req, res) => {
 
     if (db.isBanActive(user)) {
       await db.revokeAllSessions(user.id).catch(() => 0);
-      return res.status(401).json({ error: banMessage(user), code: 'BANNED' });
+      return res.status(401).json({ error: banMessage(user, requestLang(req)), code: 'BANNED' });
     }
 
     res.json({ user: publicUser(user) });
@@ -444,9 +470,9 @@ app.post('/api/auth/logout-all', authMiddleware, async (req, res) => {
 const VERIFY_TOKEN_HOURS = 24;
 const RESET_TOKEN_MINUTES = 60;
 
-async function sendVerificationEmail(user: { id: string; email: string; username: string }) {
+async function sendVerificationEmail(user: { id: string; email: string; username: string }, lang: mailer.MailLang = 'pl') {
   const token = await db.createEmailToken(user.id, 'verify', VERIFY_TOKEN_HOURS * 60 * 60_000);
-  await mailer.sendMail(mailer.verifyEmailMessage(user.email, user.username, token, VERIFY_TOKEN_HOURS));
+  await mailer.sendMail(mailer.verifyEmailMessage(user.email, user.username, token, VERIFY_TOKEN_HOURS, lang));
 }
 
 /** Prośby o link: limit na IP i osobno na adres e-mail (max kilka maili na godzinę do jednej skrzynki). */
@@ -478,7 +504,7 @@ app.post('/api/auth/resend-verification', async (req, res) => {
     const user = await db.getUserByEmail(email);
     if (user && !db.isEmailVerified(user) && mailer.isMailConfigured()) {
       // Bez czekania na SMTP: czas odpowiedzi nie zdradza, czy konto istnieje
-      sendVerificationEmail(user).catch((err) =>
+      sendVerificationEmail(user, requestLang(req)).catch((err) =>
         console.error(`[Mail] Nie wysłano ponownie linku potwierdzającego do ${user.id}:`, err?.message || err)
       );
     }
@@ -522,7 +548,7 @@ app.post('/api/auth/forgot-password', async (req, res) => {
     if (user) {
       (async () => {
         const token = await db.createEmailToken(user.id, 'reset', RESET_TOKEN_MINUTES * 60_000);
-        await mailer.sendMail(mailer.resetPasswordMessage(user.email, user.username, token, RESET_TOKEN_MINUTES));
+        await mailer.sendMail(mailer.resetPasswordMessage(user.email, user.username, token, RESET_TOKEN_MINUTES, requestLang(req)));
         console.log(`[Konta] Wysłano link resetu hasła do ${user.id}.`);
       })().catch((err) => console.error(`[Mail] Nie wysłano linku resetu hasła do ${user.id}:`, err?.message || err));
     }
@@ -558,7 +584,7 @@ app.post('/api/auth/reset-password', emailTokenLimiter, async (req, res) => {
     await db.invalidateEmailTokens(user.id, 'reset');
     console.log(`[Konta] Użytkownik ${user.id} ustawił nowe hasło przez link z e-maila.`);
     mailer
-      .sendMail(mailer.passwordChangedMessage(user.email, user.username))
+      .sendMail(mailer.passwordChangedMessage(user.email, user.username, requestLang(req)))
       .catch((err) => console.warn(`[Mail] Nie wysłano powiadomienia o zmianie hasła do ${user.id}:`, err?.message || err));
     if (db.isBanActive(user)) return res.json({ success: true });
     const token = await issueSessionToken(req, user);

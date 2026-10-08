@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { ArrowLeft, Crown, Plus, Sparkles, Loader2, Check, Search, X } from 'lucide-react';
 import type { AppSettings, CollectionItem, DeckCardEntry, ScryfallCard } from '../../types';
 import { formatCurrency, getCardImageUri, getCardPrice, handleCardImageError, langFromCard } from '../../utils/formatters';
+import { useT } from '../../i18n';
 
 interface AddCardVersionPickerProps {
   card: ScryfallCard;
@@ -61,6 +62,7 @@ export const AddCardVersionPicker: React.FC<AddCardVersionPickerProps> = ({
   singleton = true,
   game = 'paper'
 }) => {
+  const t = useT();
   const owned = useMemo(
     () => collection.filter((c) => c.card.name.toLowerCase() === card.name.toLowerCase()),
     [collection, card.name]
@@ -143,7 +145,7 @@ export const AddCardVersionPicker: React.FC<AddCardVersionPickerProps> = ({
             <p className="text-sm font-medium text-stone-100">{selected.name}</p>
             <p className="text-xs text-stone-400">
               {selected.set_name} ({selected.set.toUpperCase()}) #{selected.collector_number}
-              {selected.lang && selected.lang !== 'en' && <>, język {langFromCard(selected)}</>}
+              {selected.lang && selected.lang !== 'en' && <>, {t('język')} {langFromCard(selected)}</>}
             </p>
             {selected.printed_name && selected.printed_name !== selected.name && (
               <p className="text-xs text-stone-500">{selected.printed_name}</p>
@@ -151,7 +153,7 @@ export const AddCardVersionPicker: React.FC<AddCardVersionPickerProps> = ({
             {settings && price > 0 && <p className="text-sm text-stone-200 tabular-nums mt-1">{formatCurrency(price, settings.currency)}</p>}
             {ownedSel && (
               <p className="text-xs text-emerald-300 mt-1">
-                W kolekcji: {ownedSel.quantity} zwykłe, {ownedSel.quantityFoil} foil
+                {t('W kolekcji: {normal} zwykłe, {foil} foil', { normal: ownedSel.quantity, foil: ownedSel.quantityFoil })}
               </p>
             )}
           </div>
@@ -160,8 +162,8 @@ export const AddCardVersionPicker: React.FC<AddCardVersionPickerProps> = ({
         <div className="space-y-4 min-w-0">
           {/* Foil / Standard */}
           <div>
-            <p className="text-sm text-stone-300 mb-2">Wersja</p>
-            <div className="inline-grid grid-cols-2 p-1 rounded-lg bg-stone-950 ring-1 ring-stone-800" role="radiogroup" aria-label="Wersja karty">
+            <p className="text-sm text-stone-300 mb-2">{t('Wersja')}</p>
+            <div className="inline-grid grid-cols-2 p-1 rounded-lg bg-stone-950 ring-1 ring-stone-800" role="radiogroup" aria-label={t('Wersja karty')}>
               {[
                 { v: false, label: 'Standard', ok: canNonfoil },
                 { v: true, label: 'Foil', ok: canFoil }
@@ -173,7 +175,7 @@ export const AddCardVersionPicker: React.FC<AddCardVersionPickerProps> = ({
                   aria-checked={foil === o.v}
                   disabled={!o.ok}
                   onClick={() => setFoil(o.v)}
-                  title={o.ok ? undefined : 'To wydanie nie występuje w tej wersji'}
+                  title={o.ok ? undefined : t('To wydanie nie występuje w tej wersji')}
                   className={`h-9 px-4 rounded-md text-sm flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-35 disabled:cursor-not-allowed ${
                     foil === o.v ? 'bg-stone-800 text-stone-50 font-medium' : 'text-stone-400 hover:text-stone-200'
                   }`}
@@ -189,13 +191,13 @@ export const AddCardVersionPicker: React.FC<AddCardVersionPickerProps> = ({
           <div>
             <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
               <p className="text-sm text-stone-300">
-                Wydanie{' '}
+                {t('Wydanie')}{' '}
                 {prints && (
                   <span className="text-stone-500 tabular-nums">
-                    ({printFilter.trim() ? `${shown.length} z ${list.length}` : list.length})
+                    ({printFilter.trim() ? t('{n} z {total}', { n: shown.length, total: list.length }) : list.length})
                   </span>
                 )}
-                {collectionOnly && owned.length > 0 && <span className="text-stone-500"> z Twojej kolekcji</span>}
+                {collectionOnly && owned.length > 0 && <span className="text-stone-500"> {t('z Twojej kolekcji')}</span>}
               </p>
               {prints && list.length > 1 && (
                 <div className="relative w-full sm:w-64">
@@ -211,13 +213,13 @@ export const AddCardVersionPicker: React.FC<AddCardVersionPickerProps> = ({
                         onConfirm(shown[0], foil && hasFinish(shown[0], 'foil'), asCommander);
                       }
                     }}
-                    placeholder="Kod setu i numer, np. DSC 114"
-                    aria-label="Filtruj wydania po kodzie dodatku, numerze karty lub nazwie dodatku"
+                    placeholder={t('Kod setu i numer, np. DSC 114')}
+                    aria-label={t('Filtruj wydania po kodzie dodatku, numerze karty lub nazwie dodatku')}
                     autoComplete="off"
                     className="w-full h-9 bg-stone-950 border border-stone-800 rounded-lg pl-8 pr-8 text-sm text-stone-100 placeholder-stone-500 focus:outline-none focus:border-amber-500"
                   />
                   {printFilter && (
-                    <button type="button" onClick={() => setPrintFilter('')} aria-label="Wyczyść filtr" className="absolute right-1.5 top-1/2 -translate-y-1/2 w-6 h-6 rounded flex items-center justify-center text-stone-400 hover:text-stone-100 cursor-pointer">
+                    <button type="button" onClick={() => setPrintFilter('')} aria-label={t('Wyczyść filtr')} className="absolute right-1.5 top-1/2 -translate-y-1/2 w-6 h-6 rounded flex items-center justify-center text-stone-400 hover:text-stone-100 cursor-pointer">
                       <X className="w-3.5 h-3.5" />
                     </button>
                   )}
@@ -226,12 +228,12 @@ export const AddCardVersionPicker: React.FC<AddCardVersionPickerProps> = ({
             </div>
             {!prints ? (
               <p className="text-sm text-stone-400 flex items-center gap-2 py-4">
-                <Loader2 className="w-4 h-4 animate-spin" /> Wczytywanie wydań…
+                <Loader2 className="w-4 h-4 animate-spin" /> {t('Wczytywanie wydań…')}
               </p>
             ) : (
               <ul className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-5 gap-2.5 max-h-[320px] overflow-y-auto pr-1 -mr-1">
                 {shown.map((p) => {
-                  const t = getCardImageUri(p, 'small') || getCardImageUri(p, 'normal');
+                  const thumb = getCardImageUri(p, 'small') || getCardImageUri(p, 'normal');
                   const isSel = p.id === selected.id;
                   const mine = ownedIds.has(p.id);
                   return (
@@ -248,7 +250,7 @@ export const AddCardVersionPicker: React.FC<AddCardVersionPickerProps> = ({
                             isSel ? 'ring-amber-400' : 'ring-transparent hover:ring-stone-500'
                           }`}
                         >
-                          {t && <img src={t} alt="" loading="lazy" referrerPolicy="no-referrer" className="w-full h-full object-cover" />}
+                          {thumb && <img src={thumb} alt="" loading="lazy" referrerPolicy="no-referrer" className="w-full h-full object-cover" />}
                           {isSel && (
                             <span className="absolute top-1 right-1 w-5 h-5 rounded-full bg-amber-400 text-stone-950 flex items-center justify-center">
                               <Check className="w-3.5 h-3.5" strokeWidth={3} />
@@ -262,7 +264,7 @@ export const AddCardVersionPicker: React.FC<AddCardVersionPickerProps> = ({
                           )}
                         </span>
                         <span className={`block text-[11px] truncate ${mine ? 'text-emerald-400' : 'text-stone-500'}`}>
-                          {mine ? 'W kolekcji' : p.released_at?.slice(0, 4) || p.set_name}
+                          {mine ? t('W kolekcji') : p.released_at?.slice(0, 4) || p.set_name}
                         </span>
                       </button>
                     </li>
@@ -271,7 +273,7 @@ export const AddCardVersionPicker: React.FC<AddCardVersionPickerProps> = ({
               </ul>
             )}
             {prints && printFilter.trim() && shown.length === 0 && (
-              <p className="text-sm text-stone-400 py-3">Brak wydań pasujących do „{printFilter.trim()}”. Sprawdź kod dodatku i numer z dołu karty.</p>
+              <p className="text-sm text-stone-400 py-3">{t('Brak wydań pasujących do „{filter}”. Sprawdź kod dodatku i numer z dołu karty.', { filter: printFilter.trim() })}</p>
             )}
           </div>
         </div>
@@ -280,14 +282,14 @@ export const AddCardVersionPicker: React.FC<AddCardVersionPickerProps> = ({
       <div className="flex flex-col-reverse sm:flex-row sm:items-center gap-2 p-4 border-t border-stone-800">
         <button type="button" onClick={onBack} className="btn btn-ghost">
           <ArrowLeft className="w-4 h-4" />
-          Wróć do wyników
+          {t('Wróć do wyników')}
         </button>
         <p className="sm:ml-auto text-xs text-stone-500 sm:text-right">
-          {replacing ? 'Ta karta już jest w talii. Zmienimy jej wersję.' : ''}
+          {replacing ? t('Ta karta już jest w talii. Zmienimy jej wersję.') : ''}
         </p>
         <button type="button" onClick={() => onConfirm(selected, foil, asCommander)} className="btn btn-primary">
           {asCommander ? <Crown className="w-4 h-4" /> : <Plus className="w-4 h-4" strokeWidth={2.5} />}
-          {confirmLabel || (asCommander ? 'Ustaw jako dowódcę' : replacing ? 'Zmień wersję' : 'Dodaj do talii')}
+          {confirmLabel || (asCommander ? t('Ustaw jako dowódcę') : replacing ? t('Zmień wersję') : t('Dodaj do talii'))}
         </button>
       </div>
     </div>

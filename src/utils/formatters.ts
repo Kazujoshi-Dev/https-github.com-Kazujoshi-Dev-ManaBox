@@ -1,5 +1,6 @@
 import React from 'react';
 import { CardCondition, ScryfallCard, AppSettings, CurrencyCode } from '../types';
+import { locale } from '../i18n';
 
 export const DEFAULT_SETTINGS: AppSettings = {
   pricingSource: 'CARDMARKET',
@@ -19,7 +20,7 @@ export function formatCurrency(
   const num = typeof amount === 'string' ? parseFloat(amount) : amount;
   if (isNaN(num)) return '—';
 
-  return new Intl.NumberFormat('pl-PL', {
+  return new Intl.NumberFormat(locale(), {
     style: 'currency',
     currency: currency,
     minimumFractionDigits: 2,

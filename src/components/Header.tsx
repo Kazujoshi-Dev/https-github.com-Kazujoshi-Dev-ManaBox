@@ -26,6 +26,8 @@ import {
 import { formatCurrency } from '../utils/formatters';
 import { SupportButton } from './ui/SupportButton';
 import { DiscordButton } from './ui/DiscordButton';
+import { LanguageSwitcher } from './ui/LanguageSwitcher';
+import { useT, locale, plural, type Lang } from '../i18n';
 import { AppSettings, AuthUser } from '../types';
 
 type Tab = 'collection' | 'search' | 'set-top' | 'spoilers' | 'analytics' | 'wishlist' | 'decks' | 'for-sale' | 'users' | 'changelog' | 'admin' | 'settings';
@@ -59,6 +61,8 @@ interface HeaderProps {
   onOpenHistory?: () => void;
   /** Okno „Zgłoś błąd”. */
   onOpenBugReport?: () => void;
+  /** Zmiana języka interfejsu (zapis na profilu). */
+  onChangeLanguage?: (lang: Lang) => void;
 }
 
 /** Menu konta: rzadziej używane akcje (ustawienia, import/eksport, okno OBS, wylogowanie). */
@@ -71,6 +75,7 @@ const AccountMenu: React.FC<{
   onLogout?: () => void;
   onOpenBugReport?: () => void;
 }> = ({ user, settingsActive, onOpenSettings, onOpenImportExport, onExportCollection, onLogout, onOpenBugReport }) => {
+  const t = useT();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
@@ -123,7 +128,7 @@ const AccountMenu: React.FC<{
             <p className="text-xs text-stone-400 truncate">{user.email}</p>
           </div>
           <button type="button" role="menuitem" onClick={run(onOpenSettings)} className={item}>
-            <Settings className="w-4 h-4 text-stone-400" /> Ustawienia
+            <Settings className="w-4 h-4 text-stone-400" /> {t('Ustawienia')}
           </button>
           <button
             type="button"
@@ -131,7 +136,7 @@ const AccountMenu: React.FC<{
             onClick={run(() => (onOpenImportExport ? onOpenImportExport('import') : undefined))}
             className={item}
           >
-            <Upload className="w-4 h-4 text-stone-400" /> Import kolekcji
+            <Upload className="w-4 h-4 text-stone-400" /> {t('Import kolekcji')}
           </button>
           <button
             type="button"
@@ -139,21 +144,21 @@ const AccountMenu: React.FC<{
             onClick={run(() => (onOpenImportExport ? onOpenImportExport('export') : onExportCollection?.()))}
             className={item}
           >
-            <Download className="w-4 h-4 text-stone-400" /> Eksport kolekcji
+            <Download className="w-4 h-4 text-stone-400" /> {t('Eksport kolekcji')}
           </button>
           <a href={obsHref} target="_blank" rel="noopener noreferrer" role="menuitem" onClick={() => setOpen(false)} className={item}>
-            <ExternalLink className="w-4 h-4 text-stone-400" /> Skaner w osobnym oknie (OBS)
+            <ExternalLink className="w-4 h-4 text-stone-400" /> {t('Skaner w osobnym oknie (OBS)')}
           </a>
           {onOpenBugReport && (
             <button type="button" role="menuitem" onClick={run(onOpenBugReport)} className={item}>
-              <Bug className="w-4 h-4 text-stone-400" /> Zgłoś błąd
+              <Bug className="w-4 h-4 text-stone-400" /> {t('Zgłoś błąd')}
             </button>
           )}
           {onLogout && (
             <>
               <div className="my-1 border-t border-stone-800" />
               <button type="button" role="menuitem" onClick={run(onLogout)} className={`${item} hover:text-rose-300`}>
-                <LogOut className="w-4 h-4 text-stone-400" /> Wyloguj
+                <LogOut className="w-4 h-4 text-stone-400" /> {t('Wyloguj')}
               </button>
             </>
           )}
@@ -187,35 +192,38 @@ export const Header: React.FC<HeaderProps> = ({
   unreadMessagesCount = 0,
   onOpenMailbox,
   onOpenHistory,
-  onOpenBugReport
+  onOpenBugReport,
+  onChangeLanguage
 }) => {
+  const t = useT();
   const hasChange = valueChange !== null;
   const changeSign = !hasChange || Math.abs(valueChange!) < 0.005 ? 0 : valueChange! > 0 ? 1 : -1;
   const changeColor = changeSign > 0 ? 'text-emerald-400' : changeSign < 0 ? 'text-rose-400' : 'text-stone-400';
   const changeText = hasChange ? `${changeSign > 0 ? '+' : ''}${formatCurrency(valueChange!, settings.currency)}` : null;
   const percentText =
     valueChangePercent !== null && changeSign !== 0
-      ? `${valueChangePercent > 0 ? '+' : ''}${valueChangePercent.toFixed(Math.abs(valueChangePercent) < 10 ? 1 : 0).replace('.', ',')}%`
+      ? `${valueChangePercent > 0 ? '+' : ''}${valueChangePercent.toFixed(Math.abs(valueChangePercent) < 10 ? 1 : 0).replace('.', locale() === 'pl-PL' ? ',' : '.')}%`
       : null;
   const changeTitle = hasChange
-    ? `Zmiana wartości kolekcji względem cen sprzed ostatniej aktualizacji${
-        lastPriceChangeAt ? ` (ceny zmienione ${new Date(lastPriceChangeAt).toLocaleDateString('pl-PL')})` : ''
-      }`
-    : 'Kliknij „Odśwież ceny”, aby zobaczyć zmianę wartości kolekcji';
+    ? t('Zmiana wartości kolekcji względem cen sprzed ostatniej aktualizacji') +
+      (lastPriceChangeAt
+        ? ' ' + t('(ceny zmienione {date})', { date: new Date(lastPriceChangeAt).toLocaleDateString(locale()) })
+        : '')
+    : t('Kliknij „Odśwież ceny”, aby zobaczyć zmianę wartości kolekcji');
   const sourceLabel = settings.pricingSource === 'CARDMARKET' ? 'Cardmarket Trend' : 'TCGPlayer Market';
 
   const tabs: Array<{ id: Tab; label: string; icon: React.ElementType; count?: number; dot?: boolean }> = [
-    { id: 'collection', label: 'Kolekcja', icon: Layers, count: totalCards },
-    { id: 'decks', label: 'Talie', icon: Swords, count: decksCount || undefined },
-    { id: 'search', label: 'Szukaj kart', icon: Search },
-    { id: 'set-top', label: 'Top z dodatku', icon: Trophy },
-    { id: 'spoilers', label: 'Spoilery', icon: Telescope },
-    { id: 'analytics', label: 'Statystyki', icon: BarChart3 },
-    { id: 'wishlist', label: 'Lista życzeń', icon: FolderHeart },
-    { id: 'for-sale', label: 'Sprzedam', icon: CircleDollarSign, count: forSaleCount || undefined },
-    { id: 'users', label: 'Gracze', icon: Users },
-    { id: 'changelog', label: 'Dziennik zmian', icon: ScrollText, dot: hasNewChangelog },
-    ...(user?.isAdmin ? [{ id: 'admin' as Tab, label: 'Admin', icon: ShieldCheck }] : [])
+    { id: 'collection', label: t('Kolekcja'), icon: Layers, count: totalCards },
+    { id: 'decks', label: t('Talie'), icon: Swords, count: decksCount || undefined },
+    { id: 'search', label: t('Szukaj kart'), icon: Search },
+    { id: 'set-top', label: t('Top z dodatku'), icon: Trophy },
+    { id: 'spoilers', label: t('Spoilery'), icon: Telescope },
+    { id: 'analytics', label: t('Statystyki'), icon: BarChart3 },
+    { id: 'wishlist', label: t('Lista życzeń'), icon: FolderHeart },
+    { id: 'for-sale', label: t('Sprzedam'), icon: CircleDollarSign, count: forSaleCount || undefined },
+    { id: 'users', label: t('Gracze'), icon: Users },
+    { id: 'changelog', label: t('Dziennik zmian'), icon: ScrollText, dot: hasNewChangelog },
+    ...(user?.isAdmin ? [{ id: 'admin' as Tab, label: t('Admin'), icon: ShieldCheck }] : [])
   ];
 
   const logo = (
@@ -231,11 +239,12 @@ export const Header: React.FC<HeaderProps> = ({
           <h1 className="text-base font-semibold tracking-tight text-stone-100 truncate">Mana Screw</h1>
           <SupportButton variant="icon" className="-ml-1 shrink-0" />
           <DiscordButton className="-ml-2 shrink-0" />
+          <LanguageSwitcher onChange={onChangeLanguage} className="-ml-1 shrink-0" />
           {user && onOpenMailbox && unreadMessagesCount > 0 && (
             <button
               type="button"
               onClick={onOpenMailbox}
-              aria-label={`Wiadomości, nieprzeczytane: ${unreadMessagesCount}`}
+              aria-label={t('Wiadomości, nieprzeczytane: {n}', { n: unreadMessagesCount })}
               className="relative -ml-1 w-9 h-9 shrink-0 rounded-lg flex items-center justify-center text-amber-300 bg-amber-400/10 ring-1 ring-amber-400/30"
             >
               <Mail className="w-[18px] h-[18px]" />
@@ -248,12 +257,12 @@ export const Header: React.FC<HeaderProps> = ({
         <button
           type="button"
           onClick={onOpenHistory}
-          aria-label="Historia wartości i liczby kart kolekcji"
+          aria-label={t('Historia wartości i liczby kart kolekcji')}
           className="text-right leading-tight shrink-0 rounded-lg -mr-1.5 px-1.5 py-0.5 active:bg-stone-800 cursor-pointer"
         >
           <p className="text-sm font-semibold text-stone-100 tabular-nums">{formatCurrency(totalValue, settings.currency)}</p>
           <p className="text-xs text-stone-400 tabular-nums">
-            {totalCards} kart
+            {plural(totalCards, ['{n} karta', '{n} karty', '{n} kart'], ['{n} card', '{n} cards'])}
             {changeSign !== 0 && (
               <span className={`ml-1.5 font-medium ${changeColor}`} title={changeTitle}>
                 {percentText || changeText}
@@ -276,15 +285,15 @@ export const Header: React.FC<HeaderProps> = ({
             <button
               type="button"
               onClick={onOpenHistory}
-              title={`Historia kolekcji (wycena: ${sourceLabel}, ${settings.currency})`}
+              title={t('Historia kolekcji (wycena: {source}, {currency})', { source: sourceLabel, currency: settings.currency })}
               className="flex items-center gap-4 rounded-lg -mx-2 px-2 py-1 hover:bg-stone-800/70 cursor-pointer"
             >
               <span>
-                <span className="text-stone-400">Wartość </span>
+                <span className="text-stone-400">{t('Wartość')} </span>
                 <span className="font-semibold text-stone-100">{formatCurrency(totalValue, settings.currency)}</span>
               </span>
               <span title={changeTitle} className={changeColor}>
-                {changeText ?? <span className="text-stone-500">brak zmiany</span>}
+                {changeText ?? <span className="text-stone-500">{t('brak zmiany')}</span>}
                 {percentText && <span className="ml-1 opacity-80">({percentText})</span>}
               </span>
             </button>
@@ -292,8 +301,8 @@ export const Header: React.FC<HeaderProps> = ({
               type="button"
               onClick={onRefreshPrices}
               disabled={isRefreshing}
-              title="Odśwież ceny kart"
-              aria-label="Odśwież ceny kart"
+              title={t('Odśwież ceny kart')}
+              aria-label={t('Odśwież ceny kart')}
               className="w-8 h-8 -ml-1 rounded-md flex items-center justify-center text-stone-400 hover:text-stone-100 hover:bg-stone-800 disabled:opacity-60 cursor-pointer"
             >
               <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin text-amber-400' : ''}`} />
@@ -305,20 +314,21 @@ export const Header: React.FC<HeaderProps> = ({
               type="button"
               onClick={onRefreshPrices}
               disabled={isRefreshing}
-              title="Odśwież ceny kart"
-              aria-label="Odśwież ceny kart"
+              title={t('Odśwież ceny kart')}
+              aria-label={t('Odśwież ceny kart')}
               className="lg:hidden w-9 h-9 rounded-lg flex items-center justify-center text-stone-300 hover:bg-stone-800 disabled:opacity-60 cursor-pointer"
             >
               <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin text-amber-400' : ''}`} />
             </button>
             <SupportButton />
             <DiscordButton className="-ml-1" />
+            <LanguageSwitcher onChange={onChangeLanguage} className="-ml-1" />
             {user && onOpenMailbox && (
               <button
                 type="button"
                 onClick={onOpenMailbox}
-                title="Wiadomości"
-                aria-label={unreadMessagesCount ? `Wiadomości, nieprzeczytane: ${unreadMessagesCount}` : 'Wiadomości'}
+                title={t('Wiadomości')}
+                aria-label={unreadMessagesCount ? t('Wiadomości, nieprzeczytane: {n}', { n: unreadMessagesCount }) : t('Wiadomości')}
                 className={`relative w-9 h-9 rounded-lg flex items-center justify-center cursor-pointer ${
                   unreadMessagesCount > 0
                     ? 'text-amber-300 bg-amber-400/10 ring-1 ring-amber-400/30 hover:bg-amber-400/20'
@@ -337,11 +347,11 @@ export const Header: React.FC<HeaderProps> = ({
               <button
                 type="button"
                 onClick={onOpenScannerModal}
-                title="Skanuj karty kamerą"
+                title={t('Skanuj karty kamerą')}
                 className="h-9 px-3 rounded-lg border border-stone-700 hover:border-stone-600 hover:bg-stone-800 text-sm text-stone-200 flex items-center gap-2 cursor-pointer"
               >
                 <Camera className="w-4 h-4" />
-                <span className="hidden xl:inline">Skanuj</span>
+                <span className="hidden xl:inline">{t('Skanuj')}</span>
               </button>
             )}
             <button
@@ -350,7 +360,7 @@ export const Header: React.FC<HeaderProps> = ({
               className="h-9 px-3.5 rounded-lg bg-amber-400 hover:bg-amber-300 text-stone-950 text-sm font-semibold flex items-center gap-1.5 cursor-pointer"
             >
               <Plus className="w-4 h-4" strokeWidth={2.5} />
-              Dodaj kartę
+              {t('Dodaj kartę')}
             </button>
             {user && (
               <AccountMenu
@@ -367,7 +377,7 @@ export const Header: React.FC<HeaderProps> = ({
         </div>
 
         {/* Zakładki: jedna linia, aktywna podkreślona */}
-        <nav aria-label="Zakładki" className="-mb-px flex items-center gap-1 overflow-x-auto no-scrollbar">
+        <nav aria-label={t('Zakładki')} className="-mb-px flex items-center gap-1 overflow-x-auto no-scrollbar">
           {tabs.map(({ id, label, icon: Icon, count, dot }) => {
             const active = activeTab === id;
             return (
@@ -385,7 +395,7 @@ export const Header: React.FC<HeaderProps> = ({
                 <Icon className={`w-4 h-4 ${active ? 'text-amber-400' : 'text-stone-500'}`} />
                 {label}
                 {count !== undefined && <span className="text-xs text-stone-500 tabular-nums">{count}</span>}
-                {dot && <span className="w-1.5 h-1.5 rounded-full bg-amber-400" aria-label="nowe wpisy" />}
+                {dot && <span className="w-1.5 h-1.5 rounded-full bg-amber-400" aria-label={t('nowe wpisy')} />}
               </button>
             );
           })}

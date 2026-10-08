@@ -4,10 +4,12 @@
  */
 import type { DeckItem, ScryfallCard } from '../../types';
 import { getCardCategory } from './constants';
+import { t, plural, fixed, byLang } from '../../i18n';
 
 export const COLORS = ['W', 'U', 'B', 'R', 'G'] as const;
 export type Color = (typeof COLORS)[number];
 
+/** Nazwy kolorów (klucze tłumaczeń, tłumaczone w miejscu wyświetlenia). */
 export const COLOR_NAMES: Record<Color, string> = {
   W: 'Biały',
   U: 'Niebieski',
@@ -359,15 +361,15 @@ export function analyzeMana(deck: DeckItem, library: LibraryCard[]): ManaReport 
   if (recommendedLands !== null && L < recommendedLands - 1) {
     suggestions.push({
       kind: 'lands',
-      title: `Dodaj ${recommendedLands - L} Lands`,
-      text: `Masz ${L}. Przy średnim koszcie ${avgMv.toFixed(2).replace('.', ',')} zalecane jest ok. ${recommendedLands} (mniej, jeśli grasz dużo taniej rampy lub dobierania).`,
+      title: t('Dodaj {n} Lands', { n: recommendedLands - L }),
+      text: t('Masz {have}. Przy średnim koszcie {avg} zalecane jest ok. {n} (mniej, jeśli grasz dużo taniej rampy lub dobierania).', { have: L, avg: fixed(avgMv, 2), n: recommendedLands }),
       delta: recommendedLands - L
     });
   } else if (recommendedLands !== null && L > recommendedLands + 2) {
     suggestions.push({
       kind: 'lands',
-      title: `Możesz usunąć ${L - recommendedLands} Lands`,
-      text: `Masz ${L}. Przy tym średnim koszcie wystarczy ok. ${recommendedLands}, więc zwolnione miejsca możesz dać innym kartom.`,
+      title: t('Możesz usunąć {n} Lands', { n: L - recommendedLands }),
+      text: t('Masz {have}. Przy tym średnim koszcie wystarczy ok. {n}, więc zwolnione miejsca możesz dać innym kartom.', { have: L, n: recommendedLands }),
       delta: recommendedLands - L
     });
   }
@@ -378,21 +380,25 @@ export function analyzeMana(deck: DeckItem, library: LibraryCard[]): ManaReport 
   for (const c of colors) {
     const deficit = c.needed - c.landSources;
     if (deficit <= 0) continue;
-    const plural = (n: number) => (n === 1 ? 'źródło' : n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 12 || n % 100 > 14) ? 'źródła' : 'źródeł');
-    let text = `Masz ${c.landSources} ${plural(c.landSources)}, a żeby zagrać tę kartę w ${c.hardestTurn}. turze z szansą 90%, potrzeba ok. ${c.needed}.`;
+    let text =
+      plural(c.landSources, ['Masz {n} źródło', 'Masz {n} źródła', 'Masz {n} źródeł'], ['You have {n} source', 'You have {n} sources']) +
+      t(', a żeby zagrać tę kartę w {turn}. turze z szansą 90%, potrzeba ok. {n}.', { turn: c.hardestTurn, n: c.needed });
     const donor = surplus.find((s) => s.color !== c.color && s.free > 0);
     if (donor) {
       const swap = Math.min(deficit, donor.free);
-      text += ` Zamień ${swap} × ${BASIC_LAND[donor.color]} na ${BASIC_LAND[c.color]}`;
+      text += ' ' + t('Zamień {n} × {from} na {to}', { n: swap, from: BASIC_LAND[donor.color], to: BASIC_LAND[c.color] });
       donor.free -= swap;
-      text += swap < deficit ? ` i dodaj ${deficit - swap} × dual Land z tym kolorem.` : '.';
+      text += swap < deficit ? ' ' + t('i dodaj {n} × dual Land z tym kolorem.', { n: deficit - swap }) : '.';
     } else {
-      text += ' Najlepiej dodaj dual Lands albo zamień bezbarwne Lands.';
+      text += ' ' + t('Najlepiej dodaj dual Lands albo zamień bezbarwne Lands.');
     }
-    if (c.unreachable) text += ' Nawet gdyby wszystkie Lands dawały ten kolor, szansa nie dobije do 90%, więc rozważ więcej Lands.';
+    if (c.unreachable) text += ' ' + t('Nawet gdyby wszystkie Lands dawały ten kolor, szansa nie dobije do 90%, więc rozważ więcej Lands.');
     suggestions.push({
       kind: 'color',
-      title: `Brakuje ${deficit} ${deficit === 1 ? 'źródła' : 'źródeł'} koloru ${COLOR_GENITIVE[c.color]}`,
+      title: byLang(
+        `Brakuje ${deficit} ${deficit === 1 ? 'źródła' : 'źródeł'} koloru ${COLOR_GENITIVE[c.color]}`,
+        `Missing ${deficit} ${t(COLOR_NAMES[c.color]).toLowerCase()} ${deficit === 1 ? 'source' : 'sources'}`
+      ),
       text,
       color: c.color,
       card: c.hardestCard,
@@ -400,7 +406,7 @@ export function analyzeMana(deck: DeckItem, library: LibraryCard[]): ManaReport 
     });
   }
   if (!suggestions.length && L > 0)
-    suggestions.push({ kind: 'ok', title: 'Baza many wygląda dobrze', text: 'Liczba źródeł każdego koloru wystarcza do zagrywania kart na czas.' });
+    suggestions.push({ kind: 'ok', title: t('Baza many wygląda dobrze'), text: t('Liczba źródeł każdego koloru wystarcza do zagrywania kart na czas.') });
 
   return { deckSize: N, lands: L, avgManaValue: avgMv, recommendedLands, colors, suggestions };
 }

@@ -13,6 +13,7 @@ import {
 import { ManaSymbol } from './ManaSymbol';
 import { EdhrecBadge } from './EdhrecBadge';
 import { Plus, Minus, Trash2, Edit3, ExternalLink, Sparkles, Folder, Check, Eye, Trophy, CircleDollarSign, DollarSign } from 'lucide-react';
+import { useT, locale, binderName, MAIN_BINDER } from '../i18n';
 
 interface CardItemProps {
   item: CollectionItem;
@@ -35,6 +36,7 @@ export const CardItem: React.FC<CardItemProps> = ({
   onViewCardDetails,
   onToggleForSale,
 }) => {
+  const t = useT();
   const { card, quantity, quantityFoil, condition, language, binder } = item;
   const imageUri = getCardImageUri(card, 'normal');
   const priceNormal = getCardPrice(card, false, settings);
@@ -78,7 +80,7 @@ export const CardItem: React.FC<CardItemProps> = ({
               <p className="text-[11px] text-stone-400 flex items-center gap-2 mt-0.5 flex-wrap">
                 <span>{card.type_line}</span>
                 <span className="text-[11px] text-amber-300/90 bg-amber-500/10 px-1.5 py-0.5 rounded border border-amber-500/20 font-medium">
-                  {binder || 'Klaser Główny'}
+                  {binderName(binder || MAIN_BINDER)}
                 </span>
                 {edhrecRank != null && (
                   <EdhrecBadge rank={edhrecRank} size="xs" />
@@ -146,7 +148,7 @@ export const CardItem: React.FC<CardItemProps> = ({
             </button>
           </div>
           <div className="text-[11px] text-stone-400 mt-0.5">
-            Norm: {quantity} | Foil: {quantityFoil}
+            {t('Norm:')} {quantity} | Foil: {quantityFoil}
           </div>
         </td>
 
@@ -165,8 +167,8 @@ export const CardItem: React.FC<CardItemProps> = ({
                 }}
                 title={
                   item.isForSale
-                    ? "Karta oznaczona na sprzedaż (w kategorii Sprzedam). Kliknij, aby wycofać."
-                    : "Wystaw na sprzedaż (oznacz kartę i przenieś do kategorii Sprzedam)"
+                    ? t('Karta oznaczona na sprzedaż (w kategorii Sprzedam). Kliknij, aby wycofać.')
+                    : t('Wystaw na sprzedaż (oznacz kartę i przenieś do kategorii Sprzedam)')
                 }
                 className={`p-1 rounded transition-colors cursor-pointer ${
                   item.isForSale
@@ -179,14 +181,14 @@ export const CardItem: React.FC<CardItemProps> = ({
             )}
             <button
               onClick={() => onEditItem(item)}
-              title="Edytuj pozycję"
+              title={t('Edytuj pozycję')}
               className="p-1 text-stone-400 hover:text-amber-300 hover:bg-stone-800 rounded transition-colors cursor-pointer"
             >
               <Edit3 className="w-3.5 h-3.5" />
             </button>
             <button
               onClick={() => onDeleteItem(item.id)}
-              title="Usuń z kolekcji"
+              title={t('Usuń z kolekcji')}
               className="p-1 text-stone-400 hover:text-rose-400 hover:bg-stone-800 rounded transition-colors cursor-pointer"
             >
               <Trash2 className="w-3.5 h-3.5" />
@@ -213,7 +215,7 @@ export const CardItem: React.FC<CardItemProps> = ({
       {item.isForSale && (
         <div className="absolute top-2 left-2 z-10 bg-emerald-950/95 text-emerald-300 border border-emerald-500/50 text-[11px] font-bold px-2 py-0.5 rounded-full shadow-lg flex items-center gap-1 backdrop-blur-md">
           <CircleDollarSign className="w-3 h-3 text-emerald-400 stroke-[2.5]" />
-          <span>Sprzedam</span>
+          <span>{t('Sprzedam')}</span>
           {item.salePrice ? (
             <span className="text-[11px] text-emerald-200 tabular-nums">({formatCurrency(item.salePrice, settings.currency)})</span>
           ) : null}
@@ -224,7 +226,7 @@ export const CardItem: React.FC<CardItemProps> = ({
       {binder && !item.isForSale && (
         <div className="absolute top-2 left-2 z-10 bg-stone-950/80 backdrop-blur-md text-stone-300 text-[11px] px-2 py-0.5 rounded-full border border-stone-800 flex items-center gap-1 font-medium">
           <Folder className="w-2.5 h-2.5 text-amber-400" />
-          <span className="truncate max-w-[100px]">{binder}</span>
+          <span className="truncate max-w-[100px]">{binderName(binder)}</span>
         </div>
       )}
 
@@ -246,36 +248,36 @@ export const CardItem: React.FC<CardItemProps> = ({
         <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
           <div className="px-3 py-1.5 rounded-full bg-stone-900/90 text-amber-300 text-xs font-semibold flex items-center gap-1.5 border border-amber-500/40 shadow-lg">
             <Eye className="w-3.5 h-3.5" />
-            <span>Szczegóły Scryfall</span>
+            <span>{t('Szczegóły Scryfall')}</span>
           </div>
         </div>
 
         {/* EDHREC Rank Banner in bottom-left corner (visually styled like the Foil banner) */}
         {edhrecRank != null && (
           <div 
-            title={`Ranking EDHREC: #${edhrecRank.toLocaleString()} (popularność w formacie Commander)`}
+            title={t('Ranking EDHREC: #{rank} (popularność w formacie Commander)', { rank: edhrecRank.toLocaleString(locale()) })}
             className="absolute bottom-0 left-0 z-10 ms-foil-chip font-semibold text-[11px] px-2 py-0.5 rounded-tr-lg shadow-sm flex items-center gap-1 select-none border-t border-r border-white/20"
           >
             <Trophy className="w-3 h-3 fill-stone-950 stroke-[1.5] shrink-0" />
-            <span>EDH #{edhrecRank.toLocaleString()}</span>
+            <span>EDH #{edhrecRank.toLocaleString(locale())}</span>
           </div>
         )}
 
         {/* Total Price Tag overlay on bottom right of image */}
         <div className="absolute bottom-2 right-2 bg-stone-950/90 backdrop-blur-md px-2 py-1 rounded-lg border border-stone-800 shadow-md">
-          <p className="text-[11px] font-bold text-stone-400 leading-none">Wartość</p>
+          <p className="text-[11px] font-bold text-stone-400 leading-none">{t('Wartość')}</p>
           <p className="text-xs font-bold tabular-nums text-emerald-400 leading-tight">
             {formatCurrency(itemTotalValue, settings.currency)}
           </p>
           {totalQuantity > 1 && (
             <div className="mt-0.5 pt-0.5 border-t border-stone-800 text-[11px] tabular-nums text-stone-400 leading-tight">
               {quantity > 0 && (
-                <p>{formatCurrency(priceNormal, settings.currency)} / szt.</p>
+                <p>{formatCurrency(priceNormal, settings.currency)} {t('/ szt.')}</p>
               )}
               {quantityFoil > 0 && (
                 <p className="flex items-center gap-0.5 text-amber-300/90">
                   <Sparkles className="w-2.5 h-2.5 shrink-0" />
-                  {formatCurrency(priceFoil, settings.currency)} / szt.
+                  {formatCurrency(priceFoil, settings.currency)} {t('/ szt.')}
                 </p>
               )}
             </div>
@@ -326,7 +328,7 @@ export const CardItem: React.FC<CardItemProps> = ({
 
             <div className="text-center px-1 tabular-nums text-xs">
               <span className="font-bold text-amber-300">{totalQuantity}</span>
-              <span className="text-[11px] text-stone-400 ml-0.5">szt</span>
+              <span className="text-[11px] text-stone-400 ml-0.5">{t('szt')}</span>
             </div>
 
             <button
@@ -347,8 +349,8 @@ export const CardItem: React.FC<CardItemProps> = ({
                 }}
                 title={
                   item.isForSale
-                    ? "Karta oznaczona na sprzedaż (w kategorii Sprzedam). Kliknij, aby wycofać ze sprzedaży."
-                    : "Wystaw na sprzedaż (oznacz kartę i przenieś do kategorii Sprzedam)"
+                    ? t('Karta oznaczona na sprzedaż (w kategorii Sprzedam). Kliknij, aby wycofać ze sprzedaży.')
+                    : t('Wystaw na sprzedaż (oznacz kartę i przenieś do kategorii Sprzedam)')
                 }
                 className={`p-1.5 rounded-lg transition-all cursor-pointer ${
                   item.isForSale
@@ -361,14 +363,14 @@ export const CardItem: React.FC<CardItemProps> = ({
             )}
             <button
               onClick={() => onEditItem(item)}
-              title="Edytuj pozycję"
+              title={t('Edytuj pozycję')}
               className="p-1.5 text-stone-400 hover:text-amber-300 hover:bg-stone-800 rounded-lg transition-colors cursor-pointer"
             >
               <Edit3 className="w-3.5 h-3.5" />
             </button>
             <button
               onClick={() => onDeleteItem(item.id)}
-              title="Usuń z kolekcji"
+              title={t('Usuń z kolekcji')}
               className="p-1.5 text-stone-400 hover:text-rose-400 hover:bg-stone-800 rounded-lg transition-colors cursor-pointer"
             >
               <Trash2 className="w-3.5 h-3.5" />

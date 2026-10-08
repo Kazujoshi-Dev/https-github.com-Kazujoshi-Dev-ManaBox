@@ -3,6 +3,7 @@ import { Crown, X, Coins } from 'lucide-react';
 import { CommanderShowcaseProps } from './types';
 import { formatCurrency, getCardPrice, getCardEdhrecRank, getCardImageUri } from '../../utils/formatters';
 import { EdhrecBadge } from '../EdhrecBadge';
+import { useT } from '../../i18n';
 
 export const CommanderShowcase: React.FC<CommanderShowcaseProps> = ({
   commander,
@@ -12,6 +13,7 @@ export const CommanderShowcase: React.FC<CommanderShowcaseProps> = ({
   onRemoveCommander,
   onOpenSearch,
 }) => {
+  const t = useT();
   if (commander) {
     const commanderPrice = settings ? getCardPrice(commander, Boolean(commanderIsFoil), settings) : 0;
 
@@ -34,11 +36,11 @@ export const CommanderShowcase: React.FC<CommanderShowcaseProps> = ({
           <div>
             <div className="flex items-center gap-2 flex-wrap">
               <span className="text-[11px] tabular-nums font-bold px-2 py-0.5 rounded-full bg-amber-500 text-stone-950">
-                Dowódca Talii
+                {t('Dowódca Talii')}
               </span>
               {commanderIsFoil && (
                 <span className="text-[11px] tabular-nums font-bold px-2 py-0.5 rounded-full bg-amber-500/30 text-amber-300 border border-amber-400/50">
-                  FOIL
+                  {t('FOIL')}
                 </span>
               )}
               {getCardEdhrecRank(commander) != null && (
@@ -75,12 +77,12 @@ export const CommanderShowcase: React.FC<CommanderShowcaseProps> = ({
             onClick={() => onViewDetails(commander)}
             className="px-3 py-1.5 bg-stone-800 hover:bg-stone-700 text-stone-200 text-xs font-semibold rounded-lg transition-colors cursor-pointer"
           >
-            Szczegóły karty
+            {t('Szczegóły karty')}
           </button>
           <button
             onClick={onRemoveCommander}
             className="p-1.5 text-stone-400 hover:text-rose-400 hover:bg-rose-950/30 rounded-lg transition-colors cursor-pointer"
-            title="Usuń dowódcę"
+            title={t('Usuń dowódcę')}
           >
             <X className="w-4 h-4" />
           </button>
@@ -97,13 +99,13 @@ export const CommanderShowcase: React.FC<CommanderShowcaseProps> = ({
         </div>
         <div>
           <span className="text-[11px] tabular-nums font-bold px-2 py-0.5 rounded-full bg-stone-800 text-stone-400">
-            Brak wybranego dowódcy
+            {t('Brak wybranego dowódcy')}
           </span>
           <h3 className="text-sm font-bold text-stone-200 mt-1">
-            Wybierz dowódcę dla tej talii EDH
+            {t('Wybierz dowódcę dla tej talii EDH')}
           </h3>
           <p className="text-xs text-stone-400">
-            Wybierz Legendary Creature, który poprowadzi Twoją talię i wyznaczy tożsamość kolorów.
+            {t('Wybierz Legendary Creature, który poprowadzi Twoją talię i wyznaczy tożsamość kolorów.')}
           </p>
         </div>
       </div>
@@ -112,7 +114,7 @@ export const CommanderShowcase: React.FC<CommanderShowcaseProps> = ({
         className="px-4 py-2 bg-amber-500 hover:bg-amber-400 text-stone-950 font-bold text-xs rounded-xl shadow-md flex items-center gap-2 transition-all cursor-pointer shrink-0"
       >
         <Crown className="w-4 h-4" />
-        <span>Wybierz dowódcę</span>
+        <span>{t('Wybierz dowódcę')}</span>
       </button>
     </div>
   );

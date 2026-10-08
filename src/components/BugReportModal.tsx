@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Bug, X, ImagePlus, Loader2, Trash2, Send, CheckCircle2 } from 'lucide-react';
 import { bugReportsApi } from '../services/api';
 import { useBackToClose } from '../hooks/useBackButton';
+import { useT, t } from '../i18n';
 
 interface BugReportModalProps {
   /** Gdzie użytkownik był, gdy otworzył zgłoszenie (np. „Talie: Atraxa”). */
@@ -20,7 +21,7 @@ async function compressImage(file: Blob): Promise<string> {
     const img = await new Promise<HTMLImageElement>((resolve, reject) => {
       const el = new Image();
       el.onload = () => resolve(el);
-      el.onerror = () => reject(new Error('Nie udało się odczytać obrazu.'));
+      el.onerror = () => reject(new Error(t('Nie udało się odczytać obrazu.')));
       el.src = url;
     });
     const scale = Math.min(1, MAX_SIDE / Math.max(img.naturalWidth, img.naturalHeight));
@@ -30,7 +31,7 @@ async function compressImage(file: Blob): Promise<string> {
     canvas.width = w;
     canvas.height = h;
     const ctx = canvas.getContext('2d');
-    if (!ctx) throw new Error('Przeglądarka nie obsługuje obróbki obrazu.');
+    if (!ctx) throw new Error(t('Przeglądarka nie obsługuje obróbki obrazu.'));
     ctx.fillStyle = '#0c0a09';
     ctx.fillRect(0, 0, w, h);
     ctx.drawImage(img, 0, 0, w, h);
@@ -42,6 +43,7 @@ async function compressImage(file: Blob): Promise<string> {
 
 /** Okno „Zgłoś błąd”: opis i opcjonalny zrzut ekranu (plik, przeciągnięcie albo Ctrl+V). */
 export const BugReportModal: React.FC<BugReportModalProps> = ({ page, onClose, showToast }) => {
+  const t = useT();
   useBackToClose(true, onClose);
   const [description, setDescription] = useState('');
   const [screenshot, setScreenshot] = useState<string | null>(null);
@@ -55,11 +57,11 @@ export const BugReportModal: React.FC<BugReportModalProps> = ({ page, onClose, s
   const attach = useCallback(async (file: Blob | null | undefined) => {
     if (!file) return;
     if (!file.type.startsWith('image/')) {
-      setError('Załącz obraz (PNG, JPG, WebP).');
+      setError(t('Załącz obraz (PNG, JPG, WebP).'));
       return;
     }
     if (file.size > MAX_INPUT_BYTES) {
-      setError('Ten obraz jest za duży (maks. 20 MB).');
+      setError(t('Ten obraz jest za duży (maks. 20 MB).'));
       return;
     }
     setProcessing(true);
@@ -67,7 +69,7 @@ export const BugReportModal: React.FC<BugReportModalProps> = ({ page, onClose, s
     try {
       setScreenshot(await compressImage(file));
     } catch (e: any) {
-      setError(e.message || 'Nie udało się dodać zrzutu ekranu.');
+      setError(e.message || t('Nie udało się dodać zrzutu ekranu.'));
     } finally {
       setProcessing(false);
     }
@@ -97,7 +99,7 @@ export const BugReportModal: React.FC<BugReportModalProps> = ({ page, onClose, s
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (description.trim().length < 10) {
-      setError('Opisz błąd w kilku słowach (co najmniej 10 znaków).');
+      setError(t('Opisz błąd w kilku słowach (co najmniej 10 znaków).'));
       return;
     }
     setSending(true);
@@ -105,9 +107,9 @@ export const BugReportModal: React.FC<BugReportModalProps> = ({ page, onClose, s
     try {
       const r = await bugReportsApi.send({ description: description.trim(), page, screenshot });
       setSentId(r.id);
-      showToast?.('Dziękujemy! Zgłoszenie zostało wysłane.');
+      showToast?.(t('Dziękujemy! Zgłoszenie zostało wysłane.'));
     } catch (err: any) {
-      setError(err.message || 'Nie udało się wysłać zgłoszenia.');
+      setError(err.message || t('Nie udało się wysłać zgłoszenia.'));
     } finally {
       setSending(false);
     }
@@ -125,9 +127,9 @@ export const BugReportModal: React.FC<BugReportModalProps> = ({ page, onClose, s
         <div className="flex items-center gap-3 p-4 border-b border-stone-800">
           <Bug className="w-5 h-5 text-amber-400 shrink-0" />
           <h3 id="bug-report-title" className="text-base font-semibold text-stone-50 flex-1">
-            Zgłoś błąd
+            {t('Zgłoś błąd')}
           </h3>
-          <button type="button" onClick={onClose} aria-label="Zamknij" className="w-9 h-9 rounded-lg text-stone-400 hover:text-stone-100 hover:bg-stone-800 flex items-center justify-center cursor-pointer">
+          <button type="button" onClick={onClose} aria-label={t('Zamknij')} className="w-9 h-9 rounded-lg text-stone-400 hover:text-stone-100 hover:bg-stone-800 flex items-center justify-center cursor-pointer">
             <X className="w-5 h-5" />
           </button>
         </div>
@@ -135,17 +137,17 @@ export const BugReportModal: React.FC<BugReportModalProps> = ({ page, onClose, s
         {sentId ? (
           <div className="p-6 text-center space-y-3">
             <CheckCircle2 className="w-10 h-10 text-emerald-400 mx-auto" />
-            <p className="text-base font-medium text-stone-100">Zgłoszenie #{sentId} wysłane</p>
-            <p className="text-sm text-stone-400">Dziękujemy! Jeśli będziemy potrzebować szczegółów, odezwiemy się w wiadomościach.</p>
+            <p className="text-base font-medium text-stone-100">{t('Zgłoszenie #{id} wysłane', { id: sentId })}</p>
+            <p className="text-sm text-stone-400">{t('Dziękujemy! Jeśli będziemy potrzebować szczegółów, odezwiemy się w wiadomościach.')}</p>
             <button type="button" onClick={onClose} className="btn btn-secondary mt-2">
-              Zamknij
+              {t('Zamknij')}
             </button>
           </div>
         ) : (
           <form onSubmit={submit} className="p-4 space-y-4">
             <div>
               <label htmlFor="bug-desc" className="block text-sm text-stone-300 mb-1.5">
-                Co się stało?
+                {t('Co się stało?')}
               </label>
               <textarea
                 id="bug-desc"
@@ -154,23 +156,23 @@ export const BugReportModal: React.FC<BugReportModalProps> = ({ page, onClose, s
                 maxLength={3000}
                 rows={5}
                 autoFocus
-                placeholder="Np. po kliknięciu „Dodaj do talii” nic się nie dzieje. Co robiłeś, czego się spodziewałeś i co się stało?"
+                placeholder={t('Np. po kliknięciu „Dodaj do talii” nic się nie dzieje. Co robiłeś, czego się spodziewałeś i co się stało?')}
                 className="w-full rounded-lg bg-stone-950 border border-stone-800 px-3 py-2 text-sm text-stone-100 placeholder-stone-500 focus:outline-none focus:border-amber-500 resize-y"
               />
               <p className="text-xs text-stone-500 mt-1 text-right tabular-nums">{description.length}/3000</p>
             </div>
 
             <div>
-              <p className="text-sm text-stone-300 mb-1.5">Zrzut ekranu (opcjonalnie)</p>
+              <p className="text-sm text-stone-300 mb-1.5">{t('Zrzut ekranu (opcjonalnie)')}</p>
               {screenshot ? (
                 <div className="relative rounded-lg overflow-hidden ring-1 ring-stone-700 bg-stone-950">
-                  <img src={screenshot} alt="Załączony zrzut ekranu" className="w-full max-h-64 object-contain" />
+                  <img src={screenshot} alt={t('Załączony zrzut ekranu')} className="w-full max-h-64 object-contain" />
                   <button
                     type="button"
                     onClick={() => setScreenshot(null)}
                     className="absolute top-2 right-2 h-8 px-2.5 rounded-md bg-stone-900/90 text-stone-200 text-xs flex items-center gap-1.5 hover:text-rose-300 cursor-pointer"
                   >
-                    <Trash2 className="w-3.5 h-3.5" /> Usuń
+                    <Trash2 className="w-3.5 h-3.5" /> {t('Usuń')}
                   </button>
                 </div>
               ) : (
@@ -192,8 +194,8 @@ export const BugReportModal: React.FC<BugReportModalProps> = ({ page, onClose, s
                   }`}
                 >
                   {processing ? <Loader2 className="w-5 h-5 animate-spin" /> : <ImagePlus className="w-5 h-5" />}
-                  <span>{processing ? 'Przygotowuję obraz…' : 'Wybierz plik lub przeciągnij go tutaj'}</span>
-                  <span className="text-xs text-stone-500 max-sm:hidden">Możesz też wkleić zrzut ekranu skrótem Ctrl+V</span>
+                  <span>{processing ? t('Przygotowuję obraz…') : t('Wybierz plik lub przeciągnij go tutaj')}</span>
+                  <span className="text-xs text-stone-500 max-sm:hidden">{t('Możesz też wkleić zrzut ekranu skrótem Ctrl+V')}</span>
                 </button>
               )}
               <input
@@ -209,18 +211,18 @@ export const BugReportModal: React.FC<BugReportModalProps> = ({ page, onClose, s
             </div>
 
             <p className="text-xs text-stone-500">
-              Razem ze zgłoszeniem wyślemy nazwę Twojego konta, otwarty widok ({page}) i typ przeglądarki.
+              {t('Razem ze zgłoszeniem wyślemy nazwę Twojego konta, otwarty widok ({page}) i typ przeglądarki.', { page })}
             </p>
 
             {error && <p className="text-sm text-rose-300">{error}</p>}
 
             <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2 pt-1">
               <button type="button" onClick={onClose} className="btn btn-ghost">
-                Anuluj
+                {t('Anuluj')}
               </button>
               <button type="submit" disabled={sending || processing} className="btn btn-primary">
                 {sending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-                Wyślij zgłoszenie
+                {t('Wyślij zgłoszenie')}
               </button>
             </div>
           </form>

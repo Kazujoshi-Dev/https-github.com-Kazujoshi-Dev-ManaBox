@@ -1,4 +1,5 @@
 import React, { Suspense } from 'react';
+import { useT, MAIN_BINDER } from '../i18n';
 import { lazyWithReload } from '../utils/lazyWithReload';
 import { Changelog } from './Changelog';
 
@@ -132,6 +133,7 @@ export const TabContent: React.FC<TabContentProps> = ({
   profileRequest,
   onProfileRequestHandled,
 }) => {
+  const t = useT();
   switch (activeTab) {
     case 'collection':
       return (
@@ -190,7 +192,7 @@ export const TabContent: React.FC<TabContentProps> = ({
           onEditDeck={onEditDeck}
           onOpenImportDeck={onOpenImportDeck}
           onCopyToCollection={onCopyDeckToCollection}
-          defaultBinder={catalogs.find((c) => c.isDefault)?.name || 'Klaser Główny'}
+          defaultBinder={catalogs.find((c) => c.isDefault)?.name || MAIN_BINDER}
           showToast={showToast}
         />
       );
@@ -263,7 +265,7 @@ export const TabContent: React.FC<TabContentProps> = ({
     case 'admin':
       if (!currentUser?.isAdmin) return null;
       return (
-        <Suspense fallback={<p className="text-sm text-stone-400 p-4">Ładowanie panelu...</p>}>
+        <Suspense fallback={<p className="text-sm text-stone-400 p-4">{t('Ładowanie panelu...')}</p>}>
           <AdminPanel currentUser={currentUser} showToast={showToast} />
         </Suspense>
       );

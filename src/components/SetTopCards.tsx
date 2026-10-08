@@ -22,6 +22,7 @@ import {
   Flame,
   Info
 } from 'lucide-react';
+import { useT, plural } from '../i18n';
 
 interface SetTopCardsProps {
   settings: AppSettings;
@@ -50,6 +51,7 @@ export const SetTopCards: React.FC<SetTopCardsProps> = ({
   onAddToCollection,
   onAddToWishlist,
 }) => {
+  const t = useT();
   const [sets, setSets] = useState<MTGSet[]>([]);
   const [isLoadingSets, setIsLoadingSets] = useState<boolean>(true);
   const [selectedSetCode, setSelectedSetCode] = useState<string>('blb');
@@ -111,7 +113,7 @@ export const SetTopCards: React.FC<SetTopCardsProps> = ({
         setTopCardsError(null);
         const res = await fetch(`/api/scryfall/set-top/${selectedSetCode.toLowerCase()}`);
         if (!res.ok) {
-          throw new Error('Nie udało się pobrać kart z tego dodatku');
+          throw new Error(t('Nie udało się pobrać kart z tego dodatku'));
         }
         const data = await res.json();
         if (!isCancelled) {
@@ -119,7 +121,7 @@ export const SetTopCards: React.FC<SetTopCardsProps> = ({
         }
       } catch (err: any) {
         if (!isCancelled) {
-          setTopCardsError(err.message || 'Wystąpił błąd podczas ładowania kart dodatku');
+          setTopCardsError(err.message || t('Wystąpił błąd podczas ładowania kart dodatku'));
         }
       } finally {
         if (!isCancelled) {
@@ -270,8 +272,8 @@ export const SetTopCards: React.FC<SetTopCardsProps> = ({
       <div>
         <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-4">
           <PageHeader
-            title="Top z dodatku"
-            description="Pięć najdroższych kart każdej rzadkości w wybranym dodatku, według Cardmarket Trend w złotówkach."
+            title={t('Top z dodatku')}
+            description={t('Pięć najdroższych kart każdej rzadkości w wybranym dodatku, według Cardmarket Trend w złotówkach.')}
           />
 
           {/* Currency / NBP rate reminder badge */}
@@ -287,7 +289,7 @@ export const SetTopCards: React.FC<SetTopCardsProps> = ({
           <div className="md:col-span-7 relative" ref={dropdownRef}>
             <label className="block text-[11px] font-semibold text-stone-400 mb-1.5 flex items-center gap-1.5">
               <Search className="w-3.5 h-3.5 text-amber-400" />
-              <span>Wybierz lub wyszukaj dodatek MTG:</span>
+              <span>{t('Wybierz lub wyszukaj dodatek MTG:')}</span>
             </label>
 
             <div className="relative">
@@ -299,7 +301,7 @@ export const SetTopCards: React.FC<SetTopCardsProps> = ({
                   setIsDropdownOpen(true);
                 }}
                 onFocus={() => setIsDropdownOpen(true)}
-                placeholder={currentSet ? `${currentSet.name} (${currentSet.code.toUpperCase()})` : "Wpisz nazwę lub kod dodatku (np. Bloomburrow, blb, mh3)..."}
+                placeholder={currentSet ? `${currentSet.name} (${currentSet.code.toUpperCase()})` : t('Wpisz nazwę lub kod dodatku (np. Bloomburrow, blb, mh3)...')}
                 className="w-full bg-stone-950 border border-stone-700/80 hover:border-amber-500/50 focus:border-amber-500 text-stone-100 placeholder-stone-500 text-sm rounded-xl px-4 py-2.5 pr-10 focus:outline-none focus:ring-1 focus:ring-amber-500 transition-all"
               />
               <button
@@ -316,11 +318,11 @@ export const SetTopCards: React.FC<SetTopCardsProps> = ({
               <div className="absolute left-0 right-0 mt-1.5 max-h-72 bg-stone-900 border border-stone-700 rounded-xl shadow-2xl overflow-y-auto z-40 divide-y divide-stone-800">
                 {isLoadingSets ? (
                   <div className="p-4 text-center text-xs text-stone-400">
-                    Ładowanie listy dodatków ze Scryfall...
+                    {t('Ładowanie listy dodatków ze Scryfall...')}
                   </div>
                 ) : filteredSets.length === 0 ? (
                   <div className="p-4 text-center text-xs text-stone-400">
-                    Nie znaleziono dodatku pasującego do &quot;{setSearchTerm}&quot;
+                    {t('Nie znaleziono dodatku pasującego do "{term}"', { term: setSearchTerm })}
                   </div>
                 ) : (
                   filteredSets.map(s => {
@@ -358,7 +360,7 @@ export const SetTopCards: React.FC<SetTopCardsProps> = ({
 
                         <div className="flex items-center gap-3 text-stone-400 text-[11px] shrink-0 tabular-nums ml-2">
                           <span>{s.released_at ? s.released_at.substring(0, 4) : ''}</span>
-                          <span>• {s.card_count} kart</span>
+                          <span>• {plural(s.card_count, ['{n} karta', '{n} karty', '{n} kart'], ['{n} card', '{n} cards'])}</span>
                           {isSelected && <Check className="w-4 h-4 text-amber-400 ml-1" />}
                         </div>
                       </button>
@@ -372,7 +374,7 @@ export const SetTopCards: React.FC<SetTopCardsProps> = ({
           {/* Native Select fallback for quick accessibility */}
           <div className="md:col-span-5">
             <label className="block text-[11px] font-semibold text-stone-400 mb-1.5">
-              Szybka lista dodatków:
+              {t('Szybka lista dodatków:')}
             </label>
             <select
               value={selectedSetCode}
@@ -393,7 +395,7 @@ export const SetTopCards: React.FC<SetTopCardsProps> = ({
         <div className="mt-3 flex items-center gap-1.5 flex-wrap pt-2">
           <span className="text-[11px] text-stone-400 font-semibold mr-1 flex items-center gap-1">
             <Flame className="w-3.5 h-3.5 text-amber-400" />
-            Popularne dodatki:
+            {t('Popularne dodatki:')}
           </span>
           {POPULAR_SETS.map(p => {
             const isSelected = p.code.toLowerCase() === selectedSetCode.toLowerCase();
@@ -447,13 +449,13 @@ export const SetTopCards: React.FC<SetTopCardsProps> = ({
                   {currentSet.released_at && (
                     <span className="flex items-center gap-1">
                       <Calendar className="w-3.5 h-3.5 text-stone-500" />
-                      Premiera: {currentSet.released_at}
+                      {t('Premiera:')} {currentSet.released_at}
                     </span>
                   )}
                   {currentSet.card_count ? (
                     <span className="flex items-center gap-1">
                       <Layers className="w-3.5 h-3.5 text-stone-500" />
-                      {currentSet.card_count} kart w dodatku
+                      {t('{n} kart w dodatku', { n: currentSet.card_count })}
                     </span>
                   ) : null}
                   {currentSet.scryfall_uri && (
@@ -463,7 +465,7 @@ export const SetTopCards: React.FC<SetTopCardsProps> = ({
                       rel="noopener noreferrer"
                       className="text-amber-400 hover:text-amber-300 underline flex items-center gap-0.5"
                     >
-                      Scryfall
+                      {t('Scryfall')}
                       <ExternalLink className="w-3 h-3" />
                     </a>
                   )}
@@ -475,7 +477,7 @@ export const SetTopCards: React.FC<SetTopCardsProps> = ({
             {setMetrics && (
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 bg-stone-950/70 p-3 rounded-xl border border-stone-800/80">
                 <div>
-                  <p className="text-[11px] font-semibold text-stone-400">Top 1 Karta</p>
+                  <p className="text-[11px] font-semibold text-stone-400">{t('Top 1 Karta')}</p>
                   <p className="text-sm font-bold text-amber-400 truncate max-w-[140px]" title={setMetrics.topCard?.name}>
                     {setMetrics.topCard?.name || '—'}
                   </p>
@@ -485,19 +487,19 @@ export const SetTopCards: React.FC<SetTopCardsProps> = ({
                 </div>
 
                 <div className="border-l border-stone-800/80 pl-3">
-                  <p className="text-[11px] font-semibold text-stone-400">Suma top 5 Mythic</p>
+                  <p className="text-[11px] font-semibold text-stone-400">{t('Suma top 5 Mythic')}</p>
                   <p className="text-sm font-bold text-orange-400 tabular-nums">
                     {formatCurrency(setMetrics.mythicSumPln, 'PLN')}
                   </p>
-                  <p className="text-[11px] text-stone-500">Mythic</p>
+                  <p className="text-[11px] text-stone-500">{t('Mythic')}</p>
                 </div>
 
                 <div className="border-l border-stone-800/80 pl-3 col-span-2 sm:col-span-1">
-                  <p className="text-[11px] font-semibold text-stone-400">Suma top 5 Rare</p>
+                  <p className="text-[11px] font-semibold text-stone-400">{t('Suma top 5 Rare')}</p>
                   <p className="text-sm font-bold text-amber-300 tabular-nums">
                     {formatCurrency(setMetrics.rareSumPln, 'PLN')}
                   </p>
-                  <p className="text-[11px] text-stone-500">Rare</p>
+                  <p className="text-[11px] text-stone-500">{t('Rare')}</p>
                 </div>
               </div>
             )}
@@ -516,7 +518,7 @@ export const SetTopCards: React.FC<SetTopCardsProps> = ({
           }`}
         >
           <Layers className="w-4 h-4" />
-          <span>Wszystkie rzadkości (Top 20)</span>
+          <span>{t('Wszystkie rzadkości (Top 20)')}</span>
         </button>
 
         {rarityConfigs.map(rc => {
@@ -546,10 +548,10 @@ export const SetTopCards: React.FC<SetTopCardsProps> = ({
         <div className="bg-stone-900 border border-stone-800 rounded-2xl p-12 text-center space-y-4">
           <div className="w-12 h-12 rounded-full border-4 border-amber-500/20 border-t-amber-500 animate-spin mx-auto" />
           <p className="text-sm font-semibold text-stone-300">
-            Pobieranie aktualnych cen kart z Cardmarket dla dodatku {selectedSetCode.toUpperCase()}...
+            {t('Pobieranie aktualnych cen kart z Cardmarket dla dodatku {set}...', { set: selectedSetCode.toUpperCase() })}
           </p>
           <p className="text-xs text-stone-500">
-            Sprawdzanie cen rynkowych Cardmarket Trend dla mitycznych, rzadkich, niepospolitych i zwykłych kart.
+            {t('Sprawdzanie cen rynkowych Cardmarket Trend dla mitycznych, rzadkich, niepospolitych i zwykłych kart.')}
           </p>
         </div>
       ) : topCardsError ? (
@@ -560,14 +562,14 @@ export const SetTopCards: React.FC<SetTopCardsProps> = ({
             onClick={() => setSelectedSetCode(selectedSetCode)}
             className="px-4 py-2 bg-stone-800 hover:bg-stone-700 text-stone-200 rounded-xl text-xs font-semibold transition-colors"
           >
-            Spróbuj ponownie
+            {t('Spróbuj ponownie')}
           </button>
         </div>
       ) : !setData || Object.values(setData.topCards || {}).every(arr => (arr as ScryfallCard[]).length === 0) ? (
         <div className="bg-stone-900 border border-stone-800 rounded-2xl p-12 text-center text-stone-400 space-y-2">
           <Info className="w-8 h-8 text-amber-400 mx-auto" />
-          <p className="text-sm font-semibold text-stone-300">Brak danych cenowych dla tego dodatku</p>
-          <p className="text-xs">Wybierz inny dodatek z listy lub wpisz inną nazwę.</p>
+          <p className="text-sm font-semibold text-stone-300">{t('Brak danych cenowych dla tego dodatku')}</p>
+          <p className="text-xs">{t('Wybierz inny dodatek z listy lub wpisz inną nazwę.')}</p>
         </div>
       ) : (
         <div className="space-y-8">
@@ -578,7 +580,7 @@ export const SetTopCards: React.FC<SetTopCardsProps> = ({
               if (cards.length === 0 && activeRarityFilter !== 'all') {
                 return (
                   <div key={rc.key} className="bg-stone-900 border border-stone-800 rounded-2xl p-6 text-center text-stone-400 text-xs">
-                    Brak kart o rzadkości &quot;{rc.label}&quot; w tym zestawie danych.
+                    {t('Brak kart o rzadkości "{rarity}" w tym zestawie danych.', { rarity: rc.label })}
                   </div>
                 );
               }
@@ -594,12 +596,12 @@ export const SetTopCards: React.FC<SetTopCardsProps> = ({
                         {rc.label}
                       </h4>
                       <span className="text-[11px] tabular-nums px-2 py-0.5 rounded-full bg-stone-950/60 text-stone-300 border border-stone-700 font-semibold">
-                        Top {cards.length}
+                        {t('Top {n}', { n: cards.length })}
                       </span>
                     </div>
 
                     <div className="text-[11px] tabular-nums text-stone-400">
-                      Wycena: <strong className="text-stone-200">MCM Trend (PLN)</strong>
+                      {t('Wycena:')} <strong className="text-stone-200">{t('MCM Trend (PLN)')}</strong>
                     </div>
                   </div>
 
@@ -609,15 +611,15 @@ export const SetTopCards: React.FC<SetTopCardsProps> = ({
                       <thead>
                         <tr className="border-b border-stone-800/80 bg-stone-950/50 text-[11px] text-stone-400">
                           <th className="py-3 px-4 w-12 text-center font-semibold">#</th>
-                          <th className="py-3 px-4 font-semibold">Karta</th>
-                          <th className="py-3 px-4 font-semibold hidden md:table-cell">Typ</th>
+                          <th className="py-3 px-4 font-semibold">{t('Karta')}</th>
+                          <th className="py-3 px-4 font-semibold hidden md:table-cell">{t('Typ')}</th>
                           <th className="py-3 px-4 text-right font-semibold">
-                            Cena Standard <span className="text-amber-400 font-normal">(MCM)</span>
+                            {t('Cena Standard')} <span className="text-amber-400 font-normal">{t('(MCM)')}</span>
                           </th>
                           <th className="py-3 px-4 text-right font-semibold">
-                            Cena Foil <span className="text-amber-400 font-normal">(MCM)</span>
+                            {t('Cena Foil')} <span className="text-amber-400 font-normal">{t('(MCM)')}</span>
                           </th>
-                          <th className="py-3 px-4 text-center font-semibold w-36">Akcje</th>
+                          <th className="py-3 px-4 text-center font-semibold w-36">{t('Akcje')}</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-stone-800/60 text-xs">
@@ -635,19 +637,19 @@ export const SetTopCards: React.FC<SetTopCardsProps> = ({
                           );
                           if (index === 0) {
                             rankBadge = (
-                              <span className="w-6 h-6 rounded-full bg-amber-500/20 text-amber-400 border border-amber-500/40 flex items-center justify-center tabular-nums font-bold text-xs shadow-xs mx-auto" title="1. miejsce">
+                              <span className="w-6 h-6 rounded-full bg-amber-500/20 text-amber-400 border border-amber-500/40 flex items-center justify-center tabular-nums font-bold text-xs shadow-xs mx-auto" title={t('1. miejsce')}>
                                 1
                               </span>
                             );
                           } else if (index === 1) {
                             rankBadge = (
-                              <span className="w-6 h-6 rounded-full bg-stone-300/20 text-stone-200 border border-stone-400/40 flex items-center justify-center tabular-nums font-bold text-xs mx-auto" title="2. miejsce">
+                              <span className="w-6 h-6 rounded-full bg-stone-300/20 text-stone-200 border border-stone-400/40 flex items-center justify-center tabular-nums font-bold text-xs mx-auto" title={t('2. miejsce')}>
                                 2
                               </span>
                             );
                           } else if (index === 2) {
                             rankBadge = (
-                              <span className="w-6 h-6 rounded-full bg-amber-700/20 text-amber-600 border border-amber-700/40 flex items-center justify-center tabular-nums font-bold text-xs mx-auto" title="3. miejsce">
+                              <span className="w-6 h-6 rounded-full bg-amber-700/20 text-amber-600 border border-amber-700/40 flex items-center justify-center tabular-nums font-bold text-xs mx-auto" title={t('3. miejsce')}>
                                 3
                               </span>
                             );
@@ -728,7 +730,7 @@ export const SetTopCards: React.FC<SetTopCardsProps> = ({
                                 ) : card.prices?.eur_foil ? (
                                   <div>
                                     <span className="text-[11px] tabular-nums font-medium text-amber-400/90 px-1.5 py-0.5 rounded bg-amber-500/10 border border-amber-500/20">
-                                      Tylko Foil
+                                      {t('Tylko Foil')}
                                     </span>
                                   </div>
                                 ) : (
@@ -763,7 +765,7 @@ export const SetTopCards: React.FC<SetTopCardsProps> = ({
                                   {/* View modal */}
                                   <button
                                     onClick={() => onSelectCard(card)}
-                                    title="Zobacz szczegóły i wykresy"
+                                    title={t('Zobacz szczegóły i wykresy')}
                                     className="p-1.5 rounded-lg bg-stone-800 hover:bg-stone-700 text-stone-300 hover:text-amber-400 transition-colors"
                                   >
                                     <Eye className="w-3.5 h-3.5" />
@@ -773,7 +775,7 @@ export const SetTopCards: React.FC<SetTopCardsProps> = ({
                                   {onAddToCollection && (
                                     <button
                                       onClick={() => handleQuickAdd(card, 'col')}
-                                      title="Dodaj do Mojej Kolekcji"
+                                      title={t('Dodaj do Mojej Kolekcji')}
                                       className="p-1.5 rounded-lg bg-stone-800 hover:bg-stone-700 text-stone-300 hover:text-emerald-400 transition-colors"
                                     >
                                       {actionFeedback?.id === card.id && actionFeedback?.type === 'col' ? (
@@ -788,7 +790,7 @@ export const SetTopCards: React.FC<SetTopCardsProps> = ({
                                   {onAddToWishlist && (
                                     <button
                                       onClick={() => handleQuickAdd(card, 'wish')}
-                                      title="Dodaj do Listy Życzeń"
+                                      title={t('Dodaj do Listy Życzeń')}
                                       className="p-1.5 rounded-lg bg-stone-800 hover:bg-stone-700 text-stone-300 hover:text-rose-400 transition-colors"
                                     >
                                       {actionFeedback?.id === card.id && actionFeedback?.type === 'wish' ? (
@@ -804,7 +806,7 @@ export const SetTopCards: React.FC<SetTopCardsProps> = ({
                                     href={cardmarketUrl}
                                     target="_blank"
                                     rel="noopener noreferrer"
-                                    title="Otwórz ofertę na Cardmarket.com"
+                                    title={t('Otwórz ofertę na Cardmarket.com')}
                                     className="p-1.5 rounded-lg bg-stone-800 hover:bg-stone-700 text-stone-400 hover:text-amber-400 transition-colors"
                                   >
                                     <ExternalLink className="w-3.5 h-3.5" />

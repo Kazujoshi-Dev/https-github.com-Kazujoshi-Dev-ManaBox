@@ -2,11 +2,12 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Loader2 } from 'lucide-react';
 import { PageHeader } from './ui/PageHeader';
 import { changelogApi, type ChangelogRelease, type ChangelogType } from '../services/api';
+import { useT, locale, tk } from '../i18n';
 
 export const CHANGE_TYPES: Array<{ id: ChangelogType; label: string; dot: string; text: string }> = [
-  { id: 'new', label: 'Nowości', dot: 'bg-amber-400', text: 'text-amber-300' },
-  { id: 'improved', label: 'Ulepszenia', dot: 'bg-sky-400', text: 'text-sky-300' },
-  { id: 'fixed', label: 'Poprawki', dot: 'bg-emerald-400', text: 'text-emerald-300' }
+  { id: 'new', label: tk('Nowości'), dot: 'bg-amber-400', text: 'text-amber-300' },
+  { id: 'improved', label: tk('Ulepszenia'), dot: 'bg-sky-400', text: 'text-sky-300' },
+  { id: 'fixed', label: tk('Poprawki'), dot: 'bg-emerald-400', text: 'text-emerald-300' }
 ];
 
 const PAGE = 8;
@@ -14,8 +15,8 @@ const PAGE = 8;
 const dateParts = (day: string) => {
   const d = new Date(`${day}T12:00:00`);
   return {
-    date: d.toLocaleDateString('pl-PL', { day: 'numeric', month: 'long', year: 'numeric' }),
-    weekday: d.toLocaleDateString('pl-PL', { weekday: 'long' })
+    date: d.toLocaleDateString(locale(), { day: 'numeric', month: 'long', year: 'numeric' }),
+    weekday: d.toLocaleDateString(locale(), { weekday: 'long' })
   };
 };
 
@@ -33,6 +34,7 @@ interface ChangelogProps {
 
 /** Zakładka „Dziennik zmian”: wpisy publikowane codziennie o 23:30. */
 export const Changelog: React.FC<ChangelogProps> = ({ onSeen }) => {
+  const t = useT();
   const [releases, setReleases] = useState<ChangelogRelease[] | null>(null);
   const [publishTime, setPublishTime] = useState('23:30');
   const [error, setError] = useState<string | null>(null);
@@ -46,7 +48,7 @@ export const Changelog: React.FC<ChangelogProps> = ({ onSeen }) => {
         setReleases(d.releases);
         if (d.publishTime) setPublishTime(d.publishTime);
       })
-      .catch((e) => setError(e.message || 'Nie udało się wczytać dziennika zmian.'));
+      .catch((e) => setError(e.message || t('Nie udało się wczytać dziennika zmian.')));
   }, []);
 
   useEffect(() => {
@@ -72,29 +74,29 @@ export const Changelog: React.FC<ChangelogProps> = ({ onSeen }) => {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Dziennik zmian"
-        description={`Co nowego w Mana Screw. Nowe wpisy pojawiają się codziennie o ${publishTime}.`}
+        title={t('Dziennik zmian')}
+        description={t('Co nowego w Mana Screw. Nowe wpisy pojawiają się codziennie o {time}.', { time: publishTime })}
       />
 
       {releases && releases.length > 0 && (
-        <div className="flex flex-wrap gap-1.5" role="tablist" aria-label="Rodzaj zmian">
-          {[{ id: 'all' as const, label: 'Wszystkie', dot: '' }, ...CHANGE_TYPES].map((t) => (
+        <div className="flex flex-wrap gap-1.5" role="tablist" aria-label={t('Rodzaj zmian')}>
+          {[{ id: 'all' as const, label: tk('Wszystkie'), dot: '' }, ...CHANGE_TYPES].map((ct) => (
             <button
-              key={t.id}
+              key={ct.id}
               type="button"
               role="tab"
-              aria-selected={filter === t.id}
+              aria-selected={filter === ct.id}
               onClick={() => {
-                setFilter(t.id);
+                setFilter(ct.id);
                 setShown(PAGE);
               }}
               className={`h-8 px-3 rounded-full text-sm flex items-center gap-2 cursor-pointer ring-1 ${
-                filter === t.id ? 'bg-stone-800 ring-stone-600 text-stone-50' : 'ring-stone-800 text-stone-400 hover:text-stone-200 hover:ring-stone-700'
+                filter === ct.id ? 'bg-stone-800 ring-stone-600 text-stone-50' : 'ring-stone-800 text-stone-400 hover:text-stone-200 hover:ring-stone-700'
               }`}
             >
-              {t.dot && <span className={`w-1.5 h-1.5 rounded-full ${t.dot}`} aria-hidden="true" />}
-              {t.label}
-              <span className="text-xs text-stone-500 tabular-nums">{counts[t.id]}</span>
+              {ct.dot && <span className={`w-1.5 h-1.5 rounded-full ${ct.dot}`} aria-hidden="true" />}
+              {t(ct.label)}
+              <span className="text-xs text-stone-500 tabular-nums">{counts[ct.id]}</span>
             </button>
           ))}
         </div>
@@ -103,11 +105,11 @@ export const Changelog: React.FC<ChangelogProps> = ({ onSeen }) => {
       {error && <p className="text-sm text-rose-300">{error}</p>}
       {!releases && !error && (
         <p className="text-sm text-stone-400 flex items-center gap-2">
-          <Loader2 className="w-4 h-4 animate-spin" /> Wczytywanie…
+          <Loader2 className="w-4 h-4 animate-spin" /> {t('Wczytywanie…')}
         </p>
       )}
       {releases && releases.length === 0 && (
-        <p className="text-sm text-stone-400 py-10 text-center">Pierwszy wpis pojawi się dziś o {publishTime}.</p>
+        <p className="text-sm text-stone-400 py-10 text-center">{t('Pierwszy wpis pojawi się dziś o {time}.', { time: publishTime })}</p>
       )}
 
       <ol className="relative max-w-5xl">
@@ -124,20 +126,20 @@ export const Changelog: React.FC<ChangelogProps> = ({ onSeen }) => {
                   <span className="md:block md:mt-0.5">{zmian(r.items.length)}</span>
                 </p>
                 {idx === 0 && filter === 'all' && (
-                  <span className="hidden md:inline-block mt-2 text-[11px] font-medium px-1.5 py-0.5 rounded bg-amber-400/15 text-amber-300">Najnowsze</span>
+                  <span className="hidden md:inline-block mt-2 text-[11px] font-medium px-1.5 py-0.5 rounded bg-amber-400/15 text-amber-300">{t('Najnowsze')}</span>
                 )}
               </div>
 
               {/* Zmiany */}
               <div className="rounded-xl border border-stone-800 bg-stone-900 divide-y divide-stone-800">
-                {CHANGE_TYPES.map((t) => {
-                  const items = r.items.filter((i) => i.type === t.id);
+                {CHANGE_TYPES.map((ct) => {
+                  const items = r.items.filter((i) => i.type === ct.id);
                   if (!items.length) return null;
                   return (
-                    <section key={t.id} className="p-4 sm:p-5">
-                      <h4 className={`text-sm font-medium flex items-center gap-2 mb-2.5 ${t.text}`}>
-                        <span className={`w-1.5 h-1.5 rounded-full ${t.dot}`} aria-hidden="true" />
-                        {t.label}
+                    <section key={ct.id} className="p-4 sm:p-5">
+                      <h4 className={`text-sm font-medium flex items-center gap-2 mb-2.5 ${ct.text}`}>
+                        <span className={`w-1.5 h-1.5 rounded-full ${ct.dot}`} aria-hidden="true" />
+                        {t(ct.label)}
                       </h4>
                       <ul className="space-y-2">
                         {items.map((i) => (
@@ -160,7 +162,7 @@ export const Changelog: React.FC<ChangelogProps> = ({ onSeen }) => {
       {visible.length > shown && (
         <div className="flex justify-center">
           <button type="button" onClick={() => setShown((s) => s + PAGE)} className="btn btn-secondary">
-            Pokaż starsze wpisy
+            {t('Pokaż starsze wpisy')}
           </button>
         </div>
       )}

@@ -25,6 +25,8 @@ export interface ChangelogDraft {
 }
 
 export const CHANGELOG_DRAFTS: ChangelogDraft[] = [
+  // ---------- 9 października 2026 ----------
+  { id: '2026-10-09-wersja-angielska', day: '2026-10-09', type: 'new', area: 'Ustawienia', text: 'Aplikacja jest teraz dostępna także po angielsku: język zmienisz flagami obok ikony Discorda, a wybór zapisuje się na Twoim profilu.' },
   // ---------- 8 października 2026 ----------
   { id: '2026-10-08-spoilery-kolejnosc', day: '2026-10-08', type: 'improved', area: 'Spoilery', text: 'Zakładka „Spoilery” pokazuje już tylko dodatki przed premierą, ułożone od najbliższej daty wydania.' },
   { id: '2026-10-08-zakladka-spoilery', day: '2026-10-08', type: 'new', area: 'Spoilery', text: 'Nowa zakładka „Spoilery” pokazuje zapowiedziane karty z nadchodzących dodatków, z podziałem na kategorie, filtrami i możliwością dodania karty do listy życzeń.' },

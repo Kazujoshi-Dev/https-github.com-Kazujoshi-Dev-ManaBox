@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { getDeckFormat } from '../../utils/mtgFormats';
 import { Gauge, Gem, Loader2, AlertCircle, ExternalLink, ChevronDown } from 'lucide-react';
 import type { DeckItem, ScryfallCard } from '../../types';
+import { useT, tk, tServer } from '../../i18n';
 
 export interface BracketCard {
   name: string;
@@ -32,19 +33,20 @@ export interface BracketEstimate {
 
 /** Opis tagów Commander Spellbook w skali oficjalnych bracketów 1–5. */
 const TAGS: Record<string, { range: string; name: string; text: string }> = {
-  E: { range: '1+', name: 'Exhibition', text: 'Nic nie wymusza wyższego bracketu. Ostateczny poziom zależy od tego, jak talia gra.' },
-  C: { range: '2+', name: 'Core', text: 'Talia na poziomie gotowej talii (precon) lub wyżej, np. przez karty dodatkowych tur albo wolną kombinację.' },
-  O: { range: '2–3', name: 'Oddball', text: 'Coś między 2 a 3: kombinacje, które mogą być mocne, ale wymagają trzeciej karty albo nie wygrywają od razu.' },
-  P: { range: '3+', name: 'Powerful', text: 'Co najmniej bracket 3 (Upgraded): Game Changers albo wolna kombinacja dwóch kart.' },
-  S: { range: '3–4', name: 'Spicy', text: 'Na granicy 3 i 4: szybkie kombinacje, które mogą wymagać trzeciej karty, albo blokady (lock) i pomijanie tur.' },
-  R: { range: '4+', name: 'Ruthless', text: 'Co najmniej bracket 4 (Optimized): więcej niż 3 Game Changers, mass land denial, łańcuch dodatkowych tur albo szybka kombinacja dwóch kart.' },
-  B: { range: '–', name: 'Niedozwolona', text: 'Talia ma kartę zbanowaną w Commanderze, więc nie pasuje do żadnego bracketu.' }
+  E: { range: '1+', name: 'Exhibition', text: tk('Nic nie wymusza wyższego bracketu. Ostateczny poziom zależy od tego, jak talia gra.') },
+  C: { range: '2+', name: 'Core', text: tk('Talia na poziomie gotowej talii (precon) lub wyżej, np. przez karty dodatkowych tur albo wolną kombinację.') },
+  O: { range: '2–3', name: 'Oddball', text: tk('Coś między 2 a 3: kombinacje, które mogą być mocne, ale wymagają trzeciej karty albo nie wygrywają od razu.') },
+  P: { range: '3+', name: 'Powerful', text: tk('Co najmniej bracket 3 (Upgraded): Game Changers albo wolna kombinacja dwóch kart.') },
+  S: { range: '3–4', name: 'Spicy', text: tk('Na granicy 3 i 4: szybkie kombinacje, które mogą wymagać trzeciej karty, albo blokady (lock) i pomijanie tur.') },
+  R: { range: '4+', name: 'Ruthless', text: tk('Co najmniej bracket 4 (Optimized): więcej niż 3 Game Changers, mass land denial, łańcuch dodatkowych tur albo szybka kombinacja dwóch kart.') },
+  B: { range: '–', name: tk('Niedozwolona'), text: tk('Talia ma kartę zbanowaną w Commanderze, więc nie pasuje do żadnego bracketu.') }
 };
 
-const SPEED_LABEL: Record<number, string> = { 5: 'bardzo szybka', 4: 'szybka', 3: 'średnia', 2: 'wolna', 1: 'bardzo wolna' };
+const SPEED_LABEL: Record<number, string> = { 5: tk('bardzo szybka'), 4: tk('szybka'), 3: tk('średnia'), 2: tk('wolna'), 1: tk('bardzo wolna') };
 
 /** Szacuje bracket talii przez Commander Spellbook; odświeża po zmianie kart (z opóźnieniem). */
 export function useDeckBracket(deck: DeckItem) {
+  const t = useT();
   // Bracket dotyczy tylko Commandera: w innych formatach nie pytamy Spellbooka
   const enabled = getDeckFormat(deck.format).id === 'commander';
   const payload = useMemo(() => {
@@ -70,7 +72,7 @@ export function useDeckBracket(deck: DeckItem) {
     }
     let cancelled = false;
     setLoading(true);
-    const t = setTimeout(() => {
+    const timer = setTimeout(() => {
       fetch('/api/spellbook/estimate-bracket', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -78,7 +80,7 @@ export function useDeckBracket(deck: DeckItem) {
       })
         .then(async (r) => {
           const d = await r.json().catch(() => ({}));
-          if (!r.ok) throw new Error(d?.error || 'Nie udało się oszacować bracketu.');
+          if (!r.ok) throw new Error(tServer(d?.error) || t('Nie udało się oszacować bracketu.'));
           return d as BracketEstimate;
         })
         .then((d) => {
@@ -91,7 +93,7 @@ export function useDeckBracket(deck: DeckItem) {
     }, 600);
     return () => {
       cancelled = true;
-      clearTimeout(t);
+      clearTimeout(timer);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [key]);
@@ -124,6 +126,7 @@ export const DeckBracketPanel: React.FC<{
   bracket: ReturnType<typeof useDeckBracket>;
   onViewCardByName?: (name: string) => void;
 }> = ({ deck, bracket, onViewCardByName }) => {
+  const t = useT();
   const [showCombos, setShowCombos] = useState(false);
   const { data, error, loading, gameChangers } = bracket;
   const tag = data?.bracketTag ? TAGS[data.bracketTag] : null;
@@ -154,11 +157,11 @@ export const DeckBracketPanel: React.FC<{
         <div>
           <h3 id="deck-bracket-title" className="text-base font-semibold text-stone-50 flex items-center gap-2">
             <Gauge className="w-4 h-4 text-stone-400" />
-            Bracket talii
+            {t('Bracket talii')}
           </h3>
-          <p className="text-sm text-stone-400 mt-0.5">Szacunek według zasad Commander Brackets, z kombinacjami z Commander Spellbook.</p>
+          <p className="text-sm text-stone-400 mt-0.5">{t('Szacunek według zasad Commander Brackets, z kombinacjami z Commander Spellbook.')}</p>
         </div>
-        {loading && <Loader2 className="w-4 h-4 animate-spin text-stone-400" aria-label="Liczenie bracketu" />}
+        {loading && <Loader2 className="w-4 h-4 animate-spin text-stone-400" aria-label={t('Liczenie bracketu')} />}
       </div>
 
       <div className="mt-4 grid grid-cols-1 lg:grid-cols-[minmax(0,280px)_1fr] gap-5">
@@ -171,7 +174,7 @@ export const DeckBracketPanel: React.FC<{
                 {error}
                 {gcList.length > 0 && (
                   <span className="block mt-2 text-stone-400">
-                    Game Changers w talii: {gcList.length}, więc co najmniej bracket {gcList.length > 3 ? '4' : '3'}.
+                    {t('Game Changers w talii: {n}, więc co najmniej bracket {bracket}.', { n: gcList.length, bracket: gcList.length > 3 ? '4' : '3' })}
                   </span>
                 )}
               </span>
@@ -183,17 +186,17 @@ export const DeckBracketPanel: React.FC<{
             </div>
           ) : (
             <>
-              <p className="text-sm text-stone-400">Bracket</p>
+              <p className="text-sm text-stone-400">{t('Bracket')}</p>
               <p className="text-5xl font-semibold tracking-tight text-stone-50 tabular-nums leading-none mt-1">{tag?.range ?? '?'}</p>
-              <p className="mt-2 text-sm font-medium text-amber-300">{tag?.name}</p>
-              <p className="mt-1 text-sm text-stone-400">{tag?.text}</p>
+              <p className="mt-2 text-sm font-medium text-amber-300">{tag ? t(tag.name) : null}</p>
+              <p className="mt-1 text-sm text-stone-400">{tag ? t(tag.text) : null}</p>
             </>
           )}
         </div>
 
         {/* Powody */}
         <ul className="divide-y divide-stone-800 -my-2.5">
-          <Row label="Game Changers" ok={gcList.length === 0} value={`${gcList.length} (bracket 3: do 3)`}>
+          <Row label={t('Game Changers')} ok={gcList.length === 0} value={`${gcList.length} (bracket 3: do 3)`}>
             {gcList.length > 0 && (
               <p className="mt-1 text-sm text-stone-400 flex items-start gap-1.5">
                 <Gem className="w-3.5 h-3.5 text-amber-400 shrink-0 mt-[3px]" />
@@ -201,16 +204,16 @@ export const DeckBracketPanel: React.FC<{
               </p>
             )}
           </Row>
-          <Row label="Mass land denial" ok={mld.length === 0} value={mld.length ? mld.length : 'brak'}>
+          <Row label={t('Mass land denial')} ok={mld.length === 0} value={mld.length ? mld.length : t('brak')}>
             {mld.length > 0 && <p className="mt-1 text-sm text-stone-400">{joinNames(mld.map((c) => c.name))}</p>}
           </Row>
-          <Row label="Karty dodatkowych tur" ok={extra.length === 0} value={extra.length ? extra.length : 'brak'}>
+          <Row label={t('Karty dodatkowych tur')} ok={extra.length === 0} value={extra.length ? extra.length : t('brak')}>
             {extra.length > 0 && <p className="mt-1 text-sm text-stone-400">{joinNames(extra.map((c) => c.name))}</p>}
           </Row>
           <Row
-            label="Kombinacje dwóch kart"
+            label={t('Kombinacje dwóch kart')}
             ok={twoCard.length === 0}
-            value={twoCard.length ? `${twoCard.length}${fastTwoCard.length ? `, szybkie: ${fastTwoCard.length}` : ''}` : 'brak'}
+            value={twoCard.length ? `${twoCard.length}${fastTwoCard.length ? `, ${t('szybkie:')} ${fastTwoCard.length}` : ''}` : t('brak')}
           >
             {twoCard.length > 0 && (
               <ul className="mt-1 space-y-1">
@@ -219,7 +222,7 @@ export const DeckBracketPanel: React.FC<{
                     {joinNames(c.cards)}
                     <span className="text-stone-500">
                       {' '}
-                      ({SPEED_LABEL[Math.min(5, Math.max(1, c.speed))]}
+                      ({t(SPEED_LABEL[Math.min(5, Math.max(1, c.speed))])}
                       {c.results[0] ? `, ${c.results[0]}` : ''})
                     </span>
                   </li>
@@ -235,7 +238,7 @@ export const DeckBracketPanel: React.FC<{
                 aria-expanded={showCombos}
                 className="w-full flex items-center justify-between gap-3 text-sm text-stone-300 cursor-pointer"
               >
-                Inne kombinacje
+                {t('Inne kombinacje')}
                 <span className="flex items-center gap-1 text-stone-400 tabular-nums">
                   {otherCombos.length}
                   <ChevronDown className={`w-4 h-4 transition-transform ${showCombos ? 'rotate-180' : ''}`} />
@@ -257,7 +260,7 @@ export const DeckBracketPanel: React.FC<{
       </div>
 
       <p className="mt-4 text-xs text-stone-500">
-        To szacunek z listy kart, a nie ocena gry. Bracket ustala się z grupą przed grą.{' '}
+        {t('To szacunek z listy kart, a nie ocena gry. Bracket ustala się z grupą przed grą.')}{' '}
         <a href="https://commanderspellbook.com" target="_blank" rel="noopener noreferrer" className="underline hover:text-stone-300 inline-flex items-center gap-0.5">
           Commander Spellbook <ExternalLink className="w-3 h-3" />
         </a>

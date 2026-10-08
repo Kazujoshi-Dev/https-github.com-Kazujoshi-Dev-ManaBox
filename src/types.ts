@@ -99,6 +99,8 @@ export interface AppSettings {
   deckCardPreviewScale?: number; // e.g. 100 (for 100%), range 75 - 160
   /** Ile wierszy kart pokazuje jedna strona kolekcji (12, 24, 48 lub 60). */
   collectionRowsPerPage?: number;
+  /** Język interfejsu zapisany na profilu. */
+  language?: 'pl' | 'en';
 }
 
 export interface Catalog {

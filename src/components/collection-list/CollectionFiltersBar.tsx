@@ -3,21 +3,25 @@ import React, { useState } from 'react';
 import { Search, X, Sparkles, LayoutGrid, List, SlidersHorizontal, Library } from 'lucide-react';
 import { CollectionFiltersBarProps } from './types';
 import { COLOR_PILLS, CARD_TYPES, CARD_RARITIES, SORT_OPTIONS, ROWS_PER_PAGE_OPTIONS } from './constants';
+import { useT, plural, binderName } from '../../i18n';
 
 /** Rozwijany wybór liczby wierszy na stronie. */
-const RowsPerPageSelect: React.FC<{ value: number; onChange: (rows: number) => void; className: string }> = ({ value, onChange, className }) => (
+const RowsPerPageSelect: React.FC<{ value: number; onChange: (rows: number) => void; className: string }> = ({ value, onChange, className }) => {
+  const t = useT();
+  return (
   <select
     value={value}
     onChange={(e) => onChange(Number(e.target.value))}
-    title="Wiersze kart na stronie"
-    aria-label="Wiersze kart na stronie"
+    title={t('Wiersze kart na stronie')}
+    aria-label={t('Wiersze kart na stronie')}
     className={`bg-stone-900 border border-stone-800 rounded-lg px-2 text-stone-200 tabular-nums focus:outline-none focus:border-amber-500 cursor-pointer ${className}`}
   >
     {ROWS_PER_PAGE_OPTIONS.map((n) => (
-      <option key={n} value={n}>{n} wierszy</option>
+      <option key={n} value={n}>{t('{n} wierszy', { n })}</option>
     ))}
   </select>
 );
+};
 
 export const CollectionFiltersBar: React.FC<CollectionFiltersBarProps> = ({
   filters,
@@ -29,6 +33,7 @@ export const CollectionFiltersBar: React.FC<CollectionFiltersBarProps> = ({
   rowsPerPage,
   onRowsPerPageChange,
 }) => {
+  const t = useT();
   const showRows = rowsPerPage !== undefined && !!onRowsPerPageChange;
   // Na telefonie zaawansowane filtry są schowane pod przyciskiem, żeby karty były widoczne od razu.
   const [showAdvanced, setShowAdvanced] = useState(false);
@@ -49,7 +54,7 @@ export const CollectionFiltersBar: React.FC<CollectionFiltersBarProps> = ({
           <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-400" />
           <input
             type="text"
-            placeholder="Szukaj w kolekcji (nazwa, typ, set, notatka)..."
+            placeholder={t('Szukaj w kolekcji (nazwa, typ, set, notatka)...')}
             value={filters.searchQuery}
             onChange={(e) => onFilterChange({ searchQuery: e.target.value })}
             className="w-full h-10 bg-stone-900 border border-stone-800 rounded-lg pl-10 pr-4 text-sm text-stone-100 placeholder-stone-500 focus:outline-none focus:border-amber-500 transition-colors"
@@ -76,7 +81,7 @@ export const CollectionFiltersBar: React.FC<CollectionFiltersBarProps> = ({
                   : 'text-stone-400 hover:text-stone-200 hover:bg-stone-800'
               }`}
             >
-              {col.bg ? <span className={`px-1.5 py-0.2 rounded text-[11px] ${col.bg}`}>{col.label}</span> : col.label}
+              {col.bg ? <span className={`px-1.5 py-0.2 rounded text-[11px] ${col.bg}`}>{col.label}</span> : t(col.label)}
             </button>
           ))}
         </div>
@@ -93,7 +98,7 @@ export const CollectionFiltersBar: React.FC<CollectionFiltersBarProps> = ({
           }`}
         >
           <SlidersHorizontal className="w-4 h-4" />
-          <span>Filtry i sortowanie{activeAdvanced ? ` (${activeAdvanced})` : ''}</span>
+          <span>{t('Filtry i sortowanie')}{activeAdvanced ? ` (${activeAdvanced})` : ''}</span>
         </button>
         {showRows && (
           <RowsPerPageSelect value={rowsPerPage!} onChange={onRowsPerPageChange!} className="h-11 rounded-xl text-sm shrink-0" />
@@ -102,7 +107,7 @@ export const CollectionFiltersBar: React.FC<CollectionFiltersBarProps> = ({
           <button
             type="button"
             onClick={() => onViewModeChange('table')}
-            aria-label="Widok listy"
+            aria-label={t('Widok listy')}
             className={`w-10 h-9 rounded-lg flex items-center justify-center ${viewMode === 'table' ? 'bg-stone-800 text-amber-400' : 'text-stone-500'}`}
           >
             <List className="w-5 h-5" />
@@ -110,7 +115,7 @@ export const CollectionFiltersBar: React.FC<CollectionFiltersBarProps> = ({
           <button
             type="button"
             onClick={() => onViewModeChange('grid')}
-            aria-label="Widok kafelków"
+            aria-label={t('Widok kafelków')}
             className={`w-10 h-9 rounded-lg flex items-center justify-center ${viewMode === 'grid' ? 'bg-stone-800 text-amber-400' : 'text-stone-500'}`}
           >
             <LayoutGrid className="w-5 h-5" />
@@ -118,7 +123,7 @@ export const CollectionFiltersBar: React.FC<CollectionFiltersBarProps> = ({
           <button
             type="button"
             onClick={() => onViewModeChange('sets')}
-            aria-label="Widok dodatków"
+            aria-label={t('Widok dodatków')}
             className={`w-10 h-9 rounded-lg flex items-center justify-center ${viewMode === 'sets' ? 'bg-stone-800 text-amber-400' : 'text-stone-500'}`}
           >
             <Library className="w-5 h-5" />
@@ -130,64 +135,64 @@ export const CollectionFiltersBar: React.FC<CollectionFiltersBarProps> = ({
       <div className={`${showAdvanced ? 'grid' : 'hidden'} md:grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-3 text-xs`}>
         {/* Type Filter */}
         <div>
-          <label className="block text-[11px] font-semibold text-stone-400 mb-1">Typ karty</label>
+          <label className="block text-[11px] font-semibold text-stone-400 mb-1">{t('Typ karty')}</label>
           <select
             value={filters.type}
             onChange={(e) => onFilterChange({ type: e.target.value })}
             className="w-full h-9 bg-stone-900 border border-stone-800 rounded-lg px-2.5 text-stone-200 focus:outline-none focus:border-amber-500 cursor-pointer"
           >
-            {CARD_TYPES.map(t => (
-              <option key={t.value} value={t.value}>{t.label}</option>
+            {CARD_TYPES.map(ct => (
+              <option key={ct.value} value={ct.value}>{t(ct.label)}</option>
             ))}
           </select>
         </div>
 
         {/* Rarity Filter */}
         <div>
-          <label className="block text-[11px] font-semibold text-stone-400 mb-1">Rzadkość</label>
+          <label className="block text-[11px] font-semibold text-stone-400 mb-1">{t('Rzadkość')}</label>
           <select
             value={filters.rarity}
             onChange={(e) => onFilterChange({ rarity: e.target.value })}
             className="w-full h-9 bg-stone-900 border border-stone-800 rounded-lg px-2.5 text-stone-200 focus:outline-none focus:border-amber-500 cursor-pointer"
           >
             {CARD_RARITIES.map(r => (
-              <option key={r.value} value={r.value}>{r.label}</option>
+              <option key={r.value} value={r.value}>{t(r.label)}</option>
             ))}
           </select>
         </div>
 
         {/* Binder / Catalog Filter */}
         <div>
-          <label className="block text-[11px] font-semibold text-stone-400 mb-1">Katalog / Klaser</label>
+          <label className="block text-[11px] font-semibold text-stone-400 mb-1">{t('Katalog / Klaser')}</label>
           <select
             value={filters.binder}
             onChange={(e) => onFilterChange({ binder: e.target.value })}
             className="w-full h-9 bg-stone-900 border border-stone-800 rounded-lg px-2.5 text-stone-200 focus:outline-none focus:border-amber-500 cursor-pointer"
           >
-            <option value="ALL">Wszystkie katalogi</option>
-            <option value={FOR_SALE_BINDER}>Sprzedam (na sprzedaż)</option>
+            <option value="ALL">{t('Wszystkie katalogi')}</option>
+            <option value={FOR_SALE_BINDER}>{t('Sprzedam (na sprzedaż)')}</option>
             {catalogs.map(b => (
-              <option key={b.id} value={b.name}>{b.name}</option>
+              <option key={b.id} value={b.name}>{binderName(b.name)}</option>
             ))}
           </select>
         </div>
 
         {/* Set Filter */}
         <div>
-          <label className="block text-[11px] font-semibold text-stone-400 mb-1">Dodatek (Set)</label>
+          <label className="block text-[11px] font-semibold text-stone-400 mb-1">{t('Dodatek (Set)')}</label>
           <select
             value={filters.set}
             onChange={(e) => onFilterChange({ set: e.target.value })}
             className="w-full h-9 bg-stone-900 border border-stone-800 rounded-lg px-2.5 text-stone-200 focus:outline-none focus:border-amber-500 truncate cursor-pointer"
           >
-            <option value="ALL">Wszystkie dodatki</option>
+            <option value="ALL">{t('Wszystkie dodatki')}</option>
             {sets.map(({ code, name, owned, total }) => {
               // Zaokrąglenie w dół, żeby niekompletny dodatek nie pokazywał 100%
               const pct = total ? (owned / total) * 100 : null;
               const pctText = pct === null ? '' : pct > 0 && pct < 1 ? ' (<1%)' : ` (${Math.floor(pct)}%)`;
               return (
                 <option key={code} value={code}>
-                  [{code.toUpperCase()}] {name} {total ? `${owned}/${total}${pctText}` : `(${owned === 1 ? '1 karta' : `${owned} ${owned % 10 >= 2 && owned % 10 <= 4 && (owned % 100 < 12 || owned % 100 > 14) ? 'karty' : 'kart'}`})`}
+                  [{code.toUpperCase()}] {name} {total ? `${owned}/${total}${pctText}` : `(${plural(owned, ['{n} karta', '{n} karty', '{n} kart'], ['{n} card', '{n} cards'])})`}
                 </option>
               );
             })}
@@ -196,14 +201,14 @@ export const CollectionFiltersBar: React.FC<CollectionFiltersBarProps> = ({
 
         {/* Sort By */}
         <div>
-          <label className="block text-[11px] font-semibold text-stone-400 mb-1">Sortowanie</label>
+          <label className="block text-[11px] font-semibold text-stone-400 mb-1">{t('Sortowanie')}</label>
           <select
             value={filters.sortBy}
             onChange={(e) => onFilterChange({ sortBy: e.target.value as any })}
             className="w-full h-9 bg-stone-900 border border-stone-800 rounded-lg px-2.5 text-stone-200 focus:outline-none focus:border-amber-500 cursor-pointer"
           >
             {SORT_OPTIONS.map(s => (
-              <option key={s.value} value={s.value}>{s.label}</option>
+              <option key={s.value} value={s.value}>{t(s.label)}</option>
             ))}
           </select>
         </div>
@@ -219,7 +224,7 @@ export const CollectionFiltersBar: React.FC<CollectionFiltersBarProps> = ({
             }`}
           >
             <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-            <span>Tylko foil</span>
+            <span>{t('Tylko foil')}</span>
           </button>
 
           {showRows && (
@@ -230,21 +235,21 @@ export const CollectionFiltersBar: React.FC<CollectionFiltersBarProps> = ({
             <button
               onClick={() => onViewModeChange('grid')}
               className={`p-1 rounded transition-colors cursor-pointer ${viewMode === 'grid' ? 'bg-stone-800 text-amber-400' : 'text-stone-500 hover:text-stone-300'}`}
-              title="Widok kafelkowy (Binder)"
+              title={t('Widok kafelkowy (Binder)')}
             >
               <LayoutGrid className="w-4 h-4" />
             </button>
             <button
               onClick={() => onViewModeChange('table')}
               className={`p-1 rounded transition-colors cursor-pointer ${viewMode === 'table' ? 'bg-stone-800 text-amber-400' : 'text-stone-500 hover:text-stone-300'}`}
-              title="Widok tabeli"
+              title={t('Widok tabeli')}
             >
               <List className="w-4 h-4" />
             </button>
             <button
               onClick={() => onViewModeChange('sets')}
               className={`p-1 rounded transition-colors cursor-pointer ${viewMode === 'sets' ? 'bg-stone-800 text-amber-400' : 'text-stone-500 hover:text-stone-300'}`}
-              title="Widok dodatków"
+              title={t('Widok dodatków')}
             >
               <Library className="w-4 h-4" />
             </button>

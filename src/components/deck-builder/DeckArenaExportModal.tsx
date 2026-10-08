@@ -4,6 +4,7 @@ import type { DeckItem } from '../../types';
 import { useBackToClose } from '../../hooks/useBackButton';
 import { exportDeckToArena, getDeckFormat, isOnArena } from '../../utils/mtgFormats';
 import { downloadTxtFile } from '../../utils/textCardList';
+import { useT } from '../../i18n';
 
 /** Lista talii w formacie importu MTG Arena: kopiowanie do schowka albo plik .txt. */
 export const DeckArenaExportModal: React.FC<{
@@ -11,6 +12,7 @@ export const DeckArenaExportModal: React.FC<{
   onClose: () => void;
   showToast: (message: string) => void;
 }> = ({ deck, onClose, showToast }) => {
+  const t = useT();
   useBackToClose(true, onClose);
   const [copied, setCopied] = useState(false);
   const format = getDeckFormat(deck.format);
@@ -26,10 +28,10 @@ export const DeckArenaExportModal: React.FC<{
     try {
       await navigator.clipboard.writeText(text);
       setCopied(true);
-      showToast('Skopiowano talię. W MTG Arena otwórz Talie i kliknij Importuj.');
+      showToast(t('Skopiowano talię. W MTG Arena otwórz Talie i kliknij Importuj.'));
       setTimeout(() => setCopied(false), 2500);
     } catch {
-      showToast('Nie udało się skopiować. Zaznacz listę i skopiuj ją ręcznie.');
+      showToast(t('Nie udało się skopiować. Zaznacz listę i skopiuj ją ręcznie.'));
     }
   };
 
@@ -45,26 +47,26 @@ export const DeckArenaExportModal: React.FC<{
     >
       <div
         role="dialog"
-        aria-label="Eksport do MTG Arena"
+        aria-label={t('Eksport do MTG Arena')}
         className="bg-stone-900 border border-stone-800 rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden flex flex-col max-h-[88vh] max-sm:max-w-none max-sm:rounded-b-none max-sm:rounded-t-3xl max-sm:max-h-[92dvh] max-sm:pb-[env(safe-area-inset-bottom)]"
       >
         <div className="p-4 border-b border-stone-800 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Gamepad2 className="w-5 h-5 text-amber-400" />
-            <h3 className="font-semibold text-base text-stone-50">Eksport do MTG Arena</h3>
+            <h3 className="font-semibold text-base text-stone-50">{t('Eksport do MTG Arena')}</h3>
           </div>
-          <button type="button" onClick={onClose} className="p-1.5 text-stone-400 hover:text-white rounded-lg hover:bg-stone-800 cursor-pointer" aria-label="Zamknij">
+          <button type="button" onClick={onClose} className="p-1.5 text-stone-400 hover:text-white rounded-lg hover:bg-stone-800 cursor-pointer" aria-label={t('Zamknij')}>
             <X className="w-5 h-5" />
           </button>
         </div>
 
         <div className="p-4 space-y-3 overflow-y-auto">
           <p className="text-sm text-stone-300">
-            Skopiuj listę, a potem w MTG Arena otwórz <strong className="text-stone-100">Talie</strong> i kliknij <strong className="text-stone-100">Importuj</strong>.
+            {t('Skopiuj listę, a potem w MTG Arena otwórz')} <strong className="text-stone-100">{t('Talie')}</strong> {t('i kliknij')} <strong className="text-stone-100">{t('Importuj')}</strong>.
           </p>
           {missing.length > 0 && (
             <p className="text-xs text-rose-200 bg-rose-950/40 border border-rose-500/30 rounded-lg px-3 py-2">
-              Tych kart nie ma w MTG Arena, import je pominie: {missing.join(', ')}.
+              {t('Tych kart nie ma w MTG Arena, import je pominie:')} {missing.join(', ')}.
             </p>
           )}
           <textarea
@@ -79,11 +81,11 @@ export const DeckArenaExportModal: React.FC<{
         <div className="p-4 border-t border-stone-800 flex items-center justify-end gap-2">
           <button type="button" onClick={handleDownload} className="btn btn-secondary">
             <Download className="w-4 h-4" />
-            Pobierz .txt
+            {t('Pobierz .txt')}
           </button>
           <button type="button" onClick={handleCopy} className="btn btn-primary">
             {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
-            {copied ? 'Skopiowano' : 'Kopiuj do schowka'}
+            {copied ? t('Skopiowano') : t('Kopiuj do schowka')}
           </button>
         </div>
       </div>

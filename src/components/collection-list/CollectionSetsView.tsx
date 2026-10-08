@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { ArrowLeft, Layers } from 'lucide-react';
 import type { SetOption } from './useCollectionFilters';
+import { useT, plural } from '../../i18n';
 
 /** Ikony dodatków (symbole z Scryfall), pobierane raz na sesję. */
 let setIconsMemo: Record<string, string> | null = null;
@@ -51,10 +52,7 @@ function completion(set: SetOption): { pct: number | null; label: string } {
 }
 
 function cardsWord(n: number): string {
-  if (n === 1) return 'karta';
-  const d = n % 10;
-  const h = n % 100;
-  return d >= 2 && d <= 4 && (h < 12 || h > 14) ? 'karty' : 'kart';
+  return plural(n, ['karta', 'karty', 'kart'], ['card', 'cards']);
 }
 
 export const SetSymbol: React.FC<{ code: string; icons: Record<string, string>; className?: string }> = ({ code, icons, className = '' }) => {
@@ -133,20 +131,21 @@ interface CollectionSetHeaderProps {
 
 /** Nagłówek listy kart wybranego dodatku, z powrotem do siatki dodatków. */
 export const CollectionSetHeader: React.FC<CollectionSetHeaderProps> = ({ set, code, onBack }) => {
+  const t = useT();
   const icons = useSetIcons();
   const { pct, label } = set ? completion(set) : { pct: null, label: '' };
   return (
     <div className="flex items-center gap-3 rounded-xl border border-stone-800 bg-stone-900 p-3">
-      <button type="button" onClick={onBack} className="btn btn-ghost shrink-0" aria-label="Wróć do listy dodatków">
+      <button type="button" onClick={onBack} className="btn btn-ghost shrink-0" aria-label={t('Wróć do listy dodatków')}>
         <ArrowLeft className="w-4 h-4" />
-        <span className="max-sm:hidden">Dodatki</span>
+        <span className="max-sm:hidden">{t('Dodatki')}</span>
       </button>
       <SetSymbol code={code} icons={icons} className="h-9 w-9 shrink-0" />
       <div className="min-w-0 flex-1">
         <p className="text-sm font-semibold text-stone-100 truncate">{set?.name || code.toUpperCase()}</p>
         <p className="text-xs text-stone-400 tabular-nums">
           {code.toUpperCase()}
-          {set && (set.total ? ` · ${set.owned}/${set.total} różnych kart` : ` · ${set.owned} ${cardsWord(set.owned)}`)}
+          {set && (set.total ? ` · ${t('{owned}/{total} różnych kart', { owned: set.owned, total: set.total })}` : ` · ${set.owned} ${cardsWord(set.owned)}`)}
           {set?.released ? ` · ${set.released.substring(0, 4)}` : ''}
         </p>
       </div>

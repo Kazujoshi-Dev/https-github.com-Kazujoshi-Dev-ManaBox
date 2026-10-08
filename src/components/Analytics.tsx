@@ -28,6 +28,7 @@ import {
   Layers, 
   PieChart as PieIcon 
 } from 'lucide-react';
+import { useT, locale } from '../i18n';
 
 const MOVERS_LIMIT = 20;
 
@@ -43,6 +44,7 @@ interface AnalyticsProps {
 }
 
 export const Analytics: React.FC<AnalyticsProps> = ({ collection, settings, onViewCardDetails }) => {
+  const t = useT();
   
   // Overall metrics
   const stats = useMemo(() => {
@@ -114,7 +116,7 @@ export const Analytics: React.FC<AnalyticsProps> = ({ collection, settings, onVi
         const unitPrice = Math.max(priceNorm, priceFoil);
         return { item, unitPrice };
       })
-      .filter(t => t.unitPrice > 0)
+      .filter(row => row.unitPrice > 0)
       .sort((a, b) => b.unitPrice - a.unitPrice)
       .slice(0, 5);
   }, [collection, settings]);
@@ -131,13 +133,13 @@ export const Analytics: React.FC<AnalyticsProps> = ({ collection, settings, onVi
   ];
 
   const colorChartData = [
-    { name: 'Biały (W)', value: stats.colorCounts.W, color: '#fef3c7' },
-    { name: 'Niebieski (U)', value: stats.colorCounts.U, color: '#2563eb' },
-    { name: 'Czarny (B)', value: stats.colorCounts.B, color: '#44403c' },
-    { name: 'Czerwony (R)', value: stats.colorCounts.R, color: '#dc2626' },
-    { name: 'Zielony (G)', value: stats.colorCounts.G, color: '#16a34a' },
-    { name: 'Bezbarwne (C)', value: stats.colorCounts.C, color: '#a8a29e' },
-    { name: 'Wielobarwne', value: stats.colorCounts.Multi, color: '#d97706' },
+    { name: t('Biały (W)'), value: stats.colorCounts.W, color: '#fef3c7' },
+    { name: t('Niebieski (U)'), value: stats.colorCounts.U, color: '#2563eb' },
+    { name: t('Czarny (B)'), value: stats.colorCounts.B, color: '#44403c' },
+    { name: t('Czerwony (R)'), value: stats.colorCounts.R, color: '#dc2626' },
+    { name: t('Zielony (G)'), value: stats.colorCounts.G, color: '#16a34a' },
+    { name: t('Bezbarwne (C)'), value: stats.colorCounts.C, color: '#a8a29e' },
+    { name: t('Wielobarwne'), value: stats.colorCounts.Multi, color: '#d97706' },
   ].filter(d => d.value > 0);
 
   const rarityChartData = [
@@ -172,36 +174,36 @@ export const Analytics: React.FC<AnalyticsProps> = ({ collection, settings, onVi
   return (
     <div className="space-y-6">
       
-      <PageHeader title="Statystyki" description="Wartość kolekcji, kolory, krzywa many i rzadkość kart." />
+      <PageHeader title={t('Statystyki')} description={t('Wartość kolekcji, kolory, krzywa many i rzadkość kart.')} />
 
       <div className="grid grid-cols-2 lg:grid-cols-3 rounded-xl border border-stone-800 bg-stone-900 [&>*]:p-4">
         <div className="space-y-1 border-stone-800">
-          <p className="text-sm text-stone-400">Karty</p>
+          <p className="text-sm text-stone-400">{t('Karty')}</p>
           <p className="text-2xl font-semibold text-stone-50 tabular-nums">{stats.totalCards}</p>
-          <p className="text-xs text-stone-500">{stats.uniqueCards} różnych pozycji</p>
+          <p className="text-xs text-stone-500">{t('{n} różnych pozycji', { n: stats.uniqueCards })}</p>
         </div>
         <div className="space-y-1 border-l border-stone-800">
-          <p className="text-sm text-stone-400">Wartość</p>
+          <p className="text-sm text-stone-400">{t('Wartość')}</p>
           <p className="text-2xl font-semibold text-stone-50 tabular-nums">{formatCurrency(stats.totalValue, settings.currency)}</p>
-          <p className="text-xs text-stone-500">{settings.pricingSource === 'CARDMARKET' ? 'Cardmarket Trend' : 'TCGPlayer Market'}</p>
+          <p className="text-xs text-stone-500">{settings.pricingSource === 'CARDMARKET' ? t('Cardmarket Trend') : 'TCGPlayer Market'}</p>
         </div>
         <div className="space-y-1 col-span-2 lg:col-span-1 border-t lg:border-t-0 lg:border-l border-stone-800">
           <p className="text-sm text-stone-400 flex items-center gap-1.5">
             <ChangeIcon className={`w-4 h-4 ${changeColor}`} />
-            Zmiana wartości
+            {t('Zmiana wartości')}
           </p>
           <p className={`text-2xl font-semibold tabular-nums ${hasChange ? changeColor : 'text-stone-500'}`}>
             {hasChange ? fmtDelta(change.valueChange!) : '—'}
             {change.valueChangePercent !== null && changeSign !== 0 && (
               <span className="ml-1.5 text-sm font-medium opacity-80">
-                ({change.valueChangePercent > 0 ? '+' : ''}{change.valueChangePercent.toFixed(1).replace('.', ',')}%)
+                ({change.valueChangePercent > 0 ? '+' : ''}{change.valueChangePercent.toFixed(1).replace('.', locale() === 'pl-PL' ? ',' : '.')}%)
               </span>
             )}
           </p>
           <p className="text-xs text-stone-500">
             {hasChange
-              ? `Od poprzednich cen${change.lastPriceChangeAt ? ` (${new Date(change.lastPriceChangeAt).toLocaleDateString('pl-PL')})` : ''}`
-              : 'Pojawi się po odświeżeniu cen'}
+              ? t('Od poprzednich cen') + (change.lastPriceChangeAt ? ` (${new Date(change.lastPriceChangeAt).toLocaleDateString(locale())})` : '')
+              : t('Pojawi się po odświeżeniu cen')}
           </p>
         </div>
       </div>
@@ -214,9 +216,9 @@ export const Analytics: React.FC<AnalyticsProps> = ({ collection, settings, onVi
           <div className="flex items-center justify-between">
             <h3 className="text-sm font-bold text-stone-200 flex items-center gap-1.5">
               <Flame className="w-4 h-4 text-amber-400" />
-              <span>Krzywa many</span>
+              <span>{t('Krzywa many')}</span>
             </h3>
-            <span className="text-[11px] text-stone-500">Bez lądów</span>
+            <span className="text-[11px] text-stone-500">{t('Bez lądów')}</span>
           </div>
 
           <div className="h-64 w-full pt-4">
@@ -228,7 +230,7 @@ export const Analytics: React.FC<AnalyticsProps> = ({ collection, settings, onVi
                   contentStyle={{ backgroundColor: '#1c1917', borderColor: '#44403c', borderRadius: '0.75rem', color: '#f5f5f4' }}
                   cursor={{ fill: 'rgba(255, 255, 255, 0.05)' }}
                 />
-                <Bar dataKey="ilosc" fill="#f59e0b" radius={[6, 6, 0, 0]} name="Liczba kart" />
+                <Bar dataKey="ilosc" fill="#f59e0b" radius={[6, 6, 0, 0]} name={t('Liczba kart')} />
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -239,7 +241,7 @@ export const Analytics: React.FC<AnalyticsProps> = ({ collection, settings, onVi
           <div className="flex items-center justify-between">
             <h3 className="text-sm font-bold text-stone-200 flex items-center gap-1.5">
               <PieIcon className="w-4 h-4 text-amber-400" />
-              <span>Kolory kart</span>
+              <span>{t('Kolory kart')}</span>
             </h3>
           </div>
 
@@ -267,7 +269,7 @@ export const Analytics: React.FC<AnalyticsProps> = ({ collection, settings, onVi
               </PieChart>
             </ResponsiveContainer>
           </div>
-          <p className="text-[11px] text-stone-500 text-center">Lądy nie są wliczane do statystyki kolorów.</p>
+          <p className="text-[11px] text-stone-500 text-center">{t('Lądy nie są wliczane do statystyki kolorów.')}</p>
         </div>
 
       </div>
@@ -277,9 +279,9 @@ export const Analytics: React.FC<AnalyticsProps> = ({ collection, settings, onVi
         <div className="flex items-center justify-between">
           <h3 className="text-sm font-bold text-stone-200 flex items-center gap-2">
             <Award className="w-5 h-5 text-amber-400" />
-            <span>Najcenniejsze karty</span>
+            <span>{t('Najcenniejsze karty')}</span>
           </h3>
-          <span className="text-[11px] text-stone-500">Cena za 1 sztukę</span>
+          <span className="text-[11px] text-stone-500">{t('Cena za 1 sztukę')}</span>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-5 gap-4 pt-2">
@@ -311,7 +313,7 @@ export const Analytics: React.FC<AnalyticsProps> = ({ collection, settings, onVi
                     {card.name}
                   </h4>
                   <p className="text-[11px] text-stone-400 tabular-nums mt-0.5">
-                    {card.set.toUpperCase()} • {item.quantity + item.quantityFoil} szt.
+                    {card.set.toUpperCase()} • {item.quantity + item.quantityFoil} {t('szt.')}
                   </p>
                   <p className="text-xs tabular-nums font-bold text-emerald-400 mt-1">
                     {formatCurrency(unitPrice, settings.currency)}
@@ -329,18 +331,18 @@ export const Analytics: React.FC<AnalyticsProps> = ({ collection, settings, onVi
           <div>
             <h3 className="text-base font-semibold text-stone-100 flex items-center gap-2">
               <ChangeIcon className={`w-5 h-5 ${changeSign < 0 ? 'text-rose-400' : 'text-emerald-400'}`} />
-              Największe zmiany
+              {t('Największe zmiany')}
             </h3>
             <p className="text-sm text-stone-400 mt-0.5">
-              Karty z kolekcji, które najwięcej zyskały i straciły od ostatniego odświeżenia cen
-              {change.lastPriceChangeAt ? ` (${new Date(change.lastPriceChangeAt).toLocaleDateString('pl-PL')})` : ''}.
+              {t('Karty z kolekcji, które najwięcej zyskały i straciły od ostatniego odświeżenia cen')}
+              {change.lastPriceChangeAt ? ` (${new Date(change.lastPriceChangeAt).toLocaleDateString(locale())})` : ''}.
             </p>
           </div>
           {(movers.up.length > 0 || movers.down.length > 0) && (
-            <div className="lg:hidden inline-grid grid-cols-2 p-1 rounded-lg bg-stone-950 ring-1 ring-stone-800" role="tablist" aria-label="Kierunek zmiany">
+            <div className="lg:hidden inline-grid grid-cols-2 p-1 rounded-lg bg-stone-950 ring-1 ring-stone-800" role="tablist" aria-label={t('Kierunek zmiany')}>
               {([
-                ['up', `Zyskały (${movers.up.length})`],
-                ['down', `Straciły (${movers.down.length})`]
+                ['up', `${t('Zyskały')} (${movers.up.length})`],
+                ['down', `${t('Straciły')} (${movers.down.length})`]
               ] as const).map(([id, label]) => (
                 <button
                   key={id}
@@ -359,13 +361,13 @@ export const Analytics: React.FC<AnalyticsProps> = ({ collection, settings, onVi
 
         {movers.up.length === 0 && movers.down.length === 0 ? (
           <p className="text-sm text-stone-400 py-6 text-center">
-            {hasChange ? 'Od ostatniego odświeżenia ceny kart się nie zmieniły.' : 'Zmiany pojawią się po pierwszym odświeżeniu cen.'}
+            {hasChange ? t('Od ostatniego odświeżenia ceny kart się nie zmieniły.') : t('Zmiany pojawią się po pierwszym odświeżeniu cen.')}
           </p>
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-8 gap-y-4">
             {([
-              ['up', 'Zyskały', movers.up],
-              ['down', 'Straciły', movers.down]
+              ['up', t('Zyskały'), movers.up],
+              ['down', t('Straciły'), movers.down]
             ] as const).map(([id, title, list]) => (
               <div key={id} className={moversSide === id ? '' : 'max-lg:hidden'}>
                 <h4 className={`hidden lg:flex items-center gap-1.5 text-sm font-medium mb-2 ${id === 'up' ? 'text-emerald-400' : 'text-rose-400'}`}>
@@ -374,7 +376,7 @@ export const Analytics: React.FC<AnalyticsProps> = ({ collection, settings, onVi
                   <span className="text-stone-500 font-normal tabular-nums">{list.length}</span>
                 </h4>
                 {list.length === 0 ? (
-                  <p className="text-sm text-stone-500 py-3">{id === 'up' ? 'Żadna karta nie zdrożała.' : 'Żadna karta nie potaniała.'}</p>
+                  <p className="text-sm text-stone-500 py-3">{id === 'up' ? t('Żadna karta nie zdrożała.') : t('Żadna karta nie potaniała.')}</p>
                 ) : (
                   <ol className="divide-y divide-stone-800/80">
                     {(list as Mover[]).map((m, i) => (
@@ -393,9 +395,9 @@ export const Analytics: React.FC<AnalyticsProps> = ({ collection, settings, onVi
         <div>
           <h3 className="text-base font-semibold text-stone-100 flex items-center gap-2">
             <LineChart className="w-5 h-5 text-amber-400" />
-            Historia kolekcji
+            {t('Historia kolekcji')}
           </h3>
-          <p className="text-sm text-stone-400 mt-0.5">Wartość i liczba kart dzień po dniu.</p>
+          <p className="text-sm text-stone-400 mt-0.5">{t('Wartość i liczba kart dzień po dniu.')}</p>
         </div>
         <CollectionHistoryPanel currency={settings.currency} />
       </section>
@@ -411,6 +413,7 @@ const MoverRow: React.FC<{
   fmtDelta: (v: number) => string;
   onOpen: () => void;
 }> = ({ mover, rank, currency, fmtDelta, onOpen }) => {
+  const t = useT();
   const { item, now, before, delta, pct } = mover;
   const img = getCardImageUri(item.card, 'small') || getCardImageUri(item.card, 'normal');
   const qty = item.quantity + item.quantityFoil;
@@ -427,11 +430,11 @@ const MoverRow: React.FC<{
           <span className="block text-xs text-stone-500 truncate tabular-nums">
             <span className="max-sm:hidden">
               {item.card.set.toUpperCase()}
-              {qty > 1 && <> · {qty} szt.</>}
-              {item.quantityFoil > 0 && <> · foil</>}
+              {qty > 1 && <> · {qty} {t('szt.')}</>}
+              {item.quantityFoil > 0 && <> {t('· foil')}</>}
               {' · '}
             </span>
-            {qty > 1 && <span className="sm:hidden">{qty} szt. · </span>}
+            {qty > 1 && <span className="sm:hidden">{qty} {t('szt.')} · </span>}
             {formatCurrency(before, currency)} → <span className="text-stone-300">{formatCurrency(now, currency)}</span>
           </span>
         </span>

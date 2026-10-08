@@ -3,6 +3,7 @@ import { Minus, Plus, Sparkles, CircleDollarSign } from 'lucide-react';
 import { CardItem } from '../CardItem';
 import { CollectionTableViewProps } from './types';
 import { formatCurrency, getCardImageUri, getCardPrice, handleCardImageError } from '../../utils/formatters';
+import { useT } from '../../i18n';
 
 export const CollectionTableView: React.FC<CollectionTableViewProps> = ({
   items,
@@ -13,6 +14,7 @@ export const CollectionTableView: React.FC<CollectionTableViewProps> = ({
   onViewCardDetails,
   onToggleForSale,
 }) => {
+  const t = useT();
   return (
     <>
       {/* Telefon: lista kart z miniaturami zamiast 8-kolumnowej tabeli */}
@@ -51,7 +53,7 @@ export const CollectionTableView: React.FC<CollectionTableViewProps> = ({
                         ({[
                           (item.quantity || 0) > 0 ? formatCurrency(unit, settings.currency) : null,
                           (item.quantityFoil || 0) > 0 ? `${formatCurrency(unitFoil, settings.currency)} foil` : null,
-                        ].filter(Boolean).join(' · ')} / szt.)
+                        ].filter(Boolean).join(' · ')} {t('/ szt.')})
                       </span>
                     )}
                     {item.quantityFoil > 0 && (
@@ -60,17 +62,17 @@ export const CollectionTableView: React.FC<CollectionTableViewProps> = ({
                         {item.quantityFoil}
                       </span>
                     )}
-                    {item.isForSale && <CircleDollarSign className="w-3.5 h-3.5 text-emerald-400" aria-label="Na sprzedaż" />}
+                    {item.isForSale && <CircleDollarSign className="w-3.5 h-3.5 text-emerald-400" aria-label={t('Na sprzedaż')} />}
                   </div>
                 </div>
               </button>
               <div className="flex items-center shrink-0 bg-stone-950 border border-stone-800 rounded-full">
                 <button
                   type="button"
-                  aria-label={`Zmniejsz ilość: ${card.name}`}
+                  aria-label={t('Zmniejsz ilość: {name}', { name: card.name })}
                   onClick={() => {
                     // ostatni egzemplarz = usunięcie pozycji — pytamy, żeby przypadkowe stuknięcie nic nie skasowało
-                    if (qty <= 1 && !window.confirm(`Usunąć „${card.name}” z kolekcji?`)) return;
+                    if (qty <= 1 && !window.confirm(t('Usunąć „{name}” z kolekcji?', { name: card.name }))) return;
                     if (item.quantity > 0) onUpdateQuantity(item.id, -1, 0);
                     else onUpdateQuantity(item.id, 0, -1);
                   }}
@@ -81,7 +83,7 @@ export const CollectionTableView: React.FC<CollectionTableViewProps> = ({
                 <span className="min-w-[1.5rem] text-center text-sm font-bold text-stone-100 tabular-nums">{qty}</span>
                 <button
                   type="button"
-                  aria-label={`Zwiększ ilość: ${card.name}`}
+                  aria-label={t('Zwiększ ilość: {name}', { name: card.name })}
                   onClick={() => onUpdateQuantity(item.id, 1, 0)}
                   className="w-10 h-10 flex items-center justify-center text-stone-300 active:text-emerald-300"
                 >
@@ -98,14 +100,14 @@ export const CollectionTableView: React.FC<CollectionTableViewProps> = ({
         <table className="w-full text-left border-collapse">
           <thead>
             <tr className="bg-stone-950 text-stone-400 tabular-nums text-[11px] border-b border-stone-800">
-              <th className="py-3 px-3">Karta</th>
-              <th className="py-3 px-3">Koszt</th>
-              <th className="py-3 px-3">Set / Rzadkość</th>
-              <th className="py-3 px-3">Stan / Język</th>
-              <th className="py-3 px-3">Cena (Szt)</th>
-              <th className="py-3 px-3">Ilość</th>
-              <th className="py-3 px-3">Wartość</th>
-              <th className="py-3 px-3 text-right">Akcje</th>
+              <th className="py-3 px-3">{t('Karta')}</th>
+              <th className="py-3 px-3">{t('Koszt')}</th>
+              <th className="py-3 px-3">{t('Set / Rzadkość')}</th>
+              <th className="py-3 px-3">{t('Stan / Język')}</th>
+              <th className="py-3 px-3">{t('Cena (Szt)')}</th>
+              <th className="py-3 px-3">{t('Ilość')}</th>
+              <th className="py-3 px-3">{t('Wartość')}</th>
+              <th className="py-3 px-3 text-right">{t('Akcje')}</th>
             </tr>
           </thead>
           <tbody>

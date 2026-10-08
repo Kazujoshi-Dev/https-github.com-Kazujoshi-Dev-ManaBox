@@ -119,6 +119,9 @@ export function mapSettingsRow(r: any): AppSettings {
     ...((r.collectionRowsPerPage ?? r.collection_rows_per_page) != null
       ? { collectionRowsPerPage: Number(r.collectionRowsPerPage ?? r.collection_rows_per_page) }
       : {}),
+    ...((r.language ?? r.ui_language) === 'pl' || (r.language ?? r.ui_language) === 'en'
+      ? { language: (r.language ?? r.ui_language) as 'pl' | 'en' }
+      : {}),
   };
 }
 

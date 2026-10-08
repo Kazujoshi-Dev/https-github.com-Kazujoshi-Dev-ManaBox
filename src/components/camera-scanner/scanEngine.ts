@@ -18,6 +18,7 @@ import {
   warpCardRegion
 } from './cardDetector';
 import { cleanCardTitle, getTesseractWorker } from './ocrProcessor';
+import { t } from '../../i18n';
 
 /** Pasek tytułu (nazwa karty, bez kosztu many po prawej). Marginesy z zapasem na niedokładne rogi. */
 const TITLE_REGION: CardRegion = { u0: 0.06, v0: 0.03, u1: 0.74, v1: 0.105 };
@@ -228,7 +229,7 @@ export async function recognizeCard(
     return { x: (w - gw) / 2, y: (h - gh) / 2, width: gw, height: gh };
   })();
 
-  opts.onStatus?.('Wykrywanie karty...');
+  opts.onStatus?.(t('Wykrywanie karty...'));
   let quad = opts.quad || detectCardInSource(src, guide)?.quad || null;
   const detected = Boolean(quad);
   if (!quad) quad = rectToQuad(guide);
@@ -247,14 +248,14 @@ export async function recognizeCard(
   const footerCanvas = prepareForOcr(footerRgba, 600, 150);
   frame.width = frame.height = 0; // zwolnienie pamięci
 
-  opts.onStatus?.('Odczyt nazwy i numeru karty...');
+  opts.onStatus?.(t('Odczyt nazwy i numeru karty...'));
   const [title, footerText] = await Promise.all([
     ocrTitle(titleCanvas).catch(() => ''),
     ocrFooter(footerCanvas).catch(() => '')
   ]);
   const footer = parseFooter(footerText);
 
-  opts.onStatus?.('Dopasowywanie w bazie kart...');
+  opts.onStatus?.(t('Dopasowywanie w bazie kart...'));
   const res = await fetchWithAuth('/api/scanner/delver-identify', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -266,7 +267,7 @@ export async function recognizeCard(
     })
   });
   const data: any = res.ok ? await res.json() : {};
-  if (res.status === 429) opts.onStatus?.('Skanujesz zbyt szybko, chwila przerwy.');
+  if (res.status === 429) opts.onStatus?.(t('Skanujesz zbyt szybko, chwila przerwy.'));
 
   return {
     rawText: title,

@@ -7,6 +7,7 @@ import {
   CardCropRect, 
   binarizeStripCanvas 
 } from './cvCardPipeline';
+import { t } from '../../i18n';
 
 /**
  * Native Web Audio synthesizer for scanner audio feedback (like Delver Lens beep / chime)
@@ -68,15 +69,15 @@ export async function getTesseractWorker(
 ): Promise<Worker> {
   if (!tesseractWorkerPromise) {
     tesseractWorkerPromise = (async () => {
-      onProgress?.(0.1, 'Inicjalizacja silnika OCR...');
+      onProgress?.(0.1, t('Inicjalizacja silnika OCR...'));
       const worker = await createWorker('eng', 1, {
         logger: (m) => {
           if (m.status === 'recognizing text') {
-            onProgress?.(0.3 + (m.progress || 0) * 0.5, 'Rozpoznawanie tekstu z kamery...');
+            onProgress?.(0.3 + (m.progress || 0) * 0.5, t('Rozpoznawanie tekstu z kamery...'));
           } else if (m.status === 'loading tesseract core') {
-            onProgress?.(0.15, 'Ładowanie modułu WebAssembly...');
+            onProgress?.(0.15, t('Ładowanie modułu WebAssembly...'));
           } else if (m.status === 'loading language traineddata') {
-            onProgress?.(0.25, 'Ładowanie bazy słowników MTG...');
+            onProgress?.(0.25, t('Ładowanie bazy słowników MTG...'));
           }
         },
       });
@@ -499,12 +500,12 @@ export async function scanCardWithDelverLens(
     };
   }
 
-  onProgress?.(0.15, 'Segmentacja sekcji karty (pasek nazwy, ilustracja, stopka)...');
+  onProgress?.(0.15, t('Segmentacja sekcji karty (pasek nazwy, ilustracja, stopka)...'));
 
   // 1. Ekstrakcja cech Delver Lens z wykadrowanej karty (dokładny wizjer 63x88mm)
   const features = extractAndSegmentDelverFeatures(source, cardCrop);
 
-  onProgress?.(0.30, `Wycinek karty | dHash [${features.perceptualHash.slice(0, 8)}...] | Rzadkość: ${features.detectedRarity.toUpperCase()}`);
+  onProgress?.(0.30, `${t('Wycinek karty')} | dHash [${features.perceptualHash.slice(0, 8)}...] | ${t('Rzadkość:')} ${features.detectedRarity.toUpperCase()}`);
 
   // 2. Szybki odczyt tekstu paska tytułowego (PSM 7) jako silna podpowiedź nazwy
   let titleHint = '';
@@ -517,7 +518,7 @@ export async function scanCardWithDelverLens(
   } catch (_) {}
 
   try {
-    onProgress?.(0.55, 'Identyfikacja wizualna i dopasowanie bazy Scryfall...');
+    onProgress?.(0.55, t('Identyfikacja wizualna i dopasowanie bazy Scryfall...'));
 
     const response = await fetchWithAuth('/api/scanner/delver-identify', {
       method: 'POST',
@@ -542,7 +543,7 @@ export async function scanCardWithDelverLens(
         // Dźwiękowy sygnał sukcesu jak w Delver Lens / ManaBox
         playScannerChime('success');
 
-        onProgress?.(1.0, `Zidentyfikowano: "${data.matchedCard.name}"`);
+        onProgress?.(1.0, t('Zidentyfikowano: "{name}"', { name: data.matchedCard.name }));
 
         return {
           rawText: data.cardName || data.matchedCard.name,
@@ -572,7 +573,7 @@ export async function scanCardWithDelverLens(
   }
 
   // Fallback awaryjny (np. offline)
-  onProgress?.(0.70, 'Fallback: lokalne dopasowywanie tytułu...');
+  onProgress?.(0.70, t('Fallback: lokalne dopasowywanie tytułu...'));
   const ocrFallback = await scanMtgCardFrame(source as any, frameWidth, frameHeight, onProgress, { cardCrop });
   
   if (ocrFallback.matchedCard) {
@@ -629,16 +630,16 @@ export async function scanMtgCardFrame(
     };
   }
 
-  onProgress?.(0.15, 'Kadrowanie karty i segmentacja pasków (Canvas)...');
+  onProgress?.(0.15, t('Kadrowanie karty i segmentacja pasków (Canvas)...'));
 
   // KROK 1 i 2 i 3: Kadrowanie karty, wyodrębnienie górnych 15% i dolnych 10% oraz binarizacja ImageData
   const strips = extractAndSegmentDelverFeatures(source, cardCrop);
 
-  onProgress?.(0.3, 'Inicjalizacja silnika OCR Tesseract...');
+  onProgress?.(0.3, t('Inicjalizacja silnika OCR Tesseract...'));
   const worker = await getTesseractWorker(onProgress);
 
   // KROK 4: Rozpoznanie OCR zoptymalizowanego czarno-białego paska tytułowego (górne 15%)
-  onProgress?.(0.45, 'Rozpoznawanie nazwy karty (Pasek górny 15% - Binarized)...');
+  onProgress?.(0.45, t('Rozpoznawanie nazwy karty (Pasek górny 15% - Binarized)...'));
   let ocrRes = await worker.recognize(strips.titleCanvas);
   let rawTitle = ocrRes.data.text || '';
   let confidence = ocrRes.data.confidence || 0;
@@ -646,7 +647,7 @@ export async function scanMtgCardFrame(
   // Fallback: jeśli binarizacja miała trudne tło (np. karta Extended Art lub mocne refleksy),
   // wykonaj pass z ulepszoną skalą szarości
   if (!rawTitle.trim() || confidence < 45) {
-    onProgress?.(0.6, 'Dostrajanie kontrastu (Pass 2: Adaptacyjna skala szarości)...');
+    onProgress?.(0.6, t('Dostrajanie kontrastu (Pass 2: Adaptacyjna skala szarości)...'));
     const grayTitleCanvas = preprocessCanvasForOcr(strips.cardCanvas, {
       x: Math.round(strips.cardCanvas.width * 0.04),
       y: Math.round(strips.cardCanvas.height * 0.035),
@@ -666,7 +667,7 @@ export async function scanMtgCardFrame(
   let detectedCollectorNumber: string | undefined;
 
   try {
-    onProgress?.(0.7, 'Rozpoznawanie kodu setu i numeru karty (Pasek dolny 10%)...');
+    onProgress?.(0.7, t('Rozpoznawanie kodu setu i numeru karty (Pasek dolny 10%)...'));
     const ocrBottom = await worker.recognize(strips.bottomCanvas);
     const extracted = extractSetAndCollectorNumber(ocrBottom.data.text || '');
     detectedSet = extracted.set;
@@ -677,14 +678,14 @@ export async function scanMtgCardFrame(
 
   const cleanedTitle = cleanCardTitle(rawTitle);
 
-  onProgress?.(0.85, 'Dopasowywanie w bazie Scryfall...');
+  onProgress?.(0.85, t('Dopasowywanie w bazie Scryfall...'));
   const { matchedCard, possibleCards } = await searchCardInScryfall(
     cleanedTitle,
     detectedSet,
     detectedCollectorNumber
   );
 
-  onProgress?.(1.0, matchedCard ? `Znaleziono: ${matchedCard.name}` : 'Gotowe');
+  onProgress?.(1.0, matchedCard ? t('Znaleziono: {name}', { name: matchedCard.name }) : t('Gotowe'));
 
   return {
     rawText: rawTitle.trim(),

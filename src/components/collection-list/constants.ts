@@ -1,4 +1,5 @@
 import { FilterOptions } from '../../types';
+import { tk } from '../../i18n';
 
 export interface CatalogColorTheme {
   bg: string;
@@ -20,18 +21,18 @@ export const COLOR_MAP: Record<string, CatalogColorTheme> = {
 };
 
 export const COLOR_PILLS = [
-  { id: 'ALL', label: 'Wszystkie' },
+  { id: 'ALL', label: tk('Wszystkie') },
   { id: 'W', label: 'W', bg: 'bg-amber-100 text-stone-900 font-bold' },
   { id: 'U', label: 'U', bg: 'bg-blue-600 text-white font-bold' },
   { id: 'B', label: 'B', bg: 'bg-stone-800 text-stone-200 font-bold' },
   { id: 'R', label: 'R', bg: 'bg-red-600 text-white font-bold' },
   { id: 'G', label: 'G', bg: 'bg-emerald-600 text-white font-bold' },
-  { id: 'C', label: 'Bezbarwne' },
-  { id: 'MULTI', label: 'Wielobarwne' }
+  { id: 'C', label: tk('Bezbarwne') },
+  { id: 'MULTI', label: tk('Wielobarwne') }
 ];
 
 export const CARD_TYPES = [
-  { value: 'ALL', label: 'Wszystkie typy' },
+  { value: 'ALL', label: tk('Wszystkie typy') },
   { value: 'Creature', label: 'Creature' },
   { value: 'Instant', label: 'Instant' },
   { value: 'Sorcery', label: 'Sorcery' },
@@ -42,7 +43,7 @@ export const CARD_TYPES = [
 ];
 
 export const CARD_RARITIES = [
-  { value: 'ALL', label: 'Wszystkie rzadkości' },
+  { value: 'ALL', label: tk('Wszystkie rzadkości') },
   { value: 'mythic', label: 'Mythic' },
   { value: 'rare', label: 'Rare' },
   { value: 'uncommon', label: 'Uncommon' },
@@ -50,12 +51,12 @@ export const CARD_RARITIES = [
 ];
 
 export const SORT_OPTIONS: { value: FilterOptions['sortBy']; label: string }[] = [
-  { value: 'price_desc', label: 'Cena: Najwyższa' },
-  { value: 'price_asc', label: 'Cena: Najniższa' },
-  { value: 'name', label: 'Nazwa A-Z' },
-  { value: 'cmc_desc', label: 'Mana CMC: Max' },
-  { value: 'cmc_asc', label: 'Mana CMC: Min' },
-  { value: 'added_desc', label: 'Najnowsze w kolekcji' }
+  { value: 'price_desc', label: tk('Cena: Najwyższa') },
+  { value: 'price_asc', label: tk('Cena: Najniższa') },
+  { value: 'name', label: tk('Nazwa A-Z') },
+  { value: 'cmc_desc', label: tk('Mana CMC: Max') },
+  { value: 'cmc_asc', label: tk('Mana CMC: Min') },
+  { value: 'added_desc', label: tk('Najnowsze w kolekcji') }
 ];
 
 export const DEFAULT_FILTERS: FilterOptions = {

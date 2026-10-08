@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { KeyRound, Loader2, AlertCircle, LogOut } from 'lucide-react';
 import { authApi } from '../services/api';
 import type { AuthUser } from '../types';
+import { useT } from '../i18n';
 
 interface Props {
   user: AuthUser;
@@ -11,6 +12,7 @@ interface Props {
 
 /** Ekran po resecie hasła przez administratora: trzeba ustawić własne hasło. */
 export const ForcePasswordChange: React.FC<Props> = ({ user, onChanged, onLogout }) => {
+  const t = useT();
   const [password, setPassword] = useState('');
   const [repeat, setRepeat] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -19,8 +21,8 @@ export const ForcePasswordChange: React.FC<Props> = ({ user, onChanged, onLogout
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
-    if (password.length < 8) return setError('Hasło musi mieć co najmniej 8 znaków.');
-    if (password !== repeat) return setError('Hasła nie są takie same.');
+    if (password.length < 8) return setError(t('Hasło musi mieć co najmniej 8 znaków.'));
+    if (password !== repeat) return setError(t('Hasła nie są takie same.'));
     setSaving(true);
     try {
       const res = await authApi.changePassword(password);
@@ -42,10 +44,9 @@ export const ForcePasswordChange: React.FC<Props> = ({ user, onChanged, onLogout
           <KeyRound className="w-6 h-6" />
         </div>
         <div className="space-y-1">
-          <h1 className="text-xl font-bold">Ustaw nowe hasło</h1>
+          <h1 className="text-xl font-bold">{t('Ustaw nowe hasło')}</h1>
           <p className="text-sm text-stone-400">
-            Cześć, <strong className="text-stone-200">{user.username}</strong>! Logujesz się hasłem tymczasowym od administratora.
-            Ustaw własne hasło, aby korzystać z konta.
+            {t('Cześć,')} <strong className="text-stone-200">{user.username}</strong>! {t('Logujesz się hasłem tymczasowym od administratora. Ustaw własne hasło, aby korzystać z konta.')}
           </p>
         </div>
 
@@ -57,19 +58,19 @@ export const ForcePasswordChange: React.FC<Props> = ({ user, onChanged, onLogout
         )}
 
         <label className="block space-y-1.5">
-          <span className="text-[11px] font-bold text-stone-400">Nowe hasło</span>
+          <span className="text-[11px] font-bold text-stone-400">{t('Nowe hasło')}</span>
           <input
             type="password"
             autoComplete="new-password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            placeholder="Co najmniej 8 znaków"
+            placeholder={t('Co najmniej 8 znaków')}
             className={input}
             autoFocus
           />
         </label>
         <label className="block space-y-1.5">
-          <span className="text-[11px] font-bold text-stone-400">Powtórz hasło</span>
+          <span className="text-[11px] font-bold text-stone-400">{t('Powtórz hasło')}</span>
           <input
             type="password"
             autoComplete="new-password"
@@ -85,7 +86,7 @@ export const ForcePasswordChange: React.FC<Props> = ({ user, onChanged, onLogout
           className="w-full h-12 rounded-xl bg-amber-500 hover:bg-amber-400 text-stone-950 font-bold text-sm flex items-center justify-center gap-2 cursor-pointer disabled:opacity-60"
         >
           {saving && <Loader2 className="w-4 h-4 animate-spin" />}
-          Zapisz hasło
+          {t('Zapisz hasło')}
         </button>
         <button
           type="button"
@@ -93,7 +94,7 @@ export const ForcePasswordChange: React.FC<Props> = ({ user, onChanged, onLogout
           className="w-full h-10 text-xs font-semibold text-stone-400 hover:text-stone-200 flex items-center justify-center gap-1.5 cursor-pointer"
         >
           <LogOut className="w-3.5 h-3.5" />
-          Wyloguj
+          {t('Wyloguj')}
         </button>
       </form>
     </div>

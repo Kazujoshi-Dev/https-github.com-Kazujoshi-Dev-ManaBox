@@ -24,6 +24,7 @@ import {
   Map as MapIcon,
   Loader2
 } from 'lucide-react';
+import { useT, plural } from '../i18n';
 
 interface WishlistProps {
   wishlist: WishlistItem[];
@@ -52,6 +53,7 @@ export const Wishlist: React.FC<WishlistProps> = ({
   showToast,
   onOpenSellerProfile,
 }) => {
+  const t = useT();
   const [isMapOpen, setIsMapOpen] = useState(false);
   const [copiedLink, setCopiedLink] = useState(false);
   const [copiedText, setCopiedText] = useState(false);
@@ -64,10 +66,10 @@ export const Wishlist: React.FC<WishlistProps> = ({
     try {
       await navigator.clipboard.writeText(publicShareUrl);
       setCopiedLink(true);
-      showToast?.('Skopiowano link do listy życzeń! Każdy bez konta może go otworzyć.');
+      showToast?.(t('Skopiowano link do listy życzeń! Każdy bez konta może go otworzyć.'));
       setTimeout(() => setCopiedLink(false), 2500);
     } catch {
-      showToast?.('Nie udało się skopiować. Zaznacz link i skopiuj ręcznie.');
+      showToast?.(t('Nie udało się skopiować. Zaznacz link i skopiuj ręcznie.'));
     }
   };
 
@@ -76,14 +78,14 @@ export const Wishlist: React.FC<WishlistProps> = ({
     const lines = wishlist.map(item =>
       `${item.targetQuantity}x ${item.card.name} (${item.card.set.toUpperCase()})${item.isFoil ? ' [FOIL]' : ''}`
     );
-    const header = `=== SZUKAM KART (${currentUser?.username || 'Gracz MTG'}) ===\nLista życzeń: ${publicShareUrl}\n\n`;
+    const header = `=== ${t('SZUKAM KART')} (${currentUser?.username || t('Gracz MTG')}) ===\n${t('Lista życzeń')}: ${publicShareUrl}\n\n`;
     try {
       await navigator.clipboard.writeText(header + lines.join('\n'));
       setCopiedText(true);
-      showToast?.('Skopiowano listę kart (.txt) do schowka!');
+      showToast?.(t('Skopiowano listę kart (.txt) do schowka!'));
       setTimeout(() => setCopiedText(false), 2500);
     } catch {
-      showToast?.('Nie udało się skopiować listy.');
+      showToast?.(t('Nie udało się skopiować listy.'));
     }
   };
 
@@ -97,23 +99,23 @@ export const Wishlist: React.FC<WishlistProps> = ({
     <div className="space-y-6">
       
       <PageHeader
-        title="Lista życzeń"
-        description="Karty, których szukasz do talii lub klasera."
+        title={t('Lista życzeń')}
+        description={t('Karty, których szukasz do talii lub klasera.')}
         meta={
           <>
-            <span><span className="text-stone-100 font-medium tabular-nums">{wishlist.length}</span> pozycji</span>
-            <span>Szacowany koszt <span className="text-stone-100 font-medium tabular-nums">{formatCurrency(totalWishlistCost, settings.currency)}</span></span>
+            <span><span className="text-stone-100 font-medium tabular-nums">{wishlist.length}</span> {plural(wishlist.length, ['pozycja', 'pozycje', 'pozycji'], ['entry', 'entries'])}</span>
+            <span>{t('Szacowany koszt')} <span className="text-stone-100 font-medium tabular-nums">{formatCurrency(totalWishlistCost, settings.currency)}</span></span>
           </>
         }
         actions={
           <>
-            <button type="button" onClick={() => setIsMapOpen(true)} className="btn btn-secondary" title="Kto w okolicy sprzedaje karty z Twojej listy">
+            <button type="button" onClick={() => setIsMapOpen(true)} className="btn btn-secondary" title={t('Kto w okolicy sprzedaje karty z Twojej listy')}>
               <MapIcon className="w-4 h-4" />
-              Mapa sprzedawców
+              {t('Mapa sprzedawców')}
             </button>
             <button type="button" onClick={onOpenSearchTab} className="btn btn-primary">
               <Plus className="w-4 h-4" strokeWidth={2.5} />
-              Dodaj karty
+              {t('Dodaj karty')}
             </button>
           </>
         }
@@ -121,30 +123,30 @@ export const Wishlist: React.FC<WishlistProps> = ({
 
       {publicShareSlug && (
         <div className="rounded-xl border border-stone-800 bg-stone-900 p-3 flex flex-col md:flex-row md:items-center gap-3">
-          <div className="flex items-center gap-2 text-sm text-stone-300 shrink-0" title="Wyślij go sprzedającym. Zobaczą, jakich kart szukasz, bez zakładania konta.">
+          <div className="flex items-center gap-2 text-sm text-stone-300 shrink-0" title={t('Wyślij go sprzedającym. Zobaczą, jakich kart szukasz, bez zakładania konta.')}>
             <Share2 className="w-4 h-4 text-stone-400" />
-            Link do Twojej listy
+            {t('Link do Twojej listy')}
           </div>
           <input
             type="text"
             readOnly
             value={publicShareUrl}
             onFocus={(e) => e.currentTarget.select()}
-            aria-label="Publiczny link do listy życzeń"
+            aria-label={t('Publiczny link do listy życzeń')}
             className="flex-1 min-w-0 h-9 bg-stone-950 border border-stone-800 rounded-lg px-3 text-sm text-stone-300 focus:outline-none focus:border-stone-600"
           />
           <div className="flex items-center gap-1 shrink-0">
             <button type="button" onClick={handleCopyLink} className="btn btn-primary">
               {copiedLink ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
-              {copiedLink ? 'Skopiowano' : 'Kopiuj link'}
+              {copiedLink ? t('Skopiowano') : t('Kopiuj link')}
             </button>
-            <a href={publicShareUrl} target="_blank" rel="noreferrer" className="btn btn-ghost" title="Zobacz, jak widzą listę inni">
+            <a href={publicShareUrl} target="_blank" rel="noreferrer" className="btn btn-ghost" title={t('Zobacz, jak widzą listę inni')}>
               <ExternalLink className="w-4 h-4" />
-              <span className="hidden lg:inline">Podgląd</span>
+              <span className="hidden lg:inline">{t('Podgląd')}</span>
             </a>
-            <button type="button" onClick={handleCopyTextList} disabled={wishlist.length === 0} className="btn btn-ghost" title="Kopiuj listę kart jako tekst">
+            <button type="button" onClick={handleCopyTextList} disabled={wishlist.length === 0} className="btn btn-ghost" title={t('Kopiuj listę kart jako tekst')}>
               {copiedText ? <Check className="w-4 h-4 text-emerald-400" /> : <FileText className="w-4 h-4" />}
-              <span className="hidden lg:inline">{copiedText ? 'Skopiowano' : 'Lista .txt'}</span>
+              <span className="hidden lg:inline">{copiedText ? t('Skopiowano') : t('Lista .txt')}</span>
             </button>
           </div>
         </div>
@@ -157,9 +159,9 @@ export const Wishlist: React.FC<WishlistProps> = ({
             <FolderHeart className="w-8 h-8" />
           </div>
           <div>
-            <h3 className="text-lg font-bold text-stone-200">Twoja lista życzeń jest pusta</h3>
+            <h3 className="text-lg font-bold text-stone-200">{t('Twoja lista życzeń jest pusta')}</h3>
             <p className="text-xs text-stone-400 mt-1 max-w-md mx-auto">
-              Możesz dodawać upatrzone karty bezpośrednio z poziomu wyszukiwarki Scryfall API.
+              {t('Możesz dodawać upatrzone karty bezpośrednio z poziomu wyszukiwarki Scryfall API.')}
             </p>
           </div>
           <button
@@ -167,7 +169,7 @@ export const Wishlist: React.FC<WishlistProps> = ({
             className="px-4 py-2.5 rounded-xl bg-amber-500 text-stone-950 font-bold text-xs inline-flex items-center gap-2 shadow-lg hover:bg-amber-400 transition-colors cursor-pointer"
           >
             <Plus className="w-4 h-4 stroke-[3]" />
-            <span>Przeglądaj karty na Scryfall</span>
+            <span>{t('Przeglądaj karty na Scryfall')}</span>
           </button>
         </div>
       ) : (
@@ -228,7 +230,7 @@ export const Wishlist: React.FC<WishlistProps> = ({
                       {item.isFoil && (
                         <span className="text-[11px] text-amber-300 bg-amber-500/10 px-1.5 py-0.5 rounded border border-amber-500/30 flex items-center gap-1">
                           <Sparkles className="w-2.5 h-2.5" />
-                          <span>Foil</span>
+                          <span>{t('Foil')}</span>
                         </span>
                       )}
                       <span className="text-[11px] text-stone-300 tabular-nums">
@@ -239,7 +241,7 @@ export const Wishlist: React.FC<WishlistProps> = ({
 
                   <div className="pt-2 border-t border-stone-800 flex items-center justify-between">
                     <div>
-                      <p className="text-[11px] text-stone-400">Rynkowo</p>
+                      <p className="text-[11px] text-stone-400">{t('Rynkowo')}</p>
                       <p className="text-sm tabular-nums font-bold text-emerald-400">
                         {formatCurrency(itemTotal, settings.currency)}
                       </p>
@@ -248,16 +250,16 @@ export const Wishlist: React.FC<WishlistProps> = ({
                     <div className="flex items-center gap-1.5">
                       <button
                         onClick={() => onMoveToCollection(item)}
-                        title="Przenieś do kolekcji (kupiłem tę kartę)"
+                        title={t('Przenieś do kolekcji (kupiłem tę kartę)')}
                         className="px-2.5 py-1.5 rounded-lg bg-emerald-950 hover:bg-emerald-900 text-emerald-300 border border-emerald-800 text-xs font-semibold flex items-center gap-1 transition-colors cursor-pointer"
                       >
                         <ArrowRightLeft className="w-3.5 h-3.5" />
-                        <span>Kupiono</span>
+                        <span>{t('Kupiono')}</span>
                       </button>
 
                       <button
                         onClick={() => onRemoveFromWishlist(item.id)}
-                        title="Usuń z listy życzeń"
+                        title={t('Usuń z listy życzeń')}
                         className="p-1.5 text-stone-400 hover:text-rose-400 hover:bg-stone-800 rounded-lg transition-colors cursor-pointer"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
