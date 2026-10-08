@@ -10,4 +10,9 @@ export interface DbUser {
   ban_reason?: string | null;
   must_change_password?: boolean;
   sale_hidden?: boolean;
+  /** Brak pola (stare konta w plikach JSON) oznacza adres potwierdzony. */
+  email_verified?: boolean;
 }
+
+/** Czy użytkownik potwierdził adres e-mail. */
+export const isEmailVerified = (u: Pick<DbUser, 'email_verified'> | null | undefined): boolean => Boolean(u) && u!.email_verified !== false;

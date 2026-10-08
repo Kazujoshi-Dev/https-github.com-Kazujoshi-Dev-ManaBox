@@ -85,5 +85,7 @@ export const CHANGELOG_DRAFTS: ChangelogDraft[] = [
   { id: '2026-10-08-main-binder', day: '2026-10-08', type: 'improved', area: 'Kolekcja', text: 'Nowe konta zaczynają z jednym „Klaserem Głównym”, którego nie można usunąć ani przemianować; możesz go za to opróżnić z kart przyciskiem „Opróżnij”.' },
   { id: '2026-10-08-catalog-edit', day: '2026-10-08', type: 'fixed', area: 'Kolekcja', text: 'Edycja katalogu (nazwa, opis, kolor, domyślny) znów się zapisuje, a karty przechodzą razem z katalogiem pod nową nazwę.' },
   { id: '2026-10-08-print-quick-add', day: '2026-10-08', type: 'new', area: 'Karty', text: 'Przy wyborze wydania karty przycisk „Dodaj do kolekcji” od razu dodaje to wydanie do domyślnego klasera.' },
-  { id: '2026-10-08-suggestion-images', day: '2026-10-08', type: 'fixed', area: 'Talie', text: 'W sugestiach EDHREC dla talii Commander znów wczytują się grafiki kart w sekcji „Najczęściej grane, których nie masz w talii”.' }
+  { id: '2026-10-08-suggestion-images', day: '2026-10-08', type: 'fixed', area: 'Talie', text: 'W sugestiach EDHREC dla talii Commander znów wczytują się grafiki kart w sekcji „Najczęściej grane, których nie masz w talii”.' },
+  { id: '2026-10-08-reset-hasla-email', day: '2026-10-08', type: 'new', area: 'Konto', text: 'Nie pamiętasz hasła? Na ekranie logowania poproś o link na swój adres e-mail i ustaw nowe hasło.' },
+  { id: '2026-10-08-potwierdzenie-email', day: '2026-10-08', type: 'new', area: 'Konto', text: 'Nowe konta aktywujesz linkiem wysłanym na adres e-mail podany przy rejestracji.' },
 ];

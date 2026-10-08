@@ -165,6 +165,19 @@ export async function initDb(): Promise<void> {
           ALTER TABLE users ADD COLUMN IF NOT EXISTS ban_reason VARCHAR(500);
           ALTER TABLE users ADD COLUMN IF NOT EXISTS must_change_password BOOLEAN NOT NULL DEFAULT FALSE;
           ALTER TABLE users ADD COLUMN IF NOT EXISTS sale_hidden BOOLEAN NOT NULL DEFAULT FALSE;
+          -- potwierdzenie adresu e-mail: konta sprzed tej zmiany (DEFAULT TRUE) są uznane za potwierdzone,
+          -- nowe konta zakładane są z wartością FALSE do kliknięcia linku z maila
+          ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verified BOOLEAN NOT NULL DEFAULT TRUE;
+          -- jednorazowe tokeny z linków e-mail (potwierdzenie adresu, reset hasła); w bazie tylko skrót SHA-256
+          CREATE TABLE IF NOT EXISTS email_tokens (
+            token_hash VARCHAR(64) PRIMARY KEY,
+            user_id VARCHAR(64) NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            purpose VARCHAR(16) NOT NULL,
+            expires_at TIMESTAMPTZ NOT NULL,
+            used_at TIMESTAMPTZ,
+            created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+          );
+          CREATE INDEX IF NOT EXISTS idx_email_tokens_user ON email_tokens(user_id, purpose);
           CREATE TABLE IF NOT EXISTS admin_audit_log (
             id BIGSERIAL PRIMARY KEY,
             admin_id VARCHAR(64),

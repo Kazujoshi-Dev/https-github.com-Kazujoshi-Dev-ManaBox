@@ -8,7 +8,8 @@ import fs from 'fs';
 import * as db from './src/server/db';
 import type { PriceUpdate } from './src/server/db';
 import { hashPassword, verifyPassword, generateToken, verifyToken } from './src/server/auth';
-import { rateLimit } from './src/server/rateLimit';
+import { rateLimit, hit, clientIp } from './src/server/rateLimit';
+import * as mailer from './src/server/mailer';
 import { getCommanderRecommendations } from './src/server/edhrec';
 import * as cards from './src/server/cards/cardStore';
 import * as hashes from './src/server/cards/hashIndex';
@@ -245,7 +246,20 @@ app.post(['/api/auth/register', '/api/auth/register/', '/api/register'], registe
 
     const { hash, salt } = hashPassword(password);
     const userId = `usr_${crypto.randomUUID()}`;
-    const user = await db.createUser(userId, email, username.trim(), hash, salt);
+    // Gdy serwer wysyła maile, konto trzeba potwierdzić linkiem; bez SMTP (np. lokalnie) działa od razu.
+    const requireVerification = mailer.isMailConfigured();
+    const user = await db.createUser(userId, email, username.trim(), hash, salt, !requireVerification);
+
+    if (requireVerification) {
+      let mailSent = true;
+      try {
+        await sendVerificationEmail(user);
+      } catch (err: any) {
+        mailSent = false;
+        console.error(`[Mail] Nie wysłano linku potwierdzającego do ${user.id}:`, err?.message || err);
+      }
+      return res.status(201).json({ pendingVerification: true, email: user.email, mailSent });
+    }
 
     const token = await issueSessionToken(req, user);
 
@@ -276,6 +290,13 @@ app.post(['/api/auth/login', '/api/auth/login/', '/api/login'], loginIpLimiter, 
     // Informację o blokadzie pokazujemy dopiero po poprawnym haśle (nie ujawniamy jej obcym)
     if (db.isBanActive(user)) {
       return res.status(403).json({ error: banMessage(user), code: 'BANNED' });
+    }
+
+    if (!db.isEmailVerified(user)) {
+      return res.status(403).json({
+        error: 'Najpierw potwierdź adres e-mail: kliknij link, który wysłaliśmy po rejestracji.',
+        code: 'EMAIL_NOT_VERIFIED'
+      });
     }
 
     const token = await issueSessionToken(req, user);
@@ -385,6 +406,137 @@ app.post('/api/auth/logout-all', authMiddleware, async (req, res) => {
     res.json({ success: true, revoked });
   } catch (err: any) {
     sendServerError(res, err, '/api/auth/logout-all');
+  }
+});
+
+// --- POTWIERDZENIE E-MAIL I RESET HASŁA ---
+// Linki w mailach prowadzą na /potwierdz-email?token=… i /nowe-haslo?token=…; strona wysyła token tutaj.
+// Odpowiedzi na prośby o link są zawsze takie same, żeby nie zdradzać, czy konto o danym adresie istnieje.
+
+const VERIFY_TOKEN_HOURS = 24;
+const RESET_TOKEN_MINUTES = 60;
+
+async function sendVerificationEmail(user: { id: string; email: string; username: string }) {
+  const token = await db.createEmailToken(user.id, 'verify', VERIFY_TOKEN_HOURS * 60 * 60_000);
+  await mailer.sendMail(mailer.verifyEmailMessage(user.email, user.username, token, VERIFY_TOKEN_HOURS));
+}
+
+/** Prośby o link: limit na IP i osobno na adres e-mail (max kilka maili na godzinę do jednej skrzynki). */
+function emailRequestLimited(req: express.Request, res: express.Response, name: string, email: string): boolean {
+  const retryIp = hit(`${name}-ip`, clientIp(req), 60 * 60_000, 10);
+  const retryEmail = email ? hit(`${name}-email`, email, 60 * 60_000, 3) : 0;
+  const retry = Math.max(retryIp, retryEmail);
+  if (retry > 0) {
+    res.setHeader('Retry-After', String(retry));
+    res.status(429).json({ error: 'Zbyt wiele próśb o wysłanie linku. Spróbuj ponownie za jakiś czas.', retryAfter: retry });
+    return true;
+  }
+  return false;
+}
+
+const normalizeEmail = (v: unknown) => (typeof v === 'string' ? v.toLowerCase().trim().slice(0, 254) : '');
+const isEmailLike = (e: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e);
+
+const emailTokenLimiter = rateLimit({
+  name: 'email-token', windowMs: 15 * 60_000, max: 30,
+  message: 'Zbyt wiele prób. Spróbuj ponownie za kilkanaście minut.'
+});
+
+app.post('/api/auth/resend-verification', async (req, res) => {
+  try {
+    const email = normalizeEmail(req.body?.email);
+    if (!isEmailLike(email)) return res.status(400).json({ error: 'Podaj poprawny adres e-mail.' });
+    if (emailRequestLimited(req, res, 'resend-verification', email)) return;
+    const user = await db.getUserByEmail(email);
+    if (user && !db.isEmailVerified(user) && mailer.isMailConfigured()) {
+      // Bez czekania na SMTP: czas odpowiedzi nie zdradza, czy konto istnieje
+      sendVerificationEmail(user).catch((err) =>
+        console.error(`[Mail] Nie wysłano ponownie linku potwierdzającego do ${user.id}:`, err?.message || err)
+      );
+    }
+    res.json({ success: true });
+  } catch (err) {
+    sendServerError(res, err, '/api/auth/resend-verification');
+  }
+});
+
+app.post('/api/auth/verify-email', emailTokenLimiter, async (req, res) => {
+  try {
+    const userId = await db.consumeEmailToken(req.body?.token, 'verify');
+    if (!userId) {
+      return res.status(400).json({
+        error: 'Link jest nieprawidłowy, wygasł albo został już użyty. Jeśli konto jest już potwierdzone, po prostu się zaloguj.',
+        code: 'INVALID_TOKEN'
+      });
+    }
+    const user = await db.updateUserFields(userId, { email_verified: true });
+    if (!user) return res.status(400).json({ error: 'To konto już nie istnieje.', code: 'INVALID_TOKEN' });
+    db.invalidateEmailTokens(user.id, 'verify').catch(() => undefined);
+    console.log(`[Konta] Użytkownik ${user.id} potwierdził adres e-mail.`);
+    // Kliknięcie linku od razu loguje (chyba że konto jest zablokowane)
+    if (db.isBanActive(user)) return res.json({ success: true });
+    const token = await issueSessionToken(req, user);
+    res.json({ success: true, token, user: publicUser(user) });
+  } catch (err) {
+    sendServerError(res, err, '/api/auth/verify-email');
+  }
+});
+
+app.post('/api/auth/forgot-password', async (req, res) => {
+  try {
+    const email = normalizeEmail(req.body?.email);
+    if (!isEmailLike(email)) return res.status(400).json({ error: 'Podaj poprawny adres e-mail.' });
+    if (!mailer.isMailConfigured()) {
+      return res.status(503).json({ error: 'Reset hasła przez e-mail jest chwilowo niedostępny. Napisz do administratora.' });
+    }
+    if (emailRequestLimited(req, res, 'forgot-password', email)) return;
+    const user = await db.getUserByEmail(email);
+    if (user) {
+      (async () => {
+        const token = await db.createEmailToken(user.id, 'reset', RESET_TOKEN_MINUTES * 60_000);
+        await mailer.sendMail(mailer.resetPasswordMessage(user.email, user.username, token, RESET_TOKEN_MINUTES));
+        console.log(`[Konta] Wysłano link resetu hasła do ${user.id}.`);
+      })().catch((err) => console.error(`[Mail] Nie wysłano linku resetu hasła do ${user.id}:`, err?.message || err));
+    }
+    res.json({ success: true });
+  } catch (err) {
+    sendServerError(res, err, '/api/auth/forgot-password');
+  }
+});
+
+app.post('/api/auth/reset-password/check', emailTokenLimiter, async (req, res) => {
+  try {
+    res.json({ valid: await db.isEmailTokenValid(req.body?.token, 'reset') });
+  } catch (err) {
+    sendServerError(res, err, '/api/auth/reset-password/check');
+  }
+});
+
+app.post('/api/auth/reset-password', emailTokenLimiter, async (req, res) => {
+  try {
+    const { token: rawToken, newPassword } = req.body || {};
+    if (typeof newPassword !== 'string' || newPassword.length < 8 || newPassword.length > 200) {
+      return res.status(400).json({ error: 'Nowe hasło musi mieć co najmniej 8 znaków.' });
+    }
+    const userId = await db.consumeEmailToken(rawToken, 'reset');
+    if (!userId) {
+      return res.status(400).json({ error: 'Link jest nieprawidłowy, wygasł albo został już użyty. Poproś o nowy.', code: 'INVALID_TOKEN' });
+    }
+    const { hash, salt } = hashPassword(newPassword);
+    // Link z maila dowodzi dostępu do skrzynki, więc przy okazji potwierdza adres e-mail
+    const user = await db.updateUserFields(userId, { password_hash: hash, salt, must_change_password: false, email_verified: true });
+    if (!user) return res.status(400).json({ error: 'To konto już nie istnieje.', code: 'INVALID_TOKEN' });
+    await db.revokeAllSessions(user.id);
+    await db.invalidateEmailTokens(user.id, 'reset');
+    console.log(`[Konta] Użytkownik ${user.id} ustawił nowe hasło przez link z e-maila.`);
+    mailer
+      .sendMail(mailer.passwordChangedMessage(user.email, user.username))
+      .catch((err) => console.warn(`[Mail] Nie wysłano powiadomienia o zmianie hasła do ${user.id}:`, err?.message || err));
+    if (db.isBanActive(user)) return res.json({ success: true });
+    const token = await issueSessionToken(req, user);
+    res.json({ success: true, token, user: publicUser(user) });
+  } catch (err) {
+    sendServerError(res, err, '/api/auth/reset-password');
   }
 });
 
@@ -2097,6 +2249,20 @@ admin.post('/users/:id/reset-password', async (req, res) => {
   }
 });
 
+// Ręczne potwierdzenie adresu e-mail (np. gdy mail z linkiem nie dociera)
+admin.post('/users/:id/verify-email', async (req, res) => {
+  try {
+    const target = await adminTarget(req, res, { allowAdmins: true });
+    if (!target) return;
+    await db.updateUserFields(target.id, { email_verified: true });
+    await db.invalidateEmailTokens(target.id, 'verify');
+    await audit(req, 'verify_email', target);
+    res.json({ success: true });
+  } catch (err) {
+    sendServerError(res, err, '/api/admin/users/:id/verify-email');
+  }
+});
+
 admin.post('/users/:id/ban', async (req, res) => {
   try {
     const target = await adminTarget(req, res);
@@ -3008,6 +3174,10 @@ async function startServer() {
   const purge = () => db.purgeOldSessions().catch((err) => console.warn('[Sesje] Czyszczenie nieudane:', err?.message || err));
   purge();
   setInterval(purge, 24 * 60 * 60 * 1000).unref();
+  const purgeTokens = () => db.purgeOldEmailTokens().catch((err) => console.warn('[Mail] Czyszczenie tokenów nieudane:', err?.message || err));
+  purgeTokens();
+  setInterval(purgeTokens, 24 * 60 * 60 * 1000).unref();
+  mailer.verifyMailer().catch(() => {});
   if (process.env.NODE_ENV !== 'production') {
     // Vite ładowany tylko w trybie deweloperskim — w produkcji nie jest potrzebny.
     const { createServer: createViteServer } = await import('vite');

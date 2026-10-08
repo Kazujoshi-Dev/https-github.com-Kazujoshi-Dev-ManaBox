@@ -67,6 +67,29 @@ export const authApi = {
   }
 };
 
+/** Zapytania bez logowania: linki z e-maili (potwierdzenie adresu, reset hasła). */
+const publicAuthPost = async <T,>(url: string, body: unknown, fallback: string): Promise<T> => {
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body)
+  });
+  return jsonOrThrow<T>(res, fallback);
+};
+
+export const emailAuthApi = {
+  resendVerification: (email: string) =>
+    publicAuthPost<{ success: true }>('/api/auth/resend-verification', { email }, 'Nie udało się wysłać linku.'),
+  verifyEmail: (token: string) =>
+    publicAuthPost<{ success: true; token?: string; user?: AuthUser }>('/api/auth/verify-email', { token }, 'Nie udało się potwierdzić adresu.'),
+  forgotPassword: (email: string) =>
+    publicAuthPost<{ success: true }>('/api/auth/forgot-password', { email }, 'Nie udało się wysłać linku.'),
+  checkResetToken: (token: string) =>
+    publicAuthPost<{ valid: boolean }>('/api/auth/reset-password/check', { token }, 'Nie udało się sprawdzić linku.'),
+  resetPassword: (token: string, newPassword: string) =>
+    publicAuthPost<{ success: true; token?: string; user?: AuthUser }>('/api/auth/reset-password', { token, newPassword }, 'Nie udało się zmienić hasła.')
+};
+
 /** Panel administratora — serwer sprawdza uprawnienia przy każdym zapytaniu. */
 const adminPost = async (url: string, body: unknown = {}, method = 'POST') => {
   const res = await fetchWithAuth(url, {
@@ -90,6 +113,7 @@ export const adminApi = {
     adminPost(`/api/admin/users/${encodeURIComponent(id)}/ban`, body),
   unban: (id: string) => adminPost(`/api/admin/users/${encodeURIComponent(id)}/unban`),
   logoutAll: (id: string) => adminPost(`/api/admin/users/${encodeURIComponent(id)}/logout-all`),
+  verifyEmail: (id: string) => adminPost(`/api/admin/users/${encodeURIComponent(id)}/verify-email`),
   setSaleHidden: (id: string, hidden: boolean) => adminPost(`/api/admin/users/${encodeURIComponent(id)}/sale-hidden`, { hidden }),
   remove: (id: string, confirmUsername: string) => adminPost(`/api/admin/users/${encodeURIComponent(id)}`, { confirmUsername }, 'DELETE')
 };

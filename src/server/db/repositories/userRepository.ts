@@ -83,7 +83,8 @@ export async function createUser(
   email: string,
   username: string,
   passwordHash: string,
-  salt: string
+  salt: string,
+  emailVerified = true
 ): Promise<DbUser> {
   const cleanEmail = email.toLowerCase().trim();
   const newUser: DbUser = {
@@ -92,7 +93,8 @@ export async function createUser(
     username: username.trim(),
     password_hash: passwordHash,
     salt,
-    created_at: new Date().toISOString()
+    created_at: new Date().toISOString(),
+    email_verified: emailVerified
   };
 
   return withDb(
@@ -102,9 +104,9 @@ export async function createUser(
       try {
         await client.query('BEGIN');
         await client.query(
-          `INSERT INTO users (id, email, username, password_hash, salt, created_at)
-           VALUES ($1, $2, $3, $4, $5, $6)`,
-          [newUser.id, newUser.email, newUser.username, newUser.password_hash, newUser.salt, newUser.created_at]
+          `INSERT INTO users (id, email, username, password_hash, salt, created_at, email_verified)
+           VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+          [newUser.id, newUser.email, newUser.username, newUser.password_hash, newUser.salt, newUser.created_at, emailVerified]
         );
         for (const cat of DEFAULT_CATALOGS(id)) await insertCatalog(client, id, cat);
         await client.query('COMMIT');

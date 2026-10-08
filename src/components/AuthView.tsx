@@ -4,16 +4,27 @@ import { BinderShowcase } from './auth/BinderShowcase';
 import { FeatureBento } from './auth/FeatureBento';
 import { useShowcaseCards } from './auth/useShowcaseCards';
 import { AuthUser } from '../types';
-import { Lock, Mail, User, ArrowRight, CheckCircle2, AlertCircle, Loader2 } from 'lucide-react';
+import { emailAuthApi } from '../services/api';
+import { Lock, Mail, User, ArrowRight, ArrowLeft, CheckCircle2, AlertCircle, Loader2, MailCheck } from 'lucide-react';
 
 interface AuthViewProps {
   onAuthSuccess: (user: AuthUser, token: string) => void;
+  /** Ekran startowy formularza, np. „forgot” po wygaśnięciu linku resetu hasła. */
+  initialMode?: AuthMode;
 }
 
-type AuthMode = 'login' | 'register';
+type AuthMode = 'login' | 'register' | 'forgot';
 
-export const AuthView: React.FC<AuthViewProps> = ({ onAuthSuccess }) => {
-  const [mode, setMode] = useState<AuthMode>('login');
+/** Odstęp między kolejnymi prośbami o link z ekranu „Sprawdź skrzynkę”. */
+const RESEND_COOLDOWN_S = 60;
+
+export const AuthView: React.FC<AuthViewProps> = ({ onAuthSuccess, initialMode = 'login' }) => {
+  const [mode, setMode] = useState<AuthMode>(initialMode);
+  // Po rejestracji (albo próbie logowania na niepotwierdzone konto): adres, na który poszedł link
+  const [pendingEmail, setPendingEmail] = useState<string | null>(null);
+  const [canResend, setCanResend] = useState(false);
+  const [resendIn, setResendIn] = useState(0);
+  const [resending, setResending] = useState(false);
   const [email, setEmail] = useState('');
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
@@ -39,10 +50,51 @@ export const AuthView: React.FC<AuthViewProps> = ({ onAuthSuccess }) => {
     }
   }, [focusUsername, mode]);
 
+  useEffect(() => {
+    if (resendIn <= 0) return;
+    const t = setTimeout(() => setResendIn((s) => s - 1), 1000);
+    return () => clearTimeout(t);
+  }, [resendIn]);
+
+  const resendVerification = async (target: string) => {
+    setError(null);
+    setSuccessMsg(null);
+    setResending(true);
+    try {
+      await emailAuthApi.resendVerification(target);
+      setSuccessMsg('Wysłaliśmy nowy link. Sprawdź skrzynkę, także folder spam.');
+      setResendIn(RESEND_COOLDOWN_S);
+    } catch (err: any) {
+      setError(err.message || 'Nie udało się wysłać linku.');
+    } finally {
+      setResending(false);
+    }
+  };
+
+  const handleForgot = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    setSuccessMsg(null);
+    if (!email.trim()) {
+      setError('Podaj adres e-mail użyty przy rejestracji.');
+      return;
+    }
+    setIsLoading(true);
+    try {
+      await emailAuthApi.forgotPassword(email.trim().toLowerCase());
+      setSuccessMsg('Jeśli konto o tym adresie istnieje, wysłaliśmy na nie link do ustawienia nowego hasła. Link jest ważny 60 minut.');
+    } catch (err: any) {
+      setError(err.message || 'Nie udało się wysłać linku.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
     setSuccessMsg(null);
+    setCanResend(false);
 
     if (!email.trim() || !password.trim()) {
       setError('Podaj adres email oraz hasło.');
@@ -89,7 +141,19 @@ export const AuthView: React.FC<AuthViewProps> = ({ onAuthSuccess }) => {
       }
 
       if (!res.ok) {
+        if (data?.code === 'EMAIL_NOT_VERIFIED') {
+          setCanResend(true);
+        }
         throw new Error(data?.error || `Błąd autoryzacji (${res.status})`);
+      }
+
+      if (data?.pendingVerification) {
+        setPendingEmail(data.email || email.trim().toLowerCase());
+        setPassword('');
+        if (data.mailSent === false) {
+          setError('Konto zostało założone, ale nie udało się wysłać maila. Kliknij „Wyślij link ponownie”.');
+        }
+        return;
       }
 
       if (data?.token && data?.user) {
@@ -114,6 +178,8 @@ export const AuthView: React.FC<AuthViewProps> = ({ onAuthSuccess }) => {
     setMode(m);
     setError(null);
     setSuccessMsg(null);
+    setCanResend(false);
+    setPendingEmail(null);
   };
   const inputCls =
     'w-full bg-stone-950 border border-stone-700 focus:border-amber-400 focus:ring-2 focus:ring-amber-400/30 rounded-xl pl-10 pr-3.5 py-3 text-base sm:text-sm text-stone-100 placeholder-stone-500 focus:outline-none transition-colors';
@@ -155,111 +221,230 @@ export const AuthView: React.FC<AuthViewProps> = ({ onAuthSuccess }) => {
 
           {/* Formularz */}
           <div ref={formCardRef} className="rounded-2xl bg-stone-900/90 backdrop-blur-md ring-1 ring-stone-700/60 p-5 sm:p-6 space-y-5 scroll-mt-6 shadow-[0_24px_60px_-24px_rgba(12,10,9,0.9)]">
-            <div className="grid grid-cols-2 gap-1 p-1 rounded-xl bg-stone-950 ring-1 ring-stone-800" role="tablist" aria-label="Logowanie lub rejestracja">
-              {(['login', 'register'] as AuthMode[]).map((m) => (
+            {pendingEmail ? (
+              <div className="space-y-4">
+                <div className="w-12 h-12 rounded-2xl bg-amber-400/15 ring-1 ring-amber-400/30 text-amber-300 flex items-center justify-center">
+                  <MailCheck className="w-6 h-6" aria-hidden="true" />
+                </div>
+                <div className="space-y-1.5">
+                  <h2 className="text-lg font-bold text-stone-50">Sprawdź skrzynkę</h2>
+                  <p className="text-sm text-stone-300 leading-relaxed">
+                    Wysłaliśmy link aktywacyjny na <strong className="text-stone-50 break-all">{pendingEmail}</strong>. Kliknij go, aby potwierdzić adres i zalogować się. Link jest ważny 24 godziny.
+                  </p>
+                  <p className="text-xs text-stone-500">Nie widzisz maila? Zajrzyj do folderu spam albo „Oferty”.</p>
+                </div>
+                {error && (
+                  <p role="alert" className="p-3 rounded-xl bg-rose-500/10 ring-1 ring-rose-500/30 flex items-start gap-2.5 text-sm text-rose-200">
+                    <AlertCircle className="w-4 h-4 shrink-0 text-rose-300 mt-0.5" aria-hidden="true" />
+                    <span>{error}</span>
+                  </p>
+                )}
+                {successMsg && (
+                  <p role="status" className="p-3 rounded-xl bg-emerald-500/10 ring-1 ring-emerald-500/30 flex items-start gap-2.5 text-sm text-emerald-200">
+                    <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-300 mt-0.5" aria-hidden="true" />
+                    <span>{successMsg}</span>
+                  </p>
+                )}
                 <button
-                  key={m}
                   type="button"
-                  role="tab"
-                  aria-selected={mode === m}
-                  onClick={() => switchMode(m)}
-                  className={`h-10 rounded-lg text-sm font-semibold transition-colors cursor-pointer ${
-                    mode === m ? 'bg-stone-800 text-stone-50 shadow-sm' : 'text-stone-400 hover:text-stone-200'
-                  }`}
+                  disabled={resending || resendIn > 0}
+                  onClick={() => resendVerification(pendingEmail)}
+                  className="w-full h-11 rounded-xl bg-stone-800 hover:bg-stone-700 text-stone-100 text-sm font-semibold flex items-center justify-center gap-2 cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
                 >
-                  {m === 'login' ? 'Logowanie' : 'Załóż konto'}
+                  {resending && <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />}
+                  {resendIn > 0 ? <span className="tabular-nums">Wyślij ponownie za {resendIn} s</span> : 'Wyślij link ponownie'}
                 </button>
-              ))}
-            </div>
-
-            <form onSubmit={handleSubmit} className="space-y-4" noValidate={false}>
-              {mode === 'register' && (
+                <button
+                  type="button"
+                  onClick={() => switchMode('login')}
+                  className="w-full h-10 text-sm font-medium text-stone-400 hover:text-stone-200 flex items-center justify-center gap-1.5 cursor-pointer"
+                >
+                  <ArrowLeft className="w-4 h-4" aria-hidden="true" />
+                  Wróć do logowania
+                </button>
+              </div>
+            ) : mode === 'forgot' ? (
+              <form onSubmit={handleForgot} className="space-y-4">
+                <div className="space-y-1.5">
+                  <h2 className="text-lg font-bold text-stone-50">Nie pamiętasz hasła?</h2>
+                  <p className="text-sm text-stone-400 leading-relaxed">Podaj adres e-mail użyty przy rejestracji. Wyślemy na niego link do ustawienia nowego hasła.</p>
+                </div>
                 <div>
-                  <label htmlFor="auth-username" className={labelCls}>Nazwa gracza</label>
+                  <label htmlFor="auth-forgot-email" className={labelCls}>Adres e-mail</label>
                   <div className="relative">
-                    <User className="w-4 h-4 text-stone-500 absolute left-3.5 top-1/2 -translate-y-1/2" aria-hidden="true" />
+                    <Mail className="w-4 h-4 text-stone-500 absolute left-3.5 top-1/2 -translate-y-1/2" aria-hidden="true" />
                     <input
-                      id="auth-username"
-                      type="text"
+                      id="auth-forgot-email"
+                      type="email"
                       required
-                      ref={usernameRef}
-                      autoComplete="username"
-                      value={username}
-                      onChange={(e) => setUsername(e.target.value)}
+                      autoComplete="email"
+                      autoFocus
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
                       className={inputCls}
-                      aria-describedby="auth-username-help"
                     />
                   </div>
-                  <p id="auth-username-help" className="text-xs text-stone-500 mt-1.5">Widoczna dla innych graczy, np. w ofercie sprzedaży.</p>
                 </div>
-              )}
-
-              <div>
-                <label htmlFor="auth-email" className={labelCls}>Adres e-mail</label>
-                <div className="relative">
-                  <Mail className="w-4 h-4 text-stone-500 absolute left-3.5 top-1/2 -translate-y-1/2" aria-hidden="true" />
-                  <input
-                    id="auth-email"
-                    type="email"
-                    required
-                    autoComplete="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    className={inputCls}
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label htmlFor="auth-password" className={labelCls}>Hasło</label>
-                <div className="relative">
-                  <Lock className="w-4 h-4 text-stone-500 absolute left-3.5 top-1/2 -translate-y-1/2" aria-hidden="true" />
-                  <input
-                    id="auth-password"
-                    type="password"
-                    required
-                    autoComplete={mode === 'register' ? 'new-password' : 'current-password'}
-                    minLength={mode === 'register' ? 8 : undefined}
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    className={inputCls}
-                    aria-describedby={mode === 'register' ? 'auth-password-help' : undefined}
-                  />
-                </div>
-                {mode === 'register' && <p id="auth-password-help" className="text-xs text-stone-500 mt-1.5">Co najmniej 8 znaków.</p>}
-              </div>
-
-              {error && (
-                <p role="alert" className="p-3 rounded-xl bg-rose-500/10 ring-1 ring-rose-500/30 flex items-start gap-2.5 text-sm text-rose-200">
-                  <AlertCircle className="w-4 h-4 shrink-0 text-rose-300 mt-0.5" aria-hidden="true" />
-                  <span>{error}</span>
-                </p>
-              )}
-              {successMsg && (
-                <p role="status" className="p-3 rounded-xl bg-emerald-500/10 ring-1 ring-emerald-500/30 flex items-start gap-2.5 text-sm text-emerald-200">
-                  <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-300 mt-0.5" aria-hidden="true" />
-                  <span>{successMsg}</span>
-                </p>
-              )}
-
-              <button
-                type="submit"
-                disabled={isLoading}
-                className="w-full h-12 px-4 rounded-xl bg-amber-400 hover:bg-amber-300 active:scale-[0.98] text-stone-950 font-bold text-sm flex items-center justify-center gap-2 transition-[background-color,transform] cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
-              >
-                {isLoading ? (
-                  <>
-                    <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />
-                    <span>Chwileczkę...</span>
-                  </>
-                ) : (
-                  <>
-                    <span>{mode === 'register' ? 'Załóż konto' : 'Zaloguj się'}</span>
-                    <ArrowRight className="w-4 h-4" aria-hidden="true" />
-                  </>
+                {error && (
+                  <p role="alert" className="p-3 rounded-xl bg-rose-500/10 ring-1 ring-rose-500/30 flex items-start gap-2.5 text-sm text-rose-200">
+                    <AlertCircle className="w-4 h-4 shrink-0 text-rose-300 mt-0.5" aria-hidden="true" />
+                    <span>{error}</span>
+                  </p>
                 )}
-              </button>
-            </form>
+                {successMsg && (
+                  <p role="status" className="p-3 rounded-xl bg-emerald-500/10 ring-1 ring-emerald-500/30 flex items-start gap-2.5 text-sm text-emerald-200">
+                    <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-300 mt-0.5" aria-hidden="true" />
+                    <span>{successMsg}</span>
+                  </p>
+                )}
+                <button
+                  type="submit"
+                  disabled={isLoading}
+                  className="w-full h-12 px-4 rounded-xl bg-amber-400 hover:bg-amber-300 active:scale-[0.98] text-stone-950 font-bold text-sm flex items-center justify-center gap-2 transition-[background-color,transform] cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
+                >
+                  {isLoading ? <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" /> : <Mail className="w-4 h-4" aria-hidden="true" />}
+                  <span>{isLoading ? 'Chwileczkę...' : 'Wyślij link'}</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => switchMode('login')}
+                  className="w-full h-10 text-sm font-medium text-stone-400 hover:text-stone-200 flex items-center justify-center gap-1.5 cursor-pointer"
+                >
+                  <ArrowLeft className="w-4 h-4" aria-hidden="true" />
+                  Wróć do logowania
+                </button>
+              </form>
+            ) : (
+              <>
+              <div className="grid grid-cols-2 gap-1 p-1 rounded-xl bg-stone-950 ring-1 ring-stone-800" role="tablist" aria-label="Logowanie lub rejestracja">
+                {(['login', 'register'] as AuthMode[]).map((m) => (
+                  <button
+                    key={m}
+                    type="button"
+                    role="tab"
+                    aria-selected={mode === m}
+                    onClick={() => switchMode(m)}
+                    className={`h-10 rounded-lg text-sm font-semibold transition-colors cursor-pointer ${
+                      mode === m ? 'bg-stone-800 text-stone-50 shadow-sm' : 'text-stone-400 hover:text-stone-200'
+                    }`}
+                  >
+                    {m === 'login' ? 'Logowanie' : 'Załóż konto'}
+                  </button>
+                ))}
+              </div>
+
+              <form onSubmit={handleSubmit} className="space-y-4" noValidate={false}>
+                {mode === 'register' && (
+                  <div>
+                    <label htmlFor="auth-username" className={labelCls}>Nazwa gracza</label>
+                    <div className="relative">
+                      <User className="w-4 h-4 text-stone-500 absolute left-3.5 top-1/2 -translate-y-1/2" aria-hidden="true" />
+                      <input
+                        id="auth-username"
+                        type="text"
+                        required
+                        ref={usernameRef}
+                        autoComplete="username"
+                        value={username}
+                        onChange={(e) => setUsername(e.target.value)}
+                        className={inputCls}
+                        aria-describedby="auth-username-help"
+                      />
+                    </div>
+                    <p id="auth-username-help" className="text-xs text-stone-500 mt-1.5">Widoczna dla innych graczy, np. w ofercie sprzedaży.</p>
+                  </div>
+                )}
+
+                <div>
+                  <label htmlFor="auth-email" className={labelCls}>Adres e-mail</label>
+                  <div className="relative">
+                    <Mail className="w-4 h-4 text-stone-500 absolute left-3.5 top-1/2 -translate-y-1/2" aria-hidden="true" />
+                    <input
+                      id="auth-email"
+                      type="email"
+                      required
+                      autoComplete="email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      className={inputCls}
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label htmlFor="auth-password" className={labelCls}>Hasło</label>
+                  <div className="relative">
+                    <Lock className="w-4 h-4 text-stone-500 absolute left-3.5 top-1/2 -translate-y-1/2" aria-hidden="true" />
+                    <input
+                      id="auth-password"
+                      type="password"
+                      required
+                      autoComplete={mode === 'register' ? 'new-password' : 'current-password'}
+                      minLength={mode === 'register' ? 8 : undefined}
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      className={inputCls}
+                      aria-describedby={mode === 'register' ? 'auth-password-help' : undefined}
+                    />
+                  </div>
+                  {mode === 'register' && <p id="auth-password-help" className="text-xs text-stone-500 mt-1.5">Co najmniej 8 znaków.</p>}
+                  {mode === 'login' && (
+                    <div className="mt-2 text-right">
+                      <button
+                        type="button"
+                        onClick={() => switchMode('forgot')}
+                        className="text-xs font-medium text-stone-400 hover:text-amber-300 underline-offset-2 hover:underline cursor-pointer"
+                      >
+                        Nie pamiętasz hasła?
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                {error && (
+                  <p role="alert" className="p-3 rounded-xl bg-rose-500/10 ring-1 ring-rose-500/30 flex items-start gap-2.5 text-sm text-rose-200">
+                    <AlertCircle className="w-4 h-4 shrink-0 text-rose-300 mt-0.5" aria-hidden="true" />
+                    <span>{error}</span>
+                  </p>
+                )}
+                {successMsg && (
+                  <p role="status" className="p-3 rounded-xl bg-emerald-500/10 ring-1 ring-emerald-500/30 flex items-start gap-2.5 text-sm text-emerald-200">
+                    <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-300 mt-0.5" aria-hidden="true" />
+                    <span>{successMsg}</span>
+                  </p>
+                )}
+                {canResend && mode === 'login' && (
+                  <button
+                    type="button"
+                    disabled={resending || resendIn > 0}
+                    onClick={() => resendVerification(email.trim().toLowerCase())}
+                    className="w-full h-10 rounded-xl bg-stone-800 hover:bg-stone-700 text-stone-100 text-sm font-semibold flex items-center justify-center gap-2 cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
+                  >
+                    {resending && <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />}
+                    {resendIn > 0 ? <span className="tabular-nums">Wyślij link ponownie za {resendIn} s</span> : 'Wyślij link potwierdzający ponownie'}
+                  </button>
+                )}
+
+                <button
+                  type="submit"
+                  disabled={isLoading}
+                  className="w-full h-12 px-4 rounded-xl bg-amber-400 hover:bg-amber-300 active:scale-[0.98] text-stone-950 font-bold text-sm flex items-center justify-center gap-2 transition-[background-color,transform] cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
+                >
+                  {isLoading ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />
+                      <span>Chwileczkę...</span>
+                    </>
+                  ) : (
+                    <>
+                      <span>{mode === 'register' ? 'Załóż konto' : 'Zaloguj się'}</span>
+                      <ArrowRight className="w-4 h-4" aria-hidden="true" />
+                    </>
+                  )}
+                </button>
+              </form>
+              </>
+            )}
           </div>
         </div>
 
@@ -284,7 +469,7 @@ export const AuthView: React.FC<AuthViewProps> = ({ onAuthSuccess }) => {
       </section>
 
       {/* 3. Zachęta do rejestracji */}
-      {mode === 'login' && (
+      {mode === 'login' && !pendingEmail && (
         <section className="relative max-w-[1320px] mx-auto px-4 sm:px-6 lg:px-10 pb-16">
           <div className="rounded-2xl bg-stone-900 ring-1 ring-stone-800 p-6 sm:p-8 flex flex-col sm:flex-row sm:items-center justify-between gap-5">
             <div className="space-y-1">

@@ -197,6 +197,8 @@ export interface AdminUser {
   banned: boolean;
   mustChangePassword: boolean;
   saleHidden: boolean;
+  /** Czy użytkownik kliknął link potwierdzający z maila. */
+  emailVerified: boolean;
   isAdmin: boolean;
 }
 

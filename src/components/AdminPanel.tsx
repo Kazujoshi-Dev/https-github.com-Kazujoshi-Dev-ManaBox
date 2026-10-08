@@ -37,6 +37,7 @@ const ACTION_LABELS: Record<string, string> = {
   logout_all: 'Wylogowanie ze wszystkich urządzeń',
   hide_sale: 'Ukrycie oferty',
   show_sale: 'Przywrócenie oferty',
+  verify_email: 'Ręczne potwierdzenie e-mail',
   delete: 'Usunięcie konta'
 };
 
@@ -243,6 +244,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, showToast }
                       {u.banned && <Badge tone="red">{u.banPermanent ? 'Ban stały' : 'Ban czasowy'}</Badge>}
                       {u.saleHidden && <Badge tone="amber">Oferta ukryta</Badge>}
                       {u.mustChangePassword && <Badge tone="stone">Hasło tymczasowe</Badge>}
+                      {!u.emailVerified && <Badge tone="amber">E-mail niepotwierdzony</Badge>}
                     </div>
                     <p className="text-xs text-stone-400 truncate">{u.email}</p>
                     <p className="text-[11px] text-stone-500 flex flex-wrap gap-x-3 gap-y-0.5">
@@ -627,6 +629,27 @@ const UserDialog: React.FC<UserDialogProps> = ({ user, isSelf, onClose, onChange
             </div>
             {user.saleHidden && <p className="text-[11px] text-amber-300/90">Oferta jest ukryta: nie ma jej w publicznym linku, na mapie ani na liście graczy.</p>}
           </Section>
+
+          {!user.emailVerified && (
+            <Section title="Adres e-mail" icon={Check}>
+              <p className="text-xs text-stone-300">Użytkownik nie kliknął jeszcze linku z maila i nie może się zalogować.</p>
+              <button
+                type="button"
+                disabled={!!busy}
+                onClick={() =>
+                  run('verify', async () => {
+                    await adminApi.verifyEmail(user.id);
+                    return `Potwierdzono adres e-mail ${user.username}.`;
+                  })
+                }
+                className={`${btn} bg-stone-700 hover:bg-stone-600 text-stone-100`}
+              >
+                {spin('verify')}
+                <Check className="w-4 h-4" />
+                Potwierdź e-mail ręcznie
+              </button>
+            </Section>
+          )}
 
           {/* Usunięcie */}
           {!protectedAccount && !isSelf && (

@@ -13,7 +13,8 @@ export function mapUserRow(r: any): DbUser {
     ban_permanent: Boolean(r.ban_permanent),
     ban_reason: r.ban_reason ?? null,
     must_change_password: Boolean(r.must_change_password),
-    sale_hidden: Boolean(r.sale_hidden)
+    sale_hidden: Boolean(r.sale_hidden),
+    email_verified: r.email_verified !== false
   };
 }
 

@@ -2,7 +2,7 @@ import { langFromCard } from './utils/formatters';
 import { useChangelogBadge } from './hooks/useChangelogBadge';
 import { parsePublicLink } from './utils/publicLinks';
 import React, { useState, useCallback, useEffect } from 'react';
-import { ScryfallCard, CollectionItem, DeckItem, CardCondition, CardLanguage, AppSettings, RegisteredUserSummary, WishlistItem } from './types';
+import { ScryfallCard, CollectionItem, DeckItem, CardCondition, CardLanguage, AppSettings, RegisteredUserSummary, WishlistItem, AuthUser } from './types';
 import { Header } from './components/Header';
 import { AuthView } from './components/AuthView';
 import { TabContent, NavigationTab } from './components/TabContent';
@@ -16,6 +16,8 @@ import { PublicSaleView } from './components/PublicSaleView';
 import { PublicWishlistView } from './components/PublicWishlistView';
 import { PublicDeckView } from './components/PublicDeckView';
 import { ForcePasswordChange } from './components/ForcePasswordChange';
+import { EmailLinkView } from './components/EmailLinkView';
+import { parseEmailLink, type EmailLink } from './utils/emailLinks';
 import { MailboxModal } from './components/messages/MailboxModal';
 import { SellQuantityModal } from './components/SellQuantityModal';
 import { Toast } from './components/Toast';
@@ -124,6 +126,25 @@ export default function App() {
     }
   }, []);
   const publicKind = publicLink?.kind || 'sale';
+  // Linki z e-maili (potwierdzenie rejestracji, reset hasła)
+  const [emailLink, setEmailLink] = useState<EmailLink | null>(() => {
+    try {
+      return parseEmailLink();
+    } catch {
+      return null;
+    }
+  });
+  const [authInitialMode, setAuthInitialMode] = useState<'login' | 'forgot'>('login');
+  const finishEmailLink = useCallback((next: 'login' | 'forgot' = 'login') => {
+    setEmailLink(null);
+    setAuthInitialMode(next);
+    window.history.replaceState({}, '', '/');
+  }, []);
+  const handleEmailLinkAuth = useCallback((user: AuthUser, token: string, message: string) => {
+    handleAuthSuccess(user, token);
+    showToast(message);
+    finishEmailLink('login');
+  }, [handleAuthSuccess, showToast, finishEmailLink]);
   const [showLoginModalFromPublic, setShowLoginModalFromPublic] = useState<boolean>(false);
   const [publicSaleError, setPublicSaleError] = useState<string | null>(null);
   const [isLoadingPublicSale, setIsLoadingPublicSale] = useState<boolean>(() => Boolean(publicLink));
@@ -557,6 +578,16 @@ export default function App() {
     }
   }, [deleteDeck, selectedDeck]);
 
+  // 0. Link z e-maila: potwierdzenie adresu albo ustawienie nowego hasła
+  if (emailLink) {
+    return (
+      <>
+        <EmailLinkView link={emailLink} onAuthSuccess={handleEmailLinkAuth} onDone={(next) => finishEmailLink(next)} />
+        <Toast message={toastMessage} />
+      </>
+    );
+  }
+
   // 1. If currently loading a public sale offer
   if (isLoadingPublicSale) {
     return (
@@ -713,7 +744,7 @@ export default function App() {
   if (!currentUser) {
     return (
       <>
-        <AuthView onAuthSuccess={(user, token) => {
+        <AuthView initialMode={authInitialMode} onAuthSuccess={(user, token) => {
           handleAuthSuccess(user, token);
           showToast(`Witaj w kolekcji, ${user.username}!`);
         }} />

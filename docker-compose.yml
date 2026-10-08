@@ -15,6 +15,14 @@ services:
       ADMIN_EMAILS: ${ADMIN_EMAILS:-}
       # Dodatkowe wersje językowe kart w lokalnej bazie (kody Scryfall, np. "ja" lub "ja,de"; pusto = tylko angielskie)
       CARD_EXTRA_LANGS: ${CARD_EXTRA_LANGS-ja,ph}
+      # Adres portalu: linki w e-mailach, sitemap, Open Graph
+      PUBLIC_SITE_URL: ${PUBLIC_SITE_URL:-https://manascrew.eu}
+      # Wysyłka e-maili (potwierdzenie rejestracji, reset hasła); klucz SMTP tylko w pliku .env
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      MAIL_FROM: ${MAIL_FROM:-Mana Screw <noreply@manascrew.eu>}
     depends_on:
       db:
         condition: service_healthy

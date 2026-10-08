@@ -195,6 +195,16 @@ function homePage(): RenderedPage {
   };
 }
 
+function emailLinkPage(path: string): RenderedPage {
+  const reset = path.startsWith('/nowe-haslo');
+  const title = reset ? 'Ustaw nowe hasło' : 'Potwierdzenie adresu e-mail';
+  return {
+    status: 200,
+    meta: { title: `${title} | ${SITE_NAME}`, description: title, path: reset ? '/nowe-haslo' : '/potwierdz-email', noindex: true },
+    body: `<h1>${esc(title)}</h1><p>Ładowanie...</p>`
+  };
+}
+
 function notFoundPage(path: string, what: string): RenderedPage {
   return {
     status: 404,
@@ -452,6 +462,9 @@ export function registerSeoRoutes(app: express.Express, getTemplate: (req: expre
       const m = req.path.match(/^\/(talia|sprzedam|szukam)\/([^/]+)\/?$/);
       if (req.path === '/' || req.path === '/index.html') {
         page = homePage();
+      } else if (/^\/(potwierdz-email|nowe-haslo)\/?$/.test(req.path)) {
+        // Strony z linków w mailach: obsługuje je aplikacja, wyszukiwarki ich nie indeksują
+        page = emailLinkPage(req.path);
       } else if (m) {
         let ref = m[2];
         try {

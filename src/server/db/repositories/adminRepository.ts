@@ -3,7 +3,7 @@
  * usuwanie kont, statystyki i dziennik działań.
  */
 import fs from 'fs';
-import { DbUser } from '../types';
+import { DbUser, isEmailVerified } from '../types';
 import { withDb, readJsonFile, writeJsonAtomic, USERS_FILE, ADMIN_AUDIT_FILE, getUserDir } from '../storage';
 import { mapUserRow } from '../mappers';
 import { getCollection } from './collectionRepository';
@@ -32,6 +32,7 @@ export interface AdminUserRow {
   banned: boolean;
   mustChangePassword: boolean;
   saleHidden: boolean;
+  emailVerified: boolean;
 }
 
 const iso = (v: any) => (v ? new Date(v).toISOString() : null);
@@ -77,7 +78,8 @@ export async function adminListUsers(query: string, limit: number, offset: numbe
             banReason: u.ban_reason || null,
             banned: isBanActive(u),
             mustChangePassword: Boolean(u.must_change_password),
-            saleHidden: Boolean(u.sale_hidden)
+            saleHidden: Boolean(u.sale_hidden),
+            emailVerified: isEmailVerified(u)
           };
         })
       };
@@ -107,7 +109,8 @@ export async function adminListUsers(query: string, limit: number, offset: numbe
           banReason: u.ban_reason || null,
           banned: isBanActive(u),
           mustChangePassword: Boolean(u.must_change_password),
-          saleHidden: Boolean(u.sale_hidden)
+          saleHidden: Boolean(u.sale_hidden),
+          emailVerified: isEmailVerified(u)
         });
       }
       return { users, total: all.length };
@@ -125,10 +128,11 @@ export interface AdminUserPatch {
   ban_reason?: string | null;
   must_change_password?: boolean;
   sale_hidden?: boolean;
+  email_verified?: boolean;
 }
 
 const PATCH_COLUMNS: (keyof AdminUserPatch)[] = [
-  'username', 'password_hash', 'salt', 'banned_until', 'ban_permanent', 'ban_reason', 'must_change_password', 'sale_hidden'
+  'username', 'password_hash', 'salt', 'banned_until', 'ban_permanent', 'ban_reason', 'must_change_password', 'sale_hidden', 'email_verified'
 ];
 
 export async function updateUserFields(userId: string, patch: AdminUserPatch): Promise<DbUser | null> {
