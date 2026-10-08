@@ -14,6 +14,7 @@ export const CatalogFormModal: React.FC<CatalogFormModalProps> = ({
   error,
   isSaving,
   canDelete,
+  nameLocked = false,
   onNameChange,
   onDescriptionChange,
   onColorChange,
@@ -63,9 +64,14 @@ export const CatalogFormModal: React.FC<CatalogFormModalProps> = ({
               placeholder="np. Talia Commander Urza, Na Wymianę..."
               value={name}
               onChange={(e) => onNameChange(e.target.value)}
-              className="w-full bg-stone-950 border border-stone-700 rounded-xl px-3 py-2 text-sm text-stone-100 placeholder-stone-500 focus:outline-none focus:border-amber-500"
-              autoFocus
+              disabled={nameLocked}
+              maxLength={150}
+              className="w-full bg-stone-950 border border-stone-700 rounded-xl px-3 py-2 text-sm text-stone-100 placeholder-stone-500 focus:outline-none focus:border-amber-500 disabled:opacity-60 disabled:cursor-not-allowed"
+              autoFocus={!nameLocked}
             />
+            {nameLocked && (
+              <p className="text-[11px] text-stone-400 mt-1">Główny klaser zawsze nazywa się tak samo i nie można go usunąć. Możesz zmienić opis i kolor.</p>
+            )}
           </div>
 
           <div>

@@ -59,6 +59,7 @@ export default function App() {
     updateCatalog,
     setDefaultCatalog,
     deleteCatalog,
+    emptyCatalog,
     createDeck,
     updateDeck,
     deleteDeck,
@@ -860,6 +861,7 @@ export default function App() {
             onCreateCatalog={createCatalog}
             onUpdateCatalog={updateCatalog}
             onDeleteCatalog={deleteCatalog}
+            onEmptyCatalog={emptyCatalog}
             onSetDefaultCatalog={setDefaultCatalog}
             onUpdateQuantity={updateQuantity}
             onDeleteItem={deleteCollectionItem}

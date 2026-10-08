@@ -25,6 +25,7 @@ export const CollectionList: React.FC<CollectionListProps> = ({
   onCreateCatalog,
   onUpdateCatalog,
   onDeleteCatalog,
+  onEmptyCatalog,
   onSetDefaultCatalog,
   onOpenCreateDeckModal,
   onSelectDeck,
@@ -77,6 +78,9 @@ export const CollectionList: React.FC<CollectionListProps> = ({
     closeCatalogModal,
     handleSaveCatalogModal,
     handleDeleteCatalogConfirm,
+    catalogToEmpty,
+    setCatalogToEmpty,
+    handleEmptyCatalogConfirm,
   } = useCatalogManager({
     collection,
     settings,
@@ -86,6 +90,7 @@ export const CollectionList: React.FC<CollectionListProps> = ({
     onCreateCatalog,
     onUpdateCatalog,
     onDeleteCatalog,
+    onEmptyCatalog,
   });
 
   return (
@@ -102,6 +107,7 @@ export const CollectionList: React.FC<CollectionListProps> = ({
         onOpenCreateCatalog={openCreateCatalogModal}
         onOpenEditCatalog={openEditCatalogModal}
         onRequestDeleteCatalog={(cat) => setCatalogToDelete(cat)}
+        onRequestEmptyCatalog={onEmptyCatalog ? (cat) => setCatalogToEmpty(cat) : undefined}
         onSetDefaultCatalog={onSetDefaultCatalog}
         onOpenImportExport={onOpenImportExport}
       />
@@ -183,7 +189,8 @@ export const CollectionList: React.FC<CollectionListProps> = ({
         isDefault={modalCatIsDefault}
         error={catalogModalError}
         isSaving={isCatalogSaving}
-        canDelete={Boolean(editingCatalog && onDeleteCatalog)}
+        canDelete={Boolean(editingCatalog && !editingCatalog.isMain && onDeleteCatalog)}
+        nameLocked={Boolean(editingCatalog?.isMain)}
         onNameChange={setModalCatName}
         onDescriptionChange={setModalCatDesc}
         onColorChange={setModalCatColor}
@@ -196,25 +203,25 @@ export const CollectionList: React.FC<CollectionListProps> = ({
         }}
       />
 
-      {/* 6. Delete Catalog Confirmation Modal */}
-      {catalogToDelete && (() => {
-        const otherCatalogs = catalogs.filter(c => c.id !== catalogToDelete.id);
-        const nextDefaultName = otherCatalogs.find(c => c.isDefault)?.name || otherCatalogs[0]?.name || null;
-        const inCatalog = collection.filter(i => i.binder === catalogToDelete.name);
+      {/* 6. Usunięcie lub opróżnienie katalogu */}
+      {(catalogToDelete || catalogToEmpty) && (() => {
+        const mode = catalogToEmpty ? 'empty' : 'delete';
+        const target = (catalogToEmpty || catalogToDelete)!;
+        const mainName = catalogs.find(c => c.isMain)?.name || 'Klaser Główny';
+        const inCatalog = collection.filter(i => (i.binder || 'Klaser Główny') === target.name);
         const kept = inCatalog.filter(i => !i.isForSale);
-        const cardCount = kept.length;
         const cardQuantity = kept.reduce((s, i) => s + (i.quantity || 0) + (i.quantityFoil || 0), 0);
-        const forSaleCount = inCatalog.length - kept.length;
 
         return (
           <CatalogDeleteModal
-            catalogToDelete={catalogToDelete}
-            cardCount={cardCount}
+            mode={mode}
+            catalogToDelete={target}
+            cardCount={kept.length}
             cardQuantity={cardQuantity}
-            forSaleCount={forSaleCount}
-            nextDefaultCatalogName={nextDefaultName}
-            onClose={() => setCatalogToDelete(null)}
-            onConfirmDelete={handleDeleteCatalogConfirm}
+            forSaleCount={inCatalog.length - kept.length}
+            mainCatalogName={mainName}
+            onClose={() => (catalogToEmpty ? setCatalogToEmpty(null) : setCatalogToDelete(null))}
+            onConfirmDelete={catalogToEmpty ? handleEmptyCatalogConfirm : handleDeleteCatalogConfirm}
           />
         );
       })()}

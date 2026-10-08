@@ -90,6 +90,7 @@ export function mapCatalogRow(r: any): Catalog {
     description: r.description || '',
     color: r.color || 'amber',
     isDefault: Boolean(r.isDefault ?? r.is_default),
+    isMain: Boolean(r.isMain ?? r.is_main),
     createdAt: r.createdAt ? new Date(r.createdAt).toISOString() : (r.created_at ? new Date(r.created_at).toISOString() : new Date().toISOString())
   };
 }

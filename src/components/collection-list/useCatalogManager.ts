@@ -13,6 +13,7 @@ interface UseCatalogManagerProps {
   onCreateCatalog?: (name: string, description?: string, color?: string, isDefault?: boolean) => Promise<Catalog | null>;
   onUpdateCatalog?: (id: string, updates: Partial<Catalog>) => Promise<void>;
   onDeleteCatalog?: (id: string) => Promise<void>;
+  onEmptyCatalog?: (id: string) => Promise<void>;
 }
 
 export function useCatalogManager({
@@ -24,6 +25,7 @@ export function useCatalogManager({
   onCreateCatalog,
   onUpdateCatalog,
   onDeleteCatalog,
+  onEmptyCatalog,
 }: UseCatalogManagerProps) {
   // Catalog modal state (create or edit)
   const [isCatalogModalOpen, setIsCatalogModalOpen] = useState<boolean>(false);
@@ -37,6 +39,8 @@ export function useCatalogManager({
 
   // Delete catalog confirmation
   const [catalogToDelete, setCatalogToDelete] = useState<Catalog | null>(null);
+  // Opróżnienie katalogu (usunięcie jego kart)
+  const [catalogToEmpty, setCatalogToEmpty] = useState<Catalog | null>(null);
 
   // Compute catalog stats (counts and total values)
   const catalogStats = useMemo(() => {
@@ -100,12 +104,13 @@ export function useCatalogManager({
     try {
       if (editingCatalog && onUpdateCatalog) {
         await onUpdateCatalog(editingCatalog.id, {
-          name: modalCatName.trim(),
+          // nazwy głównego klasera nie zmieniamy
+          name: editingCatalog.isMain ? editingCatalog.name : modalCatName.trim(),
           description: modalCatDesc.trim(),
           color: modalCatColor,
           isDefault: modalCatIsDefault,
         });
-        if (activeBinder === editingCatalog.name) {
+        if (!editingCatalog.isMain && activeBinder === editingCatalog.name) {
           onSelectBinder(modalCatName.trim());
         }
       } else if (onCreateCatalog) {
@@ -142,8 +147,17 @@ export function useCatalogManager({
     }
   }, [catalogToDelete, onDeleteCatalog, activeBinder, onSelectBinder]);
 
+  const handleEmptyCatalogConfirm = useCallback(async () => {
+    if (!catalogToEmpty || !onEmptyCatalog) return;
+    await onEmptyCatalog(catalogToEmpty.id);
+    setCatalogToEmpty(null);
+  }, [catalogToEmpty, onEmptyCatalog]);
+
   return {
     catalogStats,
+    catalogToEmpty,
+    setCatalogToEmpty,
+    handleEmptyCatalogConfirm,
     isCatalogModalOpen,
     editingCatalog,
     modalCatName,

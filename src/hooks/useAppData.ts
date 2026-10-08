@@ -493,24 +493,38 @@ export function useAppData({ userId, onUnauthorized, showToast, onSettingsLoaded
   }, [onUnauthorized, showToast]);
 
   const updateCatalog = useCallback(async (id: string, updates: Partial<Catalog>) => {
-    try {
-      const res = await catalogsApi.update(id, updates, onUnauthorized);
-      if (res.ok) {
-        const updated = await res.json();
-        if (updated.isDefault) {
-          setCatalogs(prev => prev.map(c => c.id === id ? updated : { ...c, isDefault: false }));
-        } else {
-          setCatalogs(prev => prev.map(c => c.id === id ? updated : c));
-        }
-
-        const colRes = await collectionApi.getAll(onUnauthorized);
-        if (colRes.ok) setCollection(await colRes.json());
-        showToast(`Zaktualizowano katalog "${updated.name}"`);
-      }
-    } catch (err) {
-      console.error('Failed to update catalog:', err);
+    const res = await catalogsApi.update(id, updates, onUnauthorized);
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || 'Nie udało się zapisać katalogu.');
     }
+    const updated: Catalog = await res.json();
+    setCatalogs(prev => prev.map(c => c.id === id ? updated : (updated.isDefault ? { ...c, isDefault: false } : c)));
+    // Odznaczenie domyślnego: serwer przenosi to oznaczenie na główny klaser
+    const catRes = await catalogsApi.getAll(onUnauthorized);
+    if (catRes.ok) setCatalogs(await catRes.json());
+
+    const colRes = await collectionApi.getAll(onUnauthorized);
+    if (colRes.ok) setCollection(await colRes.json());
+    showToast(`Zaktualizowano katalog "${updated.name}"`);
   }, [onUnauthorized, showToast]);
+
+  /** Usuwa karty katalogu z kolekcji (poza wystawionymi na sprzedaż); katalog zostaje. */
+  const emptyCatalog = useCallback(async (id: string) => {
+    const name = catalogs.find(c => c.id === id)?.name || 'katalog';
+    const res = await catalogsApi.empty(id, onUnauthorized);
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      showToast(err.error || 'Nie udało się opróżnić katalogu.');
+      return;
+    }
+    const data = await res.json();
+    const colRes = await collectionApi.getAll(onUnauthorized);
+    if (colRes.ok) setCollection(await colRes.json());
+    showToast(data.deletedItems > 0
+      ? `Opróżniono „${name}”: usunięto ${data.deletedItems} poz. z kolekcji`
+      : `„${name}” był już pusty`);
+  }, [catalogs, onUnauthorized, showToast]);
 
   const setDefaultCatalog = useCallback(async (id: string) => {
     try {
@@ -536,21 +550,20 @@ export function useAppData({ userId, onUnauthorized, showToast, onSettingsLoaded
   const deleteCatalog = useCallback(async (id: string) => {
     try {
       const res = await catalogsApi.delete(id, onUnauthorized);
-      if (res.ok) {
-        const data = await res.json();
-        if (data.catalogs) {
-          setCatalogs(data.catalogs);
-        } else {
-          setCatalogs(prev => prev.filter(c => c.id !== id));
-        }
-        const colRes = await collectionApi.getAll(onUnauthorized);
-        if (colRes.ok) setCollection(await colRes.json());
-        showToast(
-          data.deletedItems > 0
-            ? `Usunięto klaser i ${data.deletedItems} pozycji z kolekcji. Głównym klaserem jest teraz: ${data.reassignedTo}`
-            : `Usunięto klaser. Karty przeniesiono do: ${data.reassignedTo}`
-        );
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        showToast(err.error || 'Nie udało się usunąć katalogu.');
+        return;
       }
+      const data = await res.json();
+      if (data.catalogs) {
+        setCatalogs(data.catalogs);
+      } else {
+        setCatalogs(prev => prev.filter(c => c.id !== id));
+      }
+      const colRes = await collectionApi.getAll(onUnauthorized);
+      if (colRes.ok) setCollection(await colRes.json());
+      showToast(`Usunięto katalog. Jego karty są teraz w: ${data.reassignedTo}`);
     } catch (err) {
       console.error('Failed to delete catalog:', err);
     }
@@ -713,6 +726,7 @@ export function useAppData({ userId, onUnauthorized, showToast, onSettingsLoaded
     updateCatalog,
     setDefaultCatalog,
     deleteCatalog,
+    emptyCatalog,
     createDeck,
     updateDeck,
     deleteDeck,

@@ -9,6 +9,8 @@ import {
   Edit2, 
   Trash2,
   FileText,
+  Eraser,
+  Lock,
   CircleDollarSign
 } from 'lucide-react';
 import { formatCurrency } from '../../utils/formatters';
@@ -26,6 +28,7 @@ export const CatalogsBar: React.FC<CatalogsBarProps> = ({
   onOpenCreateCatalog,
   onOpenEditCatalog,
   onRequestDeleteCatalog,
+  onRequestEmptyCatalog,
   onSetDefaultCatalog,
   onOpenImportExport,
 }) => {
@@ -80,6 +83,7 @@ export const CatalogsBar: React.FC<CatalogsBarProps> = ({
             <button key={cat.id} type="button" onClick={() => onSelectBinder(cat.name)} className={chip(activeBinder === cat.name)}>
               <span className={`w-2 h-2 rounded-full ${colorStyle.dot}`} aria-hidden="true" />
               <span className="truncate max-w-[160px]">{cat.name}</span>
+              {cat.isMain && <Lock className="w-3 h-3 text-stone-500" aria-label="Główny klaser, nie można go usunąć" />}
               {cat.isDefault && <Star className="w-3.5 h-3.5 text-amber-400 fill-amber-400" aria-label="Domyślny katalog" />}
               {count(stats.count)}
             </button>
@@ -111,10 +115,23 @@ export const CatalogsBar: React.FC<CatalogsBarProps> = ({
               <Edit2 className="w-4 h-4" />
               Edytuj
             </button>
-            <button type="button" onClick={() => onRequestDeleteCatalog(activeCatalogObj)} className="btn btn-ghost h-8 px-2.5 hover:text-rose-300">
-              <Trash2 className="w-4 h-4" />
-              Usuń
-            </button>
+            {onRequestEmptyCatalog && (activeStats?.count || 0) > 0 && (
+              <button
+                type="button"
+                onClick={() => onRequestEmptyCatalog(activeCatalogObj)}
+                className="btn btn-ghost h-8 px-2.5 hover:text-rose-300"
+                title="Usuń z kolekcji wszystkie karty tego katalogu"
+              >
+                <Eraser className="w-4 h-4" />
+                Opróżnij
+              </button>
+            )}
+            {!activeCatalogObj.isMain && (
+              <button type="button" onClick={() => onRequestDeleteCatalog(activeCatalogObj)} className="btn btn-ghost h-8 px-2.5 hover:text-rose-300">
+                <Trash2 className="w-4 h-4" />
+                Usuń
+              </button>
+            )}
           </div>
         </div>
       )}

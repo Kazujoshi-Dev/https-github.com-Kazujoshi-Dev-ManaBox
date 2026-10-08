@@ -3,6 +3,7 @@ import { DbUser } from '../types';
 import { withDb, readJsonFile, writeJsonAtomic, USERS_FILE, getUserDir } from '../storage';
 import { mapUserRow } from '../mappers';
 import { DEFAULT_CATALOGS } from '../schema';
+import { insertCatalog } from './catalogRepository';
 
 export async function getUserByEmail(email: string): Promise<DbUser | null> {
   const cleanEmail = email.toLowerCase().trim();
@@ -105,13 +106,7 @@ export async function createUser(
            VALUES ($1, $2, $3, $4, $5, $6)`,
           [newUser.id, newUser.email, newUser.username, newUser.password_hash, newUser.salt, newUser.created_at]
         );
-        for (const cat of DEFAULT_CATALOGS(id)) {
-          await client.query(
-            `INSERT INTO user_catalogs (id, user_id, name, description, color, is_default, created_at)
-             VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-            [cat.id, id, cat.name, cat.description, cat.color, cat.isDefault, cat.createdAt]
-          );
-        }
+        for (const cat of DEFAULT_CATALOGS(id)) await insertCatalog(client, id, cat);
         await client.query('COMMIT');
       } catch (err) {
         await client.query('ROLLBACK').catch(() => undefined);

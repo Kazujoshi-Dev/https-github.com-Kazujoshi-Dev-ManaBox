@@ -1637,8 +1637,11 @@ app.post('/api/catalogs', authMiddleware, async (req, res) => {
   try {
     const userId = (req as any).userId;
     const { name, description, color, isDefault } = req.body;
-    if (!name || !name.trim()) {
+    if (typeof name !== 'string' || !name.trim()) {
       return res.status(400).json({ error: 'Nazwa katalogu jest wymagana' });
+    }
+    if (name.trim().length > 150) {
+      return res.status(400).json({ error: 'Nazwa katalogu może mieć najwyżej 150 znaków.' });
     }
 
     const catalogs = await db.getCatalogs(userId);
@@ -1649,8 +1652,8 @@ app.post('/api/catalogs', authMiddleware, async (req, res) => {
     const newCatalog = {
       id: `cat-${crypto.randomUUID()}`,
       name: name.trim(),
-      description: description ? description.trim() : '',
-      color: color || 'amber',
+      description: typeof description === 'string' ? description.trim().slice(0, 500) : '',
+      color: typeof color === 'string' && color ? color.slice(0, 50) : 'amber',
       createdAt: new Date().toISOString(),
       isDefault: Boolean(isDefault) || catalogs.length === 0
     };
@@ -1662,6 +1665,35 @@ app.post('/api/catalogs', authMiddleware, async (req, res) => {
     res.status(201).json(saved);
   } catch (err: any) {
     sendServerError(res, err, '/api/catalogs');
+  }
+});
+
+app.put('/api/catalogs/:id', authMiddleware, async (req, res) => {
+  try {
+    const userId = (req as any).userId;
+    const { name, description, color, isDefault } = req.body || {};
+    const updated = await db.updateCatalog(userId, req.params.id, {
+      name: typeof name === 'string' ? name : undefined,
+      description: typeof description === 'string' ? description : undefined,
+      color: typeof color === 'string' ? color.slice(0, 50) : undefined,
+      isDefault: typeof isDefault === 'boolean' ? isDefault : undefined
+    });
+    res.json(updated);
+  } catch (err: any) {
+    if (err instanceof db.CatalogError) return res.status(err.status).json({ error: err.message });
+    sendServerError(res, err, '/api/catalogs/:id');
+  }
+});
+
+// Opróżnienie katalogu: usuwa jego karty z kolekcji (poza wystawionymi na sprzedaż), katalog zostaje
+app.post('/api/catalogs/:id/empty', authMiddleware, async (req, res) => {
+  try {
+    const userId = (req as any).userId;
+    const result = await db.emptyCatalog(userId, req.params.id);
+    res.json({ success: true, ...result });
+  } catch (err: any) {
+    if (err instanceof db.CatalogError) return res.status(err.status).json({ error: err.message });
+    sendServerError(res, err, '/api/catalogs/:id/empty');
   }
 });
 
@@ -1684,9 +1716,7 @@ app.delete('/api/catalogs/:id', authMiddleware, async (req, res) => {
     const result = await db.deleteCatalog(userId, id);
     res.json({ success: true, id, reassignedTo: result.reassignedTo, deletedItems: result.deletedItems, catalogs: result.catalogs });
   } catch (err: any) {
-    if (err?.message === 'Nie znaleziono katalogu do usunięcia.') {
-      return res.status(404).json({ error: err.message });
-    }
+    if (err instanceof db.CatalogError) return res.status(err.status).json({ error: err.message });
     sendServerError(res, err, '/api/catalogs/:id');
   }
 });

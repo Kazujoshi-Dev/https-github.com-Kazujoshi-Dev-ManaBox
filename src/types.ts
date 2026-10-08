@@ -101,6 +101,8 @@ export interface Catalog {
   color?: string; // 'amber' | 'emerald' | 'blue' | 'purple' | 'rose' | 'indigo' | 'cyan' | 'orange'
   createdAt: string;
   isDefault?: boolean;
+  /** Główny klaser („Klaser Główny”): nie można go usunąć ani zmienić mu nazwy. */
+  isMain?: boolean;
 }
 
 export interface CollectionItem {

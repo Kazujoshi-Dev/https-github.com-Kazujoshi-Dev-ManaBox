@@ -2,36 +2,23 @@ import crypto from 'crypto';
 import { Catalog } from '../../types';
 import { getPool, setPostgresActive } from './storage';
 
-/**
- * Startowe katalogi nowego konta. Identyfikatory są losowe: wcześniej brały 6 pierwszych znaków id
- * użytkownika (zawsze „usr_” + 2 znaki), więc katalogi różnych kont się powtarzały i zapis kończył się błędem.
- */
-export const DEFAULT_CATALOGS = (_userId: string): Catalog[] => [
-  {
+/** Nazwa głównego klasera: każde konto ma dokładnie jeden, nie da się go usunąć ani przemianować. */
+export const MAIN_CATALOG_NAME = 'Klaser Główny';
+
+export function newMainCatalog(isDefault = true): Catalog {
+  return {
     id: `cat-main-${crypto.randomUUID()}`,
-    name: 'Klaser Główny',
+    name: MAIN_CATALOG_NAME,
     description: 'Główny klaser całej kolekcji',
     color: 'amber',
     createdAt: new Date().toISOString(),
-    isDefault: true
-  },
-  {
-    id: `cat-commander-${crypto.randomUUID()}`,
-    name: 'Talia Commander',
-    description: 'Karty i dodatki do talii Commander',
-    color: 'purple',
-    createdAt: new Date().toISOString(),
-    isDefault: false
-  },
-  {
-    id: `cat-trade-${crypto.randomUUID()}`,
-    name: 'Na wymianę',
-    description: 'Karty przeznaczone na handel i wymianę z graczami',
-    color: 'emerald',
-    createdAt: new Date().toISOString(),
-    isDefault: false
-  }
-];
+    isDefault,
+    isMain: true
+  };
+}
+
+/** Startowe katalogi nowego konta: tylko główny klaser. */
+export const DEFAULT_CATALOGS = (_userId: string): Catalog[] => [newMainCatalog(true)];
 
 export async function initDb(): Promise<void> {
   const pool = getPool();
@@ -162,6 +149,8 @@ export async function initDb(): Promise<void> {
           ALTER TABLE user_decks ADD COLUMN IF NOT EXISTS card_source VARCHAR(30) DEFAULT 'collection';
           ALTER TABLE user_decks ADD COLUMN IF NOT EXISTS commander_is_foil BOOLEAN DEFAULT FALSE;
           ALTER TABLE user_collections ADD COLUMN IF NOT EXISTS last_updated_price_at TIMESTAMPTZ;
+          -- główny klaser („Klaser Główny”): jeden na konto, nie da się go usunąć ani przemianować
+          ALTER TABLE user_catalogs ADD COLUMN IF NOT EXISTS is_main BOOLEAN NOT NULL DEFAULT FALSE;
           ALTER TABLE user_collections ADD COLUMN IF NOT EXISTS is_for_sale BOOLEAN DEFAULT FALSE;
           ALTER TABLE user_collections ADD COLUMN IF NOT EXISTS sale_price NUMERIC(10, 2);
           -- ceny sprzed ostatniej zmiany rynkowej (do wskaźnika zmiany wartości kolekcji)
@@ -256,6 +245,21 @@ export async function initDb(): Promise<void> {
             RETURNING id
           )
           UPDATE user_collections SET quantity_foil = 0 WHERE id IN (SELECT id FROM mixed);
+
+          -- Główny klaser każdego konta: najstarszy katalog o nazwie „Klaser Główny”,
+          -- a gdy go nie ma (np. zmieniono mu nazwę), nowy, pusty „Klaser Główny”.
+          UPDATE user_catalogs SET is_main = TRUE WHERE id IN (
+            SELECT DISTINCT ON (user_id) id FROM user_catalogs
+            WHERE name = 'Klaser Główny'
+              AND user_id NOT IN (SELECT user_id FROM user_catalogs WHERE is_main)
+            ORDER BY user_id, created_at, id
+          );
+          INSERT INTO user_catalogs (id, user_id, name, description, color, is_default, is_main, created_at)
+          SELECT 'cat-main-' || gen_random_uuid()::text, u.id, 'Klaser Główny', 'Główny klaser całej kolekcji', 'amber',
+                 NOT EXISTS (SELECT 1 FROM user_catalogs d WHERE d.user_id = u.id AND d.is_default), TRUE, u.created_at
+          FROM users u
+          WHERE NOT EXISTS (SELECT 1 FROM user_catalogs m WHERE m.user_id = u.id AND m.is_main);
+          CREATE UNIQUE INDEX IF NOT EXISTS uq_user_catalogs_main ON user_catalogs(user_id) WHERE is_main;
         `);
         setPostgresActive(true);
         console.log('[Storage] PostgreSQL connected & database schema verified successfully');

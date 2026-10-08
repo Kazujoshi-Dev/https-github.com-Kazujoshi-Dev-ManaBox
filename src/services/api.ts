@@ -167,6 +167,8 @@ export const catalogsApi = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(updates)
     }, onUnauthorized),
+  empty: (id: string, onUnauthorized?: () => void) =>
+    fetchWithAuth(`/api/catalogs/${encodeURIComponent(id)}/empty`, { method: 'POST' }, onUnauthorized),
   setDefault: (id: string, onUnauthorized?: () => void) =>
     fetchWithAuth(`/api/catalogs/${id}/set-default`, { method: 'POST' }, onUnauthorized),
   delete: (id: string, onUnauthorized?: () => void) =>

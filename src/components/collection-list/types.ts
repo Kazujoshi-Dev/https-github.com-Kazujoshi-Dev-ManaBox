@@ -9,6 +9,8 @@ export interface CollectionListProps {
   onCreateCatalog?: (name: string, description?: string, color?: string, isDefault?: boolean) => Promise<Catalog | null>;
   onUpdateCatalog?: (id: string, updates: Partial<Catalog>) => Promise<void>;
   onDeleteCatalog?: (id: string) => Promise<void>;
+  /** Usuwa karty katalogu z kolekcji (katalog zostaje). */
+  onEmptyCatalog?: (id: string) => Promise<void>;
   onSetDefaultCatalog?: (id: string) => Promise<void>;
   onOpenCreateDeckModal?: () => void;
   onSelectDeck?: (deck: DeckItem) => void;
@@ -42,6 +44,7 @@ export interface CatalogsBarProps {
   onOpenCreateCatalog: () => void;
   onOpenEditCatalog: (cat: Catalog, e?: MouseEvent) => void;
   onRequestDeleteCatalog: (cat: Catalog) => void;
+  onRequestEmptyCatalog?: (cat: Catalog) => void;
   onSetDefaultCatalog?: (id: string) => Promise<void>;
   decks?: DeckItem[];
   onOpenCreateDeck?: () => void;
@@ -102,6 +105,8 @@ export interface CatalogFormModalProps {
   error: string | null;
   isSaving: boolean;
   canDelete: boolean;
+  /** Nazwa zablokowana (główny klaser). */
+  nameLocked?: boolean;
   onNameChange: (val: string) => void;
   onDescriptionChange: (val: string) => void;
   onColorChange: (val: string) => void;
@@ -112,15 +117,17 @@ export interface CatalogFormModalProps {
 }
 
 export interface CatalogDeleteModalProps {
+  /** `delete`: usunięcie katalogu (karty trafiają do głównego klasera); `empty`: usunięcie jego kart. */
+  mode: 'delete' | 'empty';
   catalogToDelete: Catalog;
   /** Pozycje w katalogu (bez kart na sprzedaż). */
   cardCount: number;
   /** Liczba sztuk w tych pozycjach. */
   cardQuantity: number;
-  /** Pozycje w katalogu wystawione na sprzedaż (zostają przy usuwaniu głównego klasera). */
+  /** Pozycje w katalogu wystawione na sprzedaż. */
   forSaleCount: number;
-  /** Katalog, który przejmie karty lub zostanie głównym; null = powstanie nowy „Klaser Główny”. */
-  nextDefaultCatalogName: string | null;
+  /** Główny klaser, do którego trafią karty usuwanego katalogu. */
+  mainCatalogName: string;
   onClose: () => void;
   onConfirmDelete: () => void;
 }
