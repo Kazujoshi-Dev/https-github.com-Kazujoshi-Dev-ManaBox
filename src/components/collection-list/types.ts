@@ -26,6 +26,8 @@ export interface CollectionListProps {
   onOpenScannerModal?: () => void;
   onOpenImportExport?: (tab: 'export' | 'import') => void;
   /** Wystawienie karty na sprzedaż prosto z wyszukiwarki wszystkich kart. */
+  /** Zapis ustawień konta (np. liczby wierszy na stronie). */
+  onUpdateSettings?: (settings: AppSettings) => Promise<void> | void;
   onAddCardForSale?: (data: import('../for-sale/ForSaleAddModal').ForSaleAddData) => Promise<boolean>;
 }
 

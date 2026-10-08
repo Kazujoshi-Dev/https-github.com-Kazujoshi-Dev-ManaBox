@@ -13,3 +13,5 @@ export * from './CatalogFormModal';
 export * from './CatalogDeleteModal';
 export * from './CollectionLoadingOverlay';
 export * from './useProgressiveRender';
+export * from './useGridColumns';
+export * from './CollectionPagination';

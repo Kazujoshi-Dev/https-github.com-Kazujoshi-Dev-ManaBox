@@ -158,6 +158,7 @@ export const TabContent: React.FC<TabContentProps> = ({
           onOpenAddModal={() => setActiveTab('search')}
           onOpenScannerModal={onOpenScannerModal}
           onOpenImportExport={onOpenCollectionImportExport}
+          onUpdateSettings={onUpdateSettings}
         />
       );
 

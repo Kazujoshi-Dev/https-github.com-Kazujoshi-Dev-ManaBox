@@ -115,7 +115,10 @@ export function mapSettingsRow(r: any): AppSettings {
     currency: r.currency || 'PLN',
     eurToPlnRate: parseFloat(r.eurToPlnRate ?? r.eur_to_pln_rate ?? '4.31'),
     usdToPlnRate: parseFloat(r.usdToPlnRate ?? r.usd_to_pln_rate ?? '3.96'),
-    autoNbpRate: Boolean(r.autoNbpRate ?? r.auto_nbp_rate ?? true)
+    autoNbpRate: Boolean(r.autoNbpRate ?? r.auto_nbp_rate ?? true),
+    ...((r.collectionRowsPerPage ?? r.collection_rows_per_page) != null
+      ? { collectionRowsPerPage: Number(r.collectionRowsPerPage ?? r.collection_rows_per_page) }
+      : {}),
   };
 }
 

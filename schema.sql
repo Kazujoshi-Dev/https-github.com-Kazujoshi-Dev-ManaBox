@@ -56,6 +56,7 @@ CREATE TABLE IF NOT EXISTS user_settings (
   eur_to_pln_rate NUMERIC(10, 4) DEFAULT 4.31,
   usd_to_pln_rate NUMERIC(10, 4) DEFAULT 3.96,
   auto_nbp_rate BOOLEAN DEFAULT TRUE,
+  collection_rows_per_page SMALLINT,
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 

@@ -97,6 +97,8 @@ export interface AppSettings {
   autoNbpRate: boolean;
   lastNbpUpdate?: string;
   deckCardPreviewScale?: number; // e.g. 100 (for 100%), range 75 - 160
+  /** Ile wierszy kart pokazuje jedna strona kolekcji (12, 24, 48 lub 60). */
+  collectionRowsPerPage?: number;
 }
 
 export interface Catalog {

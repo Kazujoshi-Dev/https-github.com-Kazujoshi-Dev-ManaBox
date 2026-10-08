@@ -1,4 +1,4 @@
-import React, { useState, Suspense } from 'react';
+import React, { useState, useRef, Suspense } from 'react';
 import { lazyWithReload } from '../utils/lazyWithReload';
 import { CircleDollarSign, Plus } from 'lucide-react';
 import {
@@ -18,7 +18,11 @@ import {
   useCatalogManager,
   useProgressiveRender,
   CollectionLoadingOverlay,
+  CollectionPagination,
+  useGridColumns,
   FOR_SALE_BINDER,
+  ROWS_PER_PAGE_OPTIONS,
+  DEFAULT_ROWS_PER_PAGE,
 } from './collection-list';
 
 const ForSaleAddModal = lazyWithReload(() => import('./for-sale/ForSaleAddModal'));
@@ -44,6 +48,7 @@ export const CollectionList: React.FC<CollectionListProps> = ({
   onOpenScannerModal,
   onOpenImportExport,
   onAddCardForSale,
+  onUpdateSettings,
 }) => {
   const [isForSaleAddOpen, setIsForSaleAddOpen] = useState(false);
   // Na telefonie domyślnie lista (więcej kart na ekranie), na większych ekranach siatka.
@@ -73,11 +78,49 @@ export const CollectionList: React.FC<CollectionListProps> = ({
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  // Duże kolekcje dorysowujemy partiami przy wejściu do zakładki i przy zmianie katalogu (z paskiem postępu)
-  const progressive = useProgressiveRender(filteredCollection.length, filters.binder);
+  // Stronicowanie: liczba wierszy z ustawień konta, w siatce wiersz to tyle kart, ile kolumn
+  const savedRows = settings.collectionRowsPerPage;
+  const rowsPerPage = (ROWS_PER_PAGE_OPTIONS as readonly number[]).includes(savedRows ?? -1)
+    ? savedRows!
+    : DEFAULT_ROWS_PER_PAGE;
+  const gridColumns = useGridColumns();
+  const pageSize = rowsPerPage * (viewMode === 'grid' ? gridColumns : 1);
+  const pageCount = Math.max(1, Math.ceil(filteredCollection.length / pageSize));
+
+  // Zmiana filtrów, katalogu, widoku lub liczby wierszy wraca na pierwszą stronę
+  const pageResetKey = `${JSON.stringify(filters)}|${viewMode}|${rowsPerPage}`;
+  const [page, setPage] = useState(1);
+  const [prevPageResetKey, setPrevPageResetKey] = useState(pageResetKey);
+  if (pageResetKey !== prevPageResetKey) {
+    setPrevPageResetKey(pageResetKey);
+    setPage(1);
+  }
+  const currentPage = pageResetKey !== prevPageResetKey ? 1 : Math.min(page, pageCount);
+  const pageStart = (currentPage - 1) * pageSize;
+  const pagedCollection = filteredCollection.slice(pageStart, pageStart + pageSize);
+  const rangeLabel = filteredCollection.length
+    ? `${(pageStart + 1).toLocaleString('pl-PL')}–${(pageStart + pagedCollection.length).toLocaleString('pl-PL')} z ${filteredCollection.length.toLocaleString('pl-PL')}`
+    : undefined;
+
+  const listTopRef = useRef<HTMLDivElement>(null);
+  const goToPage = (next: number) => {
+    setPage(Math.max(1, Math.min(pageCount, next)));
+    // Po zmianie strony (zwłaszcza z dolnego paska) wracamy na początek listy
+    const el = listTopRef.current;
+    if (el && el.getBoundingClientRect().top < 0) {
+      window.scrollTo({ top: el.getBoundingClientRect().top + window.scrollY - 96, behavior: 'smooth' });
+    }
+  };
+  const handleRowsPerPageChange = (rows: number) => {
+    if (rows === rowsPerPage || !onUpdateSettings) return;
+    onUpdateSettings({ ...settings, collectionRowsPerPage: rows });
+  };
+
+  // Duże strony dorysowujemy partiami przy wejściu do zakładki i przy zmianie katalogu (z paskiem postępu)
+  const progressive = useProgressiveRender(pagedCollection.length, filters.binder);
   const renderedCollection = progressive.isLoading
-    ? filteredCollection.slice(0, progressive.limit)
-    : filteredCollection;
+    ? pagedCollection.slice(0, progressive.limit)
+    : pagedCollection;
 
   // Catalog management custom hook
   const {
@@ -202,6 +245,18 @@ export const CollectionList: React.FC<CollectionListProps> = ({
             hasActiveFilters={hasActiveFilters}
             onResetFilters={handleResetFilters}
           />
+          {filteredCollection.length > 0 && (
+            <div ref={listTopRef}>
+              <CollectionPagination
+                page={currentPage}
+                pageCount={pageCount}
+                onPageChange={goToPage}
+                rowsPerPage={onUpdateSettings ? rowsPerPage : undefined}
+                onRowsPerPageChange={onUpdateSettings ? handleRowsPerPageChange : undefined}
+                rangeLabel={rangeLabel}
+              />
+            </div>
+          )}
         </>
       )}
 
@@ -244,6 +299,11 @@ export const CollectionList: React.FC<CollectionListProps> = ({
           onViewCardDetails={onViewCardDetails}
           onToggleForSale={onToggleForSale}
         />
+      )}
+
+      {/* Dolny pasek stron */}
+      {!showSetsGrid && pageCount > 1 && (
+        <CollectionPagination page={currentPage} pageCount={pageCount} onPageChange={goToPage} rangeLabel={rangeLabel} />
       )}
 
       {/* 5. Create / Edit Catalog Modal */}

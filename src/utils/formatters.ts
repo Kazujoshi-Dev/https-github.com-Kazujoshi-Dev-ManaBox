@@ -8,6 +8,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   usdToPlnRate: 3.96,
   autoNbpRate: true,
   deckCardPreviewScale: 100,
+  collectionRowsPerPage: 12,
 };
 
 export function formatCurrency(
