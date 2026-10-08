@@ -1,3 +1,4 @@
+import crypto from 'crypto';
 import path from 'path';
 import { Catalog, CollectionItem } from '../../../types';
 import { withDb, readJsonFile, writeJsonAtomic, getUserDir } from '../storage';
@@ -12,18 +13,37 @@ export async function getCatalogs(userId: string): Promise<Catalog[]> {
          FROM user_catalogs WHERE user_id = $1 ORDER BY created_at ASC`,
         [userId]
       );
-      if (res.rows.length === 0) {
-        const defs = DEFAULT_CATALOGS(userId);
-        for (const cat of defs) {
-          await p.query(
-            `INSERT INTO user_catalogs (id, user_id, name, description, color, is_default, created_at)
-             VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-            [cat.id, userId, cat.name, cat.description, cat.color, cat.isDefault, cat.createdAt]
-          );
+      if (res.rows.length > 0) return res.rows.map(mapCatalogRow);
+
+      // Konto bez katalogów dostaje startowe. Blokada na użytkownika, żeby dwa równoległe
+      // zapytania nie utworzyły ich podwójnie.
+      const client = await p.connect();
+      try {
+        await client.query('BEGIN');
+        await client.query('SELECT pg_advisory_xact_lock(hashtext($1))', [`catalogs:${userId}`]);
+        const again = await client.query('SELECT 1 FROM user_catalogs WHERE user_id = $1 LIMIT 1', [userId]);
+        if (again.rows.length === 0) {
+          for (const cat of DEFAULT_CATALOGS(userId)) {
+            await client.query(
+              `INSERT INTO user_catalogs (id, user_id, name, description, color, is_default, created_at)
+               VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+              [cat.id, userId, cat.name, cat.description, cat.color, cat.isDefault, cat.createdAt]
+            );
+          }
         }
-        return defs;
+        const rows = await client.query(
+          `SELECT id, name, description, color, is_default as "isDefault", created_at as "createdAt"
+           FROM user_catalogs WHERE user_id = $1 ORDER BY created_at ASC`,
+          [userId]
+        );
+        await client.query('COMMIT');
+        return rows.rows.map(mapCatalogRow);
+      } catch (err) {
+        await client.query('ROLLBACK').catch(() => undefined);
+        throw err;
+      } finally {
+        client.release();
       }
-      return res.rows.map(mapCatalogRow);
     },
     () => {
       const userDir = getUserDir(userId);
@@ -103,7 +123,7 @@ export async function deleteCatalog(
       defaultCatalog = remaining[0];
     } else {
       defaultCatalog = {
-        id: `cat-main-${userId.slice(0, 6)}`,
+        id: `cat-main-${crypto.randomUUID()}`,
         name: 'Klaser Główny',
         description: 'Główny klaser całej kolekcji',
         color: 'amber',

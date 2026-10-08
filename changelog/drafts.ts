@@ -80,5 +80,6 @@ export const CHANGELOG_DRAFTS: ChangelogDraft[] = [
   { id: '2026-10-05-delete-main-binder', day: '2026-10-05', type: 'fixed', area: 'Kolekcja', text: 'Jasne ostrzeżenie przy usuwaniu klasera: usunięcie głównego klasera usuwa jego karty (poza wystawionymi na sprzedaż), a usunięcie innego przenosi karty do głównego.' },
 
   // ---------- 8 października 2026 ----------
-  { id: '2026-10-08-separate-entries', day: '2026-10-08', type: 'fixed', area: 'Kolekcja', text: 'Karty różniące się wydaniem, wersją foil, stanem, językiem lub klaserem są w kolekcji osobnymi pozycjami, a dodanie innej wersji nie zmienia już posiadanej karty.' }
+  { id: '2026-10-08-separate-entries', day: '2026-10-08', type: 'fixed', area: 'Kolekcja', text: 'Karty różniące się wydaniem, wersją foil, stanem, językiem lub klaserem są w kolekcji osobnymi pozycjami, a dodanie innej wersji nie zmienia już posiadanej karty.' },
+  { id: '2026-10-08-catalog-create-error', day: '2026-10-08', type: 'fixed', area: 'Kolekcja', text: 'Tworzenie nowego klasera nie kończy się już błędem, a konta, którym przy rejestracji nie utworzyły się startowe klasery, dostają je automatycznie.' }
 ];

@@ -1,9 +1,14 @@
+import crypto from 'crypto';
 import { Catalog } from '../../types';
 import { getPool, setPostgresActive } from './storage';
 
-export const DEFAULT_CATALOGS = (userId: string): Catalog[] => [
+/**
+ * Startowe katalogi nowego konta. Identyfikatory są losowe: wcześniej brały 6 pierwszych znaków id
+ * użytkownika (zawsze „usr_” + 2 znaki), więc katalogi różnych kont się powtarzały i zapis kończył się błędem.
+ */
+export const DEFAULT_CATALOGS = (_userId: string): Catalog[] => [
   {
-    id: `cat-main-${userId.slice(0, 6)}`,
+    id: `cat-main-${crypto.randomUUID()}`,
     name: 'Klaser Główny',
     description: 'Główny klaser całej kolekcji',
     color: 'amber',
@@ -11,7 +16,7 @@ export const DEFAULT_CATALOGS = (userId: string): Catalog[] => [
     isDefault: true
   },
   {
-    id: `cat-commander-${userId.slice(0, 6)}`,
+    id: `cat-commander-${crypto.randomUUID()}`,
     name: 'Talia Commander',
     description: 'Karty i dodatki do talii Commander',
     color: 'purple',
@@ -19,7 +24,7 @@ export const DEFAULT_CATALOGS = (userId: string): Catalog[] => [
     isDefault: false
   },
   {
-    id: `cat-trade-${userId.slice(0, 6)}`,
+    id: `cat-trade-${crypto.randomUUID()}`,
     name: 'Na wymianę',
     description: 'Karty przeznaczone na handel i wymianę z graczami',
     color: 'emerald',

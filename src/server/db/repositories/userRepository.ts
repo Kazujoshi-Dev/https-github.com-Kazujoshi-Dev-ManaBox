@@ -96,19 +96,28 @@ export async function createUser(
 
   return withDb(
     async (p) => {
-      await p.query(
-        `INSERT INTO users (id, email, username, password_hash, salt, created_at)
-         VALUES ($1, $2, $3, $4, $5, $6)`,
-        [newUser.id, newUser.email, newUser.username, newUser.password_hash, newUser.salt, newUser.created_at]
-      );
-
-      const initialCatalogs = DEFAULT_CATALOGS(id);
-      for (const cat of initialCatalogs) {
-        await p.query(
-          `INSERT INTO user_catalogs (id, user_id, name, description, color, is_default, created_at)
-           VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-          [cat.id, id, cat.name, cat.description, cat.color, cat.isDefault, cat.createdAt]
+      // Konto i startowe katalogi zapisujemy razem: błąd przy katalogach nie zostawi konta bez nich
+      const client = await p.connect();
+      try {
+        await client.query('BEGIN');
+        await client.query(
+          `INSERT INTO users (id, email, username, password_hash, salt, created_at)
+           VALUES ($1, $2, $3, $4, $5, $6)`,
+          [newUser.id, newUser.email, newUser.username, newUser.password_hash, newUser.salt, newUser.created_at]
         );
+        for (const cat of DEFAULT_CATALOGS(id)) {
+          await client.query(
+            `INSERT INTO user_catalogs (id, user_id, name, description, color, is_default, created_at)
+             VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+            [cat.id, id, cat.name, cat.description, cat.color, cat.isDefault, cat.createdAt]
+          );
+        }
+        await client.query('COMMIT');
+      } catch (err) {
+        await client.query('ROLLBACK').catch(() => undefined);
+        throw err;
+      } finally {
+        client.release();
       }
       return newUser;
     },
