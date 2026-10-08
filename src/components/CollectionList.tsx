@@ -12,6 +12,8 @@ import {
   CatalogDeleteModal,
   useCollectionFilters,
   useCatalogManager,
+  useProgressiveRender,
+  CollectionLoadingOverlay,
   FOR_SALE_BINDER,
 } from './collection-list';
 
@@ -56,6 +58,12 @@ export const CollectionList: React.FC<CollectionListProps> = ({
     handleResetFilters,
   } = useCollectionFilters({ collection, settings });
 
+  // Duże kolekcje dorysowujemy partiami przy wejściu do zakładki (z paskiem postępu)
+  const progressive = useProgressiveRender(filteredCollection.length);
+  const renderedCollection = progressive.isLoading
+    ? filteredCollection.slice(0, progressive.limit)
+    : filteredCollection;
+
   // Catalog management custom hook
   const {
     catalogStats,
@@ -95,6 +103,12 @@ export const CollectionList: React.FC<CollectionListProps> = ({
 
   return (
     <div className="space-y-6">
+      <CollectionLoadingOverlay
+        isLoading={progressive.isLoading}
+        loaded={progressive.loaded}
+        total={progressive.total}
+      />
+
       {/* 1. Catalogs Bar */}
       <CatalogsBar
         catalogs={catalogs}
@@ -159,7 +173,7 @@ export const CollectionList: React.FC<CollectionListProps> = ({
         />
       ) : viewMode === 'grid' ? (
         <CollectionGridView
-          items={filteredCollection}
+          items={renderedCollection}
           settings={settings}
           onUpdateQuantity={onUpdateQuantity}
           onDeleteItem={onDeleteItem}
@@ -169,7 +183,7 @@ export const CollectionList: React.FC<CollectionListProps> = ({
         />
       ) : (
         <CollectionTableView
-          items={filteredCollection}
+          items={renderedCollection}
           settings={settings}
           onUpdateQuantity={onUpdateQuantity}
           onDeleteItem={onDeleteItem}

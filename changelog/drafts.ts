@@ -25,6 +25,9 @@ export interface ChangelogDraft {
 }
 
 export const CHANGELOG_DRAFTS: ChangelogDraft[] = [
+  // ---------- 8 października 2026 ----------
+  { id: '2026-10-08-collection-loading', day: '2026-10-08', type: 'improved', area: 'Kolekcja', text: 'Duża kolekcja otwiera się płynniej, a w trakcie wczytywania widać pasek postępu z liczbą przygotowanych kart.' },
+
   // ---------- 2 października 2026 ----------
   { id: '2026-10-02-scanner-local', day: '2026-10-02', type: 'new', area: 'Skaner', text: 'Nowy skaner kart w przeglądarce: sam wykrywa kartę, prostuje zdjęcie i rozpoznaje ją po grafice i numerze.' },
   { id: '2026-10-02-scanner-continuous', day: '2026-10-02', type: 'new', area: 'Skaner', text: 'Tryb ciągły skanera do szybkiego dodawania całych stosów kart.' },
