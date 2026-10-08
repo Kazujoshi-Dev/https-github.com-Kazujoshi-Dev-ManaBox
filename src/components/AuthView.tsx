@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { SupportButton } from './ui/SupportButton';
+import { DiscordButton } from './ui/DiscordButton';
 import { TermsLink } from './AppFooter';
 import { versionLabel } from '../utils/appVersion';
 import { BinderShowcase } from './auth/BinderShowcase';
@@ -501,7 +502,7 @@ export const AuthView: React.FC<AuthViewProps> = ({ onAuthSuccess, initialMode =
             <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer" className="underline hover:text-stone-300">OpenStreetMap</a>.
           </p>
           <p>
-            Lubisz Mana Screw? <SupportButton variant="link" />
+            Lubisz Mana Screw? <SupportButton variant="link" /> <span className="text-stone-600">·</span> <DiscordButton variant="link" />
           </p>
           <p>
             manascrew.eu nie odpowiada za oszustwa wynikające z handlu między graczami. <TermsLink />

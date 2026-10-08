@@ -24,6 +24,7 @@ import {
 } from 'lucide-react';
 import { formatCurrency } from '../utils/formatters';
 import { SupportButton } from './ui/SupportButton';
+import { DiscordButton } from './ui/DiscordButton';
 import { AppSettings, AuthUser } from '../types';
 
 type Tab = 'collection' | 'search' | 'set-top' | 'analytics' | 'wishlist' | 'decks' | 'for-sale' | 'users' | 'changelog' | 'admin' | 'settings';
@@ -227,6 +228,7 @@ export const Header: React.FC<HeaderProps> = ({
           {logo}
           <h1 className="text-base font-semibold tracking-tight text-stone-100 truncate">Mana Screw</h1>
           <SupportButton variant="icon" className="-ml-1 shrink-0" />
+          <DiscordButton className="-ml-2 shrink-0" />
           {user && onOpenMailbox && unreadMessagesCount > 0 && (
             <button
               type="button"
@@ -308,6 +310,7 @@ export const Header: React.FC<HeaderProps> = ({
               <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin text-amber-400' : ''}`} />
             </button>
             <SupportButton />
+            <DiscordButton className="-ml-1" />
             {user && onOpenMailbox && (
               <button
                 type="button"

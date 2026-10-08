@@ -26,6 +26,7 @@ export interface ChangelogDraft {
 
 export const CHANGELOG_DRAFTS: ChangelogDraft[] = [
   // ---------- 8 października 2026 ----------
+  { id: '2026-10-08-discord', day: '2026-10-08', type: 'new', area: 'Aplikacja', text: 'Obok przycisku „Postaw kawę” jest teraz ikonka Discorda, która prowadzi na serwer społeczności Mana Screw.' },
   { id: '2026-10-08-stopka-regulamin', day: '2026-10-08', type: 'new', area: 'Aplikacja', text: 'Na dole strony pojawiła się stopka z numerem wersji aplikacji i regulaminem serwisu, w tym zasadami handlu między graczami.' },
   { id: '2026-10-08-automatyczna-aktualizacja', day: '2026-10-08', type: 'improved', area: 'Aplikacja', text: 'Aplikacja sama przechodzi na najnowszą wersję przy zmianie zakładki, bez ręcznego odświeżania strony.' },
   { id: '2026-10-08-collection-unit-price', day: '2026-10-08', type: 'improved', area: 'Kolekcja', text: 'Przy kartach posiadanych w kilku egzemplarzach widać teraz obok łącznej wartości także cenę za sztukę.' },
