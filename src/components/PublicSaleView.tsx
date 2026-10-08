@@ -4,6 +4,7 @@ import { CollectionItem, AppSettings, ScryfallCard } from '../types';
 import { formatCurrency, getCardPrice, getCardImageUri, getRarityColor, getRarityLabel, getCardEdhrecRank, handleCardImageError } from '../utils/formatters';
 import { ManaSymbol } from './ManaSymbol';
 import { EdhrecBadge } from './EdhrecBadge';
+import { AppFooter } from './AppFooter';
 import {
   CircleDollarSign,
   Search,
@@ -480,6 +481,8 @@ export const PublicSaleView: React.FC<PublicSaleViewProps> = ({
           </div>
         </div>
       )}
+
+      <AppFooter />
 
       {messageSubject !== null && currentUserId && (
         <SendMessageModal

@@ -1,5 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { SupportButton } from './ui/SupportButton';
+import { TermsLink } from './AppFooter';
+import { versionLabel } from '../utils/appVersion';
 import { BinderShowcase } from './auth/BinderShowcase';
 import { FeatureBento } from './auth/FeatureBento';
 import { useShowcaseCards } from './auth/useShowcaseCards';
@@ -500,6 +502,11 @@ export const AuthView: React.FC<AuthViewProps> = ({ onAuthSuccess, initialMode =
           </p>
           <p>
             Lubisz Mana Screw? <SupportButton variant="link" />
+          </p>
+          <p>
+            manascrew.eu nie odpowiada za oszustwa wynikające z handlu między graczami. <TermsLink />
+            <span aria-hidden="true"> · </span>
+            <span className="tabular-nums">Wersja {versionLabel()}</span>
           </p>
         </div>
       </footer>

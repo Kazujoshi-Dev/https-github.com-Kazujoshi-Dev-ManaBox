@@ -23,6 +23,7 @@ import { MailboxModal } from './components/messages/MailboxModal';
 import { SellQuantityModal } from './components/SellQuantityModal';
 import { Toast } from './components/Toast';
 import { MobileNav } from './components/MobileNav';
+import { AppFooter } from './components/AppFooter';
 import { CollectionHistoryModal } from './components/CollectionHistoryModal';
 const BugReportModal = lazyWithReload(() => import('./components/BugReportModal'));
 
@@ -940,6 +941,8 @@ export default function App() {
           )
         )}
       </main>
+
+      <AppFooter />
 
       {/* Dolny pasek nawigacji (tylko telefon) */}
       <MobileNav

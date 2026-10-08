@@ -24,10 +24,12 @@ function appVersion(buildId: string): Plugin {
 
 export default defineConfig(({command}) => {
   const buildId = command === 'build' ? Date.now().toString(36) : 'dev';
+  const builtAt = command === 'build' ? new Date().toISOString() : '';
   return {
     plugins: [react(), tailwindcss(), appVersion(buildId)],
     define: {
       __BUILD_ID__: JSON.stringify(buildId),
+      __BUILD_TIME__: JSON.stringify(builtAt),
     },
     resolve: {
       alias: {
