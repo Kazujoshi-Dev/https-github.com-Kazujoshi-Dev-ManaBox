@@ -77,5 +77,8 @@ export const CHANGELOG_DRAFTS: ChangelogDraft[] = [
   { id: '2026-10-05-dfc-thumbs', day: '2026-10-05', type: 'fixed', area: 'Karty', text: 'Miniatury kart dwustronnych (np. przy wyborze dowódcy, w talii i w wyszukiwarce) wczytują się poprawnie.' },
   { id: '2026-10-05-for-sale-add', day: '2026-10-05', type: 'new', area: 'Sprzedam', text: 'Przycisk „Dodaj kartę na sprzedaż”: wyszukaj dowolną kartę, wybierz wydanie, foil, ilość, stan i cenę, a trafi od razu do Twojej oferty.' },
   { id: '2026-10-05-print-filter', day: '2026-10-05', type: 'improved', area: 'Karty', text: 'Przy wyborze wydania karty możesz wpisać kod dodatku i numer z dołu karty (np. DSC 114), aby od razu znaleźć właściwą wersję.' },
-  { id: '2026-10-05-delete-main-binder', day: '2026-10-05', type: 'fixed', area: 'Kolekcja', text: 'Jasne ostrzeżenie przy usuwaniu klasera: usunięcie głównego klasera usuwa jego karty (poza wystawionymi na sprzedaż), a usunięcie innego przenosi karty do głównego.' }
+  { id: '2026-10-05-delete-main-binder', day: '2026-10-05', type: 'fixed', area: 'Kolekcja', text: 'Jasne ostrzeżenie przy usuwaniu klasera: usunięcie głównego klasera usuwa jego karty (poza wystawionymi na sprzedaż), a usunięcie innego przenosi karty do głównego.' },
+
+  // ---------- 8 października 2026 ----------
+  { id: '2026-10-08-separate-entries', day: '2026-10-08', type: 'fixed', area: 'Kolekcja', text: 'Karty różniące się wydaniem, wersją foil, stanem, językiem lub klaserem są w kolekcji osobnymi pozycjami, a dodanie innej wersji nie zmienia już posiadanej karty.' }
 ];

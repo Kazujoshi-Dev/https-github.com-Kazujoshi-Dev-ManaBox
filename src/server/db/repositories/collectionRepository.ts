@@ -1,7 +1,11 @@
 import path from 'path';
+import crypto from 'crypto';
 import { CollectionItem } from '../../../types';
 import { withDb, readJsonFile, writeJsonAtomic, getUserDir } from '../storage';
 import { mapCollectionRow } from '../mappers';
+import { entryKeyOf, matchesEntry, splitByFinish } from '../../../utils/collectionEntry';
+
+const newCollectionId = () => `col-${crypto.randomUUID()}`;
 
 export async function getCollection(userId: string): Promise<CollectionItem[]> {
   return withDb(
@@ -220,6 +224,20 @@ export async function addCollectionItems(
 ): Promise<CollectionItem[]> {
   if (!newItems || newItems.length === 0) return [];
 
+  // Każda pozycja ma tylko jedną wersję (zwykłą albo foil): dane z obiema liczbami dzielimy na dwie.
+  // Sztuki dopisujemy do istniejącej pozycji tylko wtedy, gdy to dokładnie ta sama karta
+  // (wydanie, foil, stan, język, klaser) i nie jest wystawiona na sprzedaż.
+  const parts = newItems.flatMap((item) =>
+    splitByFinish(item).map(({ foil, qty, part }, idx) => ({
+      foil,
+      qty,
+      item: part,
+      key: entryKeyOf(item, foil),
+      // druga część dostaje nowe id, żeby nie powtórzyć klucza
+      id: idx === 0 && item.id ? item.id : newCollectionId(),
+    }))
+  );
+
   return withDb(
     async (p) => {
       const client = await p.connect();
@@ -227,24 +245,23 @@ export async function addCollectionItems(
         await client.query('BEGIN');
         const inserted: CollectionItem[] = [];
 
-        for (const item of newItems) {
-          const itemId = item.id || `col-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`;
-          const cardId = item.cardId || item.card.id;
+        for (const { foil, qty, item, key, id } of parts) {
           const addedAt = item.addedAt || new Date().toISOString();
-          const binder = item.binder || 'Klaser Główny';
-          const condition = item.condition || 'NM';
-          const language = item.language || 'EN';
 
           const existingRes = await client.query(
-            `SELECT id, quantity, quantity_foil FROM user_collections 
-             WHERE user_id = $1 AND card_id = $2 AND binder = $3 AND condition = $4 AND language = $5`,
-            [userId, cardId, binder, condition, language]
+            `SELECT id, quantity, quantity_foil FROM user_collections
+             WHERE user_id = $1 AND card_id = $2 AND binder = $3 AND condition = $4 AND language = $5
+               AND COALESCE(is_for_sale, FALSE) = FALSE
+               AND ${foil ? 'quantity_foil > 0 AND quantity = 0' : 'quantity > 0 AND quantity_foil = 0'}
+             ORDER BY added_at DESC
+             LIMIT 1`,
+            [userId, key.cardId, key.binder, key.condition, key.language]
           );
 
           if (existingRes.rows.length > 0) {
             const row = existingRes.rows[0];
-            const updatedQty = Number(row.quantity) + (item.quantity || 0);
-            const updatedFoil = Number(row.quantity_foil) + (item.quantityFoil || 0);
+            const updatedQty = Number(row.quantity) + (foil ? 0 : qty);
+            const updatedFoil = Number(row.quantity_foil) + (foil ? qty : 0);
             await client.query(
               `UPDATE user_collections SET quantity = $1, quantity_foil = $2 WHERE id = $3 AND user_id = $4`,
               [updatedQty, updatedFoil, row.id, userId]
@@ -263,25 +280,28 @@ export async function addCollectionItems(
                 added_at, last_updated_price_at
               ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)`,
               [
-                itemId,
+                id,
                 userId,
-                cardId,
+                key.cardId,
                 JSON.stringify(item.card),
                 item.quantity || 0,
                 item.quantityFoil || 0,
-                condition,
-                language,
+                key.condition,
+                key.language,
                 item.purchasePrice ?? null,
                 item.notes || '',
-                binder,
+                key.binder,
                 addedAt,
                 item.lastUpdatedPriceAt || null,
               ]
             );
             inserted.push({
               ...item,
-              id: itemId,
-              cardId,
+              id,
+              cardId: key.cardId,
+              condition: key.condition as CollectionItem['condition'],
+              language: key.language as CollectionItem['language'],
+              binder: key.binder,
               addedAt,
             });
           }
@@ -302,33 +322,21 @@ export async function addCollectionItems(
       const items = readJsonFile<CollectionItem[]>(colFile, []);
       const inserted: CollectionItem[] = [];
 
-      for (const item of newItems) {
-        const cardId = item.cardId || item.card?.id;
-        const binder = item.binder || 'Klaser Główny';
-        const condition = item.condition || 'NM';
-        const language = item.language || 'EN';
-
-        const existingIdx = items.findIndex(
-          (c) =>
-            (c.cardId === cardId || c.card?.id === cardId) &&
-            c.binder === binder &&
-            c.condition === condition &&
-            c.language === language
-        );
-
-        if (existingIdx >= 0) {
-          items[existingIdx].quantity += item.quantity || 0;
-          items[existingIdx].quantityFoil += item.quantityFoil || 0;
-          inserted.push(items[existingIdx]);
+      for (const { foil, qty, item, key, id } of parts) {
+        const existing = items.find((c) => matchesEntry(c, key));
+        if (existing) {
+          if (foil) existing.quantityFoil = (existing.quantityFoil || 0) + qty;
+          else existing.quantity = (existing.quantity || 0) + qty;
+          inserted.push(existing);
         } else {
           const newItem: CollectionItem = {
             ...item,
-            id: item.id || `col-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`,
-            cardId,
+            id,
+            cardId: key.cardId,
             addedAt: item.addedAt || new Date().toISOString(),
-            binder,
-            condition,
-            language,
+            binder: key.binder,
+            condition: key.condition as CollectionItem['condition'],
+            language: key.language as CollectionItem['language'],
           };
           items.unshift(newItem);
           inserted.push(newItem);

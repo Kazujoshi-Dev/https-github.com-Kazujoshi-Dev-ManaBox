@@ -1,5 +1,6 @@
 import { langFromCard } from '../utils/formatters';
-import { useState, useEffect, useCallback, ChangeEvent } from 'react';
+import { useState, useEffect, useCallback, useRef, ChangeEvent } from 'react';
+import { entryKeyOf, matchesEntry, splitByFinish } from '../utils/collectionEntry';
 import { CollectionItem, WishlistItem, Catalog, DeckItem, ScryfallCard, CardCondition, CardLanguage, AppSettings } from '../types';
 import { collectionApi, wishlistApi, catalogsApi, decksApi, settingsApi } from '../services/api';
 
@@ -10,8 +11,22 @@ interface UseAppDataProps {
   onSettingsLoaded?: (settings: Partial<AppSettings>) => void;
 }
 
+interface CardSaveInput {
+  card: ScryfallCard;
+  quantity: number;
+  quantityFoil: number;
+  condition: CardCondition;
+  language: CardLanguage;
+  purchasePrice?: number | null;
+  notes?: string;
+  binder?: string;
+}
+
 export function useAppData({ userId, onUnauthorized, showToast, onSettingsLoaded }: UseAppDataProps) {
   const [collection, setCollection] = useState<CollectionItem[]>([]);
+  // Najświeższa kolekcja dla kilku zapisów pod rząd (np. skaner w trybie ciągłym)
+  const collectionRef = useRef<CollectionItem[]>(collection);
+  collectionRef.current = collection;
   const [wishlist, setWishlist] = useState<WishlistItem[]>([]);
   const [catalogs, setCatalogs] = useState<Catalog[]>([]);
   const [decks, setDecks] = useState<DeckItem[]>([]);
@@ -103,6 +118,13 @@ export function useAppData({ userId, onUnauthorized, showToast, onSettingsLoaded
   const updateQuantity = useCallback(async (id: string, deltaNormal: number, deltaFoil: number) => {
     const item = collection.find(c => c.id === id);
     if (!item) return;
+
+    // Przyciski +/− zmieniają liczbę sztuk tej pozycji: przy karcie foil to sztuki foil,
+    // żeby nie dopisać do niej zwykłej wersji
+    if (item.quantityFoil > 0 && item.quantity === 0) {
+      deltaFoil += deltaNormal;
+      deltaNormal = 0;
+    }
 
     const newQtyNormal = Math.max(0, item.quantity + deltaNormal);
     const newQtyFoil = Math.max(0, item.quantityFoil + deltaFoil);
@@ -218,78 +240,96 @@ export function useAppData({ userId, onUnauthorized, showToast, onSettingsLoaded
     }
   }, [updateCollectionItemData, onUnauthorized, showToast]);
 
+  /**
+   * Dopisuje sztuki jednej wersji (zwykła albo foil) do dokładnie takiej samej pozycji
+   * (to samo wydanie, foil, stan, język, klaser) albo tworzy nową. Karta różniąca się
+   * czymkolwiek nigdy nie łączy się z inną pozycją.
+   */
+  const addCopies = useCallback(async (data: CardSaveInput, foil: boolean, qty: number): Promise<CollectionItem | null> => {
+    const key = entryKeyOf({ ...data, cardId: data.card.id }, foil);
+    const match = collectionRef.current.find((c) => matchesEntry(c, key));
+    if (match) {
+      const res = await collectionApi.update(match.id, {
+        quantity: (match.quantity || 0) + (foil ? 0 : qty),
+        quantityFoil: (match.quantityFoil || 0) + (foil ? qty : 0),
+      }, onUnauthorized);
+      if (!res.ok) return null;
+      const updated: CollectionItem = await res.json();
+      collectionRef.current = collectionRef.current.map((c) => (c.id === updated.id ? updated : c));
+      setCollection((prev) => prev.map((c) => (c.id === updated.id ? updated : c)));
+      return updated;
+    }
+    const res = await collectionApi.create({
+      cardId: data.card.id,
+      ...data,
+      binder: key.binder,
+      quantity: foil ? 0 : qty,
+      quantityFoil: foil ? qty : 0,
+    }, onUnauthorized);
+    if (!res.ok) return null;
+    const created: CollectionItem = await res.json();
+    collectionRef.current = [created, ...collectionRef.current];
+    setCollection((prev) => [created, ...prev]);
+    return created;
+  }, [onUnauthorized]);
+
   const saveToCollection = useCallback(async (
-    data: {
-      card: ScryfallCard;
-      quantity: number;
-      quantityFoil: number;
-      condition: CardCondition;
-      language: CardLanguage;
-      purchasePrice?: number | null;
-      notes?: string;
-      binder?: string;
-    },
+    data: CardSaveInput,
     existingItem?: CollectionItem | null
   ): Promise<CollectionItem | null> => {
     try {
-      // Find existing item if passed or match by card ID / name in current collection
-      const targetExisting = existingItem || collection.find(
-        (c) =>
-          c.card.id === data.card.id ||
-          c.cardId === data.card.id ||
-          (c.card.name.toLowerCase() === data.card.name.toLowerCase() &&
-           c.card.set.toLowerCase() === data.card.set.toLowerCase() &&
-           c.card.collector_number === data.card.collector_number)
-      );
+      const label = `${data.card.name} [${data.card.set.toUpperCase()}] #${data.card.collector_number}`;
 
-      if (targetExisting) {
-        // Bez wskazanej pozycji (np. „Dodaj” z wyszukiwarki) karta, którą już masz, dostaje
-        // dodatkowe sztuki — nie nadpisujemy posiadanej liczby.
-        const isAddition = !existingItem;
-        const payload = isAddition
-          ? {
-              ...data,
-              quantity: (targetExisting.quantity || 0) + (data.quantity || 0),
-              quantityFoil: (targetExisting.quantityFoil || 0) + (data.quantityFoil || 0),
-              condition: targetExisting.condition,
-              language: targetExisting.language,
-              binder: targetExisting.binder,
-              notes: targetExisting.notes || data.notes
-            }
+      if (existingItem) {
+        // Edycja wskazanej pozycji. Gdy w formularzu pojawią się sztuki drugiej wersji
+        // (np. foil przy zwykłej karcie), trafiają do osobnej pozycji.
+        const itemIsFoil = (existingItem.quantityFoil || 0) > 0 && (existingItem.quantity || 0) === 0;
+        const normal = Math.max(0, data.quantity || 0);
+        const foil = Math.max(0, data.quantityFoil || 0);
+        const both = normal > 0 && foil > 0;
+        const ownPart = both
+          ? { ...data, quantity: itemIsFoil ? 0 : normal, quantityFoil: itemIsFoil ? foil : 0 }
           : data;
-        const res = await collectionApi.update(targetExisting.id, {
-          cardId: data.card.id,
-          ...payload
-        }, onUnauthorized);
 
-        if (res.ok) {
-          const updated: CollectionItem = await res.json();
-          setCollection(prev => prev.map(c => c.id === updated.id ? updated : c));
-          showToast(
-            isAddition
-              ? `Dodano "${data.card.name}", masz teraz ${updated.quantity + updated.quantityFoil} szt.`
-              : `Zapisano wersję "${data.card.name}" [${data.card.set.toUpperCase()}] #${data.card.collector_number}`
-          );
-          return updated;
-        }
-      } else {
-        const res = await collectionApi.create({
-          cardId: data.card.id,
-          ...data
-        }, onUnauthorized);
+        const res = await collectionApi.update(existingItem.id, { cardId: data.card.id, ...ownPart }, onUnauthorized);
+        if (!res.ok) return null;
+        const updated: CollectionItem = await res.json();
+        collectionRef.current = collectionRef.current.map((c) => (c.id === updated.id ? updated : c));
+        setCollection((prev) => prev.map((c) => (c.id === updated.id ? updated : c)));
 
-        if (res.ok) {
-          const newItem: CollectionItem = await res.json();
-          setCollection(prev => [newItem, ...prev]);
-          showToast(`Dodano "${data.card.name}" do kolekcji!`);
-          return newItem;
+        if (both) {
+          const otherIsFoil = !itemIsFoil;
+          const other = await addCopies(data, otherIsFoil, otherIsFoil ? foil : normal);
+          showToast(other
+            ? `Zapisano "${label}". Sztuki ${otherIsFoil ? 'foil' : 'zwykłe'} są osobną pozycją w kolekcji.`
+            : 'Nie udało się zapisać wszystkich sztuk. Spróbuj ponownie.');
+        } else {
+          showToast(`Zapisano "${label}"`);
         }
+        return updated;
       }
+
+      // Dodawanie: zwykłe i foil to osobne pozycje, a sztuki łączą się tylko z identyczną kartą
+      const parts = splitByFinish(data);
+      let first: CollectionItem | null = null;
+      let added = 0;
+      for (const { foil, qty } of parts) {
+        const saved = await addCopies(data, foil, qty);
+        if (!saved) continue;
+        first = first || saved;
+        added += qty;
+      }
+      if (!first) {
+        showToast('Nie udało się dodać karty do kolekcji. Spróbuj ponownie.');
+        return null;
+      }
+      showToast(`Dodano ${added} szt. "${label}" do kolekcji`);
+      return first;
     } catch (err) {
       console.error('Failed to save card:', err);
     }
     return null;
-  }, [collection, onUnauthorized, showToast]);
+  }, [addCopies, onUnauthorized, showToast]);
 
   /**
    * Dodaje kartę od razu na sprzedaż (bez szukania jej w kolekcji). Ta sama karta w tym samym

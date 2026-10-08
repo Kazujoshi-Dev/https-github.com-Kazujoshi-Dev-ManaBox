@@ -272,15 +272,15 @@ export default function App() {
 
   // Modal Handlers
   const handleOpenCardModal = useCallback((card: ScryfallCard, item: CollectionItem | null = null) => {
-    // Karta otwarta z wyszukiwarki / Top z dodatku, którą już masz (ten sam print):
-    // pokazujemy i zapisujemy posiadaną pozycję zamiast pustego formularza
-    const owned = item || collection.find((c) => c.card?.id === card.id || c.cardId === card.id) || null;
-    setSelectedCardForModal(owned ? owned.card : card);
-    setSelectedCollectionItemForModal(owned);
+    // Karta z wyszukiwarki / Top z dodatku otwiera formularz dodawania: nowe sztuki trafiają do
+    // identycznej pozycji albo do nowej, a zmiana wydania czy foil nie nadpisuje posiadanej karty.
+    // Edycję pozycji otwiera tylko kliknięcie karty w kolekcji (przekazane `item`).
+    setSelectedCardForModal(item ? item.card : card);
+    setSelectedCollectionItemForModal(item);
     setSelectedWishlistItemForModal(null);
     setDeckCardBeingViewed(null);
-    setDeckCardIsFoil(owned ? owned.quantityFoil > 0 : undefined);
-  }, [collection]);
+    setDeckCardIsFoil(item ? item.quantityFoil > 0 && item.quantity === 0 : undefined);
+  }, []);
 
   const handleOpenWishlistCardModal = useCallback((item: WishlistItem) => {
     setSelectedCardForModal(item.card);
@@ -308,7 +308,12 @@ export default function App() {
       }
     }
     setDeckCardIsFoil(isFoil);
-    const existing = collection.find(c => c.card.id === card.id || c.card.name.toLowerCase() === card.name.toLowerCase()) || null;
+    // Pozycja kolekcji tylko dla dokładnie tej samej karty (to samo wydanie i ta sama wersja foil / zwykła)
+    const existing = collection.find((c) =>
+      !c.isForSale &&
+      (c.cardId || c.card.id) === card.id &&
+      (isFoil ? c.quantityFoil > 0 && c.quantity === 0 : c.quantity > 0 && c.quantityFoil === 0)
+    ) || null;
     setSelectedCardForModal(card);
     setSelectedCollectionItemForModal(existing);
     setSelectedWishlistItemForModal(null);
@@ -820,10 +825,11 @@ export default function App() {
             onDeleteDeck={handleDeleteDeckAndReset}
             onCopyDeckToCollection={async (deck) => {
               const binder = catalogs.find((c) => c.isDefault)?.name || 'Klaser Główny';
-              // Te same wydania i wersje foil co w talii; ta sama karta w kilku wpisach sumuje się
+              // Te same wydania i wersje foil co w talii; ta sama karta w tej samej wersji sumuje się,
+              // a zwykła i foil to osobne pozycje
               const byKey = new Map<string, any>();
               const add = (card: any, qty: number, foil: boolean) => {
-                const key = card.id;
+                const key = `${card.id}|${foil ? 'foil' : 'normal'}`;
                 const prev = byKey.get(key) || {
                   card,
                   cardId: card.id,

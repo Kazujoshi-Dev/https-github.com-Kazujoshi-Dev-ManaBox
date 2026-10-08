@@ -233,6 +233,24 @@ export async function initDb(): Promise<void> {
             published_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
             updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
           );
+
+          -- Wersja zwykła i foil to osobne pozycje kolekcji: pozycje z oboma naraz dzielimy na dwie
+          -- (sztuki foil trafiają do nowej pozycji z tymi samymi danymi). Po podziale nic się nie dzieje.
+          WITH mixed AS (
+            SELECT * FROM user_collections WHERE quantity > 0 AND quantity_foil > 0 FOR UPDATE
+          ), foil_rows AS (
+            INSERT INTO user_collections (
+              id, user_id, card_id, card, quantity, quantity_foil, condition, language,
+              purchase_price, notes, binder, added_at, last_updated_price_at,
+              is_for_sale, sale_price, previous_prices, prices_changed_at
+            )
+            SELECT 'col-' || gen_random_uuid()::text, user_id, card_id, card, 0, quantity_foil, condition, language,
+                   purchase_price, notes, binder, added_at, last_updated_price_at,
+                   is_for_sale, sale_price, previous_prices, prices_changed_at
+            FROM mixed
+            RETURNING id
+          )
+          UPDATE user_collections SET quantity_foil = 0 WHERE id IN (SELECT id FROM mixed);
         `);
         setPostgresActive(true);
         console.log('[Storage] PostgreSQL connected & database schema verified successfully');
