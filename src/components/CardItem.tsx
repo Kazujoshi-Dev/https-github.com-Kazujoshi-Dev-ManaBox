@@ -267,6 +267,19 @@ export const CardItem: React.FC<CardItemProps> = ({
           <p className="text-xs font-bold tabular-nums text-emerald-400 leading-tight">
             {formatCurrency(itemTotalValue, settings.currency)}
           </p>
+          {totalQuantity > 1 && (
+            <div className="mt-0.5 pt-0.5 border-t border-stone-800 text-[11px] tabular-nums text-stone-400 leading-tight">
+              {quantity > 0 && (
+                <p>{formatCurrency(priceNormal, settings.currency)} / szt.</p>
+              )}
+              {quantityFoil > 0 && (
+                <p className="flex items-center gap-0.5 text-amber-300/90">
+                  <Sparkles className="w-2.5 h-2.5 shrink-0" />
+                  {formatCurrency(priceFoil, settings.currency)} / szt.
+                </p>
+              )}
+            </div>
+          )}
         </div>
       </div>
 

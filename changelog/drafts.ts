@@ -26,6 +26,7 @@ export interface ChangelogDraft {
 
 export const CHANGELOG_DRAFTS: ChangelogDraft[] = [
   // ---------- 8 października 2026 ----------
+  { id: '2026-10-08-collection-unit-price', day: '2026-10-08', type: 'improved', area: 'Kolekcja', text: 'Przy kartach posiadanych w kilku egzemplarzach widać teraz obok łącznej wartości także cenę za sztukę.' },
   { id: '2026-10-08-collection-loading', day: '2026-10-08', type: 'improved', area: 'Kolekcja', text: 'Duża kolekcja otwiera się płynniej, a w trakcie wczytywania widać pasek postępu z liczbą przygotowanych kart.' },
 
   // ---------- 2 października 2026 ----------

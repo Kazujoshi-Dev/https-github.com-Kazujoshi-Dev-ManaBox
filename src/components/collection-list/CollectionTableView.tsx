@@ -44,8 +44,16 @@ export const CollectionTableView: React.FC<CollectionTableViewProps> = ({
                     <span className="tabular-nums">{card.set.toUpperCase()}</span>
                     {card.collector_number ? ` #${card.collector_number}` : ''} · {item.condition} · {item.language}
                   </p>
-                  <div className="flex items-center gap-1.5 mt-0.5">
-                    <span className="text-sm font-bold text-emerald-400">{formatCurrency(total, settings.currency)}</span>
+                  <div className="flex flex-wrap items-center gap-x-1.5 mt-0.5">
+                    <span className="text-sm font-bold text-emerald-400 tabular-nums">{formatCurrency(total, settings.currency)}</span>
+                    {qty > 1 && (
+                      <span className="text-[11px] text-stone-400 tabular-nums">
+                        ({[
+                          (item.quantity || 0) > 0 ? formatCurrency(unit, settings.currency) : null,
+                          (item.quantityFoil || 0) > 0 ? `${formatCurrency(unitFoil, settings.currency)} foil` : null,
+                        ].filter(Boolean).join(' · ')} / szt.)
+                      </span>
+                    )}
                     {item.quantityFoil > 0 && (
                       <span className="inline-flex items-center gap-0.5 text-xs text-amber-300">
                         <Sparkles className="w-3 h-3" />
