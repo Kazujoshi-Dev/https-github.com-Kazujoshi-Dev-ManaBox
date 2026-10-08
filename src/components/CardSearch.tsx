@@ -13,8 +13,12 @@ import {
   SlidersHorizontal,
   Eye,
   Check,
-  Trophy
+  Trophy,
+  Gamepad2
 } from 'lucide-react';
+import { digitalLabel, isDigitalOnly } from '../utils/mtgFormats';
+
+const ARENA_PREF_KEY = 'ms-search-arena';
 
 interface CardSearchProps {
   onSelectCard: (card: ScryfallCard) => void;
@@ -28,6 +32,15 @@ export const CardSearch: React.FC<CardSearchProps> = ({ onSelectCard, settings }
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showAutocomplete, setShowAutocomplete] = useState(false);
+  // Karty dostępne tylko w MTG Arena pokazujemy dopiero po zaznaczeniu pola (zapamiętane w przeglądarce)
+  const [includeArena, setIncludeArena] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem(ARENA_PREF_KEY) === '1';
+    } catch {
+      return false;
+    }
+  });
+  const lastQueryRef = useRef('');
 
   // Search Debounce timer
   const debounceRef = useRef<NodeJS.Timeout | null>(null);
@@ -62,14 +75,15 @@ export const CardSearch: React.FC<CardSearchProps> = ({ onSelectCard, settings }
     };
   }, [query]);
 
-  const executeSearch = async (searchQuery: string) => {
+  const executeSearch = async (searchQuery: string, arena: boolean = includeArena) => {
     if (!searchQuery.trim()) return;
+    lastQueryRef.current = searchQuery;
     setIsLoading(true);
     setError(null);
     setShowAutocomplete(false);
 
     try {
-      const res = await fetch(`/api/scryfall/search?q=${encodeURIComponent(searchQuery)}`);
+      const res = await fetch(`/api/scryfall/search?q=${encodeURIComponent(searchQuery)}&game=${arena ? 'all' : 'paper'}`);
       const data = await res.json();
 
       if (!res.ok) {
@@ -167,6 +181,27 @@ export const CardSearch: React.FC<CardSearchProps> = ({ onSelectCard, settings }
           )}
         </div>
 
+        <label className="inline-flex items-center gap-2 text-sm text-stone-300 cursor-pointer select-none">
+          <input
+            type="checkbox"
+            checked={includeArena}
+            onChange={(e) => {
+              const next = e.target.checked;
+              setIncludeArena(next);
+              try {
+                localStorage.setItem(ARENA_PREF_KEY, next ? '1' : '0');
+              } catch {
+                /* brak dostępu do pamięci przeglądarki */
+              }
+              if (lastQueryRef.current.trim()) executeSearch(lastQueryRef.current, next);
+            }}
+            className="w-4 h-4 accent-amber-500 cursor-pointer"
+          />
+          <Gamepad2 className="w-4 h-4 text-amber-400" />
+          <span>Karty MTG Arena</span>
+          <span className="text-xs text-stone-500">(uwzględnij karty cyfrowe)</span>
+        </label>
+
       </div>
 
       {/* Error Notice */}
@@ -189,6 +224,7 @@ export const CardSearch: React.FC<CardSearchProps> = ({ onSelectCard, settings }
 
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
             {searchResults.map((card) => {
+              const digital = isDigitalOnly(card);
               const imageUri = getCardImageUri(card, 'normal');
               const price = getCardPrice(card, false, settings || 'USD');
               const edhrecRank = getCardEdhrecRank(card);
@@ -229,11 +265,21 @@ export const CardSearch: React.FC<CardSearchProps> = ({ onSelectCard, settings }
                       </div>
                     )}
 
+                    {digital ? (
+                      <div
+                        className="absolute bottom-2 right-2 bg-stone-950/90 backdrop-blur-md px-2 py-0.5 rounded border border-amber-500/40 flex items-center gap-1"
+                        title="Karta dostępna tylko w grze cyfrowej"
+                      >
+                        <Gamepad2 className="w-3 h-3 text-amber-400" />
+                        <span className="text-[11px] font-semibold text-amber-300">{digitalLabel(card)}</span>
+                      </div>
+                    ) : (
                     <div className="absolute bottom-2 right-2 bg-stone-950/90 backdrop-blur-md px-2 py-0.5 rounded border border-stone-800">
                       <p className="text-xs font-bold tabular-nums text-emerald-400">
                         {formatCurrency(price, settings ? settings.currency : 'USD')}
                       </p>
                     </div>
+                    )}
                   </div>
 
                   <div className="p-3 flex-1 flex flex-col justify-between space-y-2">
@@ -266,8 +312,8 @@ export const CardSearch: React.FC<CardSearchProps> = ({ onSelectCard, settings }
                       onClick={() => onSelectCard(card)}
                       className="w-full py-1.5 rounded-lg bg-stone-800 hover:bg-amber-500 hover:text-stone-950 text-amber-300 font-bold text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
                     >
-                      <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
-                      <span>Dodaj do kolekcji</span>
+                      {digital ? <Eye className="w-3.5 h-3.5" /> : <Plus className="w-3.5 h-3.5 stroke-[2.5]" />}
+                      <span>{digital ? 'Szczegóły karty' : 'Dodaj do kolekcji'}</span>
                     </button>
                   </div>
                 </div>

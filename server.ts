@@ -16,6 +16,7 @@ import * as hashes from './src/server/cards/hashIndex';
 import { computeCardHash, decodeJpegToGray } from './src/server/cards/imageHash';
 import { normalizeName, nameSimilarity } from './src/server/cards/nameMatch';
 import { searchCities, resolveSuggestion } from './src/server/geo';
+import { isDigitalOnly, DIGITAL_BLOCK_MESSAGE, type SearchGame } from './src/utils/mtgFormats';
 
 const app = express();
 const PORT = 3000;
@@ -1192,11 +1193,32 @@ app.get('/api/scryfall/autocomplete', async (req, res) => {
 
 app.get('/favicon.ico', (_req, res) => res.status(204).end());
 
+/**
+ * Które karty pokazywać w wyszukiwaniu: `paper` (domyślnie, bez kart tylko cyfrowych),
+ * `arena` (karty dostępne w MTG Arena, także cyfrowe) albo `all`.
+ */
+function parseSearchGame(v: unknown): SearchGame {
+  return v === 'arena' || v === 'all' ? v : 'paper';
+}
+
+/** Dokleja filtr gry do zapytania Scryfall, chyba że użytkownik sam go podał. */
+function withGameFilter(query: string, game: SearchGame): string {
+  if (game === 'all' || /(^|[\s(-])(game|in):|\bis:digital\b/i.test(query)) return query;
+  return `(${query}) game:${game}`;
+}
+
+function cardMatchesGame(card: any, game: SearchGame): boolean {
+  if (!card || game === 'all') return true;
+  if (game === 'paper') return !isDigitalOnly(card);
+  return !Array.isArray(card.games) || card.games.includes('arena');
+}
+
 // 3. Scryfall Search (with fallback to fuzzy named search)
 app.get(['/api/scryfall/search', '/api/scryfall/cards/search'], async (req, res) => {
   try {
     const query = (req.query.q as string || '').trim();
     const page = req.query.page || '1';
+    const game = parseSearchGame(req.query.game);
     if (!query) {
       return res.status(400).json({ error: 'Parametr wyszukiwania "q" jest wymagany' });
     }
@@ -1204,7 +1226,7 @@ app.get(['/api/scryfall/search', '/api/scryfall/cards/search'], async (req, res)
     let data;
     let scryfallDown = false;
     try {
-      data = await fetchScryfall(`/cards/search?q=${encodeURIComponent(query)}&page=${page}`);
+      data = await fetchScryfall(`/cards/search?q=${encodeURIComponent(withGameFilter(query, game))}&page=${page}`);
     } catch (searchErr: any) {
       // 400 = błędna składnia zapytania; każdy inny błąd (sieć, limit, blokada, awaria) = Scryfall niedostępny
       scryfallDown = !/Scryfall API error \(400\)/.test(String(searchErr?.message || ''));
@@ -1213,7 +1235,7 @@ app.get(['/api/scryfall/search', '/api/scryfall/cards/search'], async (req, res)
 
     // Scryfall niedostępny: szukamy po nazwie w lokalnej bazie kart
     if (scryfallDown) {
-      const local = await cards.searchCardsLocal(query).catch(() => []);
+      const local = (await cards.searchCardsLocal(query).catch(() => [])).filter((c: any) => cardMatchesGame(c, game));
       if (local.length) return res.json({ object: 'list', total_cards: local.length, data: local, source: 'local' });
     }
 
@@ -1221,7 +1243,7 @@ app.get(['/api/scryfall/search', '/api/scryfall/cards/search'], async (req, res)
     if ((!data.data || data.data.length === 0) && query.length >= 3) {
       try {
         const fuzzyResult = await fetchScryfall(`/cards/named?fuzzy=${encodeURIComponent(query)}`);
-        if (fuzzyResult && fuzzyResult.id) {
+        if (fuzzyResult && fuzzyResult.id && cardMatchesGame(fuzzyResult, game)) {
           data = {
             object: 'list',
             total_cards: 1,
@@ -1505,6 +1527,7 @@ app.get('/api/scryfall/prints', async (req, res) => {
     const cardId = req.query.cardId as string;
     const oracleId = req.query.oracle_id as string;
     const cardName = req.query.name as string;
+    const game = parseSearchGame(req.query.game);
 
     let targetOracleId = oracleId;
     let targetName = cardName;
@@ -1515,7 +1538,7 @@ app.get('/api/scryfall/prints', async (req, res) => {
       if (local?.oracle_id) targetOracleId = local.oracle_id;
       if (!targetName && local?.name) targetName = local.name;
     }
-    const localPrints = await cards.getPrintsLocal(targetOracleId || null, targetOracleId ? null : targetName || null).catch(() => null);
+    const localPrints = await cards.getPrintsLocal(targetOracleId || null, targetOracleId ? null : targetName || null, game).catch(() => null);
     if (localPrints && localPrints.length) {
       return res.json({ total_cards: localPrints.length, data: localPrints });
     }
@@ -1536,10 +1559,11 @@ app.get('/api/scryfall/prints', async (req, res) => {
     }
 
     let searchUri = '';
+    const gameQ = game === 'all' ? '' : `+game:${game}`;
     if (targetOracleId) {
-      searchUri = `/cards/search?q=oracle_id:${encodeURIComponent(targetOracleId)}+unique:prints&order=released&dir=desc`;
+      searchUri = `/cards/search?q=oracle_id:${encodeURIComponent(targetOracleId)}+unique:prints${gameQ}&order=released&dir=desc`;
     } else if (targetName) {
-      searchUri = `/cards/search?q=!"${encodeURIComponent(targetName)}"+unique:prints&order=released&dir=desc`;
+      searchUri = `/cards/search?q=!"${encodeURIComponent(targetName)}"+unique:prints${gameQ}&order=released&dir=desc`;
     } else {
       return res.status(400).json({ error: 'Wymagany parametr cardId, oracle_id lub name', data: [] });
     }
@@ -1565,9 +1589,16 @@ app.get('/api/collection', authMiddleware, async (req, res) => {
   }
 });
 
+/** Karty tylko z MTG Arena nie mogą być wystawione na sprzedaż (nie istnieją fizycznie). */
+const stripDigitalSale = (items: any[]) =>
+  items.map((it) => (it && it.isForSale && isDigitalOnly(it.card) ? { ...it, isForSale: false, salePrice: null } : it));
+
 app.post('/api/collection', authMiddleware, async (req, res) => {
   try {
     const userId = (req as any).userId;
+    if (req.body?.isForSale && isDigitalOnly(req.body?.card)) {
+      return res.status(400).json({ error: DIGITAL_BLOCK_MESSAGE });
+    }
     const newItem = {
       id: `col-${crypto.randomUUID()}`,
       addedAt: new Date().toISOString(),
@@ -1584,7 +1615,16 @@ app.put('/api/collection/:id', authMiddleware, async (req, res) => {
   try {
     const userId = (req as any).userId;
     const { id } = req.params;
-    const updated = await db.updateCollectionItem(userId, id, req.body);
+    const body = req.body || {};
+    // Wystawienie na sprzedaż (albo zmiana wydania pozycji z oferty) karty tylko z MTG Arena
+    if (body.isForSale === true || (body.card && isDigitalOnly(body.card))) {
+      const current = (await db.getCollection(userId)).find((c) => c.id === id);
+      const willSell = body.isForSale !== undefined ? Boolean(body.isForSale) : Boolean(current?.isForSale);
+      if (willSell && isDigitalOnly(body.card || current?.card)) {
+        return res.status(400).json({ error: DIGITAL_BLOCK_MESSAGE });
+      }
+    }
+    const updated = await db.updateCollectionItem(userId, id, body);
     if (!updated) {
       return res.status(404).json({ error: 'Nie znaleziono pozycji w Twojej kolekcji' });
     }
@@ -1642,7 +1682,7 @@ setInterval(snapshotMissingUsers, 60 * 60_000).unref?.();
 app.post('/api/collection/bulk-import', authMiddleware, async (req, res) => {
   try {
     const userId = (req as any).userId;
-    const items = Array.isArray(req.body) ? req.body : [];
+    const items = stripDigitalSale(Array.isArray(req.body) ? req.body : []);
     await db.saveFullCollection(userId, items);
     res.json({ success: true, count: items.length });
   } catch (err: any) {
@@ -1653,7 +1693,7 @@ app.post('/api/collection/bulk-import', authMiddleware, async (req, res) => {
 app.post('/api/collection/bulk-add', authMiddleware, async (req, res) => {
   try {
     const userId = (req as any).userId;
-    const items = Array.isArray(req.body) ? req.body : [];
+    const items = stripDigitalSale(Array.isArray(req.body) ? req.body : []);
     const added = await db.addCollectionItems(userId, items);
     res.json({ success: true, count: added.length, items: added });
   } catch (err: any) {
@@ -2625,6 +2665,7 @@ app.get('/api/wishlist', authMiddleware, async (req, res) => {
 app.post('/api/wishlist', authMiddleware, async (req, res) => {
   try {
     const userId = (req as any).userId;
+    if (isDigitalOnly(req.body?.card)) return res.status(400).json({ error: DIGITAL_BLOCK_MESSAGE });
     // id i data dodania nadaje serwer (klient nie może ich narzucić)
     const newItem = {
       ...req.body,
@@ -2647,6 +2688,7 @@ app.put('/api/wishlist/:id', authMiddleware, async (req, res) => {
       if (!b.card || typeof b.card !== 'object' || typeof b.card.id !== 'string' || typeof b.card.name !== 'string') {
         return res.status(400).json({ error: 'Nieprawidłowe dane karty.' });
       }
+      if (isDigitalOnly(b.card)) return res.status(400).json({ error: DIGITAL_BLOCK_MESSAGE });
       patch.card = b.card;
     }
     if (b.isFoil !== undefined) patch.isFoil = Boolean(b.isFoil);

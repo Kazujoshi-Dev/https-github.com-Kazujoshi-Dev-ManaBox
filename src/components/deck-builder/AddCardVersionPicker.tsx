@@ -16,6 +16,10 @@ interface AddCardVersionPickerProps {
   onConfirm: (card: ScryfallCard, isFoil: boolean, asCommander: boolean) => void;
   /** Własny napis na przycisku potwierdzenia (poza talią). */
   confirmLabel?: string;
+  /** Talia singleton (Commander, Brawl): ponowne dodanie karty zmienia jej wersję zamiast dodawać kopię. */
+  singleton?: boolean;
+  /** Jakie wydania pokazywać: papierowe (domyślnie) albo dostępne w MTG Arena. */
+  game?: 'paper' | 'arena';
 }
 
 /**
@@ -53,7 +57,9 @@ export const AddCardVersionPicker: React.FC<AddCardVersionPickerProps> = ({
   collectionOnly,
   onBack,
   onConfirm,
-  confirmLabel
+  confirmLabel,
+  singleton = true,
+  game = 'paper'
 }) => {
   const owned = useMemo(
     () => collection.filter((c) => c.card.name.toLowerCase() === card.name.toLowerCase()),
@@ -76,6 +82,7 @@ export const AddCardVersionPicker: React.FC<AddCardVersionPickerProps> = ({
     if (card.id) q.set('cardId', card.id);
     if (card.oracle_id) q.set('oracle_id', card.oracle_id);
     q.set('name', card.name);
+    if (game !== 'paper') q.set('game', game);
     fetch(`/api/scryfall/prints?${q.toString()}`)
       .then((r) => (r.ok ? r.json() : { data: [] }))
       .then((d) => !cancelled && setPrints(Array.isArray(d?.data) && d.data.length ? d.data : [card]))
@@ -83,7 +90,7 @@ export const AddCardVersionPicker: React.FC<AddCardVersionPickerProps> = ({
     return () => {
       cancelled = true;
     };
-  }, [card]);
+  }, [card, game]);
 
   // Wydania z kolekcji na początku; przy talii z kolekcji tylko one
   const list = useMemo(() => {
@@ -118,7 +125,7 @@ export const AddCardVersionPicker: React.FC<AddCardVersionPickerProps> = ({
   const ownedSel = ownedIds.get(selected.id);
   const isBasic = /\bbasic\b/i.test(selected.type_line || '') && /\bland\b/i.test(selected.type_line || '');
   const inDeck = deckCards.find((e) => !e.isCommander && e.card.name === selected.name);
-  const replacing = !asCommander && inDeck && !isBasic;
+  const replacing = singleton && !asCommander && inDeck && !isBasic;
   const img = getCardImageUri(selected, 'normal');
   const price = settings ? getCardPrice(selected, foil, settings) : 0;
 

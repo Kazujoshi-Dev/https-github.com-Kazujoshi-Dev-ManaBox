@@ -32,6 +32,8 @@ export interface DeckHeaderProps {
   /** Publiczny link do talii. */
   onOpenShare?: () => void;
   isPublic?: boolean;
+  /** Eksport listy do MTG Arena (pokazywany tylko w formatach MTGA). */
+  onExportArena?: () => void;
 }
 
 export interface CommanderShowcaseProps {
@@ -121,6 +123,8 @@ export interface DeckAddCardModalProps {
   deckName: string;
   collection: CollectionItem[];
   deckCards: DeckCardEntry[];
+  /** Format talii: decyduje o dowódcy, liczbie kopii i o tym, czy pokazywać karty MTG Arena. */
+  deckFormat?: import('../../utils/mtgFormats').DeckFormat;
   searchSource: 'collection' | 'all';
   searchQuery: string;
   searchResults: ScryfallCard[];

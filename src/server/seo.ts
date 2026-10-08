@@ -4,6 +4,7 @@
  * React po starcie podmienia tę treść na normalny widok aplikacji.
  */
 import fs from 'fs';
+import { getDeckFormat } from '../utils/mtgFormats';
 import type express from 'express';
 import * as db from './db';
 import type { CollectionItem, DeckItem, ScryfallCard, WishlistItem } from '../types';
@@ -223,10 +224,10 @@ async function deckPage(id: string): Promise<RenderedPage> {
   }
   const deck: DeckItem = found.deck;
   const main = (deck.cards || []).filter((e) => !e.isSideboard && !e.isCommander);
-  const total = main.reduce((s, e) => s + (e.quantity || 0), 0) + (deck.commander ? 1 : 0);
-  const cmd = deck.commander || null;
-  const isEdh = Boolean(cmd) || /commander|edh/i.test(deck.format || '');
-  const formatLabel = isEdh ? 'Commander (EDH)' : deck.format || 'Magic: The Gathering';
+  const total = main.reduce((s, e) => s + (e.quantity || 0), 0) + (deck.commander && getDeckFormat(deck.format).commander ? 1 : 0);
+  const fmt = getDeckFormat(deck.format);
+  const cmd = fmt.commander ? deck.commander || null : null;
+  const formatLabel = fmt.id === 'commander' ? 'Commander (EDH)' : fmt.platform === 'arena' ? `${fmt.name} (MTG Arena)` : fmt.label;
 
   const groups = new Map<string, { name: string; items: { name: string; qty: number }[] }>();
   for (const c of CATEGORY) groups.set(c.id, { name: c.name, items: [] });

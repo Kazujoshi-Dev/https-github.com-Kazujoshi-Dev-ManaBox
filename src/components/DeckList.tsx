@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { DeckItem, AppSettings } from '../types';
 import { getCardPrice, formatCurrency } from '../utils/formatters';
 import { exportDeckToTxt, downloadTxtFile } from '../utils/textCardList';
+import { getDeckFormat } from '../utils/mtgFormats';
 import { Swords, Plus, Crown, Trash2, Download, Copy, Check, Upload, FileText, Pencil, FolderInput, Loader2 } from 'lucide-react';
 
 interface DeckListProps {
@@ -113,10 +114,17 @@ export const DeckList: React.FC<DeckListProps> = ({
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-4">
           {decks.map(deck => {
-            const count = (deck.commander ? 1 : 0) + (deck.cards?.reduce((s, c) => s + c.quantity, 0) || 0);
+            const fmt = getDeckFormat(deck.format);
+            const count = (deck.commander && fmt.commander ? 1 : 0) + (deck.cards?.filter((c) => !c.isSideboard).reduce((s, c) => s + c.quantity, 0) || 0);
+            const sizeOk = fmt.exactSize ? count === fmt.deckSize : count >= fmt.deckSize;
+            const sizeOver = fmt.exactSize && count > fmt.deckSize;
+            const firstArt = deck.cards?.find((c) => c.card.image_uris?.art_crop || c.card.card_faces?.[0]?.image_uris?.art_crop)?.card;
             const deckVal = computeDeckValue(deck, settings);
 
-            const art = deck.commander?.image_uris?.art_crop || deck.commander?.card_faces?.[0]?.image_uris?.art_crop || '';
+            const art =
+              (fmt.commander && (deck.commander?.image_uris?.art_crop || deck.commander?.card_faces?.[0]?.image_uris?.art_crop)) ||
+              (!fmt.commander && (firstArt?.image_uris?.art_crop || firstArt?.card_faces?.[0]?.image_uris?.art_crop)) ||
+              '';
             const iconBtn = 'w-8 h-8 rounded-md flex items-center justify-center text-stone-400 hover:text-stone-100 hover:bg-stone-800 cursor-pointer';
             return (
               <article
@@ -132,6 +140,9 @@ export const DeckList: React.FC<DeckListProps> = ({
                       <Crown className="w-6 h-6" />
                     </div>
                   )}
+                  <span className="absolute top-2 right-2 px-2 py-0.5 rounded-md text-[11px] font-medium bg-stone-950/80 text-amber-300">
+                    {fmt.label.replace(/^EDH /, '')}
+                  </span>
                   {deck.isPublic && (
                     <span className="absolute top-2 left-2 px-2 py-0.5 rounded-md text-[11px] font-medium bg-stone-950/80 text-emerald-300" title="Talia dostępna pod publicznym linkiem">
                       Publiczna
@@ -143,7 +154,7 @@ export const DeckList: React.FC<DeckListProps> = ({
                   <div className="min-w-0">
                     <h3 className="text-base font-semibold text-stone-50 truncate">{deck.name}</h3>
                     <p className="text-sm text-stone-400 truncate">
-                      {deck.commander ? deck.commander.name : 'Bez dowódcy'}
+                      {fmt.commander ? (deck.commander ? deck.commander.name : 'Bez dowódcy') : fmt.description}
                     </p>
                     {deck.description && <p className="mt-1.5 text-sm text-stone-500 line-clamp-2">{deck.description}</p>}
                   </div>
@@ -151,10 +162,10 @@ export const DeckList: React.FC<DeckListProps> = ({
                   <div className="mt-auto flex items-center justify-between gap-2">
                     <div className="flex items-center gap-3 text-sm tabular-nums">
                       <span
-                        className={count === 100 ? 'text-emerald-400' : count > 100 ? 'text-rose-400' : 'text-stone-300'}
-                        title={`${deck.format || 'EDH Commander'}: ${count} ze 100 kart`}
+                        className={sizeOk ? 'text-emerald-400' : sizeOver ? 'text-rose-400' : 'text-stone-300'}
+                        title={`${fmt.label}: ${count} ${fmt.exactSize ? 'z' : 'kart, minimum'} ${fmt.deckSize}`}
                       >
-                        {count}/100
+                        {count}/{fmt.deckSize}
                       </span>
                       <span className="text-stone-300">{formatCurrency(deckVal, settings.currency)}</span>
                     </div>
@@ -165,7 +176,7 @@ export const DeckList: React.FC<DeckListProps> = ({
                       <button type="button" onClick={(e) => handleCopyDeckList(e, deck)} className={iconBtn} title="Kopiuj listę do schowka" aria-label="Kopiuj listę do schowka">
                         {copiedDeckId === deck.id ? <Check className="w-4 h-4 text-emerald-400" /> : <Copy className="w-4 h-4" />}
                       </button>
-                      {onCopyToCollection && count > 0 && (
+                      {onCopyToCollection && count > 0 && fmt.platform === 'paper' && (
                         <button
                           type="button"
                           onClick={() => setConfirmCopyId(confirmCopyId === deck.id ? null : deck.id)}

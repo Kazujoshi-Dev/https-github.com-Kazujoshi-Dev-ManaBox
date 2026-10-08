@@ -4,6 +4,8 @@
  * - Pełne obiekty kart trzymamy w PostgreSQL (tabela scryfall_cards).
  * - W pamięci trzymamy lekki indeks: set+numer → karta, nazwa → wydania.
  * - Synchronizacja z Scryfall raz na dobę, w tle; skaner nie odpytuje API Scryfall.
+ * - Karty istniejące tylko w MTG Arena (kolumna `digital`) są w bazie dla talii MTGA,
+ *   ale nie trafiają do indeksu skanera ani odcisków obrazów.
  *
  * Bez PostgreSQL moduł jest nieaktywny, a skaner korzysta z API Scryfall jak dotąd.
  */
@@ -30,6 +32,8 @@ export const EXTRA_LANGS = (process.env.CARD_EXTRA_LANGS ?? 'ja,ph')
   .map((x) => x.trim().toLowerCase())
   .filter((x) => /^[a-z]{2,3}$/.test(x) && x !== 'en');
 const SYNC_INTERVAL_MS = 20 * 60 * 60 * 1000; // nie częściej niż co 20 h
+/** Zmiana zasad importu (np. dodanie kart MTG Arena) wymusza pełne pobranie danych przy najbliższej synchronizacji. */
+const IMPORT_RULES_VERSION = 'arena-v1';
 const BATCH_SIZE = 400;
 
 interface IndexEntry {
@@ -93,6 +97,7 @@ export async function ensureCardSchema(): Promise<void> {
       data JSONB NOT NULL,
       synced_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );
+    ALTER TABLE scryfall_cards ADD COLUMN IF NOT EXISTS digital BOOLEAN NOT NULL DEFAULT FALSE;
     CREATE INDEX IF NOT EXISTS idx_scryfall_cards_set_cn ON scryfall_cards(set_code, collector_number);
     CREATE INDEX IF NOT EXISTS idx_scryfall_cards_lname ON scryfall_cards (LOWER(name));
     CREATE INDEX IF NOT EXISTS idx_scryfall_cards_lface ON scryfall_cards (LOWER(face_names[1]));
@@ -125,6 +130,14 @@ function isScannable(card: any): boolean {
   return true;
 }
 
+/** Wydanie tylko cyfrowe dostępne w MTG Arena (karty Alchemy, dodatki tylko dla Areny). */
+function isArenaDigital(card: any): boolean {
+  if (!card || card.object !== 'card' || !card.digital) return false;
+  if (!card.id || !card.set || !card.collector_number || !card.name) return false;
+  if (card.layout === 'art_series' || card.layout === 'token' || card.layout === 'emblem') return false;
+  return Array.isArray(card.games) && card.games.includes('arena');
+}
+
 function faceNames(card: any): string[] {
   const names = new Set<string>([card.name]);
   if (Array.isArray(card.card_faces)) {
@@ -143,8 +156,8 @@ async function upsertBatch(p: pg.Pool, cards: any[], syncStart: string): Promise
   const values: any[] = [];
   const rows: string[] = [];
   cards.forEach((c, i) => {
-    const b = i * 12;
-    rows.push(`($${b + 1},$${b + 2},$${b + 3},$${b + 4},$${b + 5},$${b + 6},$${b + 7},$${b + 8},$${b + 9},$${b + 10},$${b + 11}::jsonb,$${b + 12})`);
+    const b = i * 13;
+    rows.push(`($${b + 1},$${b + 2},$${b + 3},$${b + 4},$${b + 5},$${b + 6},$${b + 7},$${b + 8},$${b + 9},$${b + 10},$${b + 11}::jsonb,$${b + 12},$${b + 13})`);
     values.push(
       c.id,
       c.oracle_id || null,
@@ -157,12 +170,13 @@ async function upsertBatch(p: pg.Pool, cards: any[], syncStart: string): Promise
       c.layout || null,
       smallImage(c),
       JSON.stringify(c),
-      syncStart
+      syncStart,
+      Boolean(c.digital)
     );
   });
   await p.query(
     `INSERT INTO scryfall_cards
-       (id, oracle_id, name, face_names, lang, set_code, collector_number, released_at, layout, image_small, data, synced_at)
+       (id, oracle_id, name, face_names, lang, set_code, collector_number, released_at, layout, image_small, data, synced_at, digital)
      VALUES ${rows.join(',')}
      ON CONFLICT (id) DO UPDATE SET
        oracle_id = EXCLUDED.oracle_id,
@@ -175,6 +189,7 @@ async function upsertBatch(p: pg.Pool, cards: any[], syncStart: string): Promise
        layout = EXCLUDED.layout,
        data = EXCLUDED.data,
        synced_at = EXCLUDED.synced_at,
+       digital = EXCLUDED.digital,
        -- gdy zmienił się obraz karty, odcisk trzeba policzyć od nowa
        art_hash = CASE WHEN scryfall_cards.image_small IS DISTINCT FROM EXCLUDED.image_small THEN NULL ELSE scryfall_cards.art_hash END,
        card_hash = CASE WHEN scryfall_cards.image_small IS DISTINCT FROM EXCLUDED.image_small THEN NULL ELSE scryfall_cards.card_hash END,
@@ -314,7 +329,8 @@ export async function syncCardsFromScryfall(force = false): Promise<void> {
     const meta: any = await metaRes.json();
     const remoteVersion = String(meta.updated_at || '');
     const localVersion = await getMeta(p, 'default_cards_version');
-    if (!force && localVersion && localVersion === remoteVersion) {
+    const rulesVersion = await getMeta(p, 'import_rules_version');
+    if (!force && localVersion && localVersion === remoteVersion && rulesVersion === IMPORT_RULES_VERSION) {
       lastSyncAt = new Date().toISOString();
       await setMeta(p, 'last_check', lastSyncAt);
       console.log('[Karty] Baza kart aktualna, pomijam pobieranie.');
@@ -339,8 +355,11 @@ export async function syncCardsFromScryfall(force = false): Promise<void> {
     const syncStart = new Date().toISOString();
     let batch: any[] = [];
     let total = 0;
+    let digital = 0;
     for await (const card of iterateJsonArrayObjects(decodeStream(dataRes.body as any))) {
-      if (!isScannable(card)) continue;
+      const arena = isArenaDigital(card);
+      if (!arena && !isScannable(card)) continue;
+      if (arena) digital++;
       batch.push(card);
       if (batch.length >= BATCH_SIZE) {
         await upsertBatch(p, batch, syncStart);
@@ -357,9 +376,10 @@ export async function syncCardsFromScryfall(force = false): Promise<void> {
     // Usuwamy karty, których nie ma już w danych Scryfall.
     const removed = await p.query('DELETE FROM scryfall_cards WHERE synced_at < $1 AND NOT (lang = ANY($2))', [syncStart, EXTRA_LANGS]);
     await setMeta(p, 'default_cards_version', remoteVersion);
+    await setMeta(p, 'import_rules_version', IMPORT_RULES_VERSION);
     lastSyncAt = new Date().toISOString();
     await setMeta(p, 'last_check', lastSyncAt);
-    console.log(`[Karty] Zaimportowano ${total} kart (usunięto ${removed.rowCount || 0}) w ${Math.round((Date.now() - started) / 1000)} s.`);
+    console.log(`[Karty] Zaimportowano ${total} kart, w tym ${digital} tylko z MTG Arena (usunięto ${removed.rowCount || 0}) w ${Math.round((Date.now() - started) / 1000)} s.`);
     await syncExtraLanguages(p, force).catch((err) => console.warn('[Karty] Wersje językowe: błąd synchronizacji:', err?.message || err));
     await loadCardIndex();
     await loadHashIndex();
@@ -381,6 +401,7 @@ export async function loadCardIndex(): Promise<void> {
   const res = await p.query(
     `SELECT id, face_names, set_code, collector_number, COALESCE(to_char(released_at, 'YYYY-MM-DD'), '') AS released
      FROM scryfall_cards
+     WHERE NOT digital
      ORDER BY released_at DESC NULLS LAST, (lang = 'en') DESC`
   );
   const entries: IndexEntry[] = [];
@@ -473,7 +494,7 @@ export async function getSetSizes(): Promise<Record<string, number>> {
   const p = pool();
   if (!p) return {};
   const res = await p.query(
-    `SELECT set_code, COUNT(DISTINCT collector_number)::int AS n FROM scryfall_cards WHERE lang = 'en' GROUP BY set_code`
+    `SELECT set_code, COUNT(DISTINCT collector_number)::int AS n FROM scryfall_cards WHERE lang = 'en' AND NOT digital GROUP BY set_code`
   );
   const sizes: Record<string, number> = {};
   for (const r of res.rows) sizes[String(r.set_code).toLowerCase()] = r.n;
@@ -595,15 +616,15 @@ export async function getCardsByNames(names: string[], opts: { preferRegular?: b
   const res = await p.query(
     `WITH pick AS (
        SELECT DISTINCT ON (key) key, id FROM (
-         SELECT x.key, x.id, x.lang, x.released_at, x.image_small${opts.preferRegular ? `, ${SPECIAL_PRINT_SQL} AS special` : ''}
+         SELECT x.key, x.id, x.lang, x.released_at, x.image_small, x.digital${opts.preferRegular ? `, ${SPECIAL_PRINT_SQL} AS special` : ''}
          FROM (
-           SELECT LOWER(name) AS key, id, lang, released_at, image_small FROM scryfall_cards WHERE LOWER(name) = ANY($1)
+           SELECT LOWER(name) AS key, id, lang, released_at, image_small, digital FROM scryfall_cards WHERE LOWER(name) = ANY($1)
            UNION ALL
-           SELECT LOWER(face_names[1]) AS key, id, lang, released_at, image_small FROM scryfall_cards WHERE LOWER(face_names[1]) = ANY($1)
+           SELECT LOWER(face_names[1]) AS key, id, lang, released_at, image_small, digital FROM scryfall_cards WHERE LOWER(face_names[1]) = ANY($1)
          ) x
          ${opts.preferRegular ? `LEFT JOIN scryfall_cards c ON c.id = x.id AND x.lang = 'en' LEFT JOIN LATERAL ${SPECIAL_PRINT_FIELDS} ON true` : ''}
        ) y
-       ORDER BY key, (lang = 'en') DESC, ${opts.preferRegular ? 'special ASC,' : ''} (image_small IS NOT NULL) DESC, released_at DESC NULLS LAST
+       ORDER BY key, digital ASC, (lang = 'en') DESC, ${opts.preferRegular ? 'special ASC,' : ''} (image_small IS NOT NULL) DESC, released_at DESC NULLS LAST
      )
      SELECT pick.key, sc.data FROM pick JOIN scryfall_cards sc ON sc.id = pick.id`,
     [wanted]
@@ -749,7 +770,7 @@ export async function getDeckTokens(ids: string[], names: string[]): Promise<Dec
     ? await p
         .query(
           `SELECT DISTINCT ON (name) name, data FROM scryfall_cards
-            WHERE name = ANY($1) AND layout = 'token' AND lang = 'en'
+            WHERE name = ANY($1) AND layout = 'token' AND lang = 'en' AND NOT digital
             ORDER BY name, released_at DESC NULLS LAST`,
           [[...textTokens.keys()]]
         )
@@ -791,20 +812,24 @@ export async function getDeckTokens(ids: string[], names: string[]): Promise<Dec
   return [...out.values()].sort((a, b) => b.sources.length - a.sources.length || a.name.localeCompare(b.name));
 }
 
-/** Wszystkie wydania karty (po oracle_id albo dokładnej nazwie) z lokalnej bazy, od najnowszych. */
-export async function getPrintsLocal(oracleId: string | null, name: string | null): Promise<any[] | null> {
+/**
+ * Wszystkie wydania karty (po oracle_id albo dokładnej nazwie) z lokalnej bazy, od najnowszych.
+ * `game`: `paper` (domyślnie, bez wydań cyfrowych), `arena` (wydania dostępne w MTG Arena) albo `all`.
+ */
+export async function getPrintsLocal(oracleId: string | null, name: string | null, game: 'paper' | 'arena' | 'all' = 'paper'): Promise<any[] | null> {
   const p = pool();
   if (!p || (!oracleId && !name)) return null;
+  const gameSql = game === 'paper' ? 'AND NOT digital' : game === 'arena' ? "AND data->'games' ? 'arena'" : '';
   const res = oracleId
     ? await p.query(
         `SELECT data FROM scryfall_cards WHERE oracle_id = $1 AND (lang = 'en' OR lang = ANY($2))
-           AND COALESCE(data->>'digital', 'false') = 'false'
+           ${gameSql}
          ORDER BY released_at DESC NULLS LAST, set_code, collector_number, (lang = 'en') DESC LIMIT 600`,
         [oracleId, EXTRA_LANGS]
       )
     : await p.query(
         `SELECT data FROM scryfall_cards WHERE LOWER(name) = LOWER($1) AND (lang = 'en' OR lang = ANY($2))
-           AND COALESCE(data->>'digital', 'false') = 'false'
+           ${gameSql}
          ORDER BY released_at DESC NULLS LAST, set_code, collector_number, (lang = 'en') DESC LIMIT 600`,
         [name, EXTRA_LANGS]
       );

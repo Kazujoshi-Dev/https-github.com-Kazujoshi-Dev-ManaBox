@@ -1,8 +1,9 @@
 import React from 'react';
-import { Coins, Sparkles, Check, ExternalLink, FolderHeart } from 'lucide-react';
+import { Coins, Sparkles, Check, ExternalLink, FolderHeart, Gamepad2 } from 'lucide-react';
 import { ScryfallCard } from '../../types';
 import { formatCurrency } from '../../utils/formatters';
 import { CardMarketPricesProps } from './types';
+import { isDigitalOnly } from '../../utils/mtgFormats';
 
 export const CardMarketPrices: React.FC<CardMarketPricesProps> = ({
   activeCard,
@@ -123,6 +124,11 @@ export const CardMarketPrices: React.FC<CardMarketPricesProps> = ({
         <p className="w-full py-2 px-3 bg-rose-950/30 text-rose-200 rounded-xl text-xs font-semibold flex items-center justify-center gap-2 border border-rose-800/40">
           <FolderHeart className="w-4 h-4 text-rose-400" />
           <span>Na liście życzeń: zmiany wersji i foil zapisują się automatycznie</span>
+        </p>
+      ) : onAddToWishlist && isDigitalOnly(activeCard) ? (
+        <p className="w-full py-2 px-3 bg-stone-900 text-stone-400 rounded-xl text-xs flex items-center justify-center gap-2 border border-stone-800">
+          <Gamepad2 className="w-4 h-4 text-amber-400 shrink-0" />
+          <span>Karta tylko z MTG Arena: nie można jej dodać do listy życzeń ani na sprzedaż</span>
         </p>
       ) : onAddToWishlist && (
         <button

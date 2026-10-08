@@ -24,6 +24,7 @@ import {
   downloadTxtFile,
   ResolvedImportItem 
 } from '../utils/textCardList';
+import { getDeckFormat } from '../utils/mtgFormats';
 
 interface DeckImportExportModalProps {
   isOpen: boolean;
@@ -333,7 +334,7 @@ export const DeckImportExportModal: React.FC<DeckImportExportModalProps> = ({
                 <div className="flex items-center justify-between text-[11px] text-stone-400 pt-1 border-t border-stone-800/80">
                   <span>Liczba kart w talii:</span>
                   <span className="tabular-nums font-bold text-stone-200">
-                    {(deck.commander ? 1 : 0) + (deck.cards?.reduce((s, c) => s + c.quantity, 0) || 0)} / 100 kart
+                    {(deck.commander ? 1 : 0) + (deck.cards?.reduce((s, c) => s + c.quantity, 0) || 0)} / {getDeckFormat(deck.format).deckSize} kart
                   </span>
                 </div>
               </div>
@@ -346,7 +347,7 @@ export const DeckImportExportModal: React.FC<DeckImportExportModalProps> = ({
                   className="py-3 px-4 rounded-xl bg-amber-500 hover:bg-amber-400 text-stone-950 font-bold text-xs flex items-center justify-center gap-2 shadow-lg shadow-amber-950/50 cursor-pointer transition-all"
                 >
                   <Download className="w-4 h-4 stroke-[2.5]" />
-                  <span>Pobierz plik .txt (Talia EDH)</span>
+                  <span>Pobierz plik .txt</span>
                 </button>
 
                 <button

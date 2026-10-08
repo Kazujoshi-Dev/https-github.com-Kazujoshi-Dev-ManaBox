@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { getDeckFormat } from '../../utils/mtgFormats';
 import { Gauge, Gem, Loader2, AlertCircle, ExternalLink, ChevronDown } from 'lucide-react';
 import type { DeckItem, ScryfallCard } from '../../types';
 
@@ -44,13 +45,16 @@ const SPEED_LABEL: Record<number, string> = { 5: 'bardzo szybka', 4: 'szybka', 3
 
 /** Szacuje bracket talii przez Commander Spellbook; odświeża po zmianie kart (z opóźnieniem). */
 export function useDeckBracket(deck: DeckItem) {
+  // Bracket dotyczy tylko Commandera: w innych formatach nie pytamy Spellbooka
+  const enabled = getDeckFormat(deck.format).id === 'commander';
   const payload = useMemo(() => {
+    if (!enabled) return { commanders: [] as { card: string; quantity: number }[], main: [] as { card: string; quantity: number }[] };
     const main = deck.cards
       .filter((e) => !e.isSideboard && !e.isCommander)
       .map((e) => ({ card: e.card.name, quantity: e.quantity }));
     const commanders = deck.commander ? [{ card: deck.commander.name, quantity: 1 }] : [];
     return { commanders, main };
-  }, [deck]);
+  }, [deck, enabled]);
   const key = useMemo(
     () => JSON.stringify([payload.commanders.map((c) => c.card), payload.main.map((m) => `${m.quantity}${m.card}`).sort()]),
     [payload]
@@ -142,7 +146,7 @@ export const DeckBracketPanel: React.FC<{
       </React.Fragment>
     ));
 
-  if (!deck.commander && !/commander|edh/i.test(deck.format || '')) return null;
+  if (getDeckFormat(deck.format).id !== 'commander') return null;
 
   return (
     <section className="bg-stone-900 border border-stone-800 rounded-xl p-4 sm:p-5" aria-labelledby="deck-bracket-title">

@@ -1,6 +1,7 @@
 import { langFromCard } from '../utils/formatters';
 import { useState, useEffect, useCallback, useRef, ChangeEvent } from 'react';
 import { entryKeyOf, matchesEntry, splitByFinish } from '../utils/collectionEntry';
+import { DIGITAL_BLOCK_MESSAGE, isDigitalOnly } from '../utils/mtgFormats';
 import { CollectionItem, WishlistItem, Catalog, DeckItem, ScryfallCard, CardCondition, CardLanguage, AppSettings } from '../types';
 import { collectionApi, wishlistApi, catalogsApi, decksApi, settingsApi } from '../services/api';
 
@@ -161,6 +162,10 @@ export function useAppData({ userId, onUnauthorized, showToast, onSettingsLoaded
 
   const toggleForSale = useCallback(async (item: CollectionItem, customPrice?: number | null) => {
     const nextForSale = !item.isForSale;
+    if (nextForSale && isDigitalOnly(item.card)) {
+      showToast(DIGITAL_BLOCK_MESSAGE);
+      return;
+    }
     const updates: Partial<CollectionItem> = {
       isForSale: nextForSale,
       ...(customPrice !== undefined ? { salePrice: customPrice } : {})
@@ -185,6 +190,10 @@ export function useAppData({ userId, onUnauthorized, showToast, onSettingsLoaded
     const foilQty = item.quantityFoil || 0;
 
     if (quantityToSell <= 0) return;
+    if (isDigitalOnly(item.card)) {
+      showToast(DIGITAL_BLOCK_MESSAGE);
+      return;
+    }
 
     // Case 1: Selling all available copies of this item
     const isSellingEntireItem =
@@ -343,6 +352,10 @@ export function useAppData({ userId, onUnauthorized, showToast, onSettingsLoaded
     language: CardLanguage;
     salePrice: number | null;
   }): Promise<boolean> => {
+    if (isDigitalOnly(data.card)) {
+      showToast(DIGITAL_BLOCK_MESSAGE);
+      return false;
+    }
     const qty = Math.max(1, Math.floor(data.quantity || 1));
     const existing = collection.find(
       (c) =>
@@ -414,6 +427,10 @@ export function useAppData({ userId, onUnauthorized, showToast, onSettingsLoaded
 
   // Wishlist CRUD
   const addToWishlist = useCallback(async (card: ScryfallCard, isFoil = false) => {
+    if (isDigitalOnly(card)) {
+      showToast(DIGITAL_BLOCK_MESSAGE);
+      return;
+    }
     try {
       const res = await wishlistApi.create({
         cardId: card.id,
@@ -436,6 +453,10 @@ export function useAppData({ userId, onUnauthorized, showToast, onSettingsLoaded
     id: string,
     patch: { card?: ScryfallCard; isFoil?: boolean; targetQuantity?: number; notes?: string }
   ): Promise<WishlistItem | null> => {
+    if (patch.card && isDigitalOnly(patch.card)) {
+      showToast(DIGITAL_BLOCK_MESSAGE);
+      return null;
+    }
     try {
       const res = await wishlistApi.update(id, patch, onUnauthorized);
       if (res.ok) {

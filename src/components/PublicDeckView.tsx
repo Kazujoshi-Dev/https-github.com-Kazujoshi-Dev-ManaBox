@@ -6,7 +6,7 @@ import { ManaSymbol } from './ManaSymbol';
 import { DeckCategoriesBoard, DeckStatsBar, FloatingCardPreview, useDeckStats } from './deck-builder';
 import { DeckAnalysis } from './deck-builder/DeckAnalysis';
 import { DeckTokens } from './deck-builder/DeckTokens';
-import { checkCommanderLegality } from './deck-builder/legality';
+import { checkDeckLegality } from './deck-builder/legality';
 import { DeckBracketPanel, useDeckBracket } from './deck-builder/DeckBracket';
 import { deckToText } from './deck-builder/DeckShareModal';
 import { useBackToClose } from '../hooks/useBackButton';
@@ -24,7 +24,7 @@ interface PublicDeckViewProps {
 export const PublicDeckView: React.FC<PublicDeckViewProps> = ({ deck, owner, settings, isLoggedIn = false, onOpenLogin, showToast }) => {
   const { totalCardsCount, totalDeckValue, categorizedCards, manaCurve, colorIdentity } = useDeckStats({ deck, settings });
   const [preview, setPreview] = useState<ScryfallCard | null>(null);
-  const legality = React.useMemo(() => checkCommanderLegality(deck), [deck]);
+  const legality = React.useMemo(() => checkDeckLegality(deck), [deck]);
   const bracket = useDeckBracket(deck);
   const viewByName = (name: string) => {
     const c = deck.commander?.name === name ? deck.commander : deck.cards.find((e) => e.card.name === name)?.card;

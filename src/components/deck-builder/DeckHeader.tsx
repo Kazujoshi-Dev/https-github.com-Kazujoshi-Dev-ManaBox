@@ -1,5 +1,6 @@
 import React from 'react';
-import { ArrowLeft, Crown, Layers, Globe, Plus, FileText, Sparkles, Share2 } from 'lucide-react';
+import { ArrowLeft, Crown, Layers, Globe, Plus, FileText, Sparkles, Share2, Gamepad2, Swords } from 'lucide-react';
+import { getDeckFormat } from '../../utils/mtgFormats';
 import { formatCurrency } from '../../utils/formatters';
 import { DeckHeaderProps } from './types';
 
@@ -18,7 +19,12 @@ export const DeckHeader: React.FC<DeckHeaderProps> = ({
   onOpenCombos,
   onOpenShare,
   isPublic = false,
+  onExportArena,
 }) => {
+  const fmt = getDeckFormat(format);
+  const isArena = fmt.platform === 'arena';
+  const sizeOk = fmt.exactSize ? totalCardsCount === fmt.deckSize : totalCardsCount >= fmt.deckSize;
+  const sizeOver = fmt.exactSize && totalCardsCount > fmt.deckSize;
   return (
     <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
       {/* Deck Title, Format & Card Source */}
@@ -37,11 +43,12 @@ export const DeckHeader: React.FC<DeckHeaderProps> = ({
               {name}
             </h2>
             <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30 flex items-center gap-1 tabular-nums">
-              <Crown className="w-3.5 h-3.5 text-amber-400" />
-              <span>{format || 'EDH Commander'}</span>
+              {isArena ? <Gamepad2 className="w-3.5 h-3.5 text-amber-400" /> : fmt.commander ? <Crown className="w-3.5 h-3.5 text-amber-400" /> : <Swords className="w-3.5 h-3.5 text-amber-400" />}
+              <span>{fmt.label}</span>
             </span>
 
-            {/* Card Source Badge & Switcher */}
+            {/* Card Source Badge & Switcher (talie MTG Arena zawsze korzystają z pełnej bazy kart) */}
+            {!isArena && (
             <button
               type="button"
               onClick={onToggleCardSource}
@@ -64,9 +71,10 @@ export const DeckHeader: React.FC<DeckHeaderProps> = ({
                 </>
               )}
             </button>
+            )}
           </div>
           <p className="text-xs text-stone-400 mt-0.5">
-            {description || 'Talia w formacie EDH Commander (1 Dowódca + 99 kart w talii)'}
+            {description || `Talia w formacie ${fmt.label}: ${fmt.description}`}
           </p>
         </div>
       </div>
@@ -78,14 +86,15 @@ export const DeckHeader: React.FC<DeckHeaderProps> = ({
           <span className="text-xs text-stone-400">Liczba kart:</span>
           <span
             className={`text-sm font-bold tabular-nums px-2 py-0.5 rounded ${
-              totalCardsCount === 100
+              sizeOk
                 ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
-                : totalCardsCount > 100
+                : sizeOver
                 ? 'bg-rose-500/20 text-rose-300 border border-rose-500/40'
                 : 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
             }`}
+            title={fmt.exactSize ? `Talia musi mieć dokładnie ${fmt.deckSize} kart` : `Talia musi mieć co najmniej ${fmt.deckSize} kart`}
           >
-            {totalCardsCount} / 100
+            {totalCardsCount} / {fmt.exactSize ? '' : 'min. '}{fmt.deckSize}
           </span>
         </div>
 
@@ -124,6 +133,19 @@ export const DeckHeader: React.FC<DeckHeaderProps> = ({
           >
             <Share2 className="w-4 h-4" />
             <span>{isPublic ? 'Udostępniona' : 'Udostępnij'}</span>
+          </button>
+        )}
+
+        {/* Eksport do MTG Arena (tylko formaty MTGA) */}
+        {isArena && onExportArena && (
+          <button
+            type="button"
+            onClick={onExportArena}
+            className="px-3 py-2 bg-stone-850 hover:bg-stone-800 text-amber-300 hover:text-amber-200 border border-amber-500/30 rounded-xl font-bold text-xs flex items-center gap-1.5 transition-all cursor-pointer shadow-sm"
+            title="Skopiuj listę talii w formacie importu MTG Arena"
+          >
+            <Gamepad2 className="w-4 h-4 text-amber-400" />
+            <span>Eksport do MTGA</span>
           </button>
         )}
 

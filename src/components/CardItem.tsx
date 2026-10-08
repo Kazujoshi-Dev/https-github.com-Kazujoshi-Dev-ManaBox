@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { CollectionItem, AppSettings } from '../types';
+import { isDigitalOnly } from '../utils/mtgFormats';
 import { 
   formatCurrency, 
   getCardImageUri, 
@@ -155,7 +156,7 @@ export const CardItem: React.FC<CardItemProps> = ({
 
         <td className="py-2.5 px-3 text-right">
           <div className="flex items-center justify-end gap-1">
-            {onToggleForSale && (
+            {onToggleForSale && (item.isForSale || !isDigitalOnly(item.card)) && (
               <button
                 type="button"
                 onClick={(e) => {
@@ -324,7 +325,7 @@ export const CardItem: React.FC<CardItemProps> = ({
           </div>
 
           <div className="flex items-center gap-1">
-            {onToggleForSale && (
+            {onToggleForSale && (item.isForSale || !isDigitalOnly(item.card)) && (
               <button
                 type="button"
                 onClick={(e) => {

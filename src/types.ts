@@ -52,6 +52,11 @@ export interface ScryfallCard {
     tix?: string | null;
   };
   legalities?: Record<string, string>;
+  /** Wydanie istnieje tylko w grze cyfrowej (MTG Arena / MTGO). */
+  digital?: boolean;
+  /** Gry, w których jest to wydanie: "paper", "arena", "mtgo". */
+  games?: string[];
+  layout?: string;
   scryfall_uri?: string;
   edhrec_rank?: number;
   artist?: string;

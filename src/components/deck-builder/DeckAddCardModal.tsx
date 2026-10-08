@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { getCardImageUri } from '../../utils/formatters';
 import { AddCardVersionPicker } from './AddCardVersionPicker';
-import { Plus, X, Layers, Globe, Search, Crown } from 'lucide-react';
+import { Plus, X, Layers, Globe, Search, Crown, Gamepad2 } from 'lucide-react';
+import { DEFAULT_FORMAT, digitalLabel, isDigitalOnly } from '../../utils/mtgFormats';
 import { DeckAddCardModalProps } from './types';
 
 import { useBackToClose } from '../../hooks/useBackButton';
@@ -10,6 +11,7 @@ export const DeckAddCardModal: React.FC<DeckAddCardModalProps> = ({
   deckName,
   collection,
   deckCards,
+  deckFormat = DEFAULT_FORMAT,
   searchSource,
   searchQuery,
   searchResults,
@@ -29,6 +31,7 @@ export const DeckAddCardModal: React.FC<DeckAddCardModalProps> = ({
   }, [isOpen]);
 
   if (!isOpen) return null;
+  const isArena = deckFormat.platform === 'arena';
 
   return (
     <div
@@ -67,6 +70,8 @@ export const DeckAddCardModal: React.FC<DeckAddCardModalProps> = ({
             deckCards={deckCards}
             settings={settings}
             collectionOnly={searchSource === 'collection'}
+            singleton={deckFormat.maxCopies === 1}
+            game={isArena ? 'arena' : 'paper'}
             onBack={() => setPicking(null)}
             onConfirm={(card, isFoil, asCommander) => {
               onAddCard(card, asCommander, isFoil);
@@ -79,7 +84,13 @@ export const DeckAddCardModal: React.FC<DeckAddCardModalProps> = ({
         <>
         {/* Search Input & Source Switcher */}
         <div className="p-4 border-b border-stone-800 space-y-3">
-          {/* Segmented Source Switcher */}
+          {/* Segmented Source Switcher (talie MTG Arena: zawsze pełna baza kart Areny) */}
+          {isArena ? (
+            <p className="flex items-center gap-2 text-xs text-stone-400">
+              <Gamepad2 className="w-3.5 h-3.5 text-amber-400" />
+              Format {deckFormat.label}: wyniki obejmują karty dostępne w MTG Arena, także karty cyfrowe.
+            </p>
+          ) : (
           <div className="grid grid-cols-2 p-1 bg-stone-950 rounded-xl border border-stone-800 text-xs font-bold">
             <button
               type="button"
@@ -112,6 +123,7 @@ export const DeckAddCardModal: React.FC<DeckAddCardModalProps> = ({
               <span>Wszystkie karty MTG (Scryfall)</span>
             </button>
           </div>
+          )}
 
           <div className="relative">
             <Search className="w-4 h-4 text-stone-400 absolute left-3.5 top-3" />
@@ -120,6 +132,8 @@ export const DeckAddCardModal: React.FC<DeckAddCardModalProps> = ({
               placeholder={
                 searchSource === 'collection'
                   ? 'Wyszukaj kartę wyłącznie w Twojej kolekcji...'
+                  : isArena
+                  ? 'Wyszukaj kartę dostępną w MTG Arena...'
                   : 'Wyszukaj kartę w kolekcji lub w bazie Scryfall...'
               }
               value={searchQuery}
@@ -162,7 +176,8 @@ export const DeckAddCardModal: React.FC<DeckAddCardModalProps> = ({
 
           {searchResults.map(card => {
             const inDeck = deckCards.find(e => !e.isCommander && (e.card.id === card.id || e.card.name === card.name));
-            const isLegendary = (card.type_line || '').toLowerCase().includes('legendary');
+            const isLegendary = deckFormat.commander && (card.type_line || '').toLowerCase().includes('legendary');
+            const digital = isDigitalOnly(card);
             const ownedItem = collection.find(c => c.card.name.toLowerCase() === card.name.toLowerCase());
 
             return (
@@ -188,7 +203,12 @@ export const DeckAddCardModal: React.FC<DeckAddCardModalProps> = ({
                           {card.mana_cost}
                         </span>
                       )}
-                      {ownedItem ? (
+                      {digital ? (
+                        <span className="text-[11px] text-stone-200 bg-stone-800 px-1.5 py-0.5 rounded border border-stone-600 flex items-center gap-1">
+                          <Gamepad2 className="w-3 h-3" />
+                          {digitalLabel(card)}
+                        </span>
+                      ) : ownedItem ? (
                         <span className="text-[11px] tabular-nums text-emerald-300 bg-emerald-950/60 px-1.5 py-0.5 rounded border border-emerald-500/30">
                           W kolekcji: {ownedItem.quantity} szt.
                         </span>

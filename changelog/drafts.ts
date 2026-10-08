@@ -88,4 +88,10 @@ export const CHANGELOG_DRAFTS: ChangelogDraft[] = [
   { id: '2026-10-08-suggestion-images', day: '2026-10-08', type: 'fixed', area: 'Talie', text: 'W sugestiach EDHREC dla talii Commander znów wczytują się grafiki kart w sekcji „Najczęściej grane, których nie masz w talii”.' },
   { id: '2026-10-08-reset-hasla-email', day: '2026-10-08', type: 'new', area: 'Konto', text: 'Nie pamiętasz hasła? Na ekranie logowania poproś o link na swój adres e-mail i ustaw nowe hasło.' },
   { id: '2026-10-08-potwierdzenie-email', day: '2026-10-08', type: 'new', area: 'Konto', text: 'Nowe konta aktywujesz linkiem wysłanym na adres e-mail podany przy rejestracji.' },
+  { id: '2026-10-08-formaty-papierowe', day: '2026-10-08', type: 'new', area: 'Talie', text: 'Nowe formaty talii: Modern, Standard, Pioneer, Legacy, Pauper, Vintage i Premodern.' },
+  { id: '2026-10-08-formaty-mtga', day: '2026-10-08', type: 'new', area: 'Talie', text: 'Talie do MTG Arena w formatach Pioneer, Historic, Timeless, Alchemy, Brawl, Historic Brawl, Pauper i Artisan.' },
+  { id: '2026-10-08-walidacja-formatu', day: '2026-10-08', type: 'new', area: 'Talie', text: 'Talia sprawdza legalność kart, liczbę kopii i liczbę kart według zasad wybranego formatu.' },
+  { id: '2026-10-08-eksport-mtga', day: '2026-10-08', type: 'new', area: 'Talie', text: 'Talie MTG Arena skopiujesz przyciskiem „Eksport do MTGA” i wkleisz w grze przez Importuj.' },
+  { id: '2026-10-08-karty-arena-szukaj', day: '2026-10-08', type: 'new', area: 'Karty', text: 'W wyszukiwarce kart pole „Karty MTG Arena” pokazuje także karty dostępne tylko w grze cyfrowej.' },
+  { id: '2026-10-08-karty-arena-blokada', day: '2026-10-08', type: 'improved', area: 'Karty', text: 'Karty istniejące tylko w MTG Arena nie trafią na sprzedaż ani na listę życzeń.' },
 ];

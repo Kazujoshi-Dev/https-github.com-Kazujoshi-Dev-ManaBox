@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { getCardImageUri } from '../utils/formatters';
 import { ScryfallCard, DeckItem, CollectionItem } from '../types';
-import { Crown, Swords, X, Sparkles, Check, Search, Layers, Globe } from 'lucide-react';
+import { Crown, Swords, X, Check, Search, Layers, Globe, Gamepad2 } from 'lucide-react';
+import { DECK_FORMATS, DEFAULT_FORMAT, getDeckFormat } from '../utils/mtgFormats';
 
 import { useBackToClose } from '../hooks/useBackButton';
 interface DeckCreateModalProps {
@@ -32,7 +33,7 @@ export const DeckCreateModal: React.FC<DeckCreateModalProps> = ({
 
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
-  const [format, setFormat] = useState('EDH Commander'); // Domyślnie zawsze EDH Commander
+  const [format, setFormat] = useState(DEFAULT_FORMAT.label); // Domyślnie EDH Commander
   const [cardSource, setCardSource] = useState<'collection' | 'all'>('collection');
   const [selectedCommander, setSelectedCommander] = useState<ScryfallCard | null>(null);
   const [commanderSearch, setCommanderSearch] = useState('');
@@ -47,14 +48,14 @@ export const DeckCreateModal: React.FC<DeckCreateModalProps> = ({
       if (deckToEdit) {
         setName(deckToEdit.name || '');
         setDescription(deckToEdit.description || '');
-        setFormat(deckToEdit.format || 'EDH Commander');
+        setFormat(getDeckFormat(deckToEdit.format).label);
         setCardSource(deckToEdit.cardSource || 'collection');
         setSelectedCommander(deckToEdit.commander || null);
         setCommanderSearch('');
       } else {
         setName('');
         setDescription('');
-        setFormat('EDH Commander');
+        setFormat(DEFAULT_FORMAT.label);
         setCardSource('collection');
         setSelectedCommander(null);
         setCommanderSearch('');
@@ -63,9 +64,14 @@ export const DeckCreateModal: React.FC<DeckCreateModalProps> = ({
     }
   }, [isOpen, deckToEdit]);
 
+  const fmt = getDeckFormat(format);
+  const isArena = fmt.platform === 'arena';
+  // Talie MTG Arena budujemy z pełnej bazy kart Areny (kolekcja to karty papierowe)
+  const effectiveSource: 'collection' | 'all' = isArena ? 'all' : cardSource;
+
   // Search commanders from Scryfall when 'all' is selected and search query is >= 3 chars
   useEffect(() => {
-    if (cardSource !== 'all' || !commanderSearch.trim() || commanderSearch.trim().length < 3) {
+    if (effectiveSource !== 'all' || !commanderSearch.trim() || commanderSearch.trim().length < 3) {
       setScryfallCommanders([]);
       setIsSearchingScryfall(false);
       return;
@@ -75,7 +81,7 @@ export const DeckCreateModal: React.FC<DeckCreateModalProps> = ({
       setIsSearchingScryfall(true);
       try {
         const query = `${commanderSearch.trim()} (type:legendary and (type:creature or type:planeswalker))`;
-        const res = await fetch(`/api/scryfall/search?q=${encodeURIComponent(query)}`);
+        const res = await fetch(`/api/scryfall/search?q=${encodeURIComponent(query)}&game=${isArena ? 'arena' : 'paper'}`);
         if (res.ok) {
           const data = await res.json();
           if (data.data && Array.isArray(data.data)) {
@@ -90,7 +96,7 @@ export const DeckCreateModal: React.FC<DeckCreateModalProps> = ({
     }, 350);
 
     return () => clearTimeout(timer);
-  }, [commanderSearch, cardSource]);
+  }, [commanderSearch, effectiveSource, isArena]);
 
   if (!isOpen) return null;
 
@@ -105,7 +111,7 @@ export const DeckCreateModal: React.FC<DeckCreateModalProps> = ({
     .filter(card => !commanderSearch || card.name.toLowerCase().includes(commanderSearch.toLowerCase()))
     .slice(0, 8);
 
-  const potentialCommanders = cardSource === 'all' && scryfallCommanders.length > 0
+  const potentialCommanders = effectiveSource === 'all' && (isArena || scryfallCommanders.length > 0)
     ? scryfallCommanders
     : potentialCommandersFromCollection;
 
@@ -124,18 +130,18 @@ export const DeckCreateModal: React.FC<DeckCreateModalProps> = ({
         await onUpdateDeck({
           ...deckToEdit,
           name: name.trim(),
-          format: format || 'EDH Commander',
+          format: fmt.label,
           description: description.trim(),
-          cardSource,
-          commander: selectedCommander,
+          cardSource: effectiveSource,
+          commander: fmt.commander ? selectedCommander : null,
         });
       } else {
         await onCreateDeck({
           name: name.trim(),
-          format: format || 'EDH Commander',
+          format: fmt.label,
           description: description.trim(),
-          cardSource,
-          commander: selectedCommander,
+          cardSource: effectiveSource,
+          commander: fmt.commander ? selectedCommander : null,
         });
       }
       onClose();
@@ -171,7 +177,7 @@ export const DeckCreateModal: React.FC<DeckCreateModalProps> = ({
                 {deckToEdit ? 'Edytuj talię' : 'Utwórz nową talię'}
               </h3>
               <p className="text-xs text-stone-400">
-                {deckToEdit ? 'Zmień nazwę, opis, dowódcę lub źródło kart' : 'Domyślny format: EDH Commander (100 kart)'}
+                {deckToEdit ? 'Zmień nazwę, format, opis lub źródło kart' : 'Wybierz format: karty papierowe albo MTG Arena'}
               </p>
             </div>
           </div>
@@ -207,27 +213,69 @@ export const DeckCreateModal: React.FC<DeckCreateModalProps> = ({
             />
           </div>
 
-          {/* Format (Default EDH Commander) */}
+          {/* Format gry: karty papierowe i MTG Arena */}
           <div>
-            <label className="block text-[11px] font-bold text-stone-400 mb-1.5">
-              Format gry (Domyślnie EDH Commander)
+            <label htmlFor="deck-format" className="block text-[11px] font-bold text-stone-400 mb-1.5">
+              Format gry *
             </label>
-            <div className="flex items-center gap-2 p-2.5 bg-stone-950 border border-stone-800 rounded-xl">
-              <Crown className="w-4 h-4 text-amber-400 shrink-0" />
-              <div className="flex-1">
-                <span className="text-xs font-bold text-amber-300 block">
-                  EDH Commander
-                </span>
-                <span className="text-[11px] text-stone-500">
-                  100 kart singleton (1 Dowódca + 99 unikalnych kart)
-                </span>
+            <div className="flex items-center gap-2 p-2.5 bg-stone-950 border border-stone-800 rounded-xl focus-within:border-amber-500">
+              {isArena ? (
+                <Gamepad2 className="w-4 h-4 text-amber-400 shrink-0" />
+              ) : fmt.commander ? (
+                <Crown className="w-4 h-4 text-amber-400 shrink-0" />
+              ) : (
+                <Swords className="w-4 h-4 text-amber-400 shrink-0" />
+              )}
+              <div className="flex-1 min-w-0">
+                <select
+                  id="deck-format"
+                  value={fmt.label}
+                  onChange={(e) => {
+                    const next = getDeckFormat(e.target.value);
+                    setFormat(next.label);
+                    if (!next.commander) setSelectedCommander(null);
+                    setScryfallCommanders([]);
+                  }}
+                  className="w-full bg-transparent text-xs font-bold text-amber-300 focus:outline-none cursor-pointer"
+                >
+                  <optgroup label="Karty papierowe">
+                    {DECK_FORMATS.filter((f) => f.platform === 'paper').map((f) => (
+                      <option key={f.id} value={f.label} className="bg-stone-900 text-stone-100">
+                        {f.id === 'commander' ? 'Commander (EDH)' : f.name}
+                      </option>
+                    ))}
+                  </optgroup>
+                  <optgroup label="MTG Arena (MTGA)">
+                    {DECK_FORMATS.filter((f) => f.platform === 'arena').map((f) => (
+                      <option key={f.id} value={f.label} className="bg-stone-900 text-stone-100">
+                        {f.name} (MTGA)
+                      </option>
+                    ))}
+                  </optgroup>
+                </select>
+                <span className="text-[11px] text-stone-500 block">{fmt.description}</span>
               </div>
-              <span className="text-[11px] tabular-nums px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 font-bold border border-amber-500/30">
-                Domyślny
-              </span>
+              {isArena && (
+                <span className="text-[11px] px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 font-bold border border-amber-500/30 shrink-0">
+                  MTGA
+                </span>
+              )}
             </div>
+            {deckToEdit && getDeckFormat(deckToEdit.format).id !== fmt.id && (
+              <p className="text-[11px] text-stone-400 mt-1.5">
+                Po zmianie formatu talia zostanie sprawdzona według nowych zasad.
+                {deckToEdit.commander && !fmt.commander ? ' Ten format nie ma dowódcy, więc dowódca zostanie usunięty.' : ''}
+              </p>
+            )}
           </div>
 
+          {isArena ? (
+            <p className="flex items-start gap-2 text-[11px] text-stone-400 p-2.5 bg-stone-950 border border-stone-800 rounded-xl">
+              <Globe className="w-3.5 h-3.5 text-amber-400 shrink-0 mt-0.5" />
+              Talie MTG Arena budujesz z pełnej bazy kart Areny, także kart dostępnych wyłącznie cyfrowo.
+            </p>
+          ) : (
+          <>
           {/* Card Source Selection: Collection vs All MTG Cards */}
           <div>
             <label className="block text-[11px] font-bold text-stone-400 mb-1.5">
@@ -291,7 +339,11 @@ export const DeckCreateModal: React.FC<DeckCreateModalProps> = ({
               </button>
             </div>
           </div>
+          </>
+          )}
 
+          {fmt.commander && (
+          <>
           {/* Optional Commander Picker */}
           <div>
             <label className="block text-[11px] font-bold text-stone-400 mb-1.5">
@@ -332,8 +384,10 @@ export const DeckCreateModal: React.FC<DeckCreateModalProps> = ({
                   <input
                     type="text"
                     placeholder={
-                      cardSource === 'collection'
+                      effectiveSource === 'collection'
                         ? 'Szukaj Legendary Creature w kolekcji...'
+                        : isArena
+                        ? 'Szukaj legendarnego stwora lub planeswalkera w MTG Arena...'
                         : 'Szukaj Legendary Creature w kolekcji lub Scryfall...'
                     }
                     value={commanderSearch}
@@ -373,6 +427,8 @@ export const DeckCreateModal: React.FC<DeckCreateModalProps> = ({
               </div>
             )}
           </div>
+          </>
+          )}
 
           {/* Description */}
           <div>

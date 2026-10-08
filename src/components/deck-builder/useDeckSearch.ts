@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { DeckItem, CollectionItem, ScryfallCard } from '../../types';
+import { isDigitalOnly, searchGameForFormat } from '../../utils/mtgFormats';
 
 interface UseDeckSearchProps {
   deck: DeckItem;
@@ -9,7 +10,11 @@ interface UseDeckSearchProps {
 export function useDeckSearch({ deck, collection }: UseDeckSearchProps) {
   const [isSearchOpen, setIsSearchOpen] = useState<boolean>(false);
   const [searchQuery, setSearchQuery] = useState<string>('');
-  const [searchSource, setSearchSource] = useState<'collection' | 'all'>(deck.cardSource || 'collection');
+  // Talie MTG Arena szukają w pełnej bazie kart Areny (kolekcja to karty papierowe)
+  const game = searchGameForFormat(deck.format);
+  const isArena = game === 'arena';
+  const [searchSourceRaw, setSearchSource] = useState<'collection' | 'all'>(deck.cardSource || 'collection');
+  const searchSource: 'collection' | 'all' = isArena ? 'all' : searchSourceRaw;
   const [searchResults, setSearchResults] = useState<ScryfallCard[]>([]);
   const [isSearchingScryfall, setIsSearchingScryfall] = useState<boolean>(false);
 
@@ -42,6 +47,7 @@ export function useDeckSearch({ deck, collection }: UseDeckSearchProps) {
 
     for (const item of collection) {
       const card = item.card;
+      if (isDigitalOnly(card)) continue; // karty tylko z MTG Arena nie trafiają do talii papierowych
       const nameLower = card.name.toLowerCase();
       if (nameLower.includes(q)) {
         // Use normalized lowercase name as key to prevent duplicates
@@ -64,7 +70,7 @@ export function useDeckSearch({ deck, collection }: UseDeckSearchProps) {
   // Search handler based on chosen card source ('collection' vs 'all')
   const handleSearchCards = useCallback((query: string, sourceOverride?: 'collection' | 'all') => {
     setSearchQuery(query);
-    const activeSource = sourceOverride || searchSource;
+    const activeSource = isArena ? 'all' : sourceOverride || searchSource;
 
     // Invalidate any pending search
     const searchId = ++activeSearchIdRef.current;
@@ -97,10 +103,11 @@ export function useDeckSearch({ deck, collection }: UseDeckSearchProps) {
     debounceTimerRef.current = setTimeout(async () => {
       if (searchId !== activeSearchIdRef.current) return;
 
-      const localStrictMatches = getDeduplicatedLocalMatches(trimmed).slice(0, 8);
+      // Karty z kolekcji (papierowe) na początku listy tylko w formatach papierowych
+      const localStrictMatches = isArena ? [] : getDeduplicatedLocalMatches(trimmed).slice(0, 8);
 
       try {
-        const res = await fetch(`/api/scryfall/search?q=${encodeURIComponent(trimmed)}`);
+        const res = await fetch(`/api/scryfall/search?q=${encodeURIComponent(trimmed)}&game=${game}`);
         if (searchId !== activeSearchIdRef.current) return;
 
         if (res.ok) {
@@ -146,7 +153,7 @@ export function useDeckSearch({ deck, collection }: UseDeckSearchProps) {
         }
       }
     }, 280);
-  }, [searchSource, getDeduplicatedLocalMatches]);
+  }, [searchSource, getDeduplicatedLocalMatches, isArena, game]);
 
   const openSearchModal = useCallback(() => {
     setIsSearchOpen(true);

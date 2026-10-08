@@ -19,11 +19,13 @@ import { DeckCombosModal } from './deck-builder/DeckCombosModal';
 import { DeckAnalysis } from './deck-builder/DeckAnalysis';
 import { DeckTokens } from './deck-builder/DeckTokens';
 import { DeckLegalityNotice } from './deck-builder/DeckLegalityNotice';
-import { checkCommanderLegality } from './deck-builder/legality';
+import { checkDeckLegality } from './deck-builder/legality';
 import { DeckBracketPanel, useDeckBracket } from './deck-builder/DeckBracket';
 import { DECK_SORT_OPTIONS, loadDeckSort, saveDeckSort, type DeckCardSort } from './deck-builder/cardSort';
 import { DeckSuggestions } from './deck-builder/DeckSuggestions';
 import { DeckShareModal } from './deck-builder/DeckShareModal';
+import { DeckArenaExportModal } from './deck-builder/DeckArenaExportModal';
+import { DIGITAL_BLOCK_MESSAGE, getDeckFormat, isDigitalOnly } from '../utils/mtgFormats';
 import type { EdhrecRecommendation } from '../services/api';
 import { wishlistApi } from '../services/api';
 
@@ -53,6 +55,8 @@ export const DeckBuilder: React.FC<DeckBuilderProps> = ({
   // Commander Spellbook Combos Modal state
   const [isCombosModalOpen, setIsCombosModalOpen] = useState(false);
   const [isShareOpen, setIsShareOpen] = useState(false);
+  const [isArenaExportOpen, setIsArenaExportOpen] = useState(false);
+  const deckFormat = useMemo(() => getDeckFormat(deck.format), [deck.format]);
 
   // User adjustable card preview scale (persisted in user AppSettings)
   const [previewScale, setPreviewScale] = useState<number>(settings.deckCardPreviewScale || 100);
@@ -131,7 +135,7 @@ export const DeckBuilder: React.FC<DeckBuilderProps> = ({
     }
 
     const isBasic = (card.type_line || '').toLowerCase().includes('basic');
-    const singleton = /commander|edh/i.test(deck.format || '') || Boolean(deck.commander);
+    const singleton = deckFormat.maxCopies === 1;
     const updatedCards = deck.cards.map((e) => ({ ...e }));
     const sameName = updatedCards.findIndex((e) => !e.isSideboard && e.card.name === card.name);
     const samePrint = updatedCards.findIndex((e) => !e.isSideboard && e.card.id === card.id);
@@ -154,7 +158,7 @@ export const DeckBuilder: React.FC<DeckBuilderProps> = ({
       ...deck,
       cards: updatedCards,
     });
-  }, [deck, onUpdateDeck, closeSearchModal, showToast]);
+  }, [deck, deckFormat, onUpdateDeck, closeSearchModal, showToast]);
 
   const handleUpdateQuantity = useCallback((cardId: string, delta: number) => {
     let updatedCards = [...deck.cards];
@@ -228,7 +232,7 @@ export const DeckBuilder: React.FC<DeckBuilderProps> = ({
 
   // Basic Lands w kolorach dowódcy (bezbarwny dowódca: Wastes)
   const BASIC_NAMES: Record<string, string> = { W: 'Plains', U: 'Island', B: 'Swamp', R: 'Mountain', G: 'Forest', C: 'Wastes' };
-  const basicColors = deck.commander
+  const basicColors = deck.commander && deckFormat.commander
     ? deck.commander.color_identity?.length
       ? ['W', 'U', 'B', 'R', 'G'].filter((c) => deck.commander!.color_identity!.includes(c))
       : ['C']
@@ -239,7 +243,7 @@ export const DeckBuilder: React.FC<DeckBuilderProps> = ({
     return { color, name, count };
   });
   const [basicsBusy, setBasicsBusy] = useState<string | null>(null);
-  const legality = React.useMemo(() => checkCommanderLegality(deck), [deck]);
+  const legality = React.useMemo(() => checkDeckLegality(deck), [deck]);
   const bracket = useDeckBracket(deck);
   const [sortMode, setSortMode] = useState<DeckCardSort>(loadDeckSort);
   const handleSortChange = useCallback((mode: DeckCardSort) => {
@@ -359,6 +363,10 @@ export const DeckBuilder: React.FC<DeckBuilderProps> = ({
         showToast(`Nie znaleziono karty "${cardName}".`);
         return;
       }
+      if (isDigitalOnly(card)) {
+        showToast(DIGITAL_BLOCK_MESSAGE);
+        return;
+      }
 
       await wishlistApi.create({
         cardId: card.id,
@@ -449,9 +457,11 @@ export const DeckBuilder: React.FC<DeckBuilderProps> = ({
           onOpenCombos={() => setIsCombosModalOpen(true)}
           onOpenShare={() => setIsShareOpen(true)}
           isPublic={Boolean(deck.isPublic)}
+          onExportArena={() => setIsArenaExportOpen(true)}
         />
 
-        {/* Commander Featured Showcase / Select Placeholder */}
+        {/* Commander Featured Showcase / Select Placeholder (tylko formaty z dowódcą) */}
+        {deckFormat.commander && (
         <CommanderShowcase
           commander={deck.commander}
           commanderIsFoil={deck.commanderIsFoil}
@@ -460,6 +470,7 @@ export const DeckBuilder: React.FC<DeckBuilderProps> = ({
           onRemoveCommander={handleRemoveCommander}
           onOpenSearch={openSearchModal}
         />
+        )}
       </div>
 
       {/* 2. Mana Curve & Color Identity Bar */}
@@ -471,8 +482,10 @@ export const DeckBuilder: React.FC<DeckBuilderProps> = ({
         basicsBusy={basicsBusy}
       />
 
-      {/* Bracket talii i Game Changers */}
-      <DeckBracketPanel deck={deck} bracket={bracket} onViewCardByName={handleViewCardDetailsByName} />
+      {/* Bracket talii i Game Changers (Commander) */}
+      {deckFormat.id === 'commander' && (
+        <DeckBracketPanel deck={deck} bracket={bracket} onViewCardByName={handleViewCardDetailsByName} />
+      )}
 
       {/* 2b. Board Toolbar: Categories Sorting Info & Card Preview Size Slider */}
       <div className="bg-stone-900 border border-stone-800 rounded-xl px-4 py-3 flex flex-col sm:flex-row items-center justify-between gap-3">
@@ -557,7 +570,7 @@ export const DeckBuilder: React.FC<DeckBuilderProps> = ({
 
       {/* 3. Main Stacked Categories Board */}
       <DeckCategoriesBoard
-        gameChangers={bracket.gameChangers}
+        gameChangers={deckFormat.id === 'commander' ? bracket.gameChangers : undefined}
         issuesById={legality.byCardId}
         sortMode={sortMode}
         categorizedCards={categorizedCards}
@@ -566,7 +579,7 @@ export const DeckBuilder: React.FC<DeckBuilderProps> = ({
         onHoverCard={handleHoverCard}
         onLeaveCard={handleLeaveCard}
         onUpdateQuantity={handleUpdateQuantity}
-        onSetCommander={handleSetCommander}
+        onSetCommander={deckFormat.commander ? handleSetCommander : undefined}
         onViewCardDetails={onViewCardDetails}
       />
 
@@ -577,7 +590,7 @@ export const DeckBuilder: React.FC<DeckBuilderProps> = ({
       <DeckTokens deck={deck} onViewCardDetails={onViewCardDetails} />
 
       {/* 3c. Sugestie z EDHREC (format Commander) */}
-      {(deck.commander || /commander|edh/i.test(deck.format || '')) && (
+      {deckFormat.id === 'commander' && (
       <DeckSuggestions
         deck={deck}
         collection={collection}
@@ -587,6 +600,10 @@ export const DeckBuilder: React.FC<DeckBuilderProps> = ({
         wishlistNames={wishlistNames}
         onAddToWishlist={onAddToWishlist ? handleWishlistRecommended : undefined}
       />
+      )}
+
+      {isArenaExportOpen && (
+        <DeckArenaExportModal deck={deck} onClose={() => setIsArenaExportOpen(false)} showToast={showToast} />
       )}
 
       {isShareOpen && (
@@ -611,6 +628,7 @@ export const DeckBuilder: React.FC<DeckBuilderProps> = ({
         deckName={deck.name}
         collection={collection}
         deckCards={deck.cards}
+        deckFormat={deckFormat}
         searchSource={searchSource}
         searchQuery={searchQuery}
         searchResults={searchResults}

@@ -91,7 +91,8 @@ export async function buildMissingHashes(): Promise<void> {
   if (!p || building) return;
   building = true;
   buildProgress = { done: 0, failed: 0, remaining: 0 };
-  const pendingWhere = 'image_small IS NOT NULL AND hash_version IS DISTINCT FROM $1 AND hash_version IS DISTINCT FROM $2';
+  // karty tylko z MTG Arena nie trafiają do skanera
+  const pendingWhere = 'image_small IS NOT NULL AND NOT digital AND hash_version IS DISTINCT FROM $1 AND hash_version IS DISTINCT FROM $2';
   try {
     const countRes = await p.query(`SELECT COUNT(*)::int AS n FROM scryfall_cards WHERE ${pendingWhere}`, [HASH_VERSION, FAILED_VERSION]);
     buildProgress.remaining = countRes.rows[0].n;

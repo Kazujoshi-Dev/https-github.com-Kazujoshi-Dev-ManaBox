@@ -150,6 +150,14 @@ export function parseTxtDeckOrCollection(text: string): ParsedTextList {
       continue;
     }
 
+    // Nagłówki listy z MTG Arena („Commander”, „Deck”, „Sideboard”, „About”, „Name …”)
+    if (/^(commander|deck|sideboard|companion|maybeboard|about)$/i.test(trimmed) || /^name\s+\S/i.test(trimmed)) {
+      const lower = trimmed.toLowerCase();
+      if (lower === 'commander') currentSection = 'commander';
+      else if (lower === 'deck' || lower === 'sideboard' || lower === 'companion' || lower === 'maybeboard') currentSection = 'deck';
+      continue;
+    }
+
     const parsed = parseTxtCardLine(rawLine);
     if (!parsed) {
       invalidLines.push(rawLine);
