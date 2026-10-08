@@ -1957,7 +1957,10 @@ app.get('/api/edhrec/commander', authMiddleware, edhrecLimiter, async (req, res)
     }
     if (!data) return res.status(404).json({ error: 'EDHREC nie ma jeszcze danych dla tego dowódcy.' });
     const top = data.cards.slice(0, 220);
-    const found = await cards.getCardsByNames(top.map((c) => c.name), { preferRegular: true }).catch(() => new Map<string, any>());
+    const found = await cards.getCardsByNames(top.map((c) => c.name), { preferRegular: true }).catch((err) => {
+      console.warn('[EDHREC] Nie udało się dobrać kart z bazy:', err?.message || err);
+      return new Map<string, any>();
+    });
     res.json({
       commander: data.name,
       url: data.url,

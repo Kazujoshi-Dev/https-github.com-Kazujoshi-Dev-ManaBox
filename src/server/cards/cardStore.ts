@@ -567,31 +567,45 @@ export async function getShowcaseCards(limit = 12): Promise<ShowcaseCard[]> {
  * Wydanie „specjalne” (1) lub zwykłe (0): Secret Lair i podobne serie, promki, wersje cyfrowe,
  * borderless, showcase, extended art, full art (poza lądami podstawowymi) i warianty.
  */
+// Pola czytane z kolumny `f` (wynik jsonb_to_record), żeby JSON karty rozpakować raz, a nie przy każdym warunku.
 const SPECIAL_PRINT_SQL = `(CASE WHEN
-    data->>'set' IN ('sld', 'sldp', 'slx', 'slc', 'plst', 'mb2', 'pmb2', 'mb1', 'fmb1', 'cmb1', 'cmb2', 'ulst', 'unk', 'pagl')
-    OR data->>'set_type' IN ('promo', 'box', 'memorabilia', 'funny', 'masterpiece', 'alchemy', 'token', 'minigame', 'treasure_chest', 'vanguard')
-    OR COALESCE((data->>'promo')::boolean, false)
-    OR COALESCE((data->>'digital')::boolean, false)
-    OR COALESCE((data->>'variation')::boolean, false)
-    OR COALESCE((data->>'oversized')::boolean, false)
-    OR data->>'border_color' IN ('borderless', 'gold', 'silver', 'yellow')
-    OR COALESCE(data->'frame_effects', '[]'::jsonb) ?| array['showcase', 'extendedart', 'inverted', 'etched', 'fullart', 'textless']
-    OR (COALESCE((data->>'full_art')::boolean, false) AND COALESCE(data->>'type_line', '') NOT ILIKE '%basic%')
+    f.set IN ('sld', 'sldp', 'slx', 'slc', 'plst', 'mb2', 'pmb2', 'mb1', 'fmb1', 'cmb1', 'cmb2', 'ulst', 'unk', 'pagl')
+    OR f.set_type IN ('promo', 'box', 'memorabilia', 'funny', 'masterpiece', 'alchemy', 'token', 'minigame', 'treasure_chest', 'vanguard')
+    OR COALESCE(f.promo, false)
+    OR COALESCE(f.digital, false)
+    OR COALESCE(f.variation, false)
+    OR COALESCE(f.oversized, false)
+    OR f.border_color IN ('borderless', 'gold', 'silver', 'yellow')
+    OR COALESCE(f.frame_effects, '[]'::jsonb) ?| array['showcase', 'extendedart', 'inverted', 'etched', 'fullart', 'textless']
+    OR (COALESCE(f.full_art, false) AND COALESCE(f.type_line, '') NOT ILIKE '%basic%')
   THEN 1 ELSE 0 END)`;
+
+const SPECIAL_PRINT_FIELDS = `jsonb_to_record(c.data) AS f(
+    set text, set_type text, promo boolean, digital boolean, variation boolean, oversized boolean,
+    border_color text, frame_effects jsonb, full_art boolean, type_line text)`;
 
 export async function getCardsByNames(names: string[], opts: { preferRegular?: boolean } = {}): Promise<Map<string, any>> {
   const out = new Map<string, any>();
   const p = pool();
   const wanted = [...new Set(names.map((n) => n.toLowerCase().trim()).filter(Boolean))];
   if (!p || wanted.length === 0) return out;
-  // preferRegular: najnowsze zwykłe wydanie, a wersja specjalna dopiero gdy zwykłej nie ma
+  // Najpierw wybieramy id wydania (sortując tylko lekkie kolumny), dopiero potem dociągamy pełny JSON
+  // wybranych kart. preferRegular: najnowsze zwykłe wydanie, a wersja specjalna dopiero gdy zwykłej nie ma
+  // (sprawdzamy tylko wydania angielskie, bo i tak mają pierwszeństwo).
   const res = await p.query(
-    `SELECT DISTINCT ON (key) key, data FROM (
-       SELECT LOWER(name) AS key, data, lang, released_at, image_small FROM scryfall_cards WHERE LOWER(name) = ANY($1)
-       UNION ALL
-       SELECT LOWER(face_names[1]) AS key, data, lang, released_at, image_small FROM scryfall_cards WHERE LOWER(face_names[1]) = ANY($1)
-     ) x
-     ORDER BY key, (lang = 'en') DESC, ${opts.preferRegular ? `${SPECIAL_PRINT_SQL} ASC,` : ''} (image_small IS NOT NULL) DESC, released_at DESC NULLS LAST`,
+    `WITH pick AS (
+       SELECT DISTINCT ON (key) key, id FROM (
+         SELECT x.key, x.id, x.lang, x.released_at, x.image_small${opts.preferRegular ? `, ${SPECIAL_PRINT_SQL} AS special` : ''}
+         FROM (
+           SELECT LOWER(name) AS key, id, lang, released_at, image_small FROM scryfall_cards WHERE LOWER(name) = ANY($1)
+           UNION ALL
+           SELECT LOWER(face_names[1]) AS key, id, lang, released_at, image_small FROM scryfall_cards WHERE LOWER(face_names[1]) = ANY($1)
+         ) x
+         ${opts.preferRegular ? `LEFT JOIN scryfall_cards c ON c.id = x.id AND x.lang = 'en' LEFT JOIN LATERAL ${SPECIAL_PRINT_FIELDS} ON true` : ''}
+       ) y
+       ORDER BY key, (lang = 'en') DESC, ${opts.preferRegular ? 'special ASC,' : ''} (image_small IS NOT NULL) DESC, released_at DESC NULLS LAST
+     )
+     SELECT pick.key, sc.data FROM pick JOIN scryfall_cards sc ON sc.id = pick.id`,
     [wanted]
   );
   for (const r of res.rows) out.set(r.key, r.data);

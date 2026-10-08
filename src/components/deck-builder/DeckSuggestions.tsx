@@ -251,7 +251,10 @@ export const DeckSuggestions: React.FC<DeckSuggestionsProps> = ({ deck, collecti
             ) : (
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
                 {visible.slice(0, limit).map((rec) => {
-                  const img = rec.card ? getCardImageUri(rec.card, 'normal') : '';
+                  // Bez danych karty z bazy bierzemy obraz ze Scryfall po nazwie
+                  const img = rec.card
+                    ? getCardImageUri(rec.card, 'normal')
+                    : `https://api.scryfall.com/cards/named?exact=${encodeURIComponent(rec.name.split('//')[0].trim())}&format=image&version=normal`;
                   const isOwned = owned.has(frontName(rec.name));
                   const blocked = addDisabledReason(rec);
                   return (
