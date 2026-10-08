@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Gamepad2 } from 'lucide-react';
 import { DEFAULT_SETTINGS, getCardImageUri, getCardPrice, getCardEdhrecRank } from '../utils/formatters';
 import {
   CardModalProps,
@@ -31,6 +32,7 @@ export const CardModal: React.FC<CardModalProps> = ({
   initialFoil,
   wishlistItem,
   onUpdateWishlistItem,
+  collectionBlockedReason,
 }) => {
   // „Wstecz” na telefonie zamyka to okno zamiast opuszczać stronę
   useBackToClose(true, onClose);
@@ -170,7 +172,7 @@ export const CardModal: React.FC<CardModalProps> = ({
               onSelectPrint={handleSelectPrint}
               onSwitchToDetails={() => setActiveTab('details')}
               defaultBinderName={catalogs.find((c) => c.isDefault)?.name || catalogs[0]?.name || 'Klaser Główny'}
-              onQuickAddToCollection={onQuickAddToCollection}
+              onQuickAddToCollection={collectionBlockedReason ? undefined : onQuickAddToCollection}
             />
           )}
 
@@ -213,7 +215,13 @@ export const CardModal: React.FC<CardModalProps> = ({
                 onOpenPrintsTab={() => setActiveTab('prints')}
               />
 
-              <CardCollectionForm
+              {collectionBlockedReason ? (
+                <div className="flex items-start gap-2.5 p-4 rounded-xl bg-stone-950 border border-stone-800 text-sm text-stone-300">
+                  <Gamepad2 className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+                  <p>{collectionBlockedReason}</p>
+                </div>
+              ) : (
+                            <CardCollectionForm
                 existingItem={existingItem}
                 catalogs={catalogs}
                 selectedBinder={selectedBinder}
@@ -241,6 +249,7 @@ export const CardModal: React.FC<CardModalProps> = ({
                 onSubmitCreateCatalog={handleCreateNewCatalog}
                 onSubmitSave={handleSave}
               />
+              )}
             </div>
           </div>
           )}

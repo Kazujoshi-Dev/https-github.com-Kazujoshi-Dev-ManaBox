@@ -1,6 +1,7 @@
 import React from 'react';
 import { ArrowLeft, Crown, Layers, Globe, Plus, FileText, Sparkles, Share2, Gamepad2, Swords } from 'lucide-react';
 import { getDeckFormat } from '../../utils/mtgFormats';
+import { WildcardCost } from './WildcardCost';
 import { formatCurrency } from '../../utils/formatters';
 import { DeckHeaderProps } from './types';
 
@@ -20,6 +21,7 @@ export const DeckHeader: React.FC<DeckHeaderProps> = ({
   onOpenShare,
   isPublic = false,
   onExportArena,
+  wildcardCost,
 }) => {
   const fmt = getDeckFormat(format);
   const isArena = fmt.platform === 'arena';
@@ -98,13 +100,20 @@ export const DeckHeader: React.FC<DeckHeaderProps> = ({
           </span>
         </div>
 
-        {/* Total Estimated Deck Value */}
-        <div className="bg-stone-950 px-3.5 py-2 rounded-xl border border-stone-800 flex items-center gap-2">
-          <span className="text-xs text-stone-400">Wartość rynkowa:</span>
-          <span className="text-sm font-bold text-amber-300 tabular-nums">
-            {formatCurrency(totalDeckValue, currency)}
-          </span>
-        </div>
+        {/* Talie MTGA: koszt w wildcardach zamiast ceny; papierowe: wartość rynkowa */}
+        {isArena && wildcardCost ? (
+          <div className="bg-stone-950 px-3.5 py-2 rounded-xl border border-stone-800 flex items-center gap-2">
+            <span className="text-xs text-stone-400">Wildcardy:</span>
+            <WildcardCost cost={wildcardCost} />
+          </div>
+        ) : (
+          <div className="bg-stone-950 px-3.5 py-2 rounded-xl border border-stone-800 flex items-center gap-2">
+            <span className="text-xs text-stone-400">Wartość rynkowa:</span>
+            <span className="text-sm font-bold text-amber-300 tabular-nums">
+              {formatCurrency(totalDeckValue, currency)}
+            </span>
+          </div>
+        )}
 
         {/* Commander Spellbook Combos Button */}
         {onOpenCombos && (

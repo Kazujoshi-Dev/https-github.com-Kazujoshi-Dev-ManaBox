@@ -10,6 +10,8 @@
 
 @layer base {
   html {
+    /* Ciemny motyw także dla natywnych kontrolek (rozwijane listy, przewijanie), bez żółtego tekstu na białym tle. */
+    color-scheme: dark;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     font-feature-settings: 'ss01' on;

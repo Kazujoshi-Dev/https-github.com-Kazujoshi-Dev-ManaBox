@@ -1,10 +1,11 @@
 import { PageHeader } from './ui/PageHeader';
 import { computeDeckValue } from './deck-builder/useDeckStats';
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { DeckItem, AppSettings } from '../types';
-import { getCardPrice, formatCurrency } from '../utils/formatters';
+import { formatCurrency } from '../utils/formatters';
 import { exportDeckToTxt, downloadTxtFile } from '../utils/textCardList';
-import { getDeckFormat } from '../utils/mtgFormats';
+import { DECK_FORMATS, computeWildcardCost, getDeckFormat, type DeckFormat } from '../utils/mtgFormats';
+import { WildcardCost } from './deck-builder/WildcardCost';
 import { Swords, Plus, Crown, Trash2, Download, Copy, Check, Upload, FileText, Pencil, FolderInput, Loader2 } from 'lucide-react';
 
 interface DeckListProps {
@@ -36,6 +37,25 @@ export const DeckList: React.FC<DeckListProps> = ({
   const [copiedDeckId, setCopiedDeckId] = useState<string | null>(null);
   const [confirmCopyId, setConfirmCopyId] = useState<string | null>(null);
   const [copyingId, setCopyingId] = useState<string | null>(null);
+  // Podzakładki formatów: pojawiają się, gdy w danym formacie jest choć jedna talia
+  const [formatTab, setFormatTab] = useState<string>('all');
+
+  const formatTabs = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const d of decks) {
+      const id = getDeckFormat(d.format).id;
+      counts.set(id, (counts.get(id) || 0) + 1);
+    }
+    return DECK_FORMATS.filter((f) => counts.has(f.id)).map((f) => ({ format: f, count: counts.get(f.id)! }));
+  }, [decks]);
+
+  // Ostatnia talia formatu usunięta lub przeniesiona: wracamy do „Wszystkie”
+  useEffect(() => {
+    if (formatTab !== 'all' && !formatTabs.some((t) => t.format.id === formatTab)) setFormatTab('all');
+  }, [formatTab, formatTabs]);
+
+  const visibleDecks = formatTab === 'all' ? decks : decks.filter((d) => getDeckFormat(d.format).id === formatTab);
+  const tabLabel = (f: DeckFormat) => (f.id === 'commander' ? 'Commander' : f.platform === 'arena' ? `${f.name} (MTGA)` : f.name);
 
   const handleExportDeckFile = (e: React.MouseEvent, deck: DeckItem) => {
     e.stopPropagation();
@@ -62,7 +82,7 @@ export const DeckList: React.FC<DeckListProps> = ({
     <div className="space-y-6">
       <PageHeader
         title="Talie"
-        description="Talie Commander budowane z Twojej kolekcji. Import i eksport w formacie list Moxfield i Archidekt."
+        description="Talie papierowe i MTG Arena w różnych formatach. Import i eksport w formacie list Moxfield i Archidekt."
         actions={
           <>
             {onOpenImportDeck && (
@@ -112,14 +132,42 @@ export const DeckList: React.FC<DeckListProps> = ({
           </div>
         </div>
       ) : (
+        <>
+        <div
+          className="flex gap-1.5 overflow-x-auto no-scrollbar -mx-4 px-4 sm:mx-0 sm:px-0"
+          role="tablist"
+          aria-label="Talie według formatu"
+        >
+          {[{ id: 'all', label: 'Wszystkie', count: decks.length }, ...formatTabs.map((t) => ({ id: t.format.id, label: tabLabel(t.format), count: t.count }))].map((t) => {
+            const active = formatTab === t.id;
+            return (
+              <button
+                key={t.id}
+                type="button"
+                role="tab"
+                aria-selected={active}
+                onClick={() => setFormatTab(t.id)}
+                className={`shrink-0 h-9 px-3.5 rounded-lg text-sm flex items-center gap-2 cursor-pointer border ${
+                  active
+                    ? 'bg-stone-800 border-stone-700 text-stone-50 font-medium'
+                    : 'bg-stone-900 border-stone-800 text-stone-400 hover:text-stone-200 hover:border-stone-700'
+                }`}
+              >
+                {t.label}
+                <span className={`text-xs tabular-nums ${active ? 'text-amber-300' : 'text-stone-500'}`}>{t.count}</span>
+              </button>
+            );
+          })}
+        </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-4">
-          {decks.map(deck => {
+          {visibleDecks.map(deck => {
             const fmt = getDeckFormat(deck.format);
             const count = (deck.commander && fmt.commander ? 1 : 0) + (deck.cards?.filter((c) => !c.isSideboard).reduce((s, c) => s + c.quantity, 0) || 0);
             const sizeOk = fmt.exactSize ? count === fmt.deckSize : count >= fmt.deckSize;
             const sizeOver = fmt.exactSize && count > fmt.deckSize;
             const firstArt = deck.cards?.find((c) => c.card.image_uris?.art_crop || c.card.card_faces?.[0]?.image_uris?.art_crop)?.card;
-            const deckVal = computeDeckValue(deck, settings);
+            const isArena = fmt.platform === 'arena';
+            const deckVal = isArena ? 0 : computeDeckValue(deck, settings);
 
             const art =
               (fmt.commander && (deck.commander?.image_uris?.art_crop || deck.commander?.card_faces?.[0]?.image_uris?.art_crop)) ||
@@ -167,7 +215,11 @@ export const DeckList: React.FC<DeckListProps> = ({
                       >
                         {count}/{fmt.deckSize}
                       </span>
-                      <span className="text-stone-300">{formatCurrency(deckVal, settings.currency)}</span>
+                      {isArena ? (
+                        <WildcardCost cost={computeWildcardCost(deck)} compact />
+                      ) : (
+                        <span className="text-stone-300">{formatCurrency(deckVal, settings.currency)}</span>
+                      )}
                     </div>
                     <div className="flex items-center -mr-1.5" onClick={(e) => e.stopPropagation()}>
                       <button type="button" onClick={(e) => handleExportDeckFile(e, deck)} className={iconBtn} title="Pobierz listę .txt" aria-label="Pobierz listę .txt">
@@ -237,6 +289,7 @@ export const DeckList: React.FC<DeckListProps> = ({
             );
           })}
         </div>
+        </>
       )}
     </div>
   );

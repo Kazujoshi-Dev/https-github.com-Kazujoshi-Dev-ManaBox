@@ -34,7 +34,7 @@ export const DeckCreateModal: React.FC<DeckCreateModalProps> = ({
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [format, setFormat] = useState(DEFAULT_FORMAT.label); // Domyślnie EDH Commander
-  const [cardSource, setCardSource] = useState<'collection' | 'all'>('collection');
+  const [cardSource, setCardSource] = useState<'collection' | 'all'>('all');
   const [selectedCommander, setSelectedCommander] = useState<ScryfallCard | null>(null);
   const [commanderSearch, setCommanderSearch] = useState('');
   const [scryfallCommanders, setScryfallCommanders] = useState<ScryfallCard[]>([]);
@@ -56,7 +56,7 @@ export const DeckCreateModal: React.FC<DeckCreateModalProps> = ({
         setName('');
         setDescription('');
         setFormat(DEFAULT_FORMAT.label);
-        setCardSource('collection');
+        setCardSource('all');
         setSelectedCommander(null);
         setCommanderSearch('');
       }
@@ -236,16 +236,17 @@ export const DeckCreateModal: React.FC<DeckCreateModalProps> = ({
                     if (!next.commander) setSelectedCommander(null);
                     setScryfallCommanders([]);
                   }}
-                  className="w-full bg-transparent text-xs font-bold text-amber-300 focus:outline-none cursor-pointer"
+                  style={{ colorScheme: 'dark' }}
+                  className="w-full bg-stone-950 text-xs font-bold text-amber-300 focus:outline-none cursor-pointer"
                 >
-                  <optgroup label="Karty papierowe">
+                  <optgroup label="Karty papierowe" className="bg-stone-900 text-stone-400">
                     {DECK_FORMATS.filter((f) => f.platform === 'paper').map((f) => (
                       <option key={f.id} value={f.label} className="bg-stone-900 text-stone-100">
                         {f.id === 'commander' ? 'Commander (EDH)' : f.name}
                       </option>
                     ))}
                   </optgroup>
-                  <optgroup label="MTG Arena (MTGA)">
+                  <optgroup label="MTG Arena (MTGA)" className="bg-stone-900 text-stone-400">
                     {DECK_FORMATS.filter((f) => f.platform === 'arena').map((f) => (
                       <option key={f.id} value={f.label} className="bg-stone-900 text-stone-100">
                         {f.name} (MTGA)

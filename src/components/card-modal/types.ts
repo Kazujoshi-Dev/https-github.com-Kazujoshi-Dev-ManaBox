@@ -29,6 +29,8 @@ export interface CardModalProps {
   /** Okno otwarte z listy życzeń — zmiana foil / wersji zapisuje się w tej pozycji. */
   wishlistItem?: WishlistItem | null;
   onUpdateWishlistItem?: (patch: { card?: ScryfallCard; isFoil?: boolean }) => Promise<unknown> | void;
+  /** Powód, dla którego karty nie można dodać do kolekcji (np. okno otwarte z talii MTG Arena). */
+  collectionBlockedReason?: string | null;
 }
 
 export type CardModalTab = 'details' | 'prints' | 'combos';

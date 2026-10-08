@@ -157,6 +157,67 @@ export type SearchGame = 'paper' | 'arena' | 'all';
 
 export const searchGameForFormat = (label?: string | null): SearchGame => (isArenaFormat(label) ? 'arena' : 'paper');
 
+// ---------- Koszt talii w wildcardach MTG Arena ----------
+
+export type WildcardRarity = 'common' | 'uncommon' | 'rare' | 'mythic';
+
+export const WILDCARD_RARITIES: { id: WildcardRarity; label: string; short: string }[] = [
+  { id: 'common', label: 'Pospolite', short: 'C' },
+  { id: 'uncommon', label: 'Niepospolite', short: 'U' },
+  { id: 'rare', label: 'Rzadkie', short: 'R' },
+  { id: 'mythic', label: 'Mityczne', short: 'M' }
+];
+
+export type WildcardCost = Record<WildcardRarity, number>;
+
+const isBasicLand = (card: Pick<ScryfallCard, 'type_line'>) => /\bbasic\b/i.test(card.type_line || '') && /\bland\b/i.test(card.type_line || '');
+
+/** Rzadkość wildcarda potrzebnego do stworzenia karty (wydania specjalne liczymy jak rzadkie, bonusowe jak mityczne). */
+export function wildcardRarity(card: Pick<ScryfallCard, 'rarity'>): WildcardRarity {
+  switch ((card.rarity || '').toLowerCase()) {
+    case 'common':
+      return 'common';
+    case 'uncommon':
+      return 'uncommon';
+    case 'mythic':
+    case 'bonus':
+      return 'mythic';
+    default:
+      return 'rare';
+  }
+}
+
+/**
+ * Ile wildcardów każdej rzadkości trzeba, żeby stworzyć talię od zera w MTG Arena.
+ * Lądy podstawowe są w Arenie darmowe; kopie tej samej karty w różnych wydaniach liczymy raz,
+ * po najtańszej rzadkości (Arena pozwala użyć dowolnego posiadanego wydania).
+ */
+export function computeWildcardCost(deck: {
+  commander?: ScryfallCard | null;
+  cards: { card: ScryfallCard; quantity: number; isCommander?: boolean }[];
+}): WildcardCost {
+  const order: WildcardRarity[] = ['common', 'uncommon', 'rare', 'mythic'];
+  const byName = new Map<string, { qty: number; rarity: WildcardRarity }>();
+  const add = (card: ScryfallCard, qty: number) => {
+    if (!card || qty <= 0 || isBasicLand(card)) return;
+    const key = arenaCardName(card).toLowerCase();
+    const rarity = wildcardRarity(card);
+    const prev = byName.get(key);
+    if (prev) {
+      prev.qty += qty;
+      if (order.indexOf(rarity) < order.indexOf(prev.rarity)) prev.rarity = rarity;
+    } else {
+      byName.set(key, { qty, rarity });
+    }
+  };
+  if (deck.commander) add(deck.commander, 1);
+  for (const e of deck.cards) add(e.card, e.quantity);
+
+  const cost: WildcardCost = { common: 0, uncommon: 0, rare: 0, mythic: 0 };
+  for (const { qty, rarity } of byName.values()) cost[rarity] += qty;
+  return cost;
+}
+
 // ---------- Eksport do MTG Arena ----------
 
 /** Kody dodatków, które w Arenie mają inną nazwę niż w Scryfall. */

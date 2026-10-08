@@ -36,6 +36,7 @@ import { useToast } from './hooks/useToast';
 import { useSettings } from './hooks/useSettings';
 import { useCollectionStats } from './hooks/useCollectionStats';
 import { useAppData } from './hooks/useAppData';
+import { isArenaFormat } from './utils/mtgFormats';
 import { publicSaleApi, messagesApi, usersApi, publicDeckApi } from './services/api';
 
 export default function App() {
@@ -331,7 +332,8 @@ export default function App() {
     }
     setDeckCardIsFoil(isFoil);
     // Pozycja kolekcji tylko dla dokładnie tej samej karty (to samo wydanie i ta sama wersja foil / zwykła)
-    const existing = collection.find((c) =>
+    // Talie MTG Arena są cyfrowe: nie łączymy ich kart z pozycjami kolekcji
+    const existing = (selectedDeck && isArenaFormat(selectedDeck.format)) ? null : collection.find((c) =>
       !c.isForSale &&
       (c.cardId || c.card.id) === card.id &&
       (isFoil ? c.quantityFoil > 0 && c.quantity === 0 : c.quantity > 0 && c.quantityFoil === 0)
@@ -856,6 +858,10 @@ export default function App() {
             }}
             onDeleteDeck={handleDeleteDeckAndReset}
             onCopyDeckToCollection={async (deck) => {
+              if (isArenaFormat(deck.format)) {
+                showToast('Talie MTG Arena są cyfrowe, więc ich kart nie dodaje się do kolekcji.');
+                return false;
+              }
               const binder = catalogs.find((c) => c.isDefault)?.name || 'Klaser Główny';
               // Te same wydania i wersje foil co w talii; ta sama karta w tej samej wersji sumuje się,
               // a zwykła i foil to osobne pozycje
@@ -1003,6 +1009,11 @@ export default function App() {
           initialFoil={deckCardIsFoil}
           wishlistItem={selectedWishlistItemForModal}
           onUpdateWishlistItem={handleUpdateWishlistItemFromModal}
+          collectionBlockedReason={
+            deckCardBeingViewed && selectedDeck && isArenaFormat(selectedDeck.format)
+              ? 'Karta z talii MTG Arena. Talie MTGA są cyfrowe, więc ich kart nie dodaje się do kolekcji.'
+              : null
+          }
         />
       )}
 

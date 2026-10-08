@@ -34,6 +34,8 @@ export interface DeckHeaderProps {
   isPublic?: boolean;
   /** Eksport listy do MTG Arena (pokazywany tylko w formatach MTGA). */
   onExportArena?: () => void;
+  /** Koszt talii MTGA w wildcardach (pokazywany zamiast wartości rynkowej). */
+  wildcardCost?: import('../../utils/mtgFormats').WildcardCost;
 }
 
 export interface CommanderShowcaseProps {

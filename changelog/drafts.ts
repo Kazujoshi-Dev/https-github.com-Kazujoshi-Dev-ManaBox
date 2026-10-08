@@ -94,4 +94,10 @@ export const CHANGELOG_DRAFTS: ChangelogDraft[] = [
   { id: '2026-10-08-eksport-mtga', day: '2026-10-08', type: 'new', area: 'Talie', text: 'Talie MTG Arena skopiujesz przyciskiem „Eksport do MTGA” i wkleisz w grze przez Importuj.' },
   { id: '2026-10-08-karty-arena-szukaj', day: '2026-10-08', type: 'new', area: 'Karty', text: 'W wyszukiwarce kart pole „Karty MTG Arena” pokazuje także karty dostępne tylko w grze cyfrowej.' },
   { id: '2026-10-08-karty-arena-blokada', day: '2026-10-08', type: 'improved', area: 'Karty', text: 'Karty istniejące tylko w MTG Arena nie trafią na sprzedaż ani na listę życzeń.' },
+  { id: '2026-10-08-talie-mtga-bez-kolekcji', day: '2026-10-08', type: 'improved', area: 'Talie', text: 'Karty z talii MTG Arena nie dodają się już do kolekcji, bo talie MTGA są cyfrowe.' },
+  { id: '2026-10-08-format-lista-czytelna', day: '2026-10-08', type: 'fixed', area: 'Talie', text: 'Lista formatów w oknie tworzenia talii jest znów czytelna, bez żółtego tekstu na białym tle.' },
+  { id: '2026-10-08-nowa-talia-wszystkie-karty', day: '2026-10-08', type: 'improved', area: 'Talie', text: 'Nowa talia domyślnie korzysta ze wszystkich kart MTG zamiast tylko z Twojej kolekcji.' },
+  { id: '2026-10-08-talie-zakladki-formatow', day: '2026-10-08', type: 'new', area: 'Talie', text: 'Lista talii ma zakładki formatów, które pojawiają się, gdy utworzysz pierwszą talię w danym formacie.' },
+  { id: '2026-10-08-mtga-bez-cen', day: '2026-10-08', type: 'improved', area: 'Talie', text: 'W taliach MTG Arena nie pokazujemy już cen kart przy dodawaniu i przeglądaniu talii.' },
+  { id: '2026-10-08-mtga-wildcardy', day: '2026-10-08', type: 'new', area: 'Talie', text: 'Talie MTG Arena pokazują, ile wildcardów każdej rzadkości potrzeba, żeby stworzyć talię od zera.' },
 ];

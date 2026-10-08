@@ -66,9 +66,9 @@ export const DeckAddCardModal: React.FC<DeckAddCardModalProps> = ({
           <AddCardVersionPicker
             card={picking.card}
             asCommander={picking.asCommander}
-            collection={collection}
+            collection={isArena ? [] : collection}
             deckCards={deckCards}
-            settings={settings}
+            settings={isArena ? undefined : settings}
             collectionOnly={searchSource === 'collection'}
             singleton={deckFormat.maxCopies === 1}
             game={isArena ? 'arena' : 'paper'}
@@ -178,7 +178,8 @@ export const DeckAddCardModal: React.FC<DeckAddCardModalProps> = ({
             const inDeck = deckCards.find(e => !e.isCommander && (e.card.id === card.id || e.card.name === card.name));
             const isLegendary = deckFormat.commander && (card.type_line || '').toLowerCase().includes('legendary');
             const digital = isDigitalOnly(card);
-            const ownedItem = collection.find(c => c.card.name.toLowerCase() === card.name.toLowerCase());
+            // Talie MTGA nie korzystają z kolekcji papierowej
+            const ownedItem = isArena ? undefined : collection.find(c => c.card.name.toLowerCase() === card.name.toLowerCase());
 
             return (
               <div
@@ -212,7 +213,7 @@ export const DeckAddCardModal: React.FC<DeckAddCardModalProps> = ({
                         <span className="text-[11px] tabular-nums text-emerald-300 bg-emerald-950/60 px-1.5 py-0.5 rounded border border-emerald-500/30">
                           W kolekcji: {ownedItem.quantity} szt.
                         </span>
-                      ) : (
+                      ) : isArena ? null : (
                         <span className="text-[11px] tabular-nums text-amber-300 bg-amber-950/40 px-1.5 py-0.5 rounded border border-amber-500/30">
                           Scryfall
                         </span>

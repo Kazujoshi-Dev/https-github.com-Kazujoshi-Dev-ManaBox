@@ -25,7 +25,7 @@ import { DECK_SORT_OPTIONS, loadDeckSort, saveDeckSort, type DeckCardSort } from
 import { DeckSuggestions } from './deck-builder/DeckSuggestions';
 import { DeckShareModal } from './deck-builder/DeckShareModal';
 import { DeckArenaExportModal } from './deck-builder/DeckArenaExportModal';
-import { DIGITAL_BLOCK_MESSAGE, getDeckFormat, isDigitalOnly } from '../utils/mtgFormats';
+import { DIGITAL_BLOCK_MESSAGE, computeWildcardCost, getDeckFormat, isDigitalOnly } from '../utils/mtgFormats';
 import type { EdhrecRecommendation } from '../services/api';
 import { wishlistApi } from '../services/api';
 
@@ -57,6 +57,10 @@ export const DeckBuilder: React.FC<DeckBuilderProps> = ({
   const [isShareOpen, setIsShareOpen] = useState(false);
   const [isArenaExportOpen, setIsArenaExportOpen] = useState(false);
   const deckFormat = useMemo(() => getDeckFormat(deck.format), [deck.format]);
+  const isArenaDeck = deckFormat.platform === 'arena';
+  // Talie MTG Arena: ceny kart nie mają znaczenia, liczymy koszt w wildcardach
+  const wildcardCost = useMemo(() => (isArenaDeck ? computeWildcardCost(deck) : undefined), [isArenaDeck, deck]);
+  const priceSettings = isArenaDeck ? undefined : settings;
 
   // User adjustable card preview scale (persisted in user AppSettings)
   const [previewScale, setPreviewScale] = useState<number>(settings.deckCardPreviewScale || 100);
@@ -458,6 +462,7 @@ export const DeckBuilder: React.FC<DeckBuilderProps> = ({
           onOpenShare={() => setIsShareOpen(true)}
           isPublic={Boolean(deck.isPublic)}
           onExportArena={() => setIsArenaExportOpen(true)}
+          wildcardCost={wildcardCost}
         />
 
         {/* Commander Featured Showcase / Select Placeholder (tylko formaty z dowódcą) */}
@@ -465,7 +470,7 @@ export const DeckBuilder: React.FC<DeckBuilderProps> = ({
         <CommanderShowcase
           commander={deck.commander}
           commanderIsFoil={deck.commanderIsFoil}
-          settings={settings}
+          settings={priceSettings}
           onViewDetails={onViewCardDetails}
           onRemoveCommander={handleRemoveCommander}
           onOpenSearch={openSearchModal}
@@ -574,7 +579,7 @@ export const DeckBuilder: React.FC<DeckBuilderProps> = ({
         issuesById={legality.byCardId}
         sortMode={sortMode}
         categorizedCards={categorizedCards}
-        settings={settings}
+        settings={priceSettings}
         previewScale={previewScale}
         onHoverCard={handleHoverCard}
         onLeaveCard={handleLeaveCard}
@@ -633,7 +638,7 @@ export const DeckBuilder: React.FC<DeckBuilderProps> = ({
         searchQuery={searchQuery}
         searchResults={searchResults}
         isSearchingScryfall={isSearchingScryfall}
-        settings={settings}
+        settings={priceSettings}
         onClose={closeSearchModal}
         onSearchChange={handleSearchCards}
         onSourceChange={setSearchSource}
