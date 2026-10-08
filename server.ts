@@ -1556,8 +1556,6 @@ const SPOILER_SET_TYPES = new Set([
   'box', 'duel_deck', 'from_the_vault', 'spellbook', 'premium_deck', 'planechase',
   'archenemy', 'arsenal', 'masterpiece',
 ]);
-/** Ile dni po premierze dodatek zostaje jeszcze w zakładce (świeże premiery wciąż interesują graczy). */
-const SPOILER_RECENT_DAYS = 7;
 const SPOILER_MAX_PAGES = 8; // 8 × 175 kart, z dużym zapasem na każdy dodatek
 const SPOILER_CARDS_TTL_MS = 1000 * 60 * 20; // spoilery pojawiają się w ciągu dnia
 const spoilerCardsCache = new Map<string, { data: any; timestamp: number }>();
@@ -1584,10 +1582,9 @@ app.get('/api/scryfall/spoilers', async (_req, res) => {
     const data = await fetchScryfall('/sets');
     const all: any[] = Array.isArray(data?.data) ? data.data : [];
     const today = warsawToday();
-    const cutoff = new Date(Date.now() - SPOILER_RECENT_DAYS * 86400000).toISOString().slice(0, 10);
 
     const upcoming = all
-      .filter((s) => !s.digital && SPOILER_SET_TYPES.has(s.set_type) && s.released_at && s.released_at >= cutoff)
+      .filter((s) => !s.digital && SPOILER_SET_TYPES.has(s.set_type) && s.released_at && s.released_at >= today) // tylko dodatki przed premierą (lub z premierą dziś)
       .map(mapSpoilerSet);
     const byCode = new Map(upcoming.map((s) => [s.code, s]));
 
@@ -1612,16 +1609,11 @@ app.get('/api/scryfall/spoilers', async (_req, res) => {
         const sets = [g.set, ...g.children];
         return {
           ...g,
-          released: g.set.released_at < today,
           total_cards: sets.reduce((sum, s) => sum + s.card_count, 0),
         };
       })
-      // najpierw najbliższe premiery; dodatki bez żadnej karty na końcu
-      .sort((a, b) =>
-        Number(a.total_cards === 0) - Number(b.total_cards === 0) ||
-        Number(a.released) - Number(b.released) ||
-        a.set.released_at.localeCompare(b.set.released_at)
-      );
+      // od najbliższej premiery
+      .sort((a, b) => a.set.released_at.localeCompare(b.set.released_at) || a.set.name.localeCompare(b.set.name));
 
     res.setHeader('Cache-Control', 'public, max-age=600');
     res.json({ today, data: result });

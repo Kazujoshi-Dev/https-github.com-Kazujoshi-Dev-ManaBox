@@ -34,7 +34,6 @@ interface SpoilerSet {
 interface SpoilerGroup {
   set: SpoilerSet;
   children: SpoilerSet[];
-  released: boolean;
   total_cards: number;
 }
 
