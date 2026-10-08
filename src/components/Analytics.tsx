@@ -31,8 +31,8 @@ import {
 
 const MOVERS_LIMIT = 20;
 
-/** Basic Lands (także Snow-Covered i Wastes) nie wliczają się do kolorów ani krzywej many. */
-const isBasicLand = (typeLine?: string) => /\bbasic\b/i.test(typeLine || '') && /\bland\b/i.test(typeLine || '');
+/** Lądy (wszystkie, nie tylko podstawowe) nie wliczają się do kolorów ani krzywej many. Przy kartach dwustronnych liczy się przednia strona. */
+const isLand = (typeLine?: string) => /\bland\b/i.test((typeLine || '').split('//')[0]);
 
 type Mover = { item: CollectionItem; now: number; before: number; delta: number; pct: number | null };
 
@@ -64,7 +64,7 @@ export const Analytics: React.FC<AnalyticsProps> = ({ collection, settings, onVi
 
       totalValue += (item.quantity * priceNorm) + (item.quantityFoil * priceFoil);
 
-      // Rzadkość liczymy dla wszystkich kart; kolory i krzywą many bez Basic Lands
+      // Rzadkość liczymy dla wszystkich kart; kolory i krzywą many bez lądów
       const rarity = card.rarity ? card.rarity.toLowerCase() : 'common';
       if (rarity === 'mythic') rarityCounts['Mythic'] += qty;
       else if (rarity === 'rare') rarityCounts['Rare'] += qty;
@@ -72,7 +72,7 @@ export const Analytics: React.FC<AnalyticsProps> = ({ collection, settings, onVi
       else if (rarity === 'common') rarityCounts['Common'] += qty;
       else rarityCounts['Inne'] += qty;
 
-      if (isBasicLand(card.type_line)) return;
+      if (isLand(card.type_line)) return;
 
       // CMC breakdown
       const cmc = Math.floor(card.cmc || 0);
@@ -216,7 +216,7 @@ export const Analytics: React.FC<AnalyticsProps> = ({ collection, settings, onVi
               <Flame className="w-4 h-4 text-amber-400" />
               <span>Krzywa many</span>
             </h3>
-            <span className="text-[11px] text-stone-500">Bez Basic Lands</span>
+            <span className="text-[11px] text-stone-500">Bez lądów</span>
           </div>
 
           <div className="h-64 w-full pt-4">
@@ -267,7 +267,7 @@ export const Analytics: React.FC<AnalyticsProps> = ({ collection, settings, onVi
               </PieChart>
             </ResponsiveContainer>
           </div>
-          <p className="text-[11px] text-stone-500 text-center">Basic Lands nie są wliczane do statystyki kolorów.</p>
+          <p className="text-[11px] text-stone-500 text-center">Lądy nie są wliczane do statystyki kolorów.</p>
         </div>
 
       </div>

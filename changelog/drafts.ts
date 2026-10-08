@@ -26,7 +26,7 @@ export interface ChangelogDraft {
 
 export const CHANGELOG_DRAFTS: ChangelogDraft[] = [
   // ---------- 8 października 2026 ----------
-  { id: '2026-10-08-stats-bez-basic-lands', day: '2026-10-08', type: 'improved', area: 'Statystyki', text: 'Wykres kolorów i krzywa many w Statystykach nie wliczają już Basic Lands.' },
+  { id: '2026-10-08-stats-bez-basic-lands', day: '2026-10-08', type: 'improved', area: 'Statystyki', text: 'Wykres kolorów i krzywa many w Statystykach nie wliczają już lądów.' },
   { id: '2026-10-08-stats-najcenniejsze-sztuka', day: '2026-10-08', type: 'improved', area: 'Statystyki', text: 'Najcenniejsze karty są teraz układane według ceny jednej sztuki, niezależnie od liczby posiadanych egzemplarzy.' },
   { id: '2026-10-08-stats-historia', day: '2026-10-08', type: 'new', area: 'Statystyki', text: 'Pod największymi zmianami cen widać teraz historię wartości kolekcji i liczby kart dzień po dniu.' },
   { id: '2026-10-08-discord', day: '2026-10-08', type: 'new', area: 'Aplikacja', text: 'Obok przycisku „Postaw kawę” jest teraz ikonka Discorda, która prowadzi na serwer społeczności Mana Screw.' },
