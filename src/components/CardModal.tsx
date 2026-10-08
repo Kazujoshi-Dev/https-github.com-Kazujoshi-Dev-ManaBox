@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Gamepad2 } from 'lucide-react';
+import { Gamepad2, Plus, Check } from 'lucide-react';
 import { DEFAULT_SETTINGS, getCardImageUri, getCardPrice, getCardEdhrecRank } from '../utils/formatters';
 import {
   CardModalProps,
@@ -191,6 +191,28 @@ export const CardModal: React.FC<CardModalProps> = ({
                 onFlipCard={handleFlipCard}
                 edhrecRank={getCardEdhrecRank(activeCard) ?? undefined}
               />
+
+              {/* Mobile: szybki zapis tuż pod grafiką, bez przewijania do formularza */}
+              {!collectionBlockedReason && (
+                <button
+                  type="button"
+                  onClick={(e) => handleSave(e as unknown as React.FormEvent)}
+                  disabled={quantity === 0 && quantityFoil === 0}
+                  className="sm:hidden w-full py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-stone-950 font-bold text-xs flex items-center justify-center gap-2 shadow-lg shadow-amber-950/40 transition-all cursor-pointer disabled:opacity-50"
+                >
+                  {isSaved ? (
+                    <>
+                      <Check className="w-4 h-4 stroke-[3]" />
+                      <span>Zapisano w katalogu "{selectedBinder}"!</span>
+                    </>
+                  ) : (
+                    <>
+                      <Plus className="w-4 h-4 stroke-[3]" />
+                      <span>Zapisz w katalogu "{selectedBinder}"</span>
+                    </>
+                  )}
+                </button>
+              )}
 
               <CardMarketPrices
                 activeCard={activeCard}

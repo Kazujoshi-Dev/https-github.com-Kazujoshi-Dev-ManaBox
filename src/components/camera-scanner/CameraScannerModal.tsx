@@ -777,7 +777,7 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
                   <span>3. Kąt & Przycisk „Aparat”</span>
                 </span>
                 <p className="text-stone-300">
-                  Pochyl kartę o 10°, by światło lampy nie odbijało się od koszulki. W telefonie możesz też kliknąć zielony przycisk <strong>„Aparat”</strong>, który robi natywne zdjęcie z pełnym autofokusem!
+                  Pochyl kartę o 10°, by światło lampy nie odbijało się od koszulki. Na komputerze możesz też kliknąć zielony przycisk <strong>„Aparat”</strong>, który robi natywne zdjęcie z pełnym autofokusem!
                 </p>
               </div>
             </div>
@@ -953,14 +953,14 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
             </div>
 
             {/* Camera Controls Bar */}
-            <div className="px-3 pb-3 sm:px-0 sm:pb-0 pt-3 flex flex-wrap items-center justify-between gap-2 text-xs">
-              <div className="flex flex-wrap items-center gap-2">
+            <div className="px-3 pb-3 sm:px-0 sm:pb-0 pt-3 flex flex-wrap items-center justify-between max-sm:justify-center gap-2 text-xs">
+              <div className="flex flex-wrap items-center max-sm:justify-center gap-2">
                 {/* Camera selector */}
                 {cameraDevices.length > 0 && (
                   <select
                     value={selectedDeviceId}
                     onChange={(e) => setSelectedDeviceId(e.target.value)}
-                    className="bg-stone-900 border border-stone-700 rounded-lg px-2.5 py-1.5 text-stone-200 text-xs focus:outline-none focus:border-amber-500 cursor-pointer max-w-[200px] truncate"
+                    className="hidden sm:block bg-stone-900 border border-stone-700 rounded-lg px-2.5 py-1.5 text-stone-200 text-xs focus:outline-none focus:border-amber-500 cursor-pointer max-w-[200px] truncate"
                   >
                     {cameraDevices.map((c) => (
                       <option key={c.deviceId} value={c.deviceId}>
@@ -1035,7 +1035,7 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
                   type="button"
                   onClick={() => cameraSnapInputRef.current?.click()}
                   title="Zrób zdjęcie natywnym aparatem w telefonie/laptopie (z autofokusem)"
-                  className="px-2.5 py-1.5 rounded-lg bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/30 text-emerald-400 font-semibold flex items-center gap-1.5 transition-colors cursor-pointer"
+                  className="hidden sm:flex px-2.5 py-1.5 rounded-lg bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/30 text-emerald-400 font-semibold items-center gap-1.5 transition-colors cursor-pointer"
                 >
                   <Camera className="w-3.5 h-3.5" />
                   <span>Aparat</span>
@@ -1052,7 +1052,7 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
                 <button
                   onClick={() => fileInputRef.current?.click()}
                   title="Wgraj zdjęcie karty z pliku lub galerii (lub wklej Ctrl+V)"
-                  className="px-2.5 py-1.5 rounded-lg bg-stone-900 hover:bg-stone-800 border border-stone-700 text-stone-300 hover:text-stone-100 flex items-center gap-1.5 transition-colors cursor-pointer"
+                  className="hidden sm:flex px-2.5 py-1.5 rounded-lg bg-stone-900 hover:bg-stone-800 border border-stone-700 text-stone-300 hover:text-stone-100 items-center gap-1.5 transition-colors cursor-pointer"
                 >
                   <Upload className="w-3.5 h-3.5 text-stone-400" />
                   <span className="hidden sm:inline">Plik / Zdjęcie</span>
@@ -1060,8 +1060,8 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
               </div>
 
               {/* Main Snapshot & Scan Button */}
-              <div className="flex items-center gap-2">
-                <label className="flex items-center gap-1.5 text-stone-300 sm:text-stone-400 text-sm sm:text-xs cursor-pointer select-none min-h-11 sm:min-h-0 px-1">
+              <div className="flex items-center gap-2 max-sm:relative max-sm:w-full max-sm:justify-center">
+                <label className="flex items-center gap-1.5 text-stone-300 sm:text-stone-400 text-sm sm:text-xs cursor-pointer select-none min-h-11 sm:min-h-0 px-1 max-sm:absolute max-sm:left-0 max-sm:top-1/2 max-sm:-translate-y-1/2">
                   <input
                     type="checkbox"
                     checked={isAutoScanEnabled}

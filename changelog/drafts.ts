@@ -100,4 +100,6 @@ export const CHANGELOG_DRAFTS: ChangelogDraft[] = [
   { id: '2026-10-08-talie-zakladki-formatow', day: '2026-10-08', type: 'new', area: 'Talie', text: 'Lista talii ma zakładki formatów, które pojawiają się, gdy utworzysz pierwszą talię w danym formacie.' },
   { id: '2026-10-08-mtga-bez-cen', day: '2026-10-08', type: 'improved', area: 'Talie', text: 'W taliach MTG Arena nie pokazujemy już cen kart przy dodawaniu i przeglądaniu talii.' },
   { id: '2026-10-08-mtga-wildcardy', day: '2026-10-08', type: 'new', area: 'Talie', text: 'Talie MTG Arena pokazują, ile wildcardów każdej rzadkości potrzeba, żeby stworzyć talię od zera.' },
+  { id: '2026-10-08-mobile-zapis-pod-karta', day: '2026-10-08', type: 'improved', area: 'Telefon', text: 'Na telefonie przycisk zapisu w katalogu jest też tuż pod grafiką karty, więc nie trzeba przewijać do końca.' },
+  { id: '2026-10-08-mobile-skaner-prostszy', day: '2026-10-08', type: 'improved', area: 'Skaner', text: 'Prostszy skaner na telefonie: bez wyboru kamery i wgrywania zdjęć, z przyciskiem „Zeskanuj” na środku.' },
 ];
