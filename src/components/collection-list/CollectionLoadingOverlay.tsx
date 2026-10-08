@@ -5,12 +5,14 @@ interface CollectionLoadingOverlayProps {
   isLoading: boolean;
   loaded: number;
   total: number;
+  /** Nagłówek nakładki, domyślnie „Trwa wczytywanie kolekcji”. */
+  title?: string;
 }
 
 const FADE_MS = 280;
 
 /** Nakładka z paskiem postępu, rozmywająca stronę na czas wczytywania dużej kolekcji. */
-export const CollectionLoadingOverlay: React.FC<CollectionLoadingOverlayProps> = ({ isLoading, loaded, total }) => {
+export const CollectionLoadingOverlay: React.FC<CollectionLoadingOverlayProps> = ({ isLoading, loaded, total, title = 'Trwa wczytywanie kolekcji' }) => {
   const [mounted, setMounted] = useState(isLoading);
   const [leaving, setLeaving] = useState(false);
 
@@ -60,7 +62,7 @@ export const CollectionLoadingOverlay: React.FC<CollectionLoadingOverlayProps> =
             <Library className="h-5 w-5 text-amber-400" />
           </div>
           <div className="min-w-0">
-            <p className="text-sm font-semibold text-stone-100">Trwa wczytywanie kolekcji</p>
+            <p className="text-sm font-semibold text-stone-100">{title}</p>
             <p className="text-xs text-stone-400">Przygotowujemy Twoje karty, to potrwa chwilę.</p>
           </div>
         </div>

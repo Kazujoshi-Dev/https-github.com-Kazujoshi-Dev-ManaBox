@@ -73,8 +73,8 @@ export const CollectionList: React.FC<CollectionListProps> = ({
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  // Duże kolekcje dorysowujemy partiami przy wejściu do zakładki (z paskiem postępu)
-  const progressive = useProgressiveRender(filteredCollection.length);
+  // Duże kolekcje dorysowujemy partiami przy wejściu do zakładki i przy zmianie katalogu (z paskiem postępu)
+  const progressive = useProgressiveRender(filteredCollection.length, filters.binder);
   const renderedCollection = progressive.isLoading
     ? filteredCollection.slice(0, progressive.limit)
     : filteredCollection;
@@ -122,6 +122,7 @@ export const CollectionList: React.FC<CollectionListProps> = ({
         isLoading={progressive.isLoading}
         loaded={progressive.loaded}
         total={progressive.total}
+        title={filters.binder === 'ALL' ? undefined : 'Trwa wczytywanie katalogu'}
       />
 
       {/* 1. Catalogs Bar */}
