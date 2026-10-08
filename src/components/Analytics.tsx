@@ -3,6 +3,7 @@ import React, { useMemo, useState } from 'react';
 import { CollectionItem, AppSettings } from '../types';
 import { formatCurrency, getCardImageUri, getCardPrice, handleCardImageError } from '../utils/formatters';
 import { computeValueChange, itemValue } from '../hooks/useCollectionStats';
+import { CollectionHistoryPanel } from './CollectionHistoryModal';
 import { 
   BarChart, 
   Bar, 
@@ -20,6 +21,7 @@ import {
   Coins, 
   TrendingUp,
   TrendingDown,
+  LineChart,
   Award, 
   Sparkles, 
   Flame, 
@@ -28,6 +30,9 @@ import {
 } from 'lucide-react';
 
 const MOVERS_LIMIT = 20;
+
+/** Basic Lands (także Snow-Covered i Wastes) nie wliczają się do kolorów ani krzywej many. */
+const isBasicLand = (typeLine?: string) => /\bbasic\b/i.test(typeLine || '') && /\bland\b/i.test(typeLine || '');
 
 type Mover = { item: CollectionItem; now: number; before: number; delta: number; pct: number | null };
 
@@ -59,6 +64,16 @@ export const Analytics: React.FC<AnalyticsProps> = ({ collection, settings, onVi
 
       totalValue += (item.quantity * priceNorm) + (item.quantityFoil * priceFoil);
 
+      // Rzadkość liczymy dla wszystkich kart; kolory i krzywą many bez Basic Lands
+      const rarity = card.rarity ? card.rarity.toLowerCase() : 'common';
+      if (rarity === 'mythic') rarityCounts['Mythic'] += qty;
+      else if (rarity === 'rare') rarityCounts['Rare'] += qty;
+      else if (rarity === 'uncommon') rarityCounts['Uncommon'] += qty;
+      else if (rarity === 'common') rarityCounts['Common'] += qty;
+      else rarityCounts['Inne'] += qty;
+
+      if (isBasicLand(card.type_line)) return;
+
       // CMC breakdown
       const cmc = Math.floor(card.cmc || 0);
       if (cmc >= 6) {
@@ -77,14 +92,6 @@ export const Analytics: React.FC<AnalyticsProps> = ({ collection, settings, onVi
         const c = colors[0];
         if (colorCounts[c] !== undefined) colorCounts[c] += qty;
       }
-
-      // Rarity breakdown
-      const rarity = card.rarity ? card.rarity.toLowerCase() : 'common';
-      if (rarity === 'mythic') rarityCounts['Mythic'] += qty;
-      else if (rarity === 'rare') rarityCounts['Rare'] += qty;
-      else if (rarity === 'uncommon') rarityCounts['Uncommon'] += qty;
-      else if (rarity === 'common') rarityCounts['Common'] += qty;
-      else rarityCounts['Inne'] += qty;
     });
 
     return {
@@ -97,17 +104,18 @@ export const Analytics: React.FC<AnalyticsProps> = ({ collection, settings, onVi
     };
   }, [collection, settings]);
 
-  // Top Most Valuable Cards in Collection
+  // Najcenniejsze karty: ranking po cenie jednej sztuki (liczba egzemplarzy nie ma znaczenia)
   const topValuable = useMemo(() => {
-    return [...collection]
+    return collection
+      .filter(item => item.card)
       .map(item => {
-        const priceNorm = getCardPrice(item.card, false, settings);
-        const priceFoil = getCardPrice(item.card, true, settings);
-        const maxSinglePrice = Math.max(priceNorm, priceFoil);
-        const totalValue = (item.quantity * priceNorm) + (item.quantityFoil * priceFoil);
-        return { item, maxSinglePrice, totalValue };
+        const priceNorm = item.quantity > 0 ? getCardPrice(item.card, false, settings) : 0;
+        const priceFoil = item.quantityFoil > 0 ? getCardPrice(item.card, true, settings) : 0;
+        const unitPrice = Math.max(priceNorm, priceFoil);
+        return { item, unitPrice };
       })
-      .sort((a, b) => b.totalValue - a.totalValue)
+      .filter(t => t.unitPrice > 0)
+      .sort((a, b) => b.unitPrice - a.unitPrice)
       .slice(0, 5);
   }, [collection, settings]);
 
@@ -208,6 +216,7 @@ export const Analytics: React.FC<AnalyticsProps> = ({ collection, settings, onVi
               <Flame className="w-4 h-4 text-amber-400" />
               <span>Krzywa many</span>
             </h3>
+            <span className="text-[11px] text-stone-500">Bez Basic Lands</span>
           </div>
 
           <div className="h-64 w-full pt-4">
@@ -258,6 +267,7 @@ export const Analytics: React.FC<AnalyticsProps> = ({ collection, settings, onVi
               </PieChart>
             </ResponsiveContainer>
           </div>
+          <p className="text-[11px] text-stone-500 text-center">Basic Lands nie są wliczane do statystyki kolorów.</p>
         </div>
 
       </div>
@@ -269,10 +279,11 @@ export const Analytics: React.FC<AnalyticsProps> = ({ collection, settings, onVi
             <Award className="w-5 h-5 text-amber-400" />
             <span>Najcenniejsze karty</span>
           </h3>
+          <span className="text-[11px] text-stone-500">Cena za 1 sztukę</span>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-5 gap-4 pt-2">
-          {topValuable.map(({ item, maxSinglePrice, totalValue }, index) => {
+          {topValuable.map(({ item, unitPrice }, index) => {
             const card = item.card;
             const img = getCardImageUri(card, 'normal');
 
@@ -303,7 +314,7 @@ export const Analytics: React.FC<AnalyticsProps> = ({ collection, settings, onVi
                     {card.set.toUpperCase()} • {item.quantity + item.quantityFoil} szt.
                   </p>
                   <p className="text-xs tabular-nums font-bold text-emerald-400 mt-1">
-                    {formatCurrency(totalValue, settings.currency)}
+                    {formatCurrency(unitPrice, settings.currency)}
                   </p>
                 </div>
               </div>
@@ -375,6 +386,18 @@ export const Analytics: React.FC<AnalyticsProps> = ({ collection, settings, onVi
             ))}
           </div>
         )}
+      </section>
+
+      {/* Historia wartości kolekcji (to samo co w oknie po kliknięciu wartości kolekcji) */}
+      <section className="bg-stone-900 border border-stone-800 rounded-2xl p-5 sm:p-6 space-y-4">
+        <div>
+          <h3 className="text-base font-semibold text-stone-100 flex items-center gap-2">
+            <LineChart className="w-5 h-5 text-amber-400" />
+            Historia kolekcji
+          </h3>
+          <p className="text-sm text-stone-400 mt-0.5">Wartość i liczba kart dzień po dniu.</p>
+        </div>
+        <CollectionHistoryPanel currency={settings.currency} />
       </section>
 
     </div>
