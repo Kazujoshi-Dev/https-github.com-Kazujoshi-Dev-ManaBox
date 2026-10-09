@@ -54,6 +54,7 @@ export const en_server: Record<string, string> = {
   "Nowe hasło musi się różnić od dotychczasowego.": "The new password must be different from the current one.",
   "Obecne hasło jest nieprawidłowe.": "The current password is incorrect.",
   "Opis może mieć najwyżej 3000 znaków.": "The description can be at most 3000 characters long.",
+  "Opis zmiany po angielsku musi mieć od 3 do 500 znaków.": "The English change description must be 3 to 500 characters long.",
   "Opis zmiany musi mieć od 3 do 500 znaków.": "The change description must be 3 to 500 characters long.",
   "Parametr \"cardName\" jest wymagany": "The \"cardName\" parameter is required",
   "Parametr \"fuzzy\" lub \"exact\" jest wymagany": "The \"fuzzy\" or \"exact\" parameter is required",

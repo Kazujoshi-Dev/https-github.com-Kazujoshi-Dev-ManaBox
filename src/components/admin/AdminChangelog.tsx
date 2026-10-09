@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { Trash2, Send, Plus, Loader2 } from 'lucide-react';
+import { Trash2, Send, Plus, Loader2, Languages } from 'lucide-react';
 import { changelogApi, type ChangelogPendingDraft, type ChangelogType } from '../../services/api';
 import { CHANGE_TYPES } from '../Changelog';
 import { useT, locale } from '../../i18n';
@@ -14,6 +14,8 @@ export const AdminChangelog: React.FC<{ showToast?: (m: string) => void }> = ({ 
   const [type, setType] = useState<ChangelogType>('new');
   const [area, setArea] = useState('');
   const [text, setText] = useState('');
+  const [areaEn, setAreaEn] = useState('');
+  const [textEn, setTextEn] = useState('');
   const [busy, setBusy] = useState(false);
 
   const load = useCallback(() => {
@@ -29,11 +31,18 @@ export const AdminChangelog: React.FC<{ showToast?: (m: string) => void }> = ({ 
 
   const add = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (text.trim().length < 3) return;
+    if (text.trim().length < 3 || textEn.trim().length < 3) return;
     setBusy(true);
     try {
-      await changelogApi.add({ type, area: area.trim() || undefined, text: text.trim() });
+      await changelogApi.add({
+        type,
+        area: area.trim() || undefined,
+        text: text.trim(),
+        areaEn: areaEn.trim() || undefined,
+        textEn: textEn.trim()
+      });
       setText('');
+      setTextEn('');
       showToast?.(t('Dodano zmianę do dziennika (opublikuje się o 23:30).'));
       load();
     } catch (err: any) {
@@ -100,8 +109,19 @@ export const AdminChangelog: React.FC<{ showToast?: (m: string) => void }> = ({ 
                     {d.area && <span className="text-stone-400 font-medium">{d.area}: </span>}
                     {d.text}
                   </p>
+                  {d.textEn ? (
+                    <p className="text-sm text-stone-400 mt-0.5 flex gap-1.5">
+                      <Languages className="w-3.5 h-3.5 mt-0.5 shrink-0 text-stone-500" aria-label="EN" />
+                      <span>
+                        {d.areaEn && <span className="font-medium">{d.areaEn}: </span>}
+                        {d.textEn}
+                      </span>
+                    </p>
+                  ) : (
+                    <p className="text-xs text-amber-300 mt-0.5">{t('Brak wersji angielskiej')}</p>
+                  )}
                   <p className="text-xs text-stone-500 mt-0.5">
-                    {ct?.label} · {fmtDay(d.day)} · {d.source === 'admin' ? t('dodane w panelu') : t('z repozytorium')}
+                    {t(ct?.label || '')} · {fmtDay(d.day)} · {d.source === 'admin' ? t('dodane w panelu') : t('z repozytorium')}
                   </p>
                 </div>
                 <button
@@ -130,7 +150,7 @@ export const AdminChangelog: React.FC<{ showToast?: (m: string) => void }> = ({ 
           >
             {CHANGE_TYPES.map((ct) => (
               <option key={ct.id} value={ct.id}>
-                {ct.label}
+                {t(ct.label)}
               </option>
             ))}
           </select>
@@ -140,6 +160,14 @@ export const AdminChangelog: React.FC<{ showToast?: (m: string) => void }> = ({ 
             maxLength={60}
             placeholder={t('Część aplikacji (np. Talie)')}
             aria-label={t('Część aplikacji')}
+            className="h-10 w-48 rounded-lg bg-stone-950 border border-stone-800 px-3 text-sm text-stone-100 placeholder-stone-500"
+          />
+          <input
+            value={areaEn}
+            onChange={(e) => setAreaEn(e.target.value)}
+            maxLength={60}
+            placeholder={t('Po angielsku (np. Decks)')}
+            aria-label={t('Część aplikacji po angielsku')}
             className="h-10 w-48 rounded-lg bg-stone-950 border border-stone-800 px-3 text-sm text-stone-100 placeholder-stone-500"
           />
         </div>
@@ -152,7 +180,17 @@ export const AdminChangelog: React.FC<{ showToast?: (m: string) => void }> = ({ 
           aria-label={t('Opis zmiany')}
           className="w-full rounded-lg bg-stone-950 border border-stone-800 px-3 py-2 text-sm text-stone-100 placeholder-stone-500"
         />
-        <button type="submit" disabled={busy || text.trim().length < 3} className="btn btn-primary">
+        <textarea
+          value={textEn}
+          onChange={(e) => setTextEn(e.target.value)}
+          maxLength={500}
+          rows={2}
+          placeholder={t('To samo zdanie po angielsku')}
+          aria-label={t('Opis zmiany po angielsku')}
+          className="w-full rounded-lg bg-stone-950 border border-stone-800 px-3 py-2 text-sm text-stone-100 placeholder-stone-500"
+        />
+        <p className="text-xs text-stone-500">{t('Angielska nazwa części aplikacji uzupełni się sama dla znanych nazw (np. Talie → Decks).')}</p>
+        <button type="submit" disabled={busy || text.trim().length < 3 || textEn.trim().length < 3} className="btn btn-primary">
           <Plus className="w-4 h-4" />
           {t('Dodaj')}
         </button>

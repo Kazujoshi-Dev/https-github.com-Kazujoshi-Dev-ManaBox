@@ -7,6 +7,9 @@ export interface ChangelogItem {
   type: ChangelogItemType;
   area: string | null;
   text: string;
+  /** Wersja angielska (null = brak tłumaczenia, pokazujemy polską). */
+  areaEn: string | null;
+  textEn: string | null;
 }
 
 export interface ChangelogRelease {
@@ -26,6 +29,8 @@ export interface ChangelogDraftInput {
   type: ChangelogItemType;
   area?: string | null;
   text: string;
+  areaEn?: string | null;
+  textEn?: string | null;
 }
 
 const dayStr = (v: any) => (v instanceof Date ? `${v.getFullYear()}-${String(v.getMonth() + 1).padStart(2, '0')}-${String(v.getDate()).padStart(2, '0')}` : String(v).slice(0, 10));
@@ -39,14 +44,15 @@ export async function syncChangelogDrafts(drafts: ChangelogDraftInput[]): Promis
   return withDb(
     async (p) => {
       const res = await p.query(
-        `INSERT INTO changelog_drafts (id, day, type, area, text, source, seq)
-         SELECT x.id, x.day::date, x.type, x.area, x.text, 'repo', x.seq
-           FROM jsonb_to_recordset($1::jsonb) AS x(id text, day text, type text, area text, text text, seq int)
+        `INSERT INTO changelog_drafts (id, day, type, area, text, area_en, text_en, source, seq)
+         SELECT x.id, x.day::date, x.type, x.area, x.text, x.area_en, x.text_en, 'repo', x.seq
+           FROM jsonb_to_recordset($1::jsonb) AS x(id text, day text, type text, area text, text text, area_en text, text_en text, seq int)
          ON CONFLICT (id) DO UPDATE
-           SET type = EXCLUDED.type, area = EXCLUDED.area, text = EXCLUDED.text, seq = EXCLUDED.seq,
+           SET type = EXCLUDED.type, area = EXCLUDED.area, text = EXCLUDED.text,
+               area_en = EXCLUDED.area_en, text_en = EXCLUDED.text_en, seq = EXCLUDED.seq,
                day = CASE WHEN changelog_drafts.published_at IS NULL THEN EXCLUDED.day ELSE changelog_drafts.day END
          WHERE changelog_drafts.source = 'repo'`,
-        [JSON.stringify(drafts.map((d, i) => ({ ...d, area: d.area || null, seq: i })))]
+        [JSON.stringify(drafts.map((d, i) => ({ id: d.id, day: d.day, type: d.type, area: d.area || null, text: d.text, area_en: d.areaEn || null, text_en: d.textEn || null, seq: i })))]
       );
       return res.rowCount ?? 0;
     },
@@ -83,7 +89,7 @@ export async function listChangelogReleases(limit = 60): Promise<ChangelogReleas
     async (p) => {
       const res = await p.query(
         `SELECT r.day, r.published_at,
-                COALESCE(json_agg(json_build_object('id', d.id, 'type', d.type, 'area', d.area, 'text', d.text)
+                COALESCE(json_agg(json_build_object('id', d.id, 'type', d.type, 'area', d.area, 'text', d.text, 'areaEn', d.area_en, 'textEn', d.text_en)
                          ORDER BY CASE d.type WHEN 'new' THEN 0 WHEN 'improved' THEN 1 ELSE 2 END, d.seq, d.created_at, d.id)
                          FILTER (WHERE d.id IS NOT NULL), '[]') AS items
            FROM changelog_releases r
@@ -104,10 +110,10 @@ export async function listPendingChangelogDrafts(): Promise<ChangelogPendingDraf
   return withDb(
     async (p) => {
       const res = await p.query(
-        `SELECT id, day, type, area, text, source FROM changelog_drafts
+        `SELECT id, day, type, area, text, area_en, text_en, source FROM changelog_drafts
           WHERE published_at IS NULL AND source <> 'hidden' ORDER BY day, seq, created_at, id`
       );
-      return res.rows.map((r: any) => ({ id: r.id, day: dayStr(r.day), type: r.type, area: r.area, text: r.text, source: r.source }));
+      return res.rows.map((r: any) => ({ id: r.id, day: dayStr(r.day), type: r.type, area: r.area, text: r.text, areaEn: r.area_en, textEn: r.text_en, source: r.source }));
     },
     () => []
   );
@@ -117,8 +123,8 @@ export async function addChangelogDraft(d: ChangelogDraftInput): Promise<void> {
   return withDb(
     async (p) => {
       await p.query(
-        `INSERT INTO changelog_drafts (id, day, type, area, text, source) VALUES ($1, $2::date, $3, $4, $5, 'admin')`,
-        [d.id, d.day, d.type, d.area || null, d.text]
+        `INSERT INTO changelog_drafts (id, day, type, area, text, area_en, text_en, source) VALUES ($1, $2::date, $3, $4, $5, $6, $7, 'admin')`,
+        [d.id, d.day, d.type, d.area || null, d.text, d.areaEn || null, d.textEn || null]
       );
     },
     () => undefined

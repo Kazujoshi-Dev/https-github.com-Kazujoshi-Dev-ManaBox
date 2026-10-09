@@ -1,8 +1,8 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Loader2 } from 'lucide-react';
 import { PageHeader } from './ui/PageHeader';
-import { changelogApi, type ChangelogRelease, type ChangelogType } from '../services/api';
-import { useT, locale, tk } from '../i18n';
+import { changelogApi, type ChangelogItem, type ChangelogRelease, type ChangelogType } from '../services/api';
+import { useT, useLang, locale, tk, plural, type Lang } from '../i18n';
 
 export const CHANGE_TYPES: Array<{ id: ChangelogType; label: string; dot: string; text: string }> = [
   { id: 'new', label: tk('Nowości'), dot: 'bg-amber-400', text: 'text-amber-300' },
@@ -20,12 +20,11 @@ const dateParts = (day: string) => {
   };
 };
 
-const zmian = (n: number) => {
-  if (n === 1) return '1 zmiana';
-  const d = n % 10;
-  const h = n % 100;
-  return `${n} ${d >= 2 && d <= 4 && (h < 12 || h > 14) ? 'zmiany' : 'zmian'}`;
-};
+const zmian = (n: number) => plural(n, ['{n} zmiana', '{n} zmiany', '{n} zmian'], ['{n} change', '{n} changes']);
+
+/** Treść wpisu w wybranym języku (brak tłumaczenia = wersja polska). */
+export const itemText = (i: Pick<ChangelogItem, 'text' | 'textEn'>, lang: Lang) => (lang === 'en' && i.textEn ? i.textEn : i.text);
+export const itemArea = (i: Pick<ChangelogItem, 'area' | 'areaEn'>, lang: Lang) => (lang === 'en' && i.areaEn ? i.areaEn : i.area);
 
 interface ChangelogProps {
   /** Wywoływane po wczytaniu wpisów (zakładka gasi kropkę „nowe”). */
@@ -35,6 +34,7 @@ interface ChangelogProps {
 /** Zakładka „Dziennik zmian”: wpisy publikowane codziennie o 23:30. */
 export const Changelog: React.FC<ChangelogProps> = ({ onSeen }) => {
   const t = useT();
+  const lang = useLang();
   const [releases, setReleases] = useState<ChangelogRelease[] | null>(null);
   const [publishTime, setPublishTime] = useState('23:30');
   const [error, setError] = useState<string | null>(null);
@@ -142,13 +142,16 @@ export const Changelog: React.FC<ChangelogProps> = ({ onSeen }) => {
                         {t(ct.label)}
                       </h4>
                       <ul className="space-y-2">
-                        {items.map((i) => (
-                          <li key={i.id} className="text-[15px] leading-relaxed text-stone-200 pl-3.5 relative">
-                            <span className="absolute left-0 top-[0.7em] w-1 h-1 rounded-full bg-stone-600" aria-hidden="true" />
-                            {i.area && <span className="text-stone-400 font-medium">{i.area}: </span>}
-                            {i.text}
-                          </li>
-                        ))}
+                        {items.map((i) => {
+                          const area = itemArea(i, lang);
+                          return (
+                            <li key={i.id} className="text-[15px] leading-relaxed text-stone-200 pl-3.5 relative">
+                              <span className="absolute left-0 top-[0.7em] w-1 h-1 rounded-full bg-stone-600" aria-hidden="true" />
+                              {area && <span className="text-stone-400 font-medium">{area}: </span>}
+                              {itemText(i, lang)}
+                            </li>
+                          );
+                        })}
                       </ul>
                     </section>
                   );

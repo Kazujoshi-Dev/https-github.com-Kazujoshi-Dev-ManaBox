@@ -1,4 +1,10 @@
 export const en_admin: Record<string, string> = {
+  "Brak wersji angielskiej": "No English version",
+  "Po angielsku (np. Decks)": "In English (e.g. Decks)",
+  "Część aplikacji po angielsku": "App area in English",
+  "To samo zdanie po angielsku": "The same sentence in English",
+  "Opis zmiany po angielsku": "Change description in English",
+  "Angielska nazwa części aplikacji uzupełni się sama dla znanych nazw (np. Talie → Decks).": "The English app area name is filled in automatically for known names (e.g. Talie → Decks).",
   " · trwa synchronizacja": " · syncing",
   ", aby potwierdzić.": "to confirm.",
   "1 dzień": "1 day",

@@ -238,6 +238,8 @@ export async function initDb(): Promise<void> {
             published_at TIMESTAMPTZ
           );
           ALTER TABLE changelog_drafts ADD COLUMN IF NOT EXISTS seq INT NOT NULL DEFAULT 1000000;
+          ALTER TABLE changelog_drafts ADD COLUMN IF NOT EXISTS area_en VARCHAR(60);
+          ALTER TABLE changelog_drafts ADD COLUMN IF NOT EXISTS text_en TEXT;
           CREATE INDEX IF NOT EXISTS idx_changelog_drafts_day ON changelog_drafts(day);
           CREATE TABLE IF NOT EXISTS changelog_releases (
             day DATE PRIMARY KEY,

@@ -5,7 +5,7 @@
 import crypto from 'crypto';
 import type express from 'express';
 import * as db from './db';
-import { CHANGELOG_DRAFTS } from '../../changelog/drafts';
+import { CHANGELOG_DRAFTS, CHANGELOG_AREAS_EN, type ChangelogDraft } from '../../changelog/drafts';
 import type { ChangelogRelease } from './db';
 
 const TZ = 'Europe/Warsaw';
@@ -46,11 +46,19 @@ async function publishDue(reason: string) {
   return n;
 }
 
+/** Angielska nazwa części aplikacji (z mapy w changelog/drafts.ts). */
+const areaEn = (area?: string | null) => (area ? CHANGELOG_AREAS_EN[area] || null : null);
+
+/** Wpis z repozytorium w postaci do zapisu (z angielską nazwą części aplikacji). */
+const withEnglish = (d: ChangelogDraft) => ({ ...d, areaEn: areaEn(d.area), textEn: d.textEn?.trim() || null });
+
 /** Wczytuje wpisy z repozytorium, nadrabia zaległe publikacje i uruchamia codzienną publikację o 23:30. */
 export async function startChangelog() {
   try {
     const valid = CHANGELOG_DRAFTS.filter((d) => d.id && /^\d{4}-\d{2}-\d{2}$/.test(d.day) && TYPES.has(d.type) && d.text?.trim());
-    await db.syncChangelogDrafts(valid);
+    const noEnglish = valid.filter((d) => !d.textEn?.trim() || (d.area && !areaEn(d.area))).map((d) => d.id);
+    if (noEnglish.length) console.warn(`[Dziennik zmian] Wpisy bez tłumaczenia angielskiego: ${noEnglish.join(', ')}`);
+    await db.syncChangelogDrafts(valid.map(withEnglish));
     await publishDue('start');
   } catch (err: any) {
     console.warn('[Dziennik zmian] Start nieudany:', err?.message || err);
@@ -71,7 +79,7 @@ function releasesFromFile(): ChangelogRelease[] {
   for (const d of CHANGELOG_DRAFTS) {
     if (d.day > cutoff) continue;
     if (!byDay.has(d.day)) byDay.set(d.day, { day: d.day, publishedAt: `${d.day}T21:30:00.000Z`, items: [] });
-    byDay.get(d.day)!.items.push({ id: d.id, type: d.type, area: d.area || null, text: d.text });
+    byDay.get(d.day)!.items.push({ id: d.id, type: d.type, area: d.area || null, text: d.text, areaEn: areaEn(d.area), textEn: d.textEn?.trim() || null });
   }
   return [...byDay.values()]
     .map((r) => ({ ...r, items: r.items.sort((a, b) => order[a.type] - order[b.type]) }))
@@ -103,11 +111,14 @@ export function registerChangelogRoutes(app: express.Express, admin: express.Rou
       const type = String(req.body?.type || '');
       const text = String(req.body?.text || '').trim();
       const area = String(req.body?.area || '').trim().slice(0, 60) || null;
+      const textEn = String(req.body?.textEn || '').trim() || null;
+      const areaEnValue = String(req.body?.areaEn || '').trim().slice(0, 60) || areaEn(area);
       const day = /^\d{4}-\d{2}-\d{2}$/.test(String(req.body?.day || '')) ? String(req.body.day) : warsawNow().day;
       if (!TYPES.has(type)) return res.status(400).json({ error: 'Nieprawidłowy rodzaj zmiany.' });
       if (text.length < 3 || text.length > 500) return res.status(400).json({ error: 'Opis zmiany musi mieć od 3 do 500 znaków.' });
+      if (textEn && (textEn.length < 3 || textEn.length > 500)) return res.status(400).json({ error: 'Opis zmiany po angielsku musi mieć od 3 do 500 znaków.' });
       const id = `adm-${crypto.randomUUID()}`;
-      await db.addChangelogDraft({ id, day, type: type as any, area, text });
+      await db.addChangelogDraft({ id, day, type: type as any, area, text, areaEn: areaEnValue, textEn });
       res.json({ success: true, id });
     } catch (err) {
       sendServerError(res, err, '/api/admin/changelog/drafts');

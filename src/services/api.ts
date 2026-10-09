@@ -493,6 +493,9 @@ export interface ChangelogItem {
   type: ChangelogType;
   area: string | null;
   text: string;
+  /** Wersja angielska (null = brak tłumaczenia). */
+  areaEn?: string | null;
+  textEn?: string | null;
 }
 export interface ChangelogRelease {
   day: string;
@@ -511,7 +514,7 @@ export const changelogApi = {
   },
   pending: async (): Promise<{ drafts: ChangelogPendingDraft[]; cutoff: string }> =>
     jsonOrThrow(await fetchWithAuth('/api/admin/changelog/pending'), tk('Nie udało się pobrać zmian do publikacji.')),
-  add: async (draft: { type: ChangelogType; area?: string; text: string; day?: string }): Promise<{ id: string }> =>
+  add: async (draft: { type: ChangelogType; area?: string; text: string; areaEn?: string; textEn?: string; day?: string }): Promise<{ id: string }> =>
     jsonOrThrow(
       await fetchWithAuth('/api/admin/changelog/drafts', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(draft) }),
       tk('Nie udało się dodać zmiany.')
