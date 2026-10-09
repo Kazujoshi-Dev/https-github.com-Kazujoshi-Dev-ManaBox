@@ -460,7 +460,7 @@ export const AuthView: React.FC<AuthViewProps> = ({ onAuthSuccess, initialMode =
           </p>
           <p>
             {t('Lubisz Mana Screw?')}{' '}
-            <a href={SUPPORT_URL} target="_blank" rel="noopener noreferrer" className="text-amber-300 hover:text-amber-200 underline-offset-2 hover:underline">{t('Postaw kawę')}</a>
+            <a href={SUPPORT_URL} target="_blank" rel="noopener noreferrer" className="text-[#72a4f2] hover:brightness-110 underline-offset-2 hover:underline">{t('Wesprzyj mnie na Ko-fi')}</a>
             <span className="text-stone-600"> · </span>
             <a href={DISCORD_URL} target="_blank" rel="noopener noreferrer" className="text-stone-400 hover:text-stone-200 underline-offset-2 hover:underline">Discord</a>
           </p>

@@ -56,6 +56,7 @@ export const CHANGELOG_AREAS_EN: Record<string, string> = {
 
 export const CHANGELOG_DRAFTS: ChangelogDraft[] = [
   // ---------- 9 października 2026 ----------
+  { id: '2026-10-09-ko-fi', day: '2026-10-09', type: 'improved', area: 'Aplikacja', text: 'Przycisk „Postaw kawę” zastąpił przycisk „Wesprzyj mnie na Ko-fi”, przez który możesz wesprzeć rozwój Mana Screw.', textEn: 'The “Buy me a coffee” button has been replaced with “Support me on Ko-fi”, which you can use to support the development of Mana Screw.' },
   { id: '2026-10-09-waluta-od-razu', day: '2026-10-09', type: 'fixed', area: 'Ustawienia', text: 'Zmiana waluty, źródła cen lub kursów w ustawieniach od razu przelicza wartość kolekcji i wszystkie ceny, bez osobnego zapisywania.', textEn: 'Changing the currency, price source or exchange rates in Settings now instantly recalculates your collection value and all prices, with no separate save step.' },
   { id: '2026-10-09-ustawienia-nie-znikaja', day: '2026-10-09', type: 'fixed', area: 'Ustawienia', text: 'Zmiana ustawień wyceny nie przywraca już domyślnej liczby wierszy w kolekcji ani rozmiaru podglądu kart w talii.', textEn: 'Changing pricing settings no longer resets the number of rows in your collection or the card preview size in decks.' },
   { id: '2026-10-09-dziennik-po-angielsku', day: '2026-10-09', type: 'improved', area: 'Dziennik zmian', text: 'Dziennik zmian jest teraz wyświetlany w wybranym języku, także po angielsku.', textEn: 'The changelog is now shown in your chosen language, including English.' },
