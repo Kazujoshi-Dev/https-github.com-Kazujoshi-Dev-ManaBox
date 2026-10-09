@@ -56,6 +56,8 @@ export const CHANGELOG_AREAS_EN: Record<string, string> = {
 
 export const CHANGELOG_DRAFTS: ChangelogDraft[] = [
   // ---------- 9 października 2026 ----------
+  { id: '2026-10-09-waluta-od-razu', day: '2026-10-09', type: 'fixed', area: 'Ustawienia', text: 'Zmiana waluty, źródła cen lub kursów w ustawieniach od razu przelicza wartość kolekcji i wszystkie ceny, bez osobnego zapisywania.', textEn: 'Changing the currency, price source or exchange rates in Settings now instantly recalculates your collection value and all prices, with no separate save step.' },
+  { id: '2026-10-09-ustawienia-nie-znikaja', day: '2026-10-09', type: 'fixed', area: 'Ustawienia', text: 'Zmiana ustawień wyceny nie przywraca już domyślnej liczby wierszy w kolekcji ani rozmiaru podglądu kart w talii.', textEn: 'Changing pricing settings no longer resets the number of rows in your collection or the card preview size in decks.' },
   { id: '2026-10-09-dziennik-po-angielsku', day: '2026-10-09', type: 'improved', area: 'Dziennik zmian', text: 'Dziennik zmian jest teraz wyświetlany w wybranym języku, także po angielsku.', textEn: 'The changelog is now shown in your chosen language, including English.' },
   { id: '2026-10-09-wersja-angielska', day: '2026-10-09', type: 'new', area: 'Ustawienia', text: 'Aplikacja jest teraz dostępna także po angielsku: język zmienisz flagami obok ikony Discorda, a wybór zapisuje się na Twoim profilu.', textEn: 'The app is now also available in English: switch the language with the flags next to the Discord icon, and your choice is saved to your profile.' },
   // ---------- 8 października 2026 ----------

@@ -1,6 +1,6 @@
 import { PageHeader } from './ui/PageHeader';
 import { publicUrl } from '../utils/publicLinks';
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   Settings, User, Coins, ShieldCheck, Share2, Database, Check, RefreshCw, Euro, DollarSign, LogOut, Loader2,
   KeyRound, Eye, EyeOff, Copy, ExternalLink, Download, Upload, AlertCircle, CheckCircle2, Trash2
@@ -281,24 +281,45 @@ const DeleteAccountCard: React.FC<{
 
 const PricingSection: React.FC<{ settings: AppSettings; onSave: (s: AppSettings) => Promise<void> | void }> = ({ settings, onSave }) => {
   const t = useT();
-  const [pricingSource, setPricingSource] = useState<PricingSource>(settings.pricingSource);
-  const [currency, setCurrency] = useState<CurrencyCode>(settings.currency);
+  // Wybór źródła cen, waluty i automatycznych kursów działa od razu; kursy wpisane ręcznie zapisują się po chwili
   const [eurRate, setEurRate] = useState(settings.eurToPlnRate.toString());
   const [usdRate, setUsdRate] = useState(settings.usdToPlnRate.toString());
-  const [autoNbp, setAutoNbp] = useState(settings.autoNbpRate);
   const [isFetchingNbp, setIsFetchingNbp] = useState(false);
   const [nbpMessage, setNbpMessage] = useState<{ ok: boolean; text: string } | null>(null);
-  const [saving, setSaving] = useState(false);
+  const [status, setStatus] = useState<'idle' | 'saving' | 'saved'>('idle');
+  const { pricingSource, currency, autoNbpRate: autoNbp } = settings;
 
-  const dirty = useMemo(
-    () =>
-      pricingSource !== settings.pricingSource ||
-      currency !== settings.currency ||
-      parseFloat(eurRate) !== settings.eurToPlnRate ||
-      parseFloat(usdRate) !== settings.usdToPlnRate ||
-      autoNbp !== settings.autoNbpRate,
-    [pricingSource, currency, eurRate, usdRate, autoNbp, settings]
-  );
+  // Aktualne ustawienia do zapisu (zapis nie może zgubić pól spoza tej sekcji, np. liczby wierszy na stronie)
+  const settingsRef = useRef(settings);
+  settingsRef.current = settings;
+
+  const apply = async (patch: Partial<AppSettings>) => {
+    setStatus('saving');
+    try {
+      await onSave({ ...settingsRef.current, ...patch });
+      setStatus('saved');
+    } catch {
+      setStatus('idle');
+    }
+  };
+
+  // Kurs zmieniony poza tym formularzem (np. automatyczne pobranie z NBP) pokazujemy w polu
+  useEffect(() => {
+    if (parseFloat(eurRate) !== settings.eurToPlnRate) setEurRate(settings.eurToPlnRate.toString());
+  }, [settings.eurToPlnRate]);
+  useEffect(() => {
+    if (parseFloat(usdRate) !== settings.usdToPlnRate) setUsdRate(settings.usdToPlnRate.toString());
+  }, [settings.usdToPlnRate]);
+
+  // Kursy wpisane ręcznie: zapis po chwili od ostatniej zmiany, tylko poprawne wartości
+  useEffect(() => {
+    const eur = parseFloat(eurRate);
+    const usd = parseFloat(usdRate);
+    if (!(eur > 0) || !(usd > 0)) return;
+    if (eur === settingsRef.current.eurToPlnRate && usd === settingsRef.current.usdToPlnRate) return;
+    const timer = setTimeout(() => apply({ eurToPlnRate: eur, usdToPlnRate: usd }), 700);
+    return () => clearTimeout(timer);
+  }, [eurRate, usdRate]);
 
   const fetchNbp = async () => {
     setIsFetchingNbp(true);
@@ -313,15 +334,20 @@ const PricingSection: React.FC<{ settings: AppSettings; onSave: (s: AppSettings)
       let got = 0;
       if (eurRes?.ok) {
         const mid = (await eurRes.json())?.rates?.[0]?.mid;
-        if (mid) { eur = mid; setEurRate(mid.toFixed(4)); got++; }
+        if (mid) { eur = mid; got++; }
       }
       if (usdRes?.ok) {
         const mid = (await usdRes.json())?.rates?.[0]?.mid;
-        if (mid) { usd = mid; setUsdRate(mid.toFixed(4)); got++; }
+        if (mid) { usd = mid; got++; }
+      }
+      if (got) {
+        setEurRate(eur.toString());
+        setUsdRate(usd.toString());
+        await apply({ eurToPlnRate: eur, usdToPlnRate: usd, lastNbpUpdate: new Date().toISOString() });
       }
       setNbpMessage(
         got
-          ? { ok: true, text: t('Pobrano kursy NBP: 1 EUR = {eur} zł, 1 USD = {usd} zł. Zapisz, aby zastosować.', { eur: eur.toFixed(2), usd: usd.toFixed(2) }) }
+          ? { ok: true, text: t('Pobrano kursy NBP: 1 EUR = {eur} zł, 1 USD = {usd} zł.', { eur: eur.toFixed(2), usd: usd.toFixed(2) }) }
           : { ok: false, text: t('Nie udało się pobrać kursów z NBP. Spróbuj później.') }
       );
     } finally {
@@ -330,27 +356,15 @@ const PricingSection: React.FC<{ settings: AppSettings; onSave: (s: AppSettings)
   };
 
   const reset = () => {
-    setPricingSource(DEFAULT_SETTINGS.pricingSource);
-    setCurrency(DEFAULT_SETTINGS.currency);
     setEurRate(DEFAULT_SETTINGS.eurToPlnRate.toString());
     setUsdRate(DEFAULT_SETTINGS.usdToPlnRate.toString());
-    setAutoNbp(DEFAULT_SETTINGS.autoNbpRate);
-  };
-
-  const save = async () => {
-    setSaving(true);
-    try {
-      await onSave({
-        pricingSource,
-        currency,
-        eurToPlnRate: parseFloat(eurRate) || DEFAULT_SETTINGS.eurToPlnRate,
-        usdToPlnRate: parseFloat(usdRate) || DEFAULT_SETTINGS.usdToPlnRate,
-        autoNbpRate: autoNbp,
-        lastNbpUpdate: new Date().toISOString()
-      });
-    } finally {
-      setSaving(false);
-    }
+    apply({
+      pricingSource: DEFAULT_SETTINGS.pricingSource,
+      currency: DEFAULT_SETTINGS.currency,
+      eurToPlnRate: DEFAULT_SETTINGS.eurToPlnRate,
+      usdToPlnRate: DEFAULT_SETTINGS.usdToPlnRate,
+      autoNbpRate: DEFAULT_SETTINGS.autoNbpRate
+    });
   };
 
   const sources: Array<{ id: PricingSource; name: string; desc: string; icon: React.ElementType; color: string }> = [
@@ -380,7 +394,7 @@ const PricingSection: React.FC<{ settings: AppSettings; onSave: (s: AppSettings)
             <button
               key={id}
               type="button"
-              onClick={() => setPricingSource(id)}
+              onClick={() => id !== pricingSource && apply({ pricingSource: id })}
               aria-pressed={pricingSource === id}
               className={`text-left p-4 rounded-xl border cursor-pointer transition-colors space-y-1.5 ${
                 pricingSource === id ? 'bg-amber-500/10 border-amber-500 ring-1 ring-amber-500/30' : 'bg-stone-950/60 border-stone-800 hover:border-stone-700'
@@ -409,7 +423,7 @@ const PricingSection: React.FC<{ settings: AppSettings; onSave: (s: AppSettings)
             <button
               key={id}
               type="button"
-              onClick={() => setCurrency(id)}
+              onClick={() => id !== currency && apply({ currency: id })}
               aria-pressed={currency === id}
               className={`h-11 rounded-xl border text-sm font-bold cursor-pointer transition-colors ${
                 currency === id ? 'bg-amber-500 text-stone-950 border-amber-400' : 'bg-stone-950/60 border-stone-800 text-stone-300 hover:border-stone-700'
@@ -452,7 +466,7 @@ const PricingSection: React.FC<{ settings: AppSettings; onSave: (s: AppSettings)
           ))}
         </div>
         <label className="mt-4 flex items-center gap-2.5 text-sm text-stone-300 cursor-pointer">
-          <input type="checkbox" checked={autoNbp} onChange={(e) => setAutoNbp(e.target.checked)} className="w-4 h-4 accent-amber-500" />
+          <input type="checkbox" checked={autoNbp} onChange={(e) => apply({ autoNbpRate: e.target.checked })} className="w-4 h-4 accent-amber-500" />
           {t('Automatycznie pobieraj kursy NBP przy uruchomieniu aplikacji')}
         </label>
         {nbpMessage && (
@@ -467,23 +481,24 @@ const PricingSection: React.FC<{ settings: AppSettings; onSave: (s: AppSettings)
         </p>
       </div>
 
-      {/* Pasek zapisu */}
-      <div className="sticky bottom-[calc(5.5rem+env(safe-area-inset-bottom))] md:bottom-4 z-10 flex items-center justify-between gap-3 bg-stone-900/95 backdrop-blur border border-stone-800 rounded-2xl p-3 shadow-xl">
-        <button type="button" onClick={reset} className="h-10 px-3 text-sm font-semibold text-stone-400 hover:text-stone-200 rounded-xl cursor-pointer">
+      {/* Stan zapisu */}
+      <div className="flex flex-wrap items-center justify-between gap-3 px-1">
+        <p className="text-xs text-stone-400 flex items-center gap-1.5" role="status" aria-live="polite">
+          {status === 'saving' ? (
+            <>
+              <Loader2 className="w-3.5 h-3.5 animate-spin" /> {t('Zapisywanie…')}
+            </>
+          ) : status === 'saved' ? (
+            <>
+              <Check className="w-3.5 h-3.5 text-emerald-400" /> {t('Zapisano. Ceny w aplikacji są już przeliczone.')}
+            </>
+          ) : (
+            t('Zmiany zapisują się automatycznie i od razu przeliczają ceny w całej aplikacji.')
+          )}
+        </p>
+        <button type="button" onClick={reset} className="btn btn-ghost">
           {t('Przywróć domyślne')}
         </button>
-        <div className="flex items-center gap-3">
-          {dirty && <span className="hidden sm:inline text-xs text-amber-300">{t('Niezapisane zmiany')}</span>}
-          <button
-            type="button"
-            onClick={save}
-            disabled={!dirty || saving}
-            className="h-10 px-5 rounded-xl bg-amber-500 hover:bg-amber-400 text-stone-950 text-sm font-bold flex items-center gap-2 cursor-pointer disabled:opacity-40 disabled:cursor-default"
-          >
-            {saving && <Loader2 className="w-4 h-4 animate-spin" />}
-            {t('Zapisz zmiany')}
-          </button>
-        </div>
       </div>
     </div>
   );

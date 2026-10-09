@@ -842,10 +842,7 @@ export default function App() {
             <SettingsPage
               user={currentUser}
               settings={settings}
-              onSaveSettings={async (newSettings) => {
-                await updateSettings(newSettings);
-                showToast(t('Zapisano ustawienia wyceny i waluty.'));
-              }}
+              onSaveSettings={updateSettings}
               onLogoutAll={handleLogoutAll}
               onPasswordChanged={(user, token) => handleAuthSuccess(user, token)}
               onOpenImportExport={handleOpenCollectionImportExport}

@@ -1,4 +1,8 @@
 export const en_settings: Record<string, string> = {
+  "Zmiany zapisują się automatycznie i od razu przeliczają ceny w całej aplikacji.": "Changes are saved automatically and prices across the app are recalculated straight away.",
+  "Zapisano. Ceny w aplikacji są już przeliczone.": "Saved. Prices across the app have been recalculated.",
+  "Zapisywanie…": "Saving…",
+  "Pobrano kursy NBP: 1 EUR = {eur} zł, 1 USD = {usd} zł.": "Fetched NBP rates: 1 EUR = {eur} PLN, 1 USD = {usd} PLN.",
   "Automatycznie pobieraj kursy NBP przy uruchomieniu aplikacji": "Automatically fetch NBP exchange rates when the app starts",
   "Bezpieczeństwo": "Security",
   "Chcesz zachować kolekcję?": "Want to keep your collection?",
