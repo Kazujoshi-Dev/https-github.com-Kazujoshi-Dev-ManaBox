@@ -202,7 +202,7 @@ export const TabContent: React.FC<TabContentProps> = ({
       );
 
     case 'community-decks':
-      return <CommunityDecks currentUsername={currentUser?.username} onOpenDeck={(id) => onOpenCommunityDeck?.(id)} />;
+      return <CommunityDecks currentUsername={currentUser?.username} onOpenDeck={(id) => onOpenCommunityDeck?.(id)} showToast={showToast} />;
 
     case 'search':
       return (

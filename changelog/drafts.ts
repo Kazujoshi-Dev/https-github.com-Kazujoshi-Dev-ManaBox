@@ -56,6 +56,7 @@ export const CHANGELOG_AREAS_EN: Record<string, string> = {
 
 export const CHANGELOG_DRAFTS: ChangelogDraft[] = [
   // ---------- 10 października 2026 ----------
+  { id: '2026-10-10-polubienia-talii', day: '2026-10-10', type: 'new', area: 'Talie', text: 'Talie w zakładce „Talie społeczności” możesz teraz polubić serduszkiem (raz na talię, nie własną), a najczęściej polubione są wyświetlane na początku.', textEn: 'You can now like decks in the “Community decks” tab with a heart (once per deck, not your own), and the most liked ones are shown first.' },
   { id: '2026-10-10-talie-spolecznosci', day: '2026-10-10', type: 'new', area: 'Talie', text: 'Nowa zakładka „Talie społeczności” pokazuje talie, które inni gracze udostępnili publicznym linkiem, z wyszukiwaniem po nazwie, dowódcy lub autorze i podziałem na formaty.', textEn: 'The new “Community decks” tab shows decks other players have shared with a public link, with search by name, commander or author and a split by format.' },
   // ---------- 9 października 2026 ----------
   { id: '2026-10-09-ko-fi', day: '2026-10-09', type: 'improved', area: 'Aplikacja', text: 'Przycisk „Postaw kawę” zastąpił przycisk „Wesprzyj mnie na Ko-fi”, przez który możesz wesprzeć rozwój Mana Screw.', textEn: 'The “Buy me a coffee” button has been replaced with “Support me on Ko-fi”, which you can use to support the development of Mana Screw.' },

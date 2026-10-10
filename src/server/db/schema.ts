@@ -211,6 +211,14 @@ export async function initDb(): Promise<void> {
             updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
             PRIMARY KEY (user_id, day)
           );
+          -- polubienia talii społeczności: jedno na osobę i talię
+          CREATE TABLE IF NOT EXISTS deck_likes (
+            deck_id VARCHAR(64) NOT NULL REFERENCES user_decks(id) ON DELETE CASCADE,
+            user_id VARCHAR(64) NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+            PRIMARY KEY (deck_id, user_id)
+          );
+          CREATE INDEX IF NOT EXISTS idx_deck_likes_user ON deck_likes(user_id);
           CREATE TABLE IF NOT EXISTS user_blocks (
             user_id VARCHAR(64) NOT NULL REFERENCES users(id) ON DELETE CASCADE,
             blocked_id VARCHAR(64) NOT NULL REFERENCES users(id) ON DELETE CASCADE,

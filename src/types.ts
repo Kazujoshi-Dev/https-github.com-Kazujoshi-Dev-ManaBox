@@ -192,6 +192,10 @@ export interface CommunityDeckSummary {
   colors: string[];
   cardCount: number;
   updatedAt: string | null;
+  /** Liczba polubień (serduszek). */
+  likes: number;
+  /** Czy zalogowana osoba polubiła tę talię. */
+  likedByMe: boolean;
 }
 
 export interface FilterOptions {

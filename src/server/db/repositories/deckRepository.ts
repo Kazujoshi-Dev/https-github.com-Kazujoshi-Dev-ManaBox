@@ -139,8 +139,8 @@ export async function deleteDeck(userId: string, id: string): Promise<boolean> {
   );
 }
 
-/** Publiczne talie aktywnych użytkowników, od ostatnio zmienionych. */
-export async function listCommunityDecks(limit = 300): Promise<CommunityDeckSummary[]> {
+/** Publiczne talie aktywnych użytkowników: najpierw najczęściej polubione, potem ostatnio zmienione. */
+export async function listCommunityDecks(viewerId: string | null, limit = 300): Promise<CommunityDeckSummary[]> {
   return withDb(
     async (p) => {
       const art = (c: string) => `COALESCE(${c}->'image_uris'->>'art_crop', ${c}->'card_faces'->0->'image_uris'->>'art_crop')`;
@@ -152,6 +152,8 @@ export async function listCommunityDecks(limit = 300): Promise<CommunityDeckSumm
                 ${art('d.commander')} AS commander_art,
                 ${artist('d.commander')} AS commander_artist,
                 first_card.art AS card_art, first_card.artist AS card_artist,
+                (SELECT COUNT(*) FROM deck_likes l WHERE l.deck_id = d.id) AS likes,
+                EXISTS (SELECT 1 FROM deck_likes l WHERE l.deck_id = d.id AND l.user_id = $2) AS liked_by_me,
                 (SELECT COALESCE(SUM(CASE WHEN jsonb_typeof(e->'quantity') = 'number' THEN (e->>'quantity')::numeric ELSE 0 END), 0)
                    FROM jsonb_array_elements(CASE WHEN jsonb_typeof(d.cards) = 'array' THEN d.cards ELSE '[]'::jsonb END) e
                   WHERE COALESCE(e->>'isSideboard', 'false') <> 'true') AS main_count,
@@ -174,9 +176,9 @@ export async function listCommunityDecks(limit = 300): Promise<CommunityDeckSumm
           WHERE d.is_public = TRUE
             AND NOT COALESCE(u.ban_permanent, FALSE)
             AND (u.banned_until IS NULL OR u.banned_until < NOW())
-          ORDER BY updated_at DESC
+          ORDER BY likes DESC, updated_at DESC
           LIMIT $1`,
-        [limit]
+        [limit, viewerId || '']
       );
       return res.rows.map((r: any) => {
         const hasCommander = Boolean(r.commander_name);
@@ -191,10 +193,42 @@ export async function listCommunityDecks(limit = 300): Promise<CommunityDeckSumm
           artist: (hasCommander && r.commander_art ? r.commander_artist : r.card_artist) || null,
           colors: Array.isArray(r.colors) ? r.colors.map(String) : [],
           cardCount: Number(r.main_count) || 0,
+          likes: Number(r.likes) || 0,
+          likedByMe: Boolean(r.liked_by_me),
           updatedAt: r.updated_at ? new Date(r.updated_at).toISOString() : null
         };
       });
     },
     () => []
+  );
+}
+
+export type DeckLikeResult = { ok: true; likes: number; liked: boolean } | { ok: false; reason: 'not_found' | 'own_deck' };
+
+/**
+ * Polubienie talii społeczności (liked = true) lub jego cofnięcie. Tylko cudze, publiczne talie
+ * aktywnych kont; ta sama osoba może polubić talię najwyżej raz.
+ */
+export async function setDeckLike(userId: string, deckId: string, liked: boolean): Promise<DeckLikeResult> {
+  return withDb<DeckLikeResult>(
+    async (p) => {
+      const deck = await p.query(
+        `SELECT d.user_id FROM user_decks d JOIN users u ON u.id = d.user_id
+          WHERE d.id = $1 AND d.is_public = TRUE
+            AND NOT COALESCE(u.ban_permanent, FALSE)
+            AND (u.banned_until IS NULL OR u.banned_until < NOW())`,
+        [deckId]
+      );
+      if (!deck.rows[0]) return { ok: false, reason: 'not_found' };
+      if (deck.rows[0].user_id === userId) return { ok: false, reason: 'own_deck' };
+      if (liked) {
+        await p.query('INSERT INTO deck_likes (deck_id, user_id) VALUES ($1, $2) ON CONFLICT DO NOTHING', [deckId, userId]);
+      } else {
+        await p.query('DELETE FROM deck_likes WHERE deck_id = $1 AND user_id = $2', [deckId, userId]);
+      }
+      const count = await p.query('SELECT COUNT(*) AS n FROM deck_likes WHERE deck_id = $1', [deckId]);
+      return { ok: true, likes: Number(count.rows[0]?.n) || 0, liked };
+    },
+    () => ({ ok: false, reason: 'not_found' })
   );
 }

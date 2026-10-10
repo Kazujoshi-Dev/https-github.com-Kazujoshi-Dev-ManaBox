@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Crown, Globe, Loader2, RefreshCw, Search } from 'lucide-react';
+import { Crown, Globe, Heart, Loader2, RefreshCw, Search } from 'lucide-react';
 import { PageHeader } from './ui/PageHeader';
 import { ArtistCredit } from './ui/ArtistCredit';
 import { ManaSymbol } from './ManaSymbol';
@@ -17,16 +17,44 @@ interface CommunityDecksProps {
   /** Login zalogowanej osoby (jej talie dostają oznaczenie „Twoja”). */
   currentUsername?: string;
   onOpenDeck: (deckId: string) => void;
+  showToast?: (message: string) => void;
 }
 
 /** Zakładka „Talie społeczności”: talie, które ich autorzy udostępnili publicznym linkiem. */
-export const CommunityDecks: React.FC<CommunityDecksProps> = ({ currentUsername, onOpenDeck }) => {
+export const CommunityDecks: React.FC<CommunityDecksProps> = ({ currentUsername, onOpenDeck, showToast }) => {
   const t = useT();
   const [decks, setDecks] = useState<CommunityDeckSummary[] | null>(cachedDecks);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [query, setQuery] = useState('');
   const [formatTab, setFormatTab] = useState<string>('all');
+  const [likingId, setLikingId] = useState<string | null>(null);
+
+  const patchDeck = (id: string, patch: Partial<CommunityDeckSummary>) => {
+    setDecks((prev) => {
+      const next = (prev || []).map((d) => (d.id === id ? { ...d, ...patch } : d));
+      cachedDecks = next;
+      return next;
+    });
+  };
+
+  // Serduszko: zmiana od razu na ekranie, przy błędzie wracamy do poprzedniego stanu.
+  // Kolejność listy nie zmienia się do odświeżenia, żeby karta nie uciekała spod kursora.
+  const toggleLike = async (deck: CommunityDeckSummary) => {
+    if (likingId) return;
+    const liked = !deck.likedByMe;
+    setLikingId(deck.id);
+    patchDeck(deck.id, { likedByMe: liked, likes: Math.max(0, deck.likes + (liked ? 1 : -1)) });
+    try {
+      const res = await publicDeckApi.setLike(deck.id, liked);
+      patchDeck(deck.id, { likedByMe: res.liked, likes: res.likes });
+    } catch (err: any) {
+      patchDeck(deck.id, { likedByMe: deck.likedByMe, likes: deck.likes });
+      showToast?.(err?.message || t('Nie udało się zapisać polubienia.'));
+    } finally {
+      setLikingId(null);
+    }
+  };
 
   const load = React.useCallback(() => {
     setIsLoading(true);
@@ -76,7 +104,7 @@ export const CommunityDecks: React.FC<CommunityDecksProps> = ({ currentUsername,
     <div className="space-y-6">
       <PageHeader
         title={t('Talie społeczności')}
-        description={t('Talie, które inni gracze udostępnili publicznym linkiem. Swoją talię dodasz tutaj przyciskiem „Udostępnij” w edytorze talii.')}
+        description={t('Talie, które inni gracze udostępnili publicznym linkiem. Najczęściej polubione są na początku. Swoją talię dodasz tutaj przyciskiem „Udostępnij” w edytorze talii.')}
         actions={
           <button type="button" onClick={load} disabled={isLoading} className="btn btn-secondary" title={t('Odśwież listę')}>
             {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
@@ -182,7 +210,7 @@ export const CommunityDecks: React.FC<CommunityDecksProps> = ({ currentUsername,
                         )}
                       </div>
 
-                      <div className="p-4 flex-1 flex flex-col gap-3 w-full">
+                      <div className="p-4 pb-3 flex-1 flex flex-col gap-3 w-full">
                         <div className="min-w-0">
                           <h3 className="text-base font-semibold text-stone-50 truncate">{deck.name}</h3>
                           <p className="text-sm text-stone-400 truncate">
@@ -190,28 +218,46 @@ export const CommunityDecks: React.FC<CommunityDecksProps> = ({ currentUsername,
                           </p>
                           {deck.description && <p className="mt-1.5 text-sm text-stone-500 line-clamp-2">{deck.description}</p>}
                         </div>
-
-                        <div className="mt-auto flex items-center justify-between gap-2 text-sm">
-                          <span className="text-stone-400 truncate min-w-0">
-                            {t('Autor:')} <span className="text-amber-300">@{deck.owner}</span>
-                          </span>
-                          <span className="flex items-center gap-2 shrink-0">
-                            {colors.length > 0 && <ManaSymbol cost={colors.map((c) => `{${c}}`).join('')} size="sm" />}
-                            <span
-                              className={`tabular-nums ${sizeOk ? 'text-emerald-400' : 'text-stone-300'}`}
-                              title={fmt.exactSize ? t('{n} z {total}', { n: count, total: fmt.deckSize }) : t('{n} kart, minimum {total}', { n: count, total: fmt.deckSize })}
-                            >
-                              {count}/{fmt.deckSize}
-                            </span>
-                          </span>
-                        </div>
-                        {deck.updatedAt && (
-                          <p className="text-[11px] text-stone-500 tabular-nums">
-                            {t('Zaktualizowano {date}', { date: new Date(deck.updatedAt).toLocaleDateString(locale()) })}
-                          </p>
-                        )}
                       </div>
                     </button>
+
+                    <div className="px-4 pb-4 flex flex-col gap-3">
+                      <div className="flex items-center justify-between gap-2 text-sm">
+                        <span className="text-stone-400 truncate min-w-0">
+                          {t('Autor:')} <span className="text-amber-300">@{deck.owner}</span>
+                        </span>
+                        <span className="flex items-center gap-2 shrink-0">
+                          {colors.length > 0 && <ManaSymbol cost={colors.map((c) => `{${c}}`).join('')} size="sm" />}
+                          <span
+                            className={`tabular-nums ${sizeOk ? 'text-emerald-400' : 'text-stone-300'}`}
+                            title={fmt.exactSize ? t('{n} z {total}', { n: count, total: fmt.deckSize }) : t('{n} kart, minimum {total}', { n: count, total: fmt.deckSize })}
+                          >
+                            {count}/{fmt.deckSize}
+                          </span>
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between gap-2">
+                        <p className="text-[11px] text-stone-500 tabular-nums truncate">
+                          {deck.updatedAt ? t('Zaktualizowano {date}', { date: new Date(deck.updatedAt).toLocaleDateString(locale()) }) : ''}
+                        </p>
+                        <button
+                          type="button"
+                          onClick={() => toggleLike(deck)}
+                          disabled={isMine || likingId === deck.id}
+                          aria-pressed={deck.likedByMe}
+                          title={isMine ? t('Nie możesz polubić własnej talii.') : deck.likedByMe ? t('Cofnij polubienie') : t('Polub talię')}
+                          aria-label={isMine ? t('Nie możesz polubić własnej talii.') : deck.likedByMe ? t('Cofnij polubienie') : t('Polub talię')}
+                          className={`shrink-0 h-8 px-2.5 -mr-1 rounded-md flex items-center gap-1.5 text-sm tabular-nums border ${
+                            deck.likedByMe
+                              ? 'bg-amber-500/10 border-amber-500/40 text-amber-300'
+                              : 'bg-stone-950 border-stone-800 text-stone-400'
+                          } ${isMine ? 'cursor-default opacity-70' : 'cursor-pointer hover:border-stone-600 hover:text-stone-100'}`}
+                        >
+                          <Heart className={`w-4 h-4 ${deck.likedByMe ? 'fill-current' : ''}`} />
+                          {deck.likes}
+                        </button>
+                      </div>
+                    </div>
                   </article>
                 );
               })}

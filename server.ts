@@ -2792,15 +2792,34 @@ app.get('/api/public/showcase', async (_req, res) => {
 
 // --- TALIE SPOŁECZNOŚCI: LISTA TALII Z WŁĄCZONYM PUBLICZNYM LINKIEM ---
 
-app.get('/api/public/decks', async (_req, res) => {
+app.get('/api/community/decks', authMiddleware, async (req, res) => {
   try {
-    const decks = await db.listCommunityDecks();
-    res.setHeader('Cache-Control', 'public, max-age=60');
+    const decks = await db.listCommunityDecks((req as any).userId);
+    res.setHeader('Cache-Control', 'no-store');
     res.json({ decks });
   } catch (err: any) {
-    sendServerError(res, err, '/api/public/decks', 'Błąd pobierania talii społeczności.');
+    sendServerError(res, err, '/api/community/decks', 'Błąd pobierania talii społeczności.');
   }
 });
+
+// Polubienie (serduszko) talii społeczności: PUT dodaje, DELETE cofa
+const handleDeckLike = (liked: boolean) => async (req: express.Request, res: express.Response) => {
+  try {
+    const id = String(req.params.id || '').trim();
+    if (!/^[\w-]{1,64}$/.test(id)) return res.status(404).json({ error: 'Nie znaleziono talii.' });
+    const result = await db.setDeckLike((req as any).userId, id, liked);
+    if ('reason' in result) {
+      return result.reason === 'own_deck'
+        ? res.status(400).json({ error: 'Nie możesz polubić własnej talii.' })
+        : res.status(404).json({ error: 'Ta talia nie istnieje albo jej właściciel wyłączył publiczny link.' });
+    }
+    res.json({ likes: result.likes, liked: result.liked });
+  } catch (err: any) {
+    sendServerError(res, err, '/api/community/decks/:id/like');
+  }
+};
+app.put('/api/community/decks/:id/like', authMiddleware, handleDeckLike(true));
+app.delete('/api/community/decks/:id/like', authMiddleware, handleDeckLike(false));
 
 // --- PUBLICZNA TALIA (BEZ LOGOWANIA, TYLKO GDY WŁAŚCICIEL WŁĄCZYŁ LINK) ---
 

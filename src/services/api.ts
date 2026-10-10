@@ -231,9 +231,14 @@ export const decksApi = {
 
 export const publicDeckApi = {
   list: async (): Promise<CommunityDeckSummary[]> => {
-    const res = await fetch('/api/public/decks');
+    const res = await fetchWithAuth('/api/community/decks');
     const data = await jsonOrThrow<{ decks: CommunityDeckSummary[] }>(res, tk('Nie udało się pobrać talii społeczności.'));
     return Array.isArray(data.decks) ? data.decks : [];
+  },
+  /** Polubienie talii (liked = true) albo cofnięcie polubienia. */
+  setLike: async (id: string, liked: boolean): Promise<{ likes: number; liked: boolean }> => {
+    const res = await fetchWithAuth(`/api/community/decks/${encodeURIComponent(id)}/like`, { method: liked ? 'PUT' : 'DELETE' });
+    return jsonOrThrow(res, tk('Nie udało się zapisać polubienia.'));
   },
   get: async (id: string): Promise<{ deck: DeckItem; owner: { username: string }; settings: AppSettings }> => {
     const res = await fetch(`/api/public/deck/${encodeURIComponent(id)}`);
