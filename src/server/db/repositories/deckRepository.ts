@@ -1,5 +1,5 @@
 import path from 'path';
-import { DeckItem } from '../../../types';
+import { DeckItem, CommunityDeckSummary } from '../../../types';
 import { withDb, readJsonFile, writeJsonAtomic, getUserDir } from '../storage';
 import { mapDeckRow } from '../mappers';
 
@@ -136,5 +136,65 @@ export async function deleteDeck(userId: string, id: string): Promise<boolean> {
       }
       return false;
     }
+  );
+}
+
+/** Publiczne talie aktywnych użytkowników, od ostatnio zmienionych. */
+export async function listCommunityDecks(limit = 300): Promise<CommunityDeckSummary[]> {
+  return withDb(
+    async (p) => {
+      const art = (c: string) => `COALESCE(${c}->'image_uris'->>'art_crop', ${c}->'card_faces'->0->'image_uris'->>'art_crop')`;
+      const artist = (c: string) => `COALESCE(${c}->>'artist', ${c}->'card_faces'->0->>'artist')`;
+      const res = await p.query(
+        `SELECT d.id, d.name, d.format, LEFT(COALESCE(d.description, ''), 280) AS description, u.username,
+                COALESCE(d.updated_at, d.created_at) AS updated_at,
+                d.commander->>'name' AS commander_name,
+                ${art('d.commander')} AS commander_art,
+                ${artist('d.commander')} AS commander_artist,
+                first_card.art AS card_art, first_card.artist AS card_artist,
+                (SELECT COALESCE(SUM(CASE WHEN jsonb_typeof(e->'quantity') = 'number' THEN (e->>'quantity')::numeric ELSE 0 END), 0)
+                   FROM jsonb_array_elements(CASE WHEN jsonb_typeof(d.cards) = 'array' THEN d.cards ELSE '[]'::jsonb END) e
+                  WHERE COALESCE(e->>'isSideboard', 'false') <> 'true') AS main_count,
+                (SELECT COALESCE(jsonb_agg(DISTINCT col), '[]'::jsonb)
+                   FROM (
+                     SELECT jsonb_array_elements_text(CASE WHEN jsonb_typeof(d.commander->'color_identity') = 'array' THEN d.commander->'color_identity' ELSE '[]'::jsonb END) AS col
+                     UNION
+                     SELECT jsonb_array_elements_text(CASE WHEN jsonb_typeof(e->'card'->'color_identity') = 'array' THEN e->'card'->'color_identity' ELSE '[]'::jsonb END)
+                       FROM jsonb_array_elements(CASE WHEN jsonb_typeof(d.cards) = 'array' THEN d.cards ELSE '[]'::jsonb END) e
+                      WHERE COALESCE(e->>'isSideboard', 'false') <> 'true'
+                   ) cols) AS colors
+           FROM user_decks d
+           JOIN users u ON u.id = d.user_id
+           LEFT JOIN LATERAL (
+             SELECT ${art("e->'card'")} AS art, ${artist("e->'card'")} AS artist
+               FROM jsonb_array_elements(CASE WHEN jsonb_typeof(d.cards) = 'array' THEN d.cards ELSE '[]'::jsonb END) e
+              WHERE ${art("e->'card'")} IS NOT NULL
+              LIMIT 1
+           ) first_card ON TRUE
+          WHERE d.is_public = TRUE
+            AND NOT COALESCE(u.ban_permanent, FALSE)
+            AND (u.banned_until IS NULL OR u.banned_until < NOW())
+          ORDER BY updated_at DESC
+          LIMIT $1`,
+        [limit]
+      );
+      return res.rows.map((r: any) => {
+        const hasCommander = Boolean(r.commander_name);
+        return {
+          id: String(r.id),
+          name: String(r.name || ''),
+          format: r.format || 'EDH Commander',
+          description: r.description || '',
+          owner: String(r.username || ''),
+          commanderName: r.commander_name || null,
+          art: (hasCommander ? r.commander_art : null) || r.card_art || null,
+          artist: (hasCommander && r.commander_art ? r.commander_artist : r.card_artist) || null,
+          colors: Array.isArray(r.colors) ? r.colors.map(String) : [],
+          cardCount: Number(r.main_count) || 0,
+          updatedAt: r.updated_at ? new Date(r.updated_at).toISOString() : null
+        };
+      });
+    },
+    () => []
   );
 }

@@ -2790,6 +2790,18 @@ app.get('/api/public/showcase', async (_req, res) => {
   }
 });
 
+// --- TALIE SPOŁECZNOŚCI: LISTA TALII Z WŁĄCZONYM PUBLICZNYM LINKIEM ---
+
+app.get('/api/public/decks', async (_req, res) => {
+  try {
+    const decks = await db.listCommunityDecks();
+    res.setHeader('Cache-Control', 'public, max-age=60');
+    res.json({ decks });
+  } catch (err: any) {
+    sendServerError(res, err, '/api/public/decks', 'Błąd pobierania talii społeczności.');
+  }
+});
+
 // --- PUBLICZNA TALIA (BEZ LOGOWANIA, TYLKO GDY WŁAŚCICIEL WŁĄCZYŁ LINK) ---
 
 app.get('/api/public/deck/:id', async (req, res) => {

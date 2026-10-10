@@ -21,7 +21,8 @@ import {
   Mail,
   ScrollText,
   Bug,
-  ChevronDown
+  ChevronDown,
+  Globe
 } from 'lucide-react';
 import { formatCurrency } from '../utils/formatters';
 import { SupportButton } from './ui/SupportButton';
@@ -30,7 +31,7 @@ import { LanguageSwitcher } from './ui/LanguageSwitcher';
 import { useT, locale, plural, type Lang } from '../i18n';
 import { AppSettings, AuthUser } from '../types';
 
-type Tab = 'collection' | 'search' | 'set-top' | 'spoilers' | 'analytics' | 'wishlist' | 'decks' | 'for-sale' | 'users' | 'changelog' | 'admin' | 'settings';
+type Tab = 'collection' | 'community-decks' | 'search' | 'set-top' | 'spoilers' | 'analytics' | 'wishlist' | 'decks' | 'for-sale' | 'users' | 'changelog' | 'admin' | 'settings';
 
 interface HeaderProps {
   /** Nowe wpisy w dzienniku zmian, których użytkownik nie widział. */
@@ -215,6 +216,7 @@ export const Header: React.FC<HeaderProps> = ({
   const tabs: Array<{ id: Tab; label: string; icon: React.ElementType; count?: number; dot?: boolean }> = [
     { id: 'collection', label: t('Kolekcja'), icon: Layers, count: totalCards },
     { id: 'decks', label: t('Talie'), icon: Swords, count: decksCount || undefined },
+    { id: 'community-decks', label: t('Talie społeczności'), icon: Globe },
     { id: 'search', label: t('Szukaj kart'), icon: Search },
     { id: 'set-top', label: t('Top z dodatku'), icon: Trophy },
     { id: 'spoilers', label: t('Spoilery'), icon: Telescope },

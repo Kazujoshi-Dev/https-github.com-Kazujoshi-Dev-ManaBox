@@ -22,7 +22,8 @@ import {
   User,
   ShieldCheck,
   ScrollText,
-  Bug
+  Bug,
+  Globe
 } from 'lucide-react';
 import type { NavigationTab } from './TabContent';
 import { useBackToClose } from '../hooks/useBackButton';
@@ -46,6 +47,7 @@ interface MobileNavProps {
 
 /** Zakładki dostępne pod „Więcej” — na telefonie nie mieszczą się w dolnym pasku. */
 const MORE_TABS: Array<{ tab: NavigationTab; label: string; icon: React.ElementType }> = [
+  { tab: 'community-decks', label: tk('Talie społeczności'), icon: Globe },
   { tab: 'set-top', label: tk('Top z dodatku'), icon: Trophy },
   { tab: 'spoilers', label: tk('Spoilery'), icon: Telescope },
   { tab: 'analytics', label: tk('Statystyki'), icon: BarChart3 },

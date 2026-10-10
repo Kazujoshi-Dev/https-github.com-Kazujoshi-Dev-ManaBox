@@ -55,6 +55,8 @@ export const CHANGELOG_AREAS_EN: Record<string, string> = {
 };
 
 export const CHANGELOG_DRAFTS: ChangelogDraft[] = [
+  // ---------- 10 października 2026 ----------
+  { id: '2026-10-10-talie-spolecznosci', day: '2026-10-10', type: 'new', area: 'Talie', text: 'Nowa zakładka „Talie społeczności” pokazuje talie, które inni gracze udostępnili publicznym linkiem, z wyszukiwaniem po nazwie, dowódcy lub autorze i podziałem na formaty.', textEn: 'The new “Community decks” tab shows decks other players have shared with a public link, with search by name, commander or author and a split by format.' },
   // ---------- 9 października 2026 ----------
   { id: '2026-10-09-ko-fi', day: '2026-10-09', type: 'improved', area: 'Aplikacja', text: 'Przycisk „Postaw kawę” zastąpił przycisk „Wesprzyj mnie na Ko-fi”, przez który możesz wesprzeć rozwój Mana Screw.', textEn: 'The “Buy me a coffee” button has been replaced with “Support me on Ko-fi”, which you can use to support the development of Mana Screw.' },
   { id: '2026-10-09-waluta-od-razu', day: '2026-10-09', type: 'fixed', area: 'Ustawienia', text: 'Zmiana waluty, źródła cen lub kursów w ustawieniach od razu przelicza wartość kolekcji i wszystkie ceny, bez osobnego zapisywania.', textEn: 'Changing the currency, price source or exchange rates in Settings now instantly recalculates your collection value and all prices, with no separate save step.' },

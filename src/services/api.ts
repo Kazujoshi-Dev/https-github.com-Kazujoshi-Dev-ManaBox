@@ -1,4 +1,4 @@
-import { AdminUser, AdminStats, AdminAuditEntry, AuthUser, AppSettings, Catalog, CollectionItem, DeckItem, ScryfallCard, WishlistItem, SpellbookFindCombosResponse, SpellbookVariant, RegisteredUserSummary, UserMessage, UserProfile, CitySuggestion, MapCity, WishlistMatches } from '../types';
+import { CommunityDeckSummary, AdminUser, AdminStats, AdminAuditEntry, AuthUser, AppSettings, Catalog, CollectionItem, DeckItem, ScryfallCard, WishlistItem, SpellbookFindCombosResponse, SpellbookVariant, RegisteredUserSummary, UserMessage, UserProfile, CitySuggestion, MapCity, WishlistMatches } from '../types';
 import { noteResponseVersion } from '../utils/appVersion';
 import { t, tServer, tk } from '../i18n';
 
@@ -230,6 +230,11 @@ export const decksApi = {
 };
 
 export const publicDeckApi = {
+  list: async (): Promise<CommunityDeckSummary[]> => {
+    const res = await fetch('/api/public/decks');
+    const data = await jsonOrThrow<{ decks: CommunityDeckSummary[] }>(res, tk('Nie udało się pobrać talii społeczności.'));
+    return Array.isArray(data.decks) ? data.decks : [];
+  },
   get: async (id: string): Promise<{ deck: DeckItem; owner: { username: string }; settings: AppSettings }> => {
     const res = await fetch(`/api/public/deck/${encodeURIComponent(id)}`);
     return jsonOrThrow(res, tk('Nie udało się pobrać talii.'));

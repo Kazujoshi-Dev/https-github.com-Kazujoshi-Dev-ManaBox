@@ -179,6 +179,21 @@ export interface DeckItem {
   updatedAt?: string;
 }
 
+/** Talia na liście „Talie społeczności” (bez listy kart, tylko podsumowanie). */
+export interface CommunityDeckSummary {
+  id: string;
+  name: string;
+  format: string;
+  description: string;
+  owner: string;
+  commanderName: string | null;
+  art: string | null;
+  artist: string | null;
+  colors: string[];
+  cardCount: number;
+  updatedAt: string | null;
+}
+
 export interface FilterOptions {
   searchQuery: string;
   color: string; // 'ALL', 'W', 'U', 'B', 'R', 'G', 'C', 'MULTI'

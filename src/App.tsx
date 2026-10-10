@@ -1,6 +1,6 @@
 import { langFromCard } from './utils/formatters';
 import { useChangelogBadge } from './hooks/useChangelogBadge';
-import { parsePublicLink } from './utils/publicLinks';
+import { parsePublicLink, publicPath } from './utils/publicLinks';
 import React, { useState, useCallback, useEffect } from 'react';
 import { lazyWithReload } from './utils/lazyWithReload';
 import { ScryfallCard, CollectionItem, DeckItem, CardCondition, CardLanguage, AppSettings, RegisteredUserSummary, WishlistItem, AuthUser } from './types';
@@ -28,7 +28,7 @@ import { CollectionHistoryModal } from './components/CollectionHistoryModal';
 const BugReportModal = lazyWithReload(() => import('./components/BugReportModal'));
 
 const TAB_LABELS: Record<string, string> = {
-  collection: 'Kolekcja', decks: 'Talie', search: 'Szukaj kart', 'set-top': 'Top z dodatku', spoilers: 'Spoilery', analytics: 'Statystyki',
+  collection: 'Kolekcja', decks: 'Talie', 'community-decks': 'Talie społeczności', search: 'Szukaj kart', 'set-top': 'Top z dodatku', spoilers: 'Spoilery', analytics: 'Statystyki',
   wishlist: 'Lista życzeń', 'for-sale': 'Sprzedam', users: 'Gracze', changelog: 'Dziennik zmian', admin: 'Admin', settings: 'Ustawienia'
 };
 // Zakładka zapamiętana przed przeładowaniem do nowej wersji aplikacji (odczyt raz, przy starcie)
@@ -222,6 +222,31 @@ export default function App() {
     setActiveTab('users');
   }, [setActiveTab]);
   const handleProfileRequestHandled = useCallback(() => setProfileRequest(null), []);
+  // Talia otwarta z zakładki Talie społeczności: publiczny podgląd, „Wstecz” wraca do listy
+  const [isCommunityDeckOpen, setIsCommunityDeckOpen] = useState(false);
+  const handleOpenCommunityDeck = useCallback((deckId: string) => {
+    publicDeckApi.get(deckId)
+      .then((data) => {
+        setPublicDeckData(data);
+        setIsCommunityDeckOpen(true);
+      })
+      .catch((err) => showToast(err?.message || t('Nie znaleziono talii.')));
+  }, [showToast]);
+  const closeCommunityDeck = useCallback(() => {
+    setIsCommunityDeckOpen(false);
+    setPublicDeckData(null);
+  }, []);
+  useBackToClose(isCommunityDeckOpen, closeCommunityDeck);
+  // Adres /talia/id na czas podglądu, żeby link z paska przeglądarki dało się skopiować
+  const communityDeckId = isCommunityDeckOpen ? publicDeckData?.deck.id : undefined;
+  useEffect(() => {
+    if (!communityDeckId) return;
+    const prev = window.location.pathname + window.location.search;
+    window.history.replaceState(window.history.state, '', publicPath('deck', communityDeckId));
+    return () => {
+      if (window.location.pathname.startsWith('/talia/')) window.history.replaceState(window.history.state, '', prev);
+    };
+  }, [communityDeckId]);
   // Otwarta talia: „Wstecz” wraca do listy talii
   useBackToClose(Boolean(selectedDeck), () => setSelectedDeck(null));
 
@@ -683,12 +708,16 @@ export default function App() {
           <div className="fixed bottom-[calc(1.5rem+env(safe-area-inset-bottom))] right-6 z-40">
             <button
               onClick={() => {
+                if (isCommunityDeckOpen) {
+                  closeCommunityDeck();
+                  return;
+                }
                 setPublicDeckData(null);
                 window.history.pushState({}, '', '/');
               }}
               className="px-4 py-2.5 bg-amber-600 hover:bg-amber-500 text-stone-950 font-bold text-xs rounded-xl shadow-xl shadow-amber-950/50 flex items-center gap-2 cursor-pointer transition-all"
             >
-              <span>{t('← Moja Kolekcja ({name})', { name: currentUser.username })}</span>
+              <span>{isCommunityDeckOpen ? t('← Talie społeczności') : t('← Moja Kolekcja ({name})', { name: currentUser.username })}</span>
             </button>
           </div>
         )}
@@ -943,6 +972,7 @@ export default function App() {
             onOpenSellerProfile={handleOpenSellerProfile}
             profileRequest={profileRequest}
             onProfileRequestHandled={handleProfileRequestHandled}
+            onOpenCommunityDeck={handleOpenCommunityDeck}
           />
           )
         )}

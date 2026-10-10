@@ -118,4 +118,5 @@ export const en_server: Record<string, string> = {
   "Główny klaser całej kolekcji": "Main binder of the whole collection",
   "Karty przeznaczone na handel i wymianę z graczami": "Cards meant for selling and trading with players",
   "DELVER_SCAN_FAILED": "DELVER_SCAN_FAILED",
+  "Błąd pobierania talii społeczności.": "Error loading community decks.",
 };

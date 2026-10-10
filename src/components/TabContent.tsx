@@ -24,8 +24,9 @@ import { Wishlist } from './Wishlist';
 import { ForSaleList } from './ForSaleList';
 import { UsersList } from './UsersList';
 import { SpoilersView } from './SpoilersView';
+import { CommunityDecks } from './CommunityDecks';
 
-export type NavigationTab = 'collection' | 'decks' | 'search' | 'set-top' | 'spoilers' | 'analytics' | 'wishlist' | 'for-sale' | 'users' | 'changelog' | 'admin' | 'settings';
+export type NavigationTab = 'collection' | 'decks' | 'community-decks' | 'search' | 'set-top' | 'spoilers' | 'analytics' | 'wishlist' | 'for-sale' | 'users' | 'changelog' | 'admin' | 'settings';
 
 interface TabContentProps {
   /** Zakładka „Dziennik zmian” została obejrzana (gasi kropkę „nowe”). */
@@ -84,6 +85,8 @@ interface TabContentProps {
   /** Profil do automatycznego otwarcia w zakładce Użytkownicy. */
   profileRequest?: { username: string; nonce: number } | null;
   onProfileRequestHandled?: () => void;
+  /** Otwiera publiczny podgląd talii z zakładki Talie społeczności. */
+  onOpenCommunityDeck?: (deckId: string) => void;
   showToast?: (message: string) => void;
 }
 
@@ -132,6 +135,7 @@ export const TabContent: React.FC<TabContentProps> = ({
   onOpenSellerProfile,
   profileRequest,
   onProfileRequestHandled,
+  onOpenCommunityDeck,
 }) => {
   const t = useT();
   switch (activeTab) {
@@ -196,6 +200,9 @@ export const TabContent: React.FC<TabContentProps> = ({
           showToast={showToast}
         />
       );
+
+    case 'community-decks':
+      return <CommunityDecks currentUsername={currentUser?.username} onOpenDeck={(id) => onOpenCommunityDeck?.(id)} />;
 
     case 'search':
       return (
