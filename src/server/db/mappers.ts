@@ -128,6 +128,12 @@ export function mapSettingsRow(r: any): AppSettings {
     ...(typeof (r.showEdhrecRank ?? r.show_edhrec_rank) === 'boolean'
       ? { showEdhrecRank: Boolean(r.showEdhrecRank ?? r.show_edhrec_rank) }
       : {}),
+    ...(typeof (r.showPriceTag ?? r.show_price_tag) === 'boolean'
+      ? { showPriceTag: Boolean(r.showPriceTag ?? r.show_price_tag) }
+      : {}),
+    ...(typeof (r.showFoilBadge ?? r.show_foil_badge) === 'boolean'
+      ? { showFoilBadge: Boolean(r.showFoilBadge ?? r.show_foil_badge) }
+      : {}),
   };
 }
 

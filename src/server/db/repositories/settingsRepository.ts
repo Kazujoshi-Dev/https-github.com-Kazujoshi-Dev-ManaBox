@@ -28,7 +28,8 @@ export async function getSettings(userId: string): Promise<AppSettings | null> {
         `SELECT pricing_source as "pricingSource", currency, eur_to_pln_rate as "eurToPlnRate",
                 usd_to_pln_rate as "usdToPlnRate", auto_nbp_rate as "autoNbpRate",
                 collection_rows_per_page as "collectionRowsPerPage", ui_language as "language",
-                show_binder_badge as "showBinderBadge", show_edhrec_rank as "showEdhrecRank"
+                show_binder_badge as "showBinderBadge", show_edhrec_rank as "showEdhrecRank",
+                show_price_tag as "showPriceTag", show_foil_badge as "showFoilBadge"
          FROM user_settings WHERE user_id = $1`,
         [userId]
       );
@@ -46,8 +47,8 @@ export async function saveSettings(userId: string, settings: AppSettings): Promi
     async (p) => {
       await p.query(
         `INSERT INTO user_settings (user_id, pricing_source, currency, eur_to_pln_rate, usd_to_pln_rate, auto_nbp_rate, collection_rows_per_page, ui_language,
-                                    show_binder_badge, show_edhrec_rank, updated_at)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NOW())
+                                    show_binder_badge, show_edhrec_rank, show_price_tag, show_foil_badge, updated_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, NOW())
          ON CONFLICT (user_id) DO UPDATE SET
            pricing_source = EXCLUDED.pricing_source,
            currency = EXCLUDED.currency,
@@ -58,6 +59,8 @@ export async function saveSettings(userId: string, settings: AppSettings): Promi
            ui_language = COALESCE(EXCLUDED.ui_language, user_settings.ui_language),
            show_binder_badge = COALESCE(EXCLUDED.show_binder_badge, user_settings.show_binder_badge),
            show_edhrec_rank = COALESCE(EXCLUDED.show_edhrec_rank, user_settings.show_edhrec_rank),
+           show_price_tag = COALESCE(EXCLUDED.show_price_tag, user_settings.show_price_tag),
+           show_foil_badge = COALESCE(EXCLUDED.show_foil_badge, user_settings.show_foil_badge),
            updated_at = NOW()`,
         [
           userId,
@@ -69,7 +72,9 @@ export async function saveSettings(userId: string, settings: AppSettings): Promi
           normalizeRowsPerPage(settings.collectionRowsPerPage),
           normalizeLanguage(settings.language),
           normalizeFlag(settings.showBinderBadge),
-          normalizeFlag(settings.showEdhrecRank)
+          normalizeFlag(settings.showEdhrecRank),
+          normalizeFlag(settings.showPriceTag),
+          normalizeFlag(settings.showFoilBadge)
         ]
       );
       return settings;

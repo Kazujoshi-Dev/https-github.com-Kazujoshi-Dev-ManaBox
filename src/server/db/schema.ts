@@ -164,6 +164,8 @@ export async function initDb(): Promise<void> {
           -- oznaczenia na kartach: plakietka klasera i ranking EDHREC (NULL = domyślnie włączone)
           ALTER TABLE user_settings ADD COLUMN IF NOT EXISTS show_binder_badge BOOLEAN;
           ALTER TABLE user_settings ADD COLUMN IF NOT EXISTS show_edhrec_rank BOOLEAN;
+          ALTER TABLE user_settings ADD COLUMN IF NOT EXISTS show_price_tag BOOLEAN;
+          ALTER TABLE user_settings ADD COLUMN IF NOT EXISTS show_foil_badge BOOLEAN;
           -- publiczny link do talii (domyślnie wyłączony)
           ALTER TABLE user_decks ADD COLUMN IF NOT EXISTS is_public BOOLEAN NOT NULL DEFAULT FALSE;
           -- panel administratora: blokady kont, wymuszona zmiana hasła, ukrycie oferty

@@ -12,6 +12,8 @@ export const DEFAULT_SETTINGS: AppSettings = {
   collectionRowsPerPage: 12,
   showBinderBadge: true,
   showEdhrecRank: true,
+  showPriceTag: true,
+  showFoilBadge: true,
 };
 
 export function formatCurrency(

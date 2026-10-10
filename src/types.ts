@@ -107,6 +107,10 @@ export interface AppSettings {
   showBinderBadge?: boolean;
   /** Oznaczenia rankingu EDHREC („EDH #123”) przy kartach (domyślnie włączone). */
   showEdhrecRank?: boolean;
+  /** Plakietka z wartością karty na obrazie w kolekcji (domyślnie włączona). */
+  showPriceTag?: boolean;
+  /** Plakietka „Foil” na obrazie karty w kolekcji (domyślnie włączona). */
+  showFoilBadge?: boolean;
 }
 
 export interface Catalog {

@@ -51,6 +51,8 @@ export const CardItem: React.FC<CardItemProps> = ({
   const showEdhrec = useShowEdhrecRank();
   const edhrecRank = showEdhrec ? getCardEdhrecRank(card) : null;
   const showBinderBadge = settings.showBinderBadge !== false;
+  const showPriceTag = settings.showPriceTag !== false;
+  const showFoilBadge = settings.showFoilBadge !== false;
 
   if (viewMode === 'table') {
     return (
@@ -209,7 +211,7 @@ export const CardItem: React.FC<CardItemProps> = ({
     <div className="group relative bg-stone-900 rounded-xl border border-stone-800 hover:border-amber-500/50 transition-all duration-300 overflow-hidden flex flex-col shadow-md hover:shadow-xl hover:shadow-amber-900/10">
       
       {/* Foil Effect Banner if card is Foil */}
-      {quantityFoil > 0 && (
+      {showFoilBadge && quantityFoil > 0 && (
         <div className="absolute top-0 right-0 z-10 ms-foil-chip font-semibold text-[11px] px-2 py-0.5 rounded-bl-lg shadow-sm flex items-center gap-1 ">
           <Sparkles className="w-3 h-3 fill-stone-950" />
           <span>Foil ({quantityFoil})</span>
@@ -269,25 +271,27 @@ export const CardItem: React.FC<CardItemProps> = ({
         )}
 
         {/* Total Price Tag overlay on bottom right of image */}
-        <div className="absolute bottom-[8%] right-2 bg-stone-950/90 backdrop-blur-md px-2 py-1 rounded-lg border border-stone-800 shadow-md">
-          <p className="text-[11px] font-bold text-stone-400 leading-none">{t('Wartość')}</p>
-          <p className="text-xs font-bold tabular-nums text-emerald-400 leading-tight">
-            {formatCurrency(itemTotalValue, settings.currency)}
-          </p>
-          {totalQuantity > 1 && (
-            <div className="mt-0.5 pt-0.5 border-t border-stone-800 text-[11px] tabular-nums text-stone-400 leading-tight">
-              {quantity > 0 && (
-                <p>{formatCurrency(priceNormal, settings.currency)} {t('/ szt.')}</p>
-              )}
-              {quantityFoil > 0 && (
-                <p className="flex items-center gap-0.5 text-amber-300/90">
-                  <Sparkles className="w-2.5 h-2.5 shrink-0" />
-                  {formatCurrency(priceFoil, settings.currency)} {t('/ szt.')}
-                </p>
-              )}
-            </div>
-          )}
-        </div>
+        {showPriceTag && (
+          <div className="absolute bottom-[8%] right-2 bg-stone-950/90 backdrop-blur-md px-2 py-1 rounded-lg border border-stone-800 shadow-md">
+            <p className="text-[11px] font-bold text-stone-400 leading-none">{t('Wartość')}</p>
+            <p className="text-xs font-bold tabular-nums text-emerald-400 leading-tight">
+              {formatCurrency(itemTotalValue, settings.currency)}
+            </p>
+            {totalQuantity > 1 && (
+              <div className="mt-0.5 pt-0.5 border-t border-stone-800 text-[11px] tabular-nums text-stone-400 leading-tight">
+                {quantity > 0 && (
+                  <p>{formatCurrency(priceNormal, settings.currency)} {t('/ szt.')}</p>
+                )}
+                {quantityFoil > 0 && (
+                  <p className="flex items-center gap-0.5 text-amber-300/90">
+                    <Sparkles className="w-2.5 h-2.5 shrink-0" />
+                    {formatCurrency(priceFoil, settings.currency)} {t('/ szt.')}
+                  </p>
+                )}
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Card Info Details */}

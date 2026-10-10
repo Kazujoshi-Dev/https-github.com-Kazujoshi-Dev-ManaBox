@@ -3,7 +3,7 @@ import { publicUrl } from '../utils/publicLinks';
 import React, { useEffect, useRef, useState } from 'react';
 import {
   Settings, User, Coins, ShieldCheck, Share2, Database, Check, RefreshCw, Euro, DollarSign, LogOut, Loader2,
-  KeyRound, Eye, EyeOff, LayoutGrid, Folder, Trophy, Copy, ExternalLink, Download, Upload, AlertCircle, CheckCircle2, Trash2
+  KeyRound, Eye, EyeOff, LayoutGrid, Folder, Trophy, Tag, Sparkles, Copy, ExternalLink, Download, Upload, AlertCircle, CheckCircle2, Trash2
 } from 'lucide-react';
 import { AppSettings, AuthUser, CurrencyCode, PricingSource } from '../types';
 import { DEFAULT_SETTINGS, formatCurrency } from '../utils/formatters';
@@ -17,7 +17,7 @@ type Section = 'account' | 'pricing' | 'display' | 'security' | 'sharing' | 'dat
 const SECTIONS: Array<{ id: Section; label: string; hint: string; icon: React.ElementType }> = [
   { id: 'account', label: tk('Konto i profil'), hint: tk('Dane konta, język, miejscowość, usunięcie'), icon: User },
   { id: 'pricing', label: tk('Wycena i waluta'), hint: tk('Źródło cen, kursy NBP'), icon: Coins },
-  { id: 'display', label: tk('Wygląd kart'), hint: tk('Oznaczenia klasera i EDHREC'), icon: LayoutGrid },
+  { id: 'display', label: tk('Wygląd kart'), hint: tk('Oznaczenia na kartach kolekcji'), icon: LayoutGrid },
   { id: 'security', label: tk('Bezpieczeństwo'), hint: tk('Hasło, sesje'), icon: ShieldCheck },
   { id: 'sharing', label: tk('Udostępnianie'), hint: tk('Publiczne linki'), icon: Share2 },
   { id: 'data', label: tk('Dane kolekcji'), hint: tk('Import i eksport'), icon: Database }
@@ -297,7 +297,7 @@ const DisplaySection: React.FC<{ settings: AppSettings; onSave: (s: AppSettings)
     }
   };
 
-  const options: Array<{ key: 'showBinderBadge' | 'showEdhrecRank'; icon: React.ElementType; title: string; desc: string }> = [
+  const options: Array<{ key: 'showBinderBadge' | 'showEdhrecRank' | 'showPriceTag' | 'showFoilBadge'; icon: React.ElementType; title: string; desc: string }> = [
     {
       key: 'showBinderBadge',
       icon: Folder,
@@ -309,6 +309,18 @@ const DisplaySection: React.FC<{ settings: AppSettings; onSave: (s: AppSettings)
       icon: Trophy,
       title: t('Ranking EDHREC'),
       desc: t('Oznaczenie popularności karty w formacie Commander (np. „EDH #490”) przy kartach w całej aplikacji.')
+    },
+    {
+      key: 'showPriceTag',
+      icon: Tag,
+      title: t('Cena na karcie'),
+      desc: t('Plakietka „Wartość” z ceną karty w prawym dolnym rogu obrazu w kolekcji.')
+    },
+    {
+      key: 'showFoilBadge',
+      icon: Sparkles,
+      title: t('Oznaczenie Foil'),
+      desc: t('Plakietka „Foil” z liczbą foili w prawym górnym rogu karty w kolekcji.')
     }
   ];
 
