@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { digitalLabel, isDigitalOnly } from '../utils/mtgFormats';
 import { useT, locale, tServer } from '../i18n';
+import { useShowEdhrecRank } from '../utils/displayPrefs';
 
 const ARENA_PREF_KEY = 'ms-search-arena';
 
@@ -28,6 +29,7 @@ interface CardSearchProps {
 
 export const CardSearch: React.FC<CardSearchProps> = ({ onSelectCard, settings }) => {
   const t = useT();
+  const showEdhrec = useShowEdhrecRank();
   const [query, setQuery] = useState('');
   const [autocomplete, setAutocomplete] = useState<string[]>([]);
   const [searchResults, setSearchResults] = useState<ScryfallCard[]>([]);
@@ -229,7 +231,7 @@ export const CardSearch: React.FC<CardSearchProps> = ({ onSelectCard, settings }
               const digital = isDigitalOnly(card);
               const imageUri = getCardImageUri(card, 'normal');
               const price = getCardPrice(card, false, settings || 'USD');
-              const edhrecRank = getCardEdhrecRank(card);
+              const edhrecRank = showEdhrec ? getCardEdhrecRank(card) : null;
 
               return (
                 <div

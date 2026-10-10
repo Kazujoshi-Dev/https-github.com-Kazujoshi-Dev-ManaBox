@@ -3,7 +3,7 @@ import { publicUrl } from '../utils/publicLinks';
 import React, { useEffect, useRef, useState } from 'react';
 import {
   Settings, User, Coins, ShieldCheck, Share2, Database, Check, RefreshCw, Euro, DollarSign, LogOut, Loader2,
-  KeyRound, Eye, EyeOff, Copy, ExternalLink, Download, Upload, AlertCircle, CheckCircle2, Trash2
+  KeyRound, Eye, EyeOff, LayoutGrid, Folder, Trophy, Copy, ExternalLink, Download, Upload, AlertCircle, CheckCircle2, Trash2
 } from 'lucide-react';
 import { AppSettings, AuthUser, CurrencyCode, PricingSource } from '../types';
 import { DEFAULT_SETTINGS, formatCurrency } from '../utils/formatters';
@@ -12,11 +12,12 @@ import { CityPicker } from './CityPicker';
 import { useT, useLang, locale, tk, type Lang } from '../i18n';
 import { LANGUAGE_OPTIONS } from './ui/LanguageSwitcher';
 
-type Section = 'account' | 'pricing' | 'security' | 'sharing' | 'data';
+type Section = 'account' | 'pricing' | 'display' | 'security' | 'sharing' | 'data';
 
 const SECTIONS: Array<{ id: Section; label: string; hint: string; icon: React.ElementType }> = [
   { id: 'account', label: tk('Konto i profil'), hint: tk('Dane konta, język, miejscowość, usunięcie'), icon: User },
   { id: 'pricing', label: tk('Wycena i waluta'), hint: tk('Źródło cen, kursy NBP'), icon: Coins },
+  { id: 'display', label: tk('Wygląd kart'), hint: tk('Oznaczenia klasera i EDHREC'), icon: LayoutGrid },
   { id: 'security', label: tk('Bezpieczeństwo'), hint: tk('Hasło, sesje'), icon: ShieldCheck },
   { id: 'sharing', label: tk('Udostępnianie'), hint: tk('Publiczne linki'), icon: Share2 },
   { id: 'data', label: tk('Dane kolekcji'), hint: tk('Import i eksport'), icon: Database }
@@ -96,6 +97,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = (props) => {
             />
           )}
           {section === 'pricing' && <PricingSection settings={props.settings} onSave={props.onSaveSettings} />}
+          {section === 'display' && <DisplaySection settings={props.settings} onSave={props.onSaveSettings} />}
           {section === 'security' && (
             <SecuritySection onLogoutAll={props.onLogoutAll} onPasswordChanged={props.onPasswordChanged} showToast={props.showToast} />
           )}
@@ -273,6 +275,82 @@ const DeleteAccountCard: React.FC<{
           </div>
         </form>
       )}
+    </div>
+  );
+};
+
+/* ---------- Wygląd kart ---------- */
+
+const DisplaySection: React.FC<{ settings: AppSettings; onSave: (s: AppSettings) => Promise<void> | void }> = ({ settings, onSave }) => {
+  const t = useT();
+  const [status, setStatus] = useState<'idle' | 'saving' | 'saved'>('idle');
+  const settingsRef = useRef(settings);
+  settingsRef.current = settings;
+
+  const apply = async (patch: Partial<AppSettings>) => {
+    setStatus('saving');
+    try {
+      await onSave({ ...settingsRef.current, ...patch });
+      setStatus('saved');
+    } catch {
+      setStatus('idle');
+    }
+  };
+
+  const options: Array<{ key: 'showBinderBadge' | 'showEdhrecRank'; icon: React.ElementType; title: string; desc: string }> = [
+    {
+      key: 'showBinderBadge',
+      icon: Folder,
+      title: t('Nazwa klasera na kartach'),
+      desc: t('Plakietka z nazwą klasera (np. „Karty z Talii”) w lewym górnym rogu karty w kolekcji.')
+    },
+    {
+      key: 'showEdhrecRank',
+      icon: Trophy,
+      title: t('Ranking EDHREC'),
+      desc: t('Oznaczenie popularności karty w formacie Commander (np. „EDH #490”) przy kartach w całej aplikacji.')
+    }
+  ];
+
+  return (
+    <div className="space-y-4">
+      <div className={card}>
+        <SectionHeader title={t('Oznaczenia na kartach')} description={t('Wybierz, co ma być widoczne na obrazach kart. Wybór zapisuje się na Twoim koncie.')} />
+        <div className="divide-y divide-stone-800">
+          {options.map(({ key, icon: Icon, title, desc }) => {
+            const checked = settings[key] !== false;
+            return (
+              <label key={key} className="flex items-start gap-3 py-3 first:pt-0 last:pb-0 cursor-pointer">
+                <Icon className="w-4 h-4 mt-0.5 shrink-0 text-amber-400" />
+                <span className="flex-1 min-w-0">
+                  <span className="block text-sm font-semibold text-stone-100">{title}</span>
+                  <span className="block text-xs text-stone-400 mt-0.5">{desc}</span>
+                </span>
+                <input
+                  type="checkbox"
+                  role="switch"
+                  checked={checked}
+                  onChange={(e) => apply({ [key]: e.target.checked })}
+                  className="w-4 h-4 mt-0.5 shrink-0 accent-amber-500 cursor-pointer"
+                />
+              </label>
+            );
+          })}
+        </div>
+      </div>
+      <p className="px-1 text-xs text-stone-400 flex items-center gap-1.5" role="status" aria-live="polite">
+        {status === 'saving' ? (
+          <>
+            <Loader2 className="w-3.5 h-3.5 animate-spin" /> {t('Zapisywanie…')}
+          </>
+        ) : status === 'saved' ? (
+          <>
+            <Check className="w-3.5 h-3.5 text-emerald-400" /> {t('Zapisano na Twoim koncie.')}
+          </>
+        ) : (
+          t('Zmiany zapisują się automatycznie.')
+        )}
+      </p>
     </div>
   );
 };

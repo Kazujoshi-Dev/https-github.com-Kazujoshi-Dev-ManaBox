@@ -122,6 +122,12 @@ export function mapSettingsRow(r: any): AppSettings {
     ...((r.language ?? r.ui_language) === 'pl' || (r.language ?? r.ui_language) === 'en'
       ? { language: (r.language ?? r.ui_language) as 'pl' | 'en' }
       : {}),
+    ...(typeof (r.showBinderBadge ?? r.show_binder_badge) === 'boolean'
+      ? { showBinderBadge: Boolean(r.showBinderBadge ?? r.show_binder_badge) }
+      : {}),
+    ...(typeof (r.showEdhrecRank ?? r.show_edhrec_rank) === 'boolean'
+      ? { showEdhrecRank: Boolean(r.showEdhrecRank ?? r.show_edhrec_rank) }
+      : {}),
   };
 }
 

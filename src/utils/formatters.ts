@@ -10,6 +10,8 @@ export const DEFAULT_SETTINGS: AppSettings = {
   autoNbpRate: true,
   deckCardPreviewScale: 100,
   collectionRowsPerPage: 12,
+  showBinderBadge: true,
+  showEdhrecRank: true,
 };
 
 export function formatCurrency(

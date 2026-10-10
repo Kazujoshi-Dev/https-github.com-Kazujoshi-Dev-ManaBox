@@ -1,6 +1,7 @@
 import React from 'react';
 import { Trophy } from 'lucide-react';
 import { useT } from '../i18n';
+import { useShowEdhrecRank } from '../utils/displayPrefs';
 
 interface EdhrecBadgeProps {
   rank: number | null | undefined;
@@ -10,7 +11,8 @@ interface EdhrecBadgeProps {
 
 export const EdhrecBadge: React.FC<EdhrecBadgeProps> = ({ rank, className = '', size = 'sm' }) => {
   const t = useT();
-  if (rank === null || rank === undefined) return null;
+  const visible = useShowEdhrecRank();
+  if (!visible || rank === null || rank === undefined) return null;
   const numRank = typeof rank === 'number' ? rank : parseInt(String(rank), 10);
   if (isNaN(numRank) || numRank <= 0) return null;
 

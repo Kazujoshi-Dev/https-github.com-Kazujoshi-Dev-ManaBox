@@ -3,6 +3,7 @@ import { AppSettings } from '../types';
 import { DEFAULT_SETTINGS } from '../utils/formatters';
 import { settingsApi, nbpApi } from '../services/api';
 import { getLang, setLang, isLang, type Lang } from '../i18n';
+import { setShowEdhrecRank } from '../utils/displayPrefs';
 
 const SETTINGS_KEY = 'mtg_app_settings';
 
@@ -18,6 +19,11 @@ export function useSettings(onUnauthorized?: () => void) {
   });
   const settingsRef = useRef(settings);
   settingsRef.current = settings;
+
+  // Ranking EDHREC wyświetla wiele komponentów bez dostępu do ustawień: przekazujemy wybór globalnie
+  useEffect(() => {
+    setShowEdhrecRank(settings.showEdhrecRank !== false);
+  }, [settings.showEdhrecRank]);
 
   // Auto-sync NBP rates if enabled
   useEffect(() => {

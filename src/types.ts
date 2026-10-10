@@ -103,6 +103,10 @@ export interface AppSettings {
   collectionRowsPerPage?: number;
   /** Język interfejsu zapisany na profilu. */
   language?: 'pl' | 'en';
+  /** Plakietka z nazwą klasera na kartach kolekcji (domyślnie włączona). */
+  showBinderBadge?: boolean;
+  /** Oznaczenia rankingu EDHREC („EDH #123”) przy kartach (domyślnie włączone). */
+  showEdhrecRank?: boolean;
 }
 
 export interface Catalog {

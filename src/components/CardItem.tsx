@@ -14,6 +14,7 @@ import { ManaSymbol } from './ManaSymbol';
 import { EdhrecBadge } from './EdhrecBadge';
 import { Plus, Minus, Trash2, Edit3, ExternalLink, Sparkles, Folder, Check, Eye, Trophy, CircleDollarSign, DollarSign } from 'lucide-react';
 import { useT, locale, binderName, MAIN_BINDER } from '../i18n';
+import { useShowEdhrecRank } from '../utils/displayPrefs';
 
 interface CardItemProps {
   item: CollectionItem;
@@ -47,7 +48,9 @@ export const CardItem: React.FC<CardItemProps> = ({
   const totalQuantity = quantity + quantityFoil;
 
   const isFoilOnly = quantityFoil > 0 && quantity === 0;
-  const edhrecRank = getCardEdhrecRank(card);
+  const showEdhrec = useShowEdhrecRank();
+  const edhrecRank = showEdhrec ? getCardEdhrecRank(card) : null;
+  const showBinderBadge = settings.showBinderBadge !== false;
 
   if (viewMode === 'table') {
     return (
@@ -79,9 +82,11 @@ export const CardItem: React.FC<CardItemProps> = ({
               </button>
               <p className="text-[11px] text-stone-400 flex items-center gap-2 mt-0.5 flex-wrap">
                 <span>{card.type_line}</span>
-                <span className="text-[11px] text-amber-300/90 bg-amber-500/10 px-1.5 py-0.5 rounded border border-amber-500/20 font-medium">
-                  {binderName(binder || MAIN_BINDER)}
-                </span>
+                {showBinderBadge && (
+                  <span className="text-[11px] text-amber-300/90 bg-amber-500/10 px-1.5 py-0.5 rounded border border-amber-500/20 font-medium">
+                    {binderName(binder || MAIN_BINDER)}
+                  </span>
+                )}
                 {edhrecRank != null && (
                   <EdhrecBadge rank={edhrecRank} size="xs" />
                 )}
@@ -223,7 +228,7 @@ export const CardItem: React.FC<CardItemProps> = ({
       )}
 
       {/* Binder badge */}
-      {binder && !item.isForSale && (
+      {showBinderBadge && binder && !item.isForSale && (
         <div className="absolute top-2 left-2 z-10 bg-stone-950/80 backdrop-blur-md text-stone-300 text-[11px] px-2 py-0.5 rounded-full border border-stone-800 flex items-center gap-1 font-medium">
           <Folder className="w-2.5 h-2.5 text-amber-400" />
           <span className="truncate max-w-[100px]">{binderName(binder)}</span>
