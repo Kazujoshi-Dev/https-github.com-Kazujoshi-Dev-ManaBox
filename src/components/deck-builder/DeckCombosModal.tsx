@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { getCardImageUri } from '../../utils/formatters';
+import { getCardImageUri, scryfallNamedImageUrl } from '../../utils/formatters';
 import { 
   X, 
   Sparkles, 
@@ -276,10 +276,9 @@ export const DeckCombosModal: React.FC<DeckCombosModalProps> = ({
     if (spellbookCard) {
       if (spellbookCard.imageUriFrontNormal) return spellbookCard.imageUriFrontNormal;
       if (spellbookCard.imageUriFrontSmall) return spellbookCard.imageUriFrontSmall;
-      if (spellbookCard.imageUriFrontArtCrop) return spellbookCard.imageUriFrontArtCrop;
     }
-    // High-speed direct Scryfall redirect fallback
-    return `https://api.scryfall.com/cards/named?exact=${encodeURIComponent(cardName)}&format=image&version=small`;
+    // Pełny obraz karty po nazwie (przez nasz serwer, z nagłówkiem User-Agent dla Scryfall)
+    return scryfallNamedImageUrl(cardName, 'small');
   };
 
   if (!isOpen) return null;
@@ -567,12 +566,12 @@ export const DeckCombosModal: React.FC<DeckCombosModalProps> = ({
                               alt={item.name}
                               loading="lazy"
                               referrerPolicy="no-referrer"
-                              className="w-full h-full object-cover transition-transform duration-200 group-hover:scale-110"
+                              className="w-full h-full object-contain transition-transform duration-200"
                               onError={(e) => {
                                 const target = e.currentTarget;
                                 if (!target.dataset.fallbackTried) {
                                   target.dataset.fallbackTried = 'true';
-                                  target.src = `https://api.scryfall.com/cards/named?exact=${encodeURIComponent(item.name)}&format=image&version=small`;
+                                  target.src = scryfallNamedImageUrl(item.name, 'small');
                                 }
                               }}
                             />
@@ -736,7 +735,7 @@ export const DeckCombosModal: React.FC<DeckCombosModalProps> = ({
             <img 
               src={hoveredPreviewCard.imageUrl} 
               alt={hoveredPreviewCard.name}
-              className="w-full h-auto object-cover"
+              className="w-full h-auto object-contain"
             />
           </div>
         </div>

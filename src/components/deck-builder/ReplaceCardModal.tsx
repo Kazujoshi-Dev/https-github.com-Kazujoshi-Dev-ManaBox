@@ -75,8 +75,8 @@ export const ReplaceCardModal: React.FC<ReplaceCardModalProps> = ({ deck, incomi
       <div className="w-full sm:max-w-5xl max-h-[92dvh] bg-stone-900 border border-stone-800 rounded-t-2xl sm:rounded-2xl shadow-2xl flex flex-col pb-[env(safe-area-inset-bottom)]">
         {/* Nagłówek: co wchodzi do talii */}
         <div className="flex items-center gap-4 p-4 sm:p-5 border-b border-stone-800">
-          <span className="w-12 shrink-0 aspect-[63/88] rounded-md overflow-hidden bg-stone-800 ring-1 ring-stone-700">
-            {incomingImg && <img src={incomingImg} alt="" referrerPolicy="no-referrer" className="w-full h-full object-cover" />}
+          <span className="w-12 shrink-0 aspect-[488/680] rounded-md overflow-hidden bg-stone-800 ring-1 ring-stone-700">
+            {incomingImg && <img src={incomingImg} alt="" referrerPolicy="no-referrer" className="w-full h-full object-contain" />}
           </span>
           <div className="min-w-0 flex-1">
             <h3 className="text-base font-semibold text-stone-50 truncate">{t('Zastąp kartą {name}', { name: incoming.name })}</h3>
@@ -123,17 +123,17 @@ export const ReplaceCardModal: React.FC<ReplaceCardModalProps> = ({ deck, incomi
                         onClick={() => setSelected(isSel ? null : e.card)}
                         aria-pressed={isSel}
                         title={e.card.name}
-                        className={`group relative block w-full aspect-[63/88] rounded-lg overflow-hidden bg-stone-800 cursor-pointer ring-2 ${
+                        className={`group relative block w-full aspect-[488/680] rounded-lg overflow-hidden bg-stone-800 cursor-pointer ring-2 ${
                           isSel ? 'ring-amber-400' : 'ring-transparent hover:ring-stone-500'
                         }`}
                       >
                         {img ? (
-                          <img src={img} alt={e.card.name} loading="lazy" referrerPolicy="no-referrer" onError={(ev) => handleCardImageError(ev, img)} className="w-full h-full object-cover" />
+                          <img src={img} alt={e.card.name} loading="lazy" referrerPolicy="no-referrer" onError={(ev) => handleCardImageError(ev, img)} className="w-full h-full object-contain" />
                         ) : (
                           <span className="absolute inset-0 p-2 text-xs text-stone-300">{e.card.name}</span>
                         )}
                         {isSel && <span className="absolute inset-0 bg-amber-400/15" aria-hidden="true" />}
-                        <span className="absolute inset-x-0 bottom-0 flex items-center justify-between gap-1 px-1.5 py-1 bg-gradient-to-t from-stone-950/95 to-transparent text-[11px]">
+                        <span className="absolute inset-x-0 top-0 flex items-center justify-between gap-1 px-1.5 py-1 bg-gradient-to-b from-stone-950/95 to-transparent text-[11px]">
                           {e.quantity > 1 ? <span className="text-stone-100 tabular-nums">{e.quantity}×</span> : <span />}
                           {inc !== undefined && (
                             <span className={`tabular-nums ${inc < 0.1 ? 'text-rose-300' : 'text-stone-300'}`} title={t('Ile talii z tym dowódcą gra tę kartę (EDHREC)')}>

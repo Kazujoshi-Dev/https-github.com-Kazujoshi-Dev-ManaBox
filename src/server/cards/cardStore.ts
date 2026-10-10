@@ -12,11 +12,12 @@
 import type pg from 'pg';
 import { getPool, isPostgresActive } from '../db/storage';
 import { iterateJsonArrayObjects } from './bulkParser';
+import { APP_USER_AGENT } from '../userAgent';
 import { NameIndex, normalizeName } from './nameMatch';
 import { buildMissingHashes, ensureHashSchema, hashIndexStatus, loadHashIndex } from './hashIndex';
 
 const SCRYFALL_HEADERS = {
-  'User-Agent': 'ManaScrew/1.0 (https://manascrew.eu)',
+  'User-Agent': APP_USER_AGENT,
   Accept: 'application/json'
 };
 // Adres można nadpisać (np. w testach), domyślnie oficjalne API Scryfall.
@@ -506,6 +507,8 @@ export interface ShowcaseCard {
   name: string;
   image: string;
   artCrop: string | null;
+  /** Artysta ilustracji (podpis przy art_crop). */
+  artist: string | null;
   legendary: boolean;
 }
 
@@ -535,7 +538,7 @@ export async function getShowcaseCards(limit = 12): Promise<ShowcaseCard[]> {
   let rows: any[] = [];
   try {
     const res = await p.query(
-      `SELECT name, data->'image_uris'->>'normal' AS image, data->'image_uris'->>'art_crop' AS art,
+      `SELECT name, data->'image_uris'->>'normal' AS image, data->'image_uris'->>'art_crop' AS art, data->>'artist' AS artist,
               COALESCE(data->>'type_line', '') AS type_line, data->>'rarity' AS rarity,
               data->>'border_color' AS border, data->>'full_art' AS full_art, data->>'promo' AS promo,
               data->>'digital' AS digital, data->>'edhrec_rank' AS rank, lang
@@ -573,7 +576,7 @@ export async function getShowcaseCards(limit = 12): Promise<ShowcaseCard[]> {
     .map((r) => ({ r, k: rand() }))
     .sort((a, b) => a.k - b.k)
     .map(({ r }) => r);
-  const cards = [...mixed, ...legendary].map((r) => ({ name: r.name, image: r.image, artCrop: r.art || null, legendary: Boolean(r.legendary) }));
+  const cards = [...mixed, ...legendary].map((r) => ({ name: r.name, image: r.image, artCrop: r.art || null, artist: r.artist || null, legendary: Boolean(r.legendary) }));
   // Pustego wyniku nie zapamiętujemy (np. baza kart jeszcze się synchronizuje)
   if (cards.length) showcaseCache = { at: Date.now(), cards };
   else console.warn(`[Karty] Brak kart na ekran logowania (wylosowano ${rows.length} wydań, żadne nie pasuje).`);

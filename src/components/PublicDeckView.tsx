@@ -12,6 +12,7 @@ import { deckToText } from './deck-builder/DeckShareModal';
 import { useBackToClose } from '../hooks/useBackButton';
 import { LanguageSwitcher } from './ui/LanguageSwitcher';
 import { useT, plural, useLang } from '../i18n';
+import { AppFooter } from './AppFooter';
 
 interface PublicDeckViewProps {
   deck: DeckItem;
@@ -109,11 +110,11 @@ export const PublicDeckView: React.FC<PublicDeckViewProps> = ({ deck, owner, set
             <button
               type="button"
               onClick={() => setPreview(deck.commander!)}
-              className="w-40 sm:w-48 shrink-0 self-center md:self-auto rounded-2xl overflow-hidden border border-amber-500/40 shadow-xl cursor-pointer aspect-[63/88] bg-stone-950"
+              className="w-40 sm:w-48 shrink-0 self-center md:self-auto rounded-2xl overflow-hidden border border-amber-500/40 shadow-xl cursor-pointer aspect-[488/680] bg-stone-950"
               title={deck.commander.name}
             >
               {commanderImg && (
-                <img src={commanderImg} alt={deck.commander.name} referrerPolicy="no-referrer" onError={(e) => handleCardImageError(e, commanderImg)} className="w-full h-full object-cover" />
+                <img src={commanderImg} alt={deck.commander.name} referrerPolicy="no-referrer" onError={(e) => handleCardImageError(e, commanderImg)} className="w-full h-full object-contain" />
               )}
             </button>
           )}
@@ -180,6 +181,8 @@ export const PublicDeckView: React.FC<PublicDeckViewProps> = ({ deck, owner, set
         )}
       </main>
 
+      <AppFooter />
+
       {preview && (
         <div
           className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4"
@@ -197,12 +200,12 @@ export const PublicDeckView: React.FC<PublicDeckViewProps> = ({ deck, owner, set
             >
               <X className="w-5 h-5" />
             </button>
-            <div className="rounded-2xl overflow-hidden border border-stone-700 shadow-2xl aspect-[63/88] bg-stone-900">
+            <div className="rounded-2xl overflow-hidden border border-stone-700 shadow-2xl aspect-[488/680] bg-stone-900">
               <img
                 src={getCardImageUri(preview, 'large') || getCardImageUri(preview, 'normal')}
                 alt={preview.name}
                 referrerPolicy="no-referrer"
-                className="w-full h-full object-cover"
+                className="w-full h-full object-contain"
               />
             </div>
             <p className="mt-3 text-center text-sm text-stone-200 font-semibold">{preview.name}</p>

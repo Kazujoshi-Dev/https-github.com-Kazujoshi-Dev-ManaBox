@@ -77,7 +77,7 @@ export const DeckTokens: React.FC<{ deck: DeckItem; onViewCardDetails: (card: Sc
       ) : tokens === null ? (
         <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 xl:grid-cols-8 gap-3" aria-busy="true">
           {Array.from({ length: 6 }).map((_, i) => (
-            <div key={i} className="aspect-[63/88] rounded-lg bg-stone-800/60 animate-pulse" />
+            <div key={i} className="aspect-[488/680] rounded-lg bg-stone-800/60 animate-pulse" />
           ))}
         </div>
       ) : tokens.length === 0 ? (
@@ -97,7 +97,7 @@ export const DeckTokens: React.FC<{ deck: DeckItem; onViewCardDetails: (card: Sc
                   title={t('{name}{v2}\nTworzą: {v3}', { name: tok.name, v2: pt ? ` ${pt}` : '', v3: tok.sources.join(', ') })}
                   className="group block w-full text-left cursor-pointer disabled:cursor-default"
                 >
-                  <span className="relative block aspect-[63/88] rounded-lg overflow-hidden bg-stone-800 ring-1 ring-stone-700 group-hover:ring-amber-400 group-disabled:ring-stone-700">
+                  <span className="relative block aspect-[488/680] rounded-lg overflow-hidden bg-stone-800 ring-1 ring-stone-700 group-hover:ring-amber-400 group-disabled:ring-stone-700">
                     {tok.image ? (
                       <img
                         src={tok.image}
@@ -105,7 +105,7 @@ export const DeckTokens: React.FC<{ deck: DeckItem; onViewCardDetails: (card: Sc
                         loading="lazy"
                         referrerPolicy="no-referrer"
                         onError={(e) => handleCardImageError(e, tok.image!)}
-                        className="w-full h-full object-cover"
+                        className="w-full h-full object-contain"
                       />
                     ) : (
                       <span className={`absolute inset-0 bg-gradient-to-b ${tint} to-stone-900 p-2.5 flex flex-col`}>

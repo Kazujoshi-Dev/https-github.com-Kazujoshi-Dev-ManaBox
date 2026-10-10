@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Sparkles, Loader2, ExternalLink, Plus, ArrowRight, Repeat, Library, AlertCircle, TrendingUp, Heart } from 'lucide-react';
 import type { CollectionItem, DeckItem, ScryfallCard } from '../../types';
-import { getCardImageUri, handleCardImageError } from '../../utils/formatters';
+import { getCardImageUri, handleCardImageError, scryfallNamedImageUrl } from '../../utils/formatters';
 import { edhrecApi, type EdhrecCommanderData, type EdhrecRecommendation } from '../../services/api';
 import { getCardCategory } from './constants';
 import { ReplaceCardModal } from './ReplaceCardModal';
@@ -258,7 +258,7 @@ export const DeckSuggestions: React.FC<DeckSuggestionsProps> = ({ deck, collecti
                   // Bez danych karty z bazy bierzemy obraz ze Scryfall po nazwie
                   const img = rec.card
                     ? getCardImageUri(rec.card, 'normal')
-                    : `https://api.scryfall.com/cards/named?exact=${encodeURIComponent(rec.name.split('//')[0].trim())}&format=image&version=normal`;
+                    : scryfallNamedImageUrl(rec.name.split('//')[0].trim(), 'normal');
                   const isOwned = owned.has(frontName(rec.name));
                   const blocked = addDisabledReason(rec);
                   return (
@@ -266,11 +266,11 @@ export const DeckSuggestions: React.FC<DeckSuggestionsProps> = ({ deck, collecti
                       <button
                         type="button"
                         onClick={() => rec.card && onViewCardDetails(rec.card)}
-                        className="relative aspect-[63/88] bg-stone-900 cursor-pointer"
+                        className="relative aspect-[488/680] bg-stone-900 cursor-pointer"
                         title={rec.name}
                       >
                         {img ? (
-                          <img src={img} alt={rec.name} loading="lazy" referrerPolicy="no-referrer" onError={(e) => handleCardImageError(e, img)} className="w-full h-full object-cover" />
+                          <img src={img} alt={rec.name} loading="lazy" referrerPolicy="no-referrer" onError={(e) => handleCardImageError(e, img)} className="w-full h-full object-contain" />
                         ) : (
                           <span className="absolute inset-0 flex items-center justify-center p-2 text-xs text-stone-300 text-center">{rec.name}</span>
                         )}

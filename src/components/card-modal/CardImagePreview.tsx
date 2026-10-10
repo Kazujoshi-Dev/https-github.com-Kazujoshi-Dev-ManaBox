@@ -23,7 +23,7 @@ export const CardImagePreview: React.FC<CardImagePreviewProps> = ({
         alt={cardName}
         referrerPolicy="no-referrer"
         onError={(e) => handleCardImageError(e, imageUri)}
-        className="w-full h-auto object-cover rounded-2xl shadow-inner"
+        className="w-full h-auto object-contain rounded-2xl shadow-inner"
       />
 
       {/* Flip Button for transform cards */}
@@ -31,7 +31,7 @@ export const CardImagePreview: React.FC<CardImagePreviewProps> = ({
         <button
           type="button"
           onClick={onFlipCard}
-          className="absolute bottom-3 right-3 bg-stone-950/90 hover:bg-amber-600 text-amber-300 hover:text-stone-950 p-2.5 rounded-full border border-amber-500/40 shadow-xl transition-all cursor-pointer flex items-center gap-1.5 text-xs font-bold"
+          className="absolute bottom-[8%] right-3 bg-stone-950/90 hover:bg-amber-600 text-amber-300 hover:text-stone-950 p-2.5 rounded-full border border-amber-500/40 shadow-xl transition-all cursor-pointer flex items-center gap-1.5 text-xs font-bold"
           title={t('Obróć kartę na drugą stronę')}
         >
           <RotateCw className="w-4 h-4 animate-spin-once" />
@@ -54,7 +54,7 @@ export const CardImagePreview: React.FC<CardImagePreviewProps> = ({
 
       {/* EDHREC Rank Badge in bottom-left corner of card graphic */}
       {edhrecRank != null && (
-        <div className="absolute bottom-3 left-3 z-10">
+        <div className="absolute bottom-[8%] left-3 z-10">
           <EdhrecBadge rank={edhrecRank} size="sm" />
         </div>
       )}

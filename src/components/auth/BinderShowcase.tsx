@@ -29,7 +29,7 @@ export const BinderShowcase: React.FC<{ cards: ShowcaseCard[]; compact?: boolean
           {page.map((c, i) => (
             <div
               key={c.name}
-              className={`auth-sleeve relative aspect-[63/88] rounded-[10px] bg-stone-950 p-[3px] ring-1 ring-white/10 ${tilt[i % tilt.length]}`}
+              className={`auth-sleeve relative aspect-[488/680] rounded-[10px] bg-stone-950 p-[3px] ring-1 ring-white/10 ${tilt[i % tilt.length]}`}
               style={{ ['--i' as any]: i }}
             >
               <img
@@ -38,7 +38,7 @@ export const BinderShowcase: React.FC<{ cards: ShowcaseCard[]; compact?: boolean
                 loading={i < 3 ? 'eager' : 'lazy'}
                 decoding="async"
                 referrerPolicy="no-referrer"
-                className="w-full h-full object-cover rounded-[8px]"
+                className="w-full h-full object-contain rounded-[8px]"
               />
               {/* połysk koszulki */}
               <span className="pointer-events-none absolute inset-[3px] rounded-[8px] bg-gradient-to-br from-white/14 via-transparent to-transparent" aria-hidden="true" />

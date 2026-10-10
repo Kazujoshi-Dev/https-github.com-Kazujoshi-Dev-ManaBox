@@ -1,7 +1,8 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Shuffle, Plus, Hand, Percent, Droplets, Lightbulb, CheckCircle2, Info, Mountain } from 'lucide-react';
 import type { DeckItem, ScryfallCard } from '../../types';
-import { getCardImageUri, handleCardImageError } from '../../utils/formatters';
+import { getCardImageUri, handleCardImageError, getCardArtist } from '../../utils/formatters';
+import { ArtistCredit } from '../ui/ArtistCredit';
 import { ManaSymbol } from '../ManaSymbol';
 import {
   analyzeMana, buildLibrary, categoryOdds, COLOR_NAMES, hyperAtLeast, isLand, shuffle, TARGET_PROBABILITY,
@@ -148,7 +149,7 @@ export const DeckAnalysis: React.FC<DeckAnalysisProps> = ({ deck, onViewCardDeta
                 role="listitem"
                 onClick={() => onViewCardDetails(l.card)}
                 title={l.card.name}
-                className={`relative aspect-[63/88] rounded-lg overflow-hidden bg-stone-950 border cursor-pointer hover:-translate-y-1 transition-transform ${
+                className={`relative aspect-[488/680] rounded-lg overflow-hidden bg-stone-950 border cursor-pointer hover:-translate-y-1 transition-transform ${
                   i >= 7 ? 'border-amber-500/60' : 'border-stone-800'
                 }`}
               >
@@ -159,10 +160,10 @@ export const DeckAnalysis: React.FC<DeckAnalysisProps> = ({ deck, onViewCardDeta
                     loading="lazy"
                     referrerPolicy="no-referrer"
                     onError={(e) => handleCardImageError(e, img)}
-                    className="w-full h-full object-cover"
+                    className="w-full h-full object-contain"
                   />
                 ) : null}
-                <span className="absolute inset-x-0 bottom-0 bg-black/75 text-[11px] text-stone-100 px-1 py-0.5 truncate">{l.card.name}</span>
+                <span className="absolute inset-x-0 top-0 bg-black/75 text-[11px] text-stone-100 px-1 py-0.5 truncate">{l.card.name}</span>
               </button>
             );
           })}
@@ -325,6 +326,7 @@ export const DeckAnalysis: React.FC<DeckAnalysisProps> = ({ deck, onViewCardDeta
                             {t('Najbardziej wymagająca: tura {turn}, szansa', { turn: c.hardestTurn })}{' '}
                             <span className={c.probability >= TARGET_PROBABILITY ? 'text-emerald-400' : 'text-amber-300'}>{pct(c.probability)}</span>
                           </span>
+                          <ArtistCredit artist={getCardArtist(c.hardestCard)} />
                         </span>
                       </button>
                     )}
@@ -348,16 +350,16 @@ export const DeckAnalysis: React.FC<DeckAnalysisProps> = ({ deck, onViewCardDeta
                         <button
                           type="button"
                           onClick={() => onViewCardDetails(sug.card!)}
-                          className="w-14 shrink-0 aspect-[63/88] rounded-md overflow-hidden bg-stone-800 ring-1 ring-stone-700 hover:ring-amber-400 cursor-pointer"
+                          className="w-14 shrink-0 aspect-[488/680] rounded-md overflow-hidden bg-stone-800 ring-1 ring-stone-700 hover:ring-amber-400 cursor-pointer"
                           title={t('Szczegóły: {name}', { name: sug.card.name })}
                         >
                           {img && (
-                            <img src={img} alt={sug.card.name} loading="lazy" referrerPolicy="no-referrer" onError={(e) => handleCardImageError(e, img)} className="w-full h-full object-cover" />
+                            <img src={img} alt={sug.card.name} loading="lazy" referrerPolicy="no-referrer" onError={(e) => handleCardImageError(e, img)} className="w-full h-full object-contain" />
                           )}
                         </button>
                       ) : (
                         <span
-                          className={`w-14 shrink-0 aspect-[63/88] rounded-md flex items-center justify-center ${
+                          className={`w-14 shrink-0 aspect-[488/680] rounded-md flex items-center justify-center ${
                             sug.kind === 'ok' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-stone-800 text-stone-300'
                           }`}
                           aria-hidden="true"

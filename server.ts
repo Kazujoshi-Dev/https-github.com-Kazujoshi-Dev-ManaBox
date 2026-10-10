@@ -19,6 +19,7 @@ import * as hashes from './src/server/cards/hashIndex';
 import { computeCardHash, decodeJpegToGray } from './src/server/cards/imageHash';
 import { normalizeName, nameSimilarity } from './src/server/cards/nameMatch';
 import { searchCities, resolveSuggestion } from './src/server/geo';
+import { APP_USER_AGENT } from './src/server/userAgent';
 import { isDigitalOnly, DIGITAL_BLOCK_MESSAGE, type SearchGame } from './src/utils/mtgFormats';
 
 const app = express();
@@ -887,7 +888,8 @@ backfillEdhrecRanks();
 // odstępu między zapytaniami, ~10/s) + pamięć podręczna wyników.
 // https://scryfall.com/docs/api — przeciążanie API grozi blokadą adresu IP.
 const SCRYFALL_BASE = 'https://api.scryfall.com';
-const SCRYFALL_USER_AGENT = 'ManaScrew/1.0 (https://manascrew.eu)';
+// Nagłówek User-Agent w formacie NazwaAplikacji/Wersja (wymóg Scryfall), wspólny dla całego serwera.
+const SCRYFALL_USER_AGENT = APP_USER_AGENT;
 
 const MIN_REQUEST_INTERVAL_MS = 110; // nieco ponad 100 ms dla zapasu
 const SCRYFALL_MAX_QUEUE = 300; // tyle zapytań może czekać; powyżej odmawiamy (503)
@@ -1199,12 +1201,30 @@ app.get('/api/scryfall/image-proxy', async (req, res) => {
       return res.status(400).send('Nieprawidłowy adres obrazu');
     }
 
-    const imgRes = await fetchScryfallThrottled(imageUrl, {
-      redirect: 'error',
-      headers: {
-        'Accept': 'image/jpeg,image/webp,image/png,image/svg+xml,image/*'
+    // api.scryfall.com/cards/named?format=image odpowiada przekierowaniem na cards.scryfall.io.
+    // Przekierowania śledzimy ręcznie (najwyżej 2) i każdy adres docelowy sprawdzamy jak wejściowy.
+    let target = imageUrl;
+    let imgRes: Response;
+    for (let hop = 0; ; hop++) {
+      imgRes = await fetchScryfallThrottled(target, {
+        redirect: 'manual',
+        headers: {
+          'Accept': 'image/jpeg,image/webp,image/png,image/svg+xml,image/*'
+        }
+      });
+      if (imgRes.status < 300 || imgRes.status >= 400) break;
+      const location = imgRes.headers.get('location');
+      let next = '';
+      try {
+        next = location ? new URL(location, target).toString() : '';
+      } catch {
+        next = '';
       }
-    });
+      if (hop >= 2 || !isAllowedScryfallImageUrl(next)) {
+        return res.status(502).send('Błąd pobierania obrazu');
+      }
+      target = next;
+    }
 
     if (!imgRes.ok) {
       return res.status(502).send('Błąd pobierania obrazu');
@@ -2306,13 +2326,13 @@ const edhrecLimiter = rateLimit({
 /** Odchudzona karta Scryfall do podpowiedzi (wystarcza do podglądu i dodania do talii). */
 function slimCard(c: any) {
   if (!c) return null;
-  const face = (f: any) => ({ name: f.name, mana_cost: f.mana_cost, type_line: f.type_line, oracle_text: f.oracle_text, colors: f.colors, image_uris: f.image_uris });
+  const face = (f: any) => ({ name: f.name, mana_cost: f.mana_cost, type_line: f.type_line, oracle_text: f.oracle_text, colors: f.colors, image_uris: f.image_uris, artist: f.artist });
   return {
     id: c.id, oracle_id: c.oracle_id, name: c.name, cmc: c.cmc, type_line: c.type_line, oracle_text: c.oracle_text,
     mana_cost: c.mana_cost, colors: c.colors, color_identity: c.color_identity, produced_mana: c.produced_mana,
     set: c.set, set_name: c.set_name, collector_number: c.collector_number, rarity: c.rarity, released_at: c.released_at,
     image_uris: c.image_uris, card_faces: Array.isArray(c.card_faces) ? c.card_faces.map(face) : undefined,
-    prices: c.prices || {}, legalities: c.legalities, edhrec_rank: c.edhrec_rank, scryfall_uri: c.scryfall_uri, finishes: c.finishes
+    prices: c.prices || {}, legalities: c.legalities, edhrec_rank: c.edhrec_rank, scryfall_uri: c.scryfall_uri, finishes: c.finishes, artist: c.artist
   };
 }
 

@@ -136,9 +136,9 @@ export const AddCardVersionPicker: React.FC<AddCardVersionPickerProps> = ({
       <div className="flex-1 min-h-0 overflow-y-auto p-4 grid grid-cols-1 sm:grid-cols-[200px_1fr] gap-5">
         {/* Podgląd wybranej wersji */}
         <div className="space-y-3">
-          <div className={`relative aspect-[63/88] w-40 sm:w-full mx-auto rounded-xl overflow-hidden bg-stone-800 ring-1 ring-stone-700 ${foil ? 'ms-foil-preview' : ''}`}>
+          <div className={`relative aspect-[488/680] w-40 sm:w-full mx-auto rounded-xl overflow-hidden bg-stone-800 ring-1 ring-stone-700 ${foil ? 'ms-foil-preview' : ''}`}>
             {img && (
-              <img src={img} alt={selected.name} referrerPolicy="no-referrer" onError={(e) => handleCardImageError(e, img)} className="w-full h-full object-cover" />
+              <img src={img} alt={selected.name} referrerPolicy="no-referrer" onError={(e) => handleCardImageError(e, img)} className="w-full h-full object-contain" />
             )}
           </div>
           <div className="text-center sm:text-left">
@@ -246,11 +246,11 @@ export const AddCardVersionPicker: React.FC<AddCardVersionPickerProps> = ({
                         className="block w-full text-left cursor-pointer"
                       >
                         <span
-                          className={`relative block aspect-[63/88] rounded-md overflow-hidden bg-stone-800 ring-2 ${
+                          className={`relative block aspect-[488/680] rounded-md overflow-hidden bg-stone-800 ring-2 ${
                             isSel ? 'ring-amber-400' : 'ring-transparent hover:ring-stone-500'
                           }`}
                         >
-                          {thumb && <img src={thumb} alt="" loading="lazy" referrerPolicy="no-referrer" className="w-full h-full object-cover" />}
+                          {thumb && <img src={thumb} alt="" loading="lazy" referrerPolicy="no-referrer" className="w-full h-full object-contain" />}
                           {isSel && (
                             <span className="absolute top-1 right-1 w-5 h-5 rounded-full bg-amber-400 text-stone-950 flex items-center justify-center">
                               <Check className="w-3.5 h-3.5" strokeWidth={3} />

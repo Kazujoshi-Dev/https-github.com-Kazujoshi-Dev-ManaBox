@@ -196,8 +196,8 @@ export const ForSaleAddModal: React.FC<ForSaleAddModalProps> = ({ collection, se
                         onClick={() => setStep({ kind: 'version', card })}
                         className="w-full flex items-center gap-3 p-2 rounded-lg text-left hover:bg-stone-800/70 cursor-pointer"
                       >
-                        <span className="w-10 shrink-0 aspect-[63/88] rounded overflow-hidden bg-stone-800">
-                          {img && <img src={img} alt="" loading="lazy" referrerPolicy="no-referrer" onError={(ev) => handleCardImageError(ev, img)} className="w-full h-full object-cover" />}
+                        <span className="w-10 shrink-0 aspect-[488/680] rounded overflow-hidden bg-stone-800">
+                          {img && <img src={img} alt="" loading="lazy" referrerPolicy="no-referrer" onError={(ev) => handleCardImageError(ev, img)} className="w-full h-full object-contain" />}
                         </span>
                         <span className="min-w-0 flex-1">
                           <span className="block text-sm text-stone-100 truncate">{card.name}</span>
@@ -231,9 +231,9 @@ export const ForSaleAddModal: React.FC<ForSaleAddModalProps> = ({ collection, se
           <form onSubmit={submit} className="flex-1 min-h-0 flex flex-col">
             <div className="flex-1 min-h-0 overflow-y-auto p-4 grid grid-cols-1 sm:grid-cols-[160px_1fr] gap-5">
               <div className="flex sm:block gap-3 items-start">
-                <span className={`block w-24 sm:w-full shrink-0 aspect-[63/88] rounded-xl overflow-hidden bg-stone-800 ring-1 ring-stone-700 ${step.isFoil ? 'ms-foil-preview' : ''}`}>
+                <span className={`block w-24 sm:w-full shrink-0 aspect-[488/680] rounded-xl overflow-hidden bg-stone-800 ring-1 ring-stone-700 ${step.isFoil ? 'ms-foil-preview' : ''}`}>
                   {getCardImageUri(step.card, 'normal') && (
-                    <img src={getCardImageUri(step.card, 'normal')} alt={step.card.name} referrerPolicy="no-referrer" className="w-full h-full object-cover" />
+                    <img src={getCardImageUri(step.card, 'normal')} alt={step.card.name} referrerPolicy="no-referrer" className="w-full h-full object-contain" />
                   )}
                 </span>
                 <div className="sm:mt-3 min-w-0">

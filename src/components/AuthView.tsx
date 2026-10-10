@@ -9,6 +9,8 @@ import { useShowcaseCards } from './auth/useShowcaseCards';
 import { AuthUser } from '../types';
 import { emailAuthApi } from '../services/api';
 import { LanguageSwitcher } from './ui/LanguageSwitcher';
+import { FanContentNotice } from './ui/FanContentNotice';
+import { ArtistCredit } from './ui/ArtistCredit';
 import { useT, tServer } from '../i18n';
 
 interface AuthViewProps {
@@ -176,7 +178,8 @@ export const AuthView: React.FC<AuthViewProps> = ({ onAuthSuccess, initialMode =
 
   const cards = useShowcaseCards();
   // Tło: grafika legendarnej karty z dzisiejszego zestawu (zmienia się codziennie)
-  const backdrop = cards.find((c) => c.legendary && c.artCrop)?.artCrop || cards.find((c) => c.artCrop)?.artCrop || null;
+  const backdropCard = cards.find((c) => c.legendary && c.artCrop) || cards.find((c) => c.artCrop) || null;
+  const backdrop = backdropCard?.artCrop || null;
   const [backdropLoaded, setBackdropLoaded] = useState(false);
   // Bez kart (np. baza kart jeszcze się synchronizuje) formularz stoi na środku, bez pustej kolumny
   const hasCards = cards.length >= 3;
@@ -240,6 +243,13 @@ export const AuthView: React.FC<AuthViewProps> = ({ onAuthSuccess, initialMode =
 
       {/* 1. Hero: logowanie + strona klasera */}
       <section className="relative max-w-[1320px] mx-auto px-4 sm:px-6 lg:px-10 pt-[calc(1.25rem+env(safe-area-inset-top))] lg:pt-12 pb-12 lg:pb-20 grid lg:grid-cols-12 gap-10 lg:gap-14 items-center lg:min-h-[100dvh]">
+        {/* Podpis ilustracji z tła (art_crop nie ma stopki karty z nazwiskiem artysty i ©) */}
+        {backdropCard && backdropLoaded && (
+          <ArtistCredit
+            artist={backdropCard.artist}
+            className="absolute bottom-3 right-4 sm:right-6 lg:right-10 max-w-[calc(100%-2rem)] rounded-md bg-stone-950/70 px-2 py-1 text-stone-300"
+          />
+        )}
         <div className={`${hasCards ? 'lg:col-span-5' : 'lg:col-span-12 lg:max-w-xl lg:mx-auto w-full'} space-y-7 auth-rise`}>
           <div className="flex items-center gap-3">
             <img src="/logo.webp" alt="" width={48} height={48} className="w-12 h-12" />
@@ -450,9 +460,7 @@ export const AuthView: React.FC<AuthViewProps> = ({ onAuthSuccess, initialMode =
       {/* 4. Stopka: informacja prawna wymagana przez Fan Content Policy */}
       <footer className="relative border-t border-stone-900">
         <div className="max-w-[1320px] mx-auto px-4 sm:px-6 lg:px-10 py-8 pb-[calc(2rem+env(safe-area-inset-bottom))] space-y-2 text-xs text-stone-500 leading-relaxed">
-          <p>
-            Mana Screw is unofficial Fan Content permitted under the Fan Content Policy. Not approved/endorsed by Wizards. Portions of the materials used are property of Wizards of the Coast. ©Wizards of the Coast LLC.
-          </p>
+          <FanContentNotice />
           <p>
             {t('Dane i obrazy kart:')}{' '}
             <a href="https://scryfall.com" target="_blank" rel="noopener noreferrer" className="underline hover:text-stone-300">Scryfall</a>. {t('Ceny: Cardmarket i TCGPlayer. Mapa:')} ©{' '}

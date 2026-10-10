@@ -2,7 +2,8 @@ import { PageHeader } from './ui/PageHeader';
 import { computeDeckValue } from './deck-builder/useDeckStats';
 import React, { useEffect, useMemo, useState } from 'react';
 import { DeckItem, AppSettings } from '../types';
-import { formatCurrency } from '../utils/formatters';
+import { formatCurrency, getCardArtist } from '../utils/formatters';
+import { ArtistCredit } from './ui/ArtistCredit';
 import { exportDeckToTxt, downloadTxtFile } from '../utils/textCardList';
 import { DECK_FORMATS, computeWildcardCost, getDeckFormat, type DeckFormat } from '../utils/mtgFormats';
 import { WildcardCost } from './deck-builder/WildcardCost';
@@ -171,10 +172,8 @@ export const DeckList: React.FC<DeckListProps> = ({
             const isArena = fmt.platform === 'arena';
             const deckVal = isArena ? 0 : computeDeckValue(deck, settings);
 
-            const art =
-              (fmt.commander && (deck.commander?.image_uris?.art_crop || deck.commander?.card_faces?.[0]?.image_uris?.art_crop)) ||
-              (!fmt.commander && (firstArt?.image_uris?.art_crop || firstArt?.card_faces?.[0]?.image_uris?.art_crop)) ||
-              '';
+            const artCard = fmt.commander ? deck.commander : firstArt;
+            const art = artCard?.image_uris?.art_crop || artCard?.card_faces?.[0]?.image_uris?.art_crop || '';
             const iconBtn = 'w-8 h-8 rounded-md flex items-center justify-center text-stone-400 hover:text-stone-100 hover:bg-stone-800 cursor-pointer';
             return (
               <article
@@ -184,7 +183,10 @@ export const DeckList: React.FC<DeckListProps> = ({
               >
                 <div className="relative h-28 bg-stone-800 overflow-hidden">
                   {art ? (
-                    <img src={art} alt="" loading="lazy" referrerPolicy="no-referrer" className="w-full h-full object-cover object-[center_30%] group-hover:scale-[1.03] transition-transform duration-500" />
+                    <>
+                      <img src={art} alt="" loading="lazy" referrerPolicy="no-referrer" className="w-full h-full object-cover object-[center_30%] group-hover:scale-[1.03] transition-transform duration-500" />
+                      <ArtistCredit artist={getCardArtist(artCard)} variant="overlay" />
+                    </>
                   ) : (
                     <div className="w-full h-full flex items-center justify-center text-stone-600">
                       <Crown className="w-6 h-6" />

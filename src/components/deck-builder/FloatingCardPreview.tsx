@@ -35,7 +35,7 @@ export const FloatingCardPreview: React.FC<FloatingCardPreviewProps> = ({
         <img
           src={getCardImageUri(card, 'normal')}
           alt={card.name}
-          className="w-full h-auto object-cover"
+          className="w-full h-auto object-contain"
         />
         {rank != null && (
           <div className="absolute bottom-2 left-2 z-10">

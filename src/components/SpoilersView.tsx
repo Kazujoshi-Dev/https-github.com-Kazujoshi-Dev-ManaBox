@@ -436,7 +436,7 @@ export const SpoilersView: React.FC<SpoilersViewProps> = ({ onAddToWishlist }) =
                             alt={card.name}
                             loading="lazy"
                             onError={(e) => handleCardImageError(e, img)}
-                            className="w-full aspect-[488/680] object-cover rounded-[4.5%] bg-stone-900 shadow-md transition-transform group-hover:-translate-y-0.5"
+                            className="w-full aspect-[488/680] object-contain rounded-[4.5%] bg-stone-900 shadow-md transition-transform group-hover:-translate-y-0.5"
                           />
                           {isNew && (
                             <span className="absolute top-2 right-2 rounded-md bg-amber-500 text-stone-950 text-[11px] font-bold px-1.5 py-0.5 shadow">{t('NOWA')}</span>

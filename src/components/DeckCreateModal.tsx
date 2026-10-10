@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { getCardImageUri } from '../utils/formatters';
+import { getCardImageUri, getCardArtist } from '../utils/formatters';
+import { ArtistCredit } from './ui/ArtistCredit';
 import { ScryfallCard, DeckItem, CollectionItem } from '../types';
 import { Crown, Swords, X, Check, Search, Layers, Globe, Gamepad2 } from 'lucide-react';
 import { DECK_FORMATS, DEFAULT_FORMAT, getDeckFormat } from '../utils/mtgFormats';
@@ -355,21 +356,22 @@ export const DeckCreateModal: React.FC<DeckCreateModalProps> = ({
             
             {selectedCommander ? (
               <div className="p-2.5 bg-stone-950 border border-amber-500/40 rounded-xl flex items-center justify-between">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-9 h-11 rounded overflow-hidden border border-amber-500/50">
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <div className="w-9 h-11 shrink-0 rounded overflow-hidden border border-amber-500/50">
                     <img
                       src={getCardImageUri(selectedCommander, 'art_crop')}
                       alt={selectedCommander.name}
                       className="w-full h-full object-cover"
                     />
                   </div>
-                  <div>
+                  <div className="min-w-0">
                     <span className="text-xs font-bold text-white block">
                       {selectedCommander.name}
                     </span>
                     <span className="text-[11px] text-stone-400">
                       {selectedCommander.type_line}
                     </span>
+                    <ArtistCredit artist={getCardArtist(selectedCommander)} />
                   </div>
                 </div>
                 <button
@@ -420,8 +422,11 @@ export const DeckCreateModal: React.FC<DeckCreateModalProps> = ({
                             className="w-full h-full object-cover"
                           />
                         </div>
-                        <span className="text-[11px] font-bold text-stone-200 truncate">
-                          {c.name}
+                        <span className="min-w-0 flex flex-col">
+                          <span className="text-[11px] font-bold text-stone-200 truncate">
+                            {c.name}
+                          </span>
+                          <ArtistCredit artist={getCardArtist(c)} />
                         </span>
                       </button>
                     ))}

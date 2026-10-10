@@ -1248,7 +1248,7 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
                         alt={activeCard.name}
                         referrerPolicy="no-referrer"
                         onError={(e) => handleCardImageError(e, activeThumbnail)}
-                        className="w-full h-full object-cover"
+                        className="w-full h-full object-contain"
                       />
                       {isFoil && (
                         <div className="absolute top-1 right-1 bg-amber-500 text-stone-950 p-0.5 rounded shadow">

@@ -16,7 +16,8 @@ import {
 } from 'lucide-react';
 import { DeckItem, DeckCardEntry, ScryfallCard } from '../types';
 import { useBackToClose } from '../hooks/useBackButton';
-import { getCardImageUri } from '../utils/formatters';
+import { getCardImageUri, getCardArtist } from '../utils/formatters';
+import { ArtistCredit } from './ui/ArtistCredit';
 import { 
   parseTxtDeckOrCollection, 
   resolveCardsFromScryfall, 
@@ -542,10 +543,10 @@ export const DeckImportExportModal: React.FC<DeckImportExportModalProps> = ({
                         <img
                           src={getCardImageUri(detectedCommander, 'art_crop')}
                           alt={detectedCommander.name}
-                          className="w-10 h-10 object-cover rounded-lg border border-amber-500/40"
+                          className="w-10 h-10 shrink-0 object-cover rounded-lg border border-amber-500/40"
                         />
                       )}
-                      <div>
+                      <div className="min-w-0">
                         <span className="text-[11px] font-bold text-amber-400 block">
                           {t('Wykryty Dowódca')}
                         </span>
@@ -555,6 +556,7 @@ export const DeckImportExportModal: React.FC<DeckImportExportModalProps> = ({
                             [{detectedCommander.set?.toUpperCase()} #{detectedCommander.collector_number}]
                           </span>
                         </p>
+                        <ArtistCredit artist={getCardArtist(detectedCommander)} />
                       </div>
                     </div>
                   )}

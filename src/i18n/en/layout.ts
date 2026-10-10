@@ -80,4 +80,6 @@ export const en_layout: Record<string, string> = {
   "Dostępna nowa wersja aplikacji": "A new version of the app is available",
   "Odśwież": "Refresh",
   "Ładowanie panelu...": "Loading panel...",
+  "Ilustracja: {artist}": "Illustration: {artist}",
+  "Ilustracje kart są własnością ich artystów i Wizards of the Coast.": "Card illustrations are the property of their artists and Wizards of the Coast.",
 };

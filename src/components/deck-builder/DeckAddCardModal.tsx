@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { getCardImageUri } from '../../utils/formatters';
+import { getCardImageUri, getCardArtist } from '../../utils/formatters';
+import { ArtistCredit } from '../ui/ArtistCredit';
 import { AddCardVersionPicker } from './AddCardVersionPicker';
 import { Plus, X, Layers, Globe, Search, Crown, Gamepad2 } from 'lucide-react';
 import { DEFAULT_FORMAT, digitalLabel, isDigitalOnly } from '../../utils/mtgFormats';
@@ -224,6 +225,7 @@ export const DeckAddCardModal: React.FC<DeckAddCardModalProps> = ({
                     <p className="text-[11px] text-stone-400 truncate mt-0.5">
                       {card.type_line} • {card.set_name}
                     </p>
+                    <ArtistCredit artist={getCardArtist(card)} />
                   </div>
                 </div>
 

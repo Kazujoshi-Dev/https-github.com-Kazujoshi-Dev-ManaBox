@@ -4,6 +4,7 @@ export interface ShowcaseCard {
   name: string;
   image: string;
   artCrop: string | null;
+  artist?: string | null;
   legendary: boolean;
 }
 

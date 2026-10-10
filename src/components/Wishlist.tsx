@@ -195,13 +195,13 @@ export const Wishlist: React.FC<WishlistProps> = ({
                     alt={card.name} 
                     referrerPolicy="no-referrer"
                     onError={(e) => handleCardImageError(e, img)}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform" 
+                    className="w-full h-full object-contain transition-transform" 
                   />
                   <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
                     <Eye className="w-4 h-4 text-amber-300" />
                   </div>
                   {getCardEdhrecRank(card) != null && (
-                    <div className="absolute bottom-1.5 left-1.5 z-10">
+                    <div className="absolute bottom-[8%] left-1.5 z-10">
                       <EdhrecBadge rank={getCardEdhrecRank(card)} size="xs" />
                     </div>
                   )}

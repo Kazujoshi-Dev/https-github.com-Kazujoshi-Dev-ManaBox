@@ -295,13 +295,13 @@ export const Analytics: React.FC<AnalyticsProps> = ({ collection, settings, onVi
                 onClick={() => onViewCardDetails(item)}
                 className="group bg-stone-950 p-3 rounded-xl border border-stone-800 hover:border-amber-500/50 transition-all cursor-pointer flex flex-col justify-between space-y-3"
               >
-                <div className="relative aspect-[2.5/3.5] rounded-lg overflow-hidden bg-stone-900">
+                <div className="relative aspect-[488/680] rounded-lg overflow-hidden bg-stone-900">
                   <img 
                     src={img} 
                     alt={card.name} 
                     referrerPolicy="no-referrer"
                     onError={(e) => handleCardImageError(e, img)}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform" 
+                    className="w-full h-full object-contain transition-transform" 
                   />
                   <div className="absolute top-1 left-1 bg-amber-500 text-stone-950 font-bold text-[11px] w-5 h-5 rounded-full flex items-center justify-center shadow">
                     #{index + 1}
@@ -422,8 +422,8 @@ const MoverRow: React.FC<{
     <li>
       <button type="button" onClick={onOpen} className="w-full flex items-center gap-3 py-2 px-2 -mx-2 rounded-lg text-left hover:bg-stone-800/70 cursor-pointer">
         <span className="w-5 shrink-0 text-xs text-stone-500 tabular-nums text-right">{rank}</span>
-        <span className="w-9 shrink-0 aspect-[63/88] rounded overflow-hidden bg-stone-800">
-          {img && <img src={img} alt="" loading="lazy" referrerPolicy="no-referrer" onError={(e) => handleCardImageError(e, img)} className="w-full h-full object-cover" />}
+        <span className="w-9 shrink-0 aspect-[488/680] rounded overflow-hidden bg-stone-800">
+          {img && <img src={img} alt="" loading="lazy" referrerPolicy="no-referrer" onError={(e) => handleCardImageError(e, img)} className="w-full h-full object-contain" />}
         </span>
         <span className="min-w-0 flex-1">
           <span className="block text-sm text-stone-100 truncate">{item.card.name}</span>

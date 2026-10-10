@@ -103,7 +103,7 @@ export const CardPrintsTab: React.FC<CardPrintsTabProps> = ({
                     alt={p.name}
                     referrerPolicy="no-referrer"
                     onError={(e) => handleCardImageError(e, pThumb)}
-                    className="w-full h-full object-cover"
+                    className="w-full h-full object-contain"
                   />
                   {isSelected && (
                     <div className="absolute top-1 right-1 bg-amber-500 text-stone-950 rounded-full p-0.5">

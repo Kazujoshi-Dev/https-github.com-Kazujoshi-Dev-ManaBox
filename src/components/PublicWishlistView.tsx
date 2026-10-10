@@ -8,6 +8,7 @@ import { useBackToClose } from '../hooks/useBackButton';
 import { FolderHeart, Search, ArrowUpDown, Sparkles, Check, FileText, LogIn, Share2, X, HeartHandshake } from 'lucide-react';
 import { LanguageSwitcher } from './ui/LanguageSwitcher';
 import { useT } from '../i18n';
+import { AppFooter } from './AppFooter';
 
 interface PublicWishlistViewProps {
   owner: { id: string; username: string };
@@ -234,17 +235,17 @@ export const PublicWishlistView: React.FC<PublicWishlistViewProps> = ({
                       {t('Foil')}
                     </div>
                   )}
-                  <div className="relative aspect-[2.5/3.5] w-full overflow-hidden bg-stone-950">
+                  <div className="relative aspect-[488/680] w-full overflow-hidden bg-stone-950">
                     <img
                       src={img}
                       alt={item.card.name}
                       referrerPolicy="no-referrer"
                       onError={(e) => handleCardImageError(e, img)}
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                      className="w-full h-full object-contain transition-transform duration-500"
                       loading="lazy"
                     />
                     {rank != null && (
-                      <div className="absolute bottom-2 left-2 z-10">
+                      <div className="absolute bottom-[8%] left-2 z-10">
                         <EdhrecBadge rank={rank} size="xs" />
                       </div>
                     )}
@@ -280,6 +281,8 @@ export const PublicWishlistView: React.FC<PublicWishlistViewProps> = ({
       </main>
 
       {/* Podgląd karty */}
+      <AppFooter />
+
       {preview && (
         <div
           onClick={() => setPreview(null)}
@@ -307,7 +310,7 @@ export const PublicWishlistView: React.FC<PublicWishlistViewProps> = ({
                   src={getCardImageUri(preview.card, 'large') || getCardImageUri(preview.card, 'normal')}
                   alt={preview.card.name}
                   referrerPolicy="no-referrer"
-                  className="w-full h-auto object-cover"
+                  className="w-full h-auto object-contain"
                 />
               </div>
               <div className="space-y-3 flex-1 min-w-0">

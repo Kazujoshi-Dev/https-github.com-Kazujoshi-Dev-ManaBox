@@ -278,7 +278,7 @@ ${appFooter}`;
       description,
       path,
       type: 'article',
-      image: cardImage(cmd, 'art_crop') || cardImage(main[0]?.card, 'art_crop') || undefined,
+      image: cardImage(cmd, 'large') || cardImage(main[0]?.card, 'large') || undefined,
       imageAlt: cmd ? cmd.name : deck.name,
       jsonLd: [
         {
@@ -338,7 +338,7 @@ ${appFooter}`;
       description,
       path: canonical,
       type: 'profile',
-      image: cardImage(sorted[0]?.card, 'art_crop') || undefined,
+      image: cardImage(sorted[0]?.card, 'large') || undefined,
       imageAlt: sorted[0]?.card.name
     },
     body

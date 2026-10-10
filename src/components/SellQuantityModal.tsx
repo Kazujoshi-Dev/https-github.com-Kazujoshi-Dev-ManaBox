@@ -126,13 +126,13 @@ export const SellQuantityModal: React.FC<SellQuantityModalProps> = ({
         <form onSubmit={handleSubmit} className="p-6 space-y-5">
           {/* Card Info Banner */}
           <div className="flex items-center gap-3.5 bg-stone-950/80 p-3 rounded-2xl border border-stone-800">
-            <div className="w-14 aspect-[2.5/3.5] rounded-lg overflow-hidden bg-stone-900 shrink-0 border border-stone-800 shadow">
+            <div className="w-14 aspect-[488/680] rounded-lg overflow-hidden bg-stone-900 shrink-0 border border-stone-800 shadow">
               <img
                 src={imageUri}
                 alt={item.card.name}
                 referrerPolicy="no-referrer"
                 onError={(e) => handleCardImageError(e, imageUri)}
-                className="w-full h-full object-cover"
+                className="w-full h-full object-contain"
               />
             </div>
 

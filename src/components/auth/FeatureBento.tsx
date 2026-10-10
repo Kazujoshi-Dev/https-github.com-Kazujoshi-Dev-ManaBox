@@ -1,6 +1,7 @@
 import React from 'react';
 import type { ShowcaseCard } from './useShowcaseCards';
 import { useT } from '../../i18n';
+import { ArtistCredit } from '../ui/ArtistCredit';
 
 /**
  * Funkcje aplikacji jako siatka bento: siedem pól o różnych rozmiarach,
@@ -146,9 +147,12 @@ export const FeatureBento: React.FC<{ cards: ShowcaseCard[] }> = ({ cards }) => 
           <p className="text-sm text-stone-400 leading-relaxed">{t('Dziel kolekcję na klasery, oznaczaj foile i wersje językowe, filtruj po kolorze, secie i rzadkości.')}</p>
         </div>
         {binderArt.length === 3 && (
-          <div className="flex sm:flex-col gap-2 sm:w-40 shrink-0" aria-hidden="true">
+          <div className="flex sm:flex-col gap-2 sm:w-48 shrink-0">
             {binderArt.map((c) => (
-              <img key={c.name} src={c.artCrop!} alt="" loading="lazy" referrerPolicy="no-referrer" className="h-14 sm:h-12 flex-1 sm:flex-none w-full object-cover rounded-lg ring-1 ring-white/10" />
+              <span key={c.name} className="relative block h-14 sm:h-12 flex-1 sm:flex-none w-full overflow-hidden rounded-lg ring-1 ring-white/10">
+                <img src={c.artCrop!} alt="" loading="lazy" referrerPolicy="no-referrer" className="w-full h-full object-cover" />
+                <ArtistCredit artist={c.artist} variant="overlay" className="px-1.5" />
+              </span>
             ))}
           </div>
         )}

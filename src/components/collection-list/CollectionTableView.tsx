@@ -38,7 +38,7 @@ export const CollectionTableView: React.FC<CollectionTableViewProps> = ({
                   alt=""
                   loading="lazy"
                   onError={(e) => handleCardImageError(e, img)}
-                  className="w-11 h-[61px] rounded-md object-cover bg-stone-800 shrink-0"
+                  className="w-11 h-[61px] rounded-md object-contain bg-stone-800 shrink-0"
                 />
                 <div className="min-w-0 flex-1">
                   <p className="text-sm font-semibold text-stone-100 truncate">{card.name}</p>

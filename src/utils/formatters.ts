@@ -196,6 +196,26 @@ export function getCardImageUri(card: ScryfallCard, size: 'small' | 'normal' | '
   return 'https://svgs.scryfall.io/card-back.svg';
 }
 
+/**
+ * Obraz karty po nazwie (API Scryfall, format=image).
+ * Idzie przez nasz serwer: Scryfall wymaga nagłówka User-Agent, którego przeglądarka nie może ustawić.
+ */
+export function scryfallNamedImageUrl(name: string, version: 'small' | 'normal' = 'normal'): string {
+  const api = `https://api.scryfall.com/cards/named?exact=${encodeURIComponent(name)}&format=image&version=${version}`;
+  return `/api/scryfall/image-proxy?url=${encodeURIComponent(api)}`;
+}
+
+/**
+ * Artysta ilustracji, którą zwraca getCardImageUri: przy kartach dwustronnych bez wspólnego
+ * obrazu bierzemy artystę pierwszej strony.
+ */
+export function getCardArtist(card: ScryfallCard | null | undefined): string | undefined {
+  if (!card) return undefined;
+  const face = card.card_faces?.[0];
+  if (!card.image_uris && face?.image_uris) return face.artist || card.artist;
+  return card.artist || face?.artist;
+}
+
 export function handleCardImageError(e: React.SyntheticEvent<HTMLImageElement, Event>, originalUri: string) {
   const target = e.currentTarget;
   if (!target.dataset.proxied && originalUri && originalUri.startsWith('http')) {

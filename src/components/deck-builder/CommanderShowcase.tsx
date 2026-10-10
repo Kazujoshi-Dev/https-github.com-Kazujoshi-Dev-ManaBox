@@ -1,7 +1,8 @@
 import React from 'react';
 import { Crown, X, Coins } from 'lucide-react';
 import { CommanderShowcaseProps } from './types';
-import { formatCurrency, getCardPrice, getCardEdhrecRank, getCardImageUri } from '../../utils/formatters';
+import { formatCurrency, getCardPrice, getCardEdhrecRank, getCardImageUri, getCardArtist } from '../../utils/formatters';
+import { ArtistCredit } from '../ui/ArtistCredit';
 import { EdhrecBadge } from '../EdhrecBadge';
 import { useT } from '../../i18n';
 
@@ -21,7 +22,7 @@ export const CommanderShowcase: React.FC<CommanderShowcaseProps> = ({
       <div className={`mt-5 p-4 rounded-xl bg-amber-950/30 border flex flex-col sm:flex-row items-center justify-between gap-4 ${
         commanderIsFoil ? 'border-amber-400/60 shadow-lg shadow-amber-500/10' : 'border-amber-500/30'
       }`}>
-        <div className="flex items-center gap-3.5">
+        <div className="flex items-center gap-3.5 min-w-0">
           <div className={`relative w-16 h-20 rounded-lg overflow-hidden border-2 shadow-md shrink-0 cursor-pointer ${
             commanderIsFoil ? 'border-amber-300 ring-2 ring-amber-400/40' : 'border-amber-400'
           }`}
@@ -33,7 +34,7 @@ export const CommanderShowcase: React.FC<CommanderShowcaseProps> = ({
               className="w-full h-full object-cover"
             />
           </div>
-          <div>
+          <div className="min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
               <span className="text-[11px] tabular-nums font-bold px-2 py-0.5 rounded-full bg-amber-500 text-stone-950">
                 {t('Dowódca Talii')}
@@ -69,6 +70,7 @@ export const CommanderShowcase: React.FC<CommanderShowcaseProps> = ({
             <p className="text-xs text-stone-400">
               {commander.type_line}
             </p>
+            <ArtistCredit artist={getCardArtist(commander)} className="mt-0.5" />
           </div>
         </div>
 

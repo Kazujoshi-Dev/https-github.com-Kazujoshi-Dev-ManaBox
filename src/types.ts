@@ -14,6 +14,8 @@ export interface ScryfallCardFace {
   oracle_text?: string;
   colors?: string[];
   image_uris?: ScryfallImageUris;
+  /** Artysta ilustracji tej strony karty (karty dwustronne mają osobnych artystów). */
+  artist?: string;
 }
 
 export interface ScryfallCard {

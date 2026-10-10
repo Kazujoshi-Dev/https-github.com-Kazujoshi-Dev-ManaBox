@@ -3,6 +3,7 @@ import { Sparkles, Zap, RefreshCw, AlertCircle, HelpCircle, ExternalLink, Shield
 import { SpellbookVariant } from '../../types';
 import { spellbookApi } from '../../services/api';
 import { useT } from '../../i18n';
+import { scryfallNamedImageUrl } from '../../utils/formatters';
 
 interface CardCombosTabProps {
   cardName: string;
@@ -169,7 +170,7 @@ export const CardCombosTab: React.FC<CardCombosTabProps> = ({ cardName }) => {
                     {variant.uses?.map((u, uIdx) => {
                       const isCurrentCard = u.card?.name?.toLowerCase() === cardName.toLowerCase();
                       const cName = u.card?.name || '';
-                      const img = u.card?.imageUriFrontSmall || u.card?.imageUriFrontNormal || u.card?.imageUriFrontArtCrop || `https://api.scryfall.com/cards/named?exact=${encodeURIComponent(cName)}&format=image&version=small`;
+                      const img = u.card?.imageUriFrontSmall || u.card?.imageUriFrontNormal || scryfallNamedImageUrl(cName, 'small');
 
                       return (
                         <div
@@ -186,12 +187,12 @@ export const CardCombosTab: React.FC<CardCombosTabProps> = ({ cardName }) => {
                               alt={cName}
                               loading="lazy"
                               referrerPolicy="no-referrer"
-                              className="w-full h-full object-cover"
+                              className="w-full h-full object-contain"
                               onError={(e) => {
                                 const target = e.currentTarget;
                                 if (!target.dataset.tried) {
                                   target.dataset.tried = 'true';
-                                  target.src = `https://api.scryfall.com/cards/named?exact=${encodeURIComponent(cName)}&format=image&version=small`;
+                                  target.src = scryfallNamedImageUrl(cName, 'small');
                                 }
                               }}
                             />

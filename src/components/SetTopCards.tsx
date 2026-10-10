@@ -677,7 +677,7 @@ export const SetTopCards: React.FC<SetTopCardsProps> = ({
                                       src={imgUri}
                                       alt={card.name}
                                       onError={handleCardImageError}
-                                      className="w-full h-full object-cover object-top hover:scale-110 transition-transform duration-200"
+                                      className="w-full h-full object-contain transition-transform duration-200"
                                       loading="lazy"
                                     />
                                   </div>

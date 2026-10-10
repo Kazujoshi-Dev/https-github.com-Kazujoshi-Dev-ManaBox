@@ -1,7 +1,8 @@
 import React from 'react';
 import { PlusCircle, MinusCircle, Crown, ExternalLink, AlertTriangle, Gem } from 'lucide-react';
 import { DeckCardRowProps } from './types';
-import { formatCurrency, getCardPrice, getCardImageUri } from '../../utils/formatters';
+import { formatCurrency, getCardPrice, getCardImageUri, getCardArtist } from '../../utils/formatters';
+import { ART_COPYRIGHT } from '../ui/ArtistCredit';
 import { useT } from '../../i18n';
 
 export const DeckCardRow: React.FC<DeckCardRowProps> = ({
@@ -22,6 +23,7 @@ export const DeckCardRow: React.FC<DeckCardRowProps> = ({
   const singlePrice = settings ? getCardPrice(card, Boolean(entry.isFoil), settings) : 0;
   const totalPrice = singlePrice * entry.quantity;
   const illegal = Boolean(issues && issues.length);
+  const artist = getCardArtist(card);
 
   // Scale row height smoothly with user scale preference (36px to 54px)
   const rowHeight = Math.max(36, Math.min(54, Math.round(40 * (previewScale / 100))));
@@ -72,14 +74,20 @@ export const DeckCardRow: React.FC<DeckCardRowProps> = ({
           </span>
         )}
         {illegal && <AlertTriangle className="w-3.5 h-3.5 text-rose-400 shrink-0" aria-label={t('Karta niezgodna z zasadami')} />}
-        <span
-          className={`font-bold text-xs truncate transition-colors drop-shadow-md ${
-            illegal
-              ? 'text-rose-200 underline decoration-rose-500 decoration-2 underline-offset-2'
-              : 'text-stone-100 group-hover:text-amber-200'
-          }`}
-        >
-          {card.name}
+        <span className="min-w-0 flex flex-col">
+          <span
+            className={`font-bold text-xs truncate transition-colors drop-shadow-md ${
+              illegal
+                ? 'text-rose-200 underline decoration-rose-500 decoration-2 underline-offset-2'
+                : 'text-stone-100 group-hover:text-amber-200'
+            }`}
+          >
+            {card.name}
+          </span>
+          {/* Tło wiersza to wykadrowana ilustracja (art_crop): podpis artysty i prawa WotC */}
+          <span className="text-[11px] leading-3 text-stone-300 truncate drop-shadow-md">
+            {artist ? `${t('Ilustracja: {artist}', { artist })} · ${ART_COPYRIGHT}` : ART_COPYRIGHT}
+          </span>
         </span>
       </div>
 

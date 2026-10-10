@@ -238,14 +238,14 @@ export const CardSearch: React.FC<CardSearchProps> = ({ onSelectCard, settings }
                 >
                   <div 
                     onClick={() => onSelectCard(card)}
-                    className="relative aspect-[2.5/3.5] w-full overflow-hidden bg-stone-950 cursor-pointer"
+                    className="relative aspect-[488/680] w-full overflow-hidden bg-stone-950 cursor-pointer"
                   >
                     <img
                       src={imageUri}
                       alt={card.name}
                       referrerPolicy="no-referrer"
                       onError={(e) => handleCardImageError(e, imageUri)}
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                      className="w-full h-full object-contain transition-transform duration-500"
                       loading="lazy"
                     />
 
@@ -260,7 +260,7 @@ export const CardSearch: React.FC<CardSearchProps> = ({ onSelectCard, settings }
                     {edhrecRank != null && (
                       <div 
                         title={t('Ranking EDHREC: #{rank} (popularność w formacie Commander)', { rank: edhrecRank.toLocaleString(locale()) })}
-                        className="absolute bottom-0 left-0 z-10 ms-foil-chip font-semibold text-[11px] px-2 py-0.5 rounded-tr-lg shadow-sm flex items-center gap-1 select-none border-t border-r border-white/20"
+                        className="absolute bottom-[8%] left-0 z-10 ms-foil-chip font-semibold text-[11px] px-2 py-0.5 rounded-r-lg shadow-sm flex items-center gap-1 select-none border-y border-r border-white/20"
                       >
                         <Trophy className="w-3 h-3 fill-stone-950 stroke-[1.5] shrink-0" />
                         <span>EDH #{edhrecRank.toLocaleString(locale())}</span>
@@ -269,14 +269,14 @@ export const CardSearch: React.FC<CardSearchProps> = ({ onSelectCard, settings }
 
                     {digital ? (
                       <div
-                        className="absolute bottom-2 right-2 bg-stone-950/90 backdrop-blur-md px-2 py-0.5 rounded border border-amber-500/40 flex items-center gap-1"
+                        className="absolute bottom-[8%] right-2 bg-stone-950/90 backdrop-blur-md px-2 py-0.5 rounded border border-amber-500/40 flex items-center gap-1"
                         title={t('Karta dostępna tylko w grze cyfrowej')}
                       >
                         <Gamepad2 className="w-3 h-3 text-amber-400" />
                         <span className="text-[11px] font-semibold text-amber-300">{t(digitalLabel(card))}</span>
                       </div>
                     ) : (
-                    <div className="absolute bottom-2 right-2 bg-stone-950/90 backdrop-blur-md px-2 py-0.5 rounded border border-stone-800">
+                    <div className="absolute bottom-[8%] right-2 bg-stone-950/90 backdrop-blur-md px-2 py-0.5 rounded border border-stone-800">
                       <p className="text-xs font-bold tabular-nums text-emerald-400">
                         {formatCurrency(price, settings ? settings.currency : 'USD')}
                       </p>

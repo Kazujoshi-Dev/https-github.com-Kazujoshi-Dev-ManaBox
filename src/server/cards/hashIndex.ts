@@ -9,9 +9,10 @@
  */
 import type pg from 'pg';
 import { getPool, isPostgresActive } from '../db/storage';
+import { APP_USER_AGENT } from '../userAgent';
 import { HASH_BYTES, HASH_VERSION, combinedDistance, computeCardHash, decodeJpegToGray } from './imageHash';
 
-const IMAGE_HEADERS = { 'User-Agent': 'ManaScrew/1.0 (https://manascrew.eu)', Accept: 'image/jpeg' };
+const IMAGE_HEADERS = { 'User-Agent': APP_USER_AGENT, Accept: 'image/jpeg' };
 const DOWNLOAD_CONCURRENCY = 4;
 const MIN_REQUEST_INTERVAL_MS = 100; // ok. 10 obrazów/s łącznie — grzecznie wobec CDN Scryfall
 const FAILED_VERSION = -HASH_VERSION;

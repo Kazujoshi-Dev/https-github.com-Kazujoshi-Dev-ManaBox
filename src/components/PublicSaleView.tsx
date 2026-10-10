@@ -336,23 +336,23 @@ export const PublicSaleView: React.FC<PublicSaleViewProps> = ({
                     </div>
                   )}
 
-                  <div className="relative aspect-[2.5/3.5] w-full overflow-hidden bg-stone-950">
+                  <div className="relative aspect-[488/680] w-full overflow-hidden bg-stone-950">
                     <img
                       src={imageUri}
                       alt={item.card.name}
                       referrerPolicy="no-referrer"
                       onError={(e) => handleCardImageError(e, imageUri)}
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                      className="w-full h-full object-contain transition-transform duration-500"
                       loading="lazy"
                     />
 
                     {edhrecRank != null && (
-                      <div className="absolute bottom-2 left-2 z-10">
+                      <div className="absolute bottom-[8%] left-2 z-10">
                         <EdhrecBadge rank={edhrecRank} size="xs" />
                       </div>
                     )}
 
-                    <div className="absolute bottom-2 right-2 bg-stone-950/95 backdrop-blur-md px-2.5 py-1 rounded-xl border border-emerald-500/40 shadow-xl">
+                    <div className="absolute bottom-[8%] right-2 bg-stone-950/95 backdrop-blur-md px-2.5 py-1 rounded-xl border border-emerald-500/40 shadow-xl">
                       <p className="text-[11px] font-bold text-stone-400 leading-none">{t('Cena')}</p>
                       <p className="text-xs font-bold tabular-nums text-emerald-300 leading-tight">
                         {formatCurrency(effectivePrice, settings.currency)}
@@ -419,7 +419,7 @@ export const PublicSaleView: React.FC<PublicSaleViewProps> = ({
                 <img
                   src={getCardImageUri(selectedPreviewCard.card, 'large') || getCardImageUri(selectedPreviewCard.card, 'normal')}
                   alt={selectedPreviewCard.card.name}
-                  className="w-full h-auto object-cover"
+                  className="w-full h-auto object-contain"
                 />
               </div>
 
