@@ -24,7 +24,8 @@ import {
   DollarSign,
   Map as MapIcon,
   Loader2,
-  Plus
+  Plus,
+  ImageDown
 } from 'lucide-react';
 import { useT, plural } from '../i18n';
 
@@ -68,6 +69,7 @@ export const ForSaleList: React.FC<ForSaleListProps> = ({
   const [copiedText, setCopiedText] = useState(false);
   const [editingPriceId, setEditingPriceId] = useState<string | null>(null);
   const [tempPrice, setTempPrice] = useState<string>('');
+  const [imagesProgress, setImagesProgress] = useState<{ done: number; total: number } | null>(null);
 
   // 1. Filter only cards marked for sale
   const allForSaleCards = useMemo(() => {
@@ -119,6 +121,43 @@ export const ForSaleList: React.FC<ForSaleListProps> = ({
     setCopiedText(true);
     showToast?.(t('Skopiowano listę kart (.txt) gotową do wklejenia na grupach MTG / Discord!'));
     setTimeout(() => setCopiedText(false), 2500);
+  };
+
+  // Grafiki JPG (lub ZIP) z kartami widocznymi po filtrach, do wklejenia na Facebooka
+  const handleDownloadImages = async () => {
+    if (imagesProgress || displayedCards.length === 0) return;
+    const username = currentUser?.username || t('Gracz MTG');
+    setImagesProgress({ done: 0, total: displayedCards.length });
+    try {
+      const { downloadSaleImages } = await import('../utils/saleImages');
+      const count = await downloadSaleImages({
+        cards: displayedCards.map(item => {
+          const foil = item.quantityFoil > 0;
+          const qty = item.quantity + item.quantityFoil;
+          const price = item.salePrice ?? getCardPrice(item.card, foil, settings);
+          return {
+            imageUri: getCardImageUri(item.card, 'normal'),
+            name: item.card.name,
+            meta: `${item.card.set.toUpperCase()} #${item.card.collector_number} • ${item.condition} • ${item.language}`,
+            foil,
+            quantityText: `${qty} ${t('szt.')}`,
+            priceText: formatCurrency(price, settings.currency),
+          };
+        }),
+        username,
+        offerUrl: publicShareUrl.replace(/^https?:\/\//, ''),
+        title: t('Sprzedam'),
+        pageLabel: (page, count) => t('Strona {page} z {count}', { page, count }),
+        foilLabel: t('Foil'),
+        fileBase: `sprzedam-${username}`.replace(/[^\p{L}\p{N}_-]+/gu, '-'),
+        onProgress: (done, total) => setImagesProgress({ done, total }),
+      });
+      showToast?.(count > 1 ? t('Pobrano paczkę .zip z {n} grafikami.', { n: count }) : t('Pobrano grafikę .jpg z ofertą.'));
+    } catch {
+      showToast?.(t('Nie udało się utworzyć grafik. Spróbuj ponownie.'));
+    } finally {
+      setImagesProgress(null);
+    }
   };
 
   const handleSaveCustomPrice = async (item: CollectionItem) => {
@@ -234,6 +273,18 @@ export const ForSaleList: React.FC<ForSaleListProps> = ({
           <button type="button" onClick={handleCopyTextList} className="btn btn-ghost" title={t('Kopiuj listę kart jako tekst')}>
             {copiedText ? <Check className="w-4 h-4 text-emerald-400" /> : <FileText className="w-4 h-4" />}
             <span className="hidden lg:inline">{copiedText ? t('Skopiowano') : t('Lista .txt')}</span>
+          </button>
+          <button
+            type="button"
+            onClick={handleDownloadImages}
+            disabled={Boolean(imagesProgress) || displayedCards.length === 0}
+            className="btn btn-ghost disabled:opacity-50"
+            title={t('Pobierz grafiki z kartami i cenami do wklejenia np. na Facebooka (uwzględnia wyszukiwanie i filtry)')}
+          >
+            {imagesProgress ? <Loader2 className="w-4 h-4 animate-spin" /> : <ImageDown className="w-4 h-4" />}
+            <span className="hidden lg:inline tabular-nums">
+              {imagesProgress ? t('Grafiki {done}/{total}', imagesProgress) : t('Grafiki .jpg')}
+            </span>
           </button>
         </div>
       </div>
