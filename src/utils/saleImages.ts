@@ -1,6 +1,6 @@
 /**
  * Grafiki JPG z ofertą „Sprzedam” do wklejania na Facebooka i grupy MTG.
- * Jedna grafika mieści do 9 kart (siatka 3×3) z cenami; w stopce nazwa użytkownika i link do oferty.
+ * Jedna grafika mieści do 16 kart (siatka 4×4) z cenami; w stopce nazwa użytkownika i link do oferty.
  * Przy większej liczbie kart powstaje kilka grafik spakowanych do ZIP.
  */
 import { createZip } from './zip';
@@ -25,11 +25,11 @@ export interface SaleImageOptions {
   onProgress?: (done: number, total: number) => void;
 }
 
-export const CARDS_PER_IMAGE = 9;
+export const CARDS_PER_IMAGE = 16;
 
-const W = 1200;
+const W = 1600;
 const PAD = 48;
-const COLS = 3;
+const COLS = 4;
 const GAP = 28;
 const TILE_W = Math.floor((W - PAD * 2 - GAP * (COLS - 1)) / COLS);
 const INSET = 12;
