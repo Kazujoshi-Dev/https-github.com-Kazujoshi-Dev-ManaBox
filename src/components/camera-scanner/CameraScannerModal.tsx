@@ -115,19 +115,22 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
   const [isSearchingManual, setIsSearchingManual] = useState<boolean>(false);
 
   // 1. Enumerate available video inputs (Auto-detecting OBS Virtual Camera & mobile webcams)
-  const enumerateCameras = useCallback(async () => {
+  // activeDeviceId/activeFacing opisują strumień uruchomiony przez facingMode: 'environment'.
+  const enumerateCameras = useCallback(async (activeDeviceId?: string, activeFacing?: string) => {
     try {
       if (!navigator?.mediaDevices?.enumerateDevices) return;
       const devices = await navigator.mediaDevices.enumerateDevices();
-      const videoInputs = devices
-        .filter((d) => d.kind === 'videoinput')
-        .map((d, idx) => ({
-          deviceId: d.deviceId,
-          label: d.label || t('Kamera {n}', { n: idx + 1 }),
-        }));
+      const rawInputs = devices.filter((d) => d.kind === 'videoinput');
+      const videoInputs = rawInputs.map((d, idx) => ({
+        deviceId: d.deviceId,
+        label: d.label || t('Kamera {n}', { n: idx + 1 }),
+      }));
 
       setCameraDevices(videoInputs);
-      if (videoInputs.length > 0) {
+      // Przed udzieleniem zgody (np. iOS Safari) etykiety są puste, więc nie da się
+      // rozpoznać tylnego aparatu. Wtedy zostawiamy facingMode: 'environment'.
+      const hasLabels = rawInputs.some((d) => d.label);
+      if (videoInputs.length > 0 && hasLabels && !selectedDeviceId) {
         // Automatically check if OBS Virtual Camera or phone camera utility is available
         const obsCam = videoInputs.find((c) =>
           /obs|virtual/i.test(c.label)
@@ -135,21 +138,35 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
         const phoneCam = videoInputs.find((c) =>
           /droidcam|iriun|camo|epoccam/i.test(c.label)
         );
-        const backCam = videoInputs.find((c) =>
-          /back|tył|environment/i.test(c.label)
-        );
+        const isBack = (label: string) =>
+          /back|rear|environment|tył|tyln|rück|arrière|trasera|traseira|posteriore/i.test(label);
+        const isFront = (label: string) =>
+          /front|user|selfie|facetime|przedni|frontal|avant|vorder/i.test(label);
+        const backCams = videoInputs.filter((c) => isBack(c.label));
+        // Zwykły tylny aparat ostrzy z bliska lepiej niż ultraszerokokątny czy teleobiektyw
+        const backCam =
+          backCams.find((c) => !/ultra|tele|wide|szerok|dual|triple|podwójn|potrójn/i.test(c.label)) ||
+          backCams[0];
+        const activeCam = activeDeviceId
+          ? videoInputs.find((c) => c.deviceId === activeDeviceId)
+          : undefined;
+        const activeIsBack =
+          !!activeCam && (activeFacing === 'environment' || isBack(activeCam.label));
 
-        if (!selectedDeviceId) {
-          if (obsCam) {
-            setSelectedDeviceId(obsCam.deviceId);
-          } else if (phoneCam) {
-            setSelectedDeviceId(phoneCam.deviceId);
-          } else if (backCam) {
-            setSelectedDeviceId(backCam.deviceId);
-          } else {
-            setSelectedDeviceId(videoInputs[0].deviceId);
-          }
+        const pick =
+          obsCam ||
+          phoneCam ||
+          (activeIsBack ? activeCam : undefined) ||
+          backCam ||
+          activeCam ||
+          videoInputs.find((c) => !isFront(c.label)) ||
+          videoInputs[0];
+
+        // Aktywny strumień już korzysta z tej kamery, więc nie restartujemy go
+        if (activeDeviceId && pick.deviceId === activeDeviceId) {
+          prevDeviceIdRef.current = pick.deviceId;
         }
+        setSelectedDeviceId(pick.deviceId);
       }
     } catch (err) {
       console.warn('Błąd wykrywania kamer:', err);
@@ -241,7 +258,8 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
       } catch (_) {}
 
       // Refresh camera labels after permission granted
-      enumerateCameras();
+      const settings = (videoTrack?.getSettings?.() || {}) as MediaTrackSettings;
+      enumerateCameras(settings.deviceId, settings.facingMode);
     } catch (err: any) {
       console.warn('Błąd kamery:', err);
       setIsCameraActive(false);
