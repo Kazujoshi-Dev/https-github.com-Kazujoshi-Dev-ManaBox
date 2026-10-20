@@ -30,7 +30,7 @@ import {
 import { ScryfallCard, CardCondition, CardLanguage, Catalog, AppSettings } from '../../types';
 import { formatCurrency, getCardImageUri, getCardPrice, getRarityColor, getRarityLabel, handleCardImageError } from '../../utils/formatters';
 import { CameraScannerModalProps, CameraDeviceOption, ScanResult } from './types';
-import { searchCardInScryfall, playScannerChime } from './ocrProcessor';
+import { searchCardInScryfall, playScannerChime, getTesseractWorker } from './ocrProcessor';
 import { calculateVideoSensorCrop } from './cvCardPipeline';
 import { detectCardInSource, recognizeCard } from './scanEngine';
 import { Quad, quadMovement } from './cardDetector';
@@ -38,6 +38,13 @@ import { EdhrecBadge } from '../EdhrecBadge';
 
 import { useBackToClose } from '../../hooks/useBackButton';
 import { useT, MAIN_BINDER, binderName } from '../../i18n';
+/** Pewność serwera, przy której karta ze skanu automatycznego jest pokazywana od razu. */
+const AUTO_ACCEPT_CONFIDENCE = 80;
+/** Odstęp między kolejnymi próbami rozpoznania tej samej karty. */
+const RETRY_DELAY_MS = 500;
+/** Po tylu nieudanych próbach przestajemy, dopóki karta nie zniknie z kadru (oszczędza serwer i baterię). */
+const MAX_AUTO_ATTEMPTS = 12;
+
 export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
   isOpen,
   onClose,
@@ -63,6 +70,11 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
   const lastQuadRef = useRef<Quad | null>(null);
   const lostCountRef = useRef<number>(0);
   const scanArmedRef = useRef<boolean>(true);
+  // Ponawianie nieudanych skanów tej samej karty (jak w Delver Lens: skanujemy, aż się uda).
+  const nextAttemptAtRef = useRef<number>(0);
+  const attemptsRef = useRef<number>(0);
+  // Niepewny wynik poprzedniej próby — drugi taki sam wynik z rzędu go potwierdza.
+  const candidateRef = useRef<string | null>(null);
   const [overlayPoints, setOverlayPoints] = useState<string | null>(null);
 
   // Camera State
@@ -87,7 +99,13 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
   const [showTips, setShowTips] = useState<boolean>(false);
   const [isScanning, setIsScanning] = useState<boolean>(false);
   const [scanStatus, setScanStatus] = useState<string>(() => t('Nakieruj kartę na ramkę'));
-  const [isAutoScanEnabled, setIsAutoScanEnabled] = useState<boolean>(false);
+  const [isAutoScanEnabled, setIsAutoScanEnabled] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem('scanner.autoScan') !== '0';
+    } catch {
+      return true;
+    }
+  });
   const [isBatchMode, setIsBatchMode] = useState<boolean>(true);
   const [sessionAddedCount, setSessionAddedCount] = useState<number>(0);
 
@@ -331,6 +349,21 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
     };
   }, [isOpen, startCamera, stopCamera]);
 
+  useEffect(() => {
+    try {
+      localStorage.setItem('scanner.autoScan', isAutoScanEnabled ? '1' : '0');
+    } catch {}
+  }, [isAutoScanEnabled]);
+
+  // Silnik OCR ładujemy w tle od razu po uruchomieniu kamery, żeby pierwszy odczyt nazwy nie czekał.
+  useEffect(() => {
+    if (!isCameraActive) return;
+    const id = setTimeout(() => {
+      getTesseractWorker().catch(() => {});
+    }, 800);
+    return () => clearTimeout(id);
+  }, [isCameraActive]);
+
   // Celownik we współrzędnych klatki wideo
   const getSensorGuide = useCallback(() => {
     const video = videoRef.current;
@@ -350,6 +383,7 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
   const applyScanResult = useCallback((result: ScanResult) => {
     setScanResult(result);
     if (result.matchedCard) {
+      scanArmedRef.current = false; // nie skanuj tej samej karty ponownie, dopóki leży w kadrze
       setActiveCard(result.matchedCard);
       setManualQuery(result.matchedCard.name);
       const where = result.matchedCard.set ? ` [${result.matchedCard.set.toUpperCase()} #${result.matchedCard.collector_number}]` : '';
@@ -368,8 +402,10 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
     return false;
   }, [soundEnabled]);
 
-  // 3. Skan: wykrycie rogów, wyprostowanie, OCR nazwy i stopki, dopasowanie na serwerze
-  const performScan = useCallback(async (quad?: Quad | null) => {
+  // 3. Skan: wykrycie rogów, wyprostowanie, rozpoznanie po obrazie (a w razie potrzeby OCR), dopasowanie na serwerze.
+  // W trybie automatycznym niepewny wynik nie jest pokazywany od razu: skaner próbuje ponownie,
+  // a ta sama karta odczytana dwa razy z rzędu jest uznawana za rozpoznaną.
+  const performScan = useCallback(async (quad?: Quad | null, auto = false) => {
     if (isScanning) return;
     const video = videoRef.current;
     if (!video || video.readyState < 2) return;
@@ -381,9 +417,36 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
         guide: getSensorGuide() || undefined,
         onStatus: setScanStatus
       });
-      applyScanResult(result);
+      if (!auto) {
+        applyScanResult(result);
+        return;
+      }
+      const card = result.matchedCard;
+      const key = card ? card.name : null;
+      const sure = Boolean(card) && (result.confidence >= AUTO_ACCEPT_CONFIDENCE || result.method === 'set_number');
+      const confirmed = Boolean(key) && candidateRef.current === key;
+      if (card && (sure || confirmed)) {
+        candidateRef.current = null;
+        attemptsRef.current = 0;
+        scanArmedRef.current = false; // ta karta załatwiona — czekamy, aż zniknie z kadru
+        applyScanResult(result);
+        return;
+      }
+      // Nie ma pewności: zapamiętaj kandydata i spróbuj ponownie za chwilę.
+      candidateRef.current = key;
+      attemptsRef.current += 1;
+      nextAttemptAtRef.current = Date.now() + RETRY_DELAY_MS;
+      setScanResult(result);
+      setScanStatus(
+        key
+          ? t('Sprawdzam: "{title}"...', { title: key })
+          : attemptsRef.current >= 4
+          ? t('Nie rozpoznano karty. Popraw oświetlenie (bez odblasków) i przytrzymaj nieruchomo.')
+          : t('Rozpoznawanie... przytrzymaj kartę nieruchomo')
+      );
     } catch (err: any) {
       console.error('Błąd skanowania:', err);
+      nextAttemptAtRef.current = Date.now() + RETRY_DELAY_MS * 2;
       setScanStatus(t('Błąd przetwarzania klatki. Spróbuj ponownie lub wgraj zdjęcie.'));
     } finally {
       setIsScanning(false);
@@ -428,7 +491,12 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
           lastQuadRef.current = null;
           setOverlayPoints(null);
           setIsReticleLocked(false);
-          if (lostCountRef.current >= 2) scanArmedRef.current = true; // karta zabrana — gotowi na następną
+          if (lostCountRef.current >= 2) {
+            // karta zabrana — gotowi na następną
+            scanArmedRef.current = true;
+            attemptsRef.current = 0;
+            candidateRef.current = null;
+          }
           return;
         }
         lostCountRef.current = 0;
@@ -440,13 +508,14 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
         const steady = steadyCountRef.current >= 2;
         setIsReticleLocked(steady);
         if (steady && isAutoScanEnabled && scanArmedRef.current) {
-          scanArmedRef.current = false;
-          performScan(det.quad);
+          if (Date.now() >= nextAttemptAtRef.current && attemptsRef.current < MAX_AUTO_ATTEMPTS) {
+            performScan(det.quad, true);
+          }
         } else if (steady && !scanArmedRef.current) {
           setScanStatus(t('Zabierz kartę i połóż następną'));
         }
       } catch (_) {}
-    }, 160);
+    }, 130);
 
     return () => {
       if (motionTrackerTimerRef.current) {
@@ -959,6 +1028,36 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
                 </svg>
               )}
 
+              {/* Rozpoznana karta pokazana od razu w kadrze (zanim wczyta się grafika — zdjęcie z kamery) */}
+              {isCameraActive && activeCard && (
+                <div className="absolute top-3 inset-x-3 flex justify-center pointer-events-none animate-fade-in">
+                  <div className="flex items-center gap-3 max-w-full p-2 pr-4 rounded-2xl bg-stone-950/90 backdrop-blur-md border border-emerald-500/40 shadow-2xl">
+                    <div
+                      className="shrink-0 w-14 h-[78px] rounded-md overflow-hidden bg-stone-900 bg-cover bg-center border border-stone-700"
+                      style={scanResult?.debugCropUrl ? { backgroundImage: `url(${scanResult.debugCropUrl})` } : undefined}
+                    >
+                      <img
+                        src={activeThumbnail}
+                        alt=""
+                        referrerPolicy="no-referrer"
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                    <div className="min-w-0 text-left">
+                      <div className="flex items-center gap-1 text-[11px] font-bold text-emerald-400">
+                        <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
+                        <span>{t('Rozpoznano')}</span>
+                      </div>
+                      <div className="text-sm font-bold text-stone-100 truncate">{activeCard.name}</div>
+                      <div className="text-[11px] text-stone-400 tabular-nums truncate">
+                        {activeCard.set.toUpperCase()} #{activeCard.collector_number}
+                        {normPln > 0 && <span className="text-emerald-400 font-semibold"> · {formatCurrency(normPln, 'PLN')}</span>}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {/* Status Message Overlay at Bottom of Viewport */}
               <div className="absolute bottom-2 inset-x-4 flex items-center justify-center">
                 <div className="px-3.5 py-1.5 rounded-full bg-stone-950/85 backdrop-blur-md border border-stone-800 text-xs text-stone-200 font-medium flex items-center gap-2 shadow-lg">
@@ -1125,7 +1224,7 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
           }`}>
             {activeCard && <div className="sm:hidden mx-auto w-10 h-1.5 rounded-full bg-stone-700 -mt-1" aria-hidden="true" />}
             {/* Visual Scan Debug Snippet (Delver Lens Preprocessing & Cutouts) */}
-            {scanResult && (scanResult.debugCropUrl || scanResult.debugArtUrl || scanResult.debugTitleUrl) && (
+            {scanResult && !activeCard && (scanResult.debugCropUrl || scanResult.debugArtUrl || scanResult.debugTitleUrl) && (
               <div className="hidden sm:block p-2.5 bg-stone-950/85 rounded-xl border border-stone-800 space-y-2 text-xs text-left shrink-0">
                 <div className="flex items-center justify-between text-[11px] text-stone-400">
                   <span className="font-semibold text-stone-300 flex items-center gap-1.5">
@@ -1260,7 +1359,10 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
                 <div className="p-3.5 bg-stone-950/80 rounded-xl border border-stone-800 space-y-3">
                   <div className="flex items-start gap-3">
                     {/* Card Thumbnail */}
-                    <div className="shrink-0 w-20 h-28 rounded-lg overflow-hidden bg-stone-900 border border-stone-700 shadow-md relative">
+                    <div
+                      className="shrink-0 w-20 h-28 rounded-lg overflow-hidden bg-stone-900 bg-cover bg-center border border-stone-700 shadow-md relative"
+                      style={scanResult?.debugCropUrl ? { backgroundImage: `url(${scanResult.debugCropUrl})` } : undefined}
+                    >
                       <img
                         src={activeThumbnail}
                         alt={activeCard.name}

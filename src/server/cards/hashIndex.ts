@@ -10,7 +10,7 @@
 import type pg from 'pg';
 import { getPool, isPostgresActive } from '../db/storage';
 import { APP_USER_AGENT } from '../userAgent';
-import { HASH_BYTES, HASH_VERSION, combinedDistance, computeCardHash, decodeJpegToGray } from './imageHash';
+import { HASH_BYTES, HASH_VERSION, HASH_WORDS, asWords, combinedDistance32, computeCardHash, decodeJpegToGray } from './imageHash';
 
 const IMAGE_HEADERS = { 'User-Agent': APP_USER_AGENT, Accept: 'image/jpeg' };
 const DOWNLOAD_CONCURRENCY = 4;
@@ -19,6 +19,7 @@ const FAILED_VERSION = -HASH_VERSION;
 
 let ids: string[] = [];
 let store = new Uint8Array(0);
+let store32 = new Uint32Array(0); // ten sam bufor co `store`, widok 32-bitowy
 let count = 0;
 let positions = new Map<string, number[]>(); // id wydania → pozycje w buforze (przód/tył)
 let building = false;
@@ -33,6 +34,7 @@ function append(id: string, hash: Uint8Array): void {
     const bigger = new Uint8Array(Math.max(1024, (count + 1) * 2) * HASH_BYTES);
     bigger.set(store.subarray(0, count * HASH_BYTES));
     store = bigger;
+    store32 = new Uint32Array(store.buffer);
   }
   store.set(hash, count * HASH_BYTES);
   ids[count] = id;
@@ -59,6 +61,7 @@ export async function loadHashIndex(): Promise<void> {
   const res = await p.query('SELECT id, card_hash, back_hash FROM scryfall_cards WHERE hash_version = $1', [HASH_VERSION]);
   ids = [];
   store = new Uint8Array(0);
+  store32 = new Uint32Array(0);
   count = 0;
   positions = new Map();
   for (const r of res.rows) {
@@ -159,23 +162,50 @@ export interface HashMatch {
   distance: number; // 0..1024, mniej = bardziej podobne
 }
 
+/** Ile najlepszych wyników zgrubnego przeszukania całego indeksu porównujemy dokładnie (wszystkie warianty). */
+const COARSE_CANDIDATES = 600;
+
 /**
  * Najbliższe odciski. Z listą `candidateIds` porównuje tylko te wydania
  * (np. wszystkie wydania nazwy odczytanej przez OCR); bez niej — cały indeks.
  * Każda karta występuje w wyniku raz (lepsza ze stron karty dwustronnej).
+ *
+ * `query` może być listą wariantów odcisku (zdjęcie z kamery z lekko przesuniętym kadrem);
+ * odległość to minimum po wariantach. Przy przeszukiwaniu całego indeksu najpierw
+ * wybieramy kandydatów pierwszym wariantem, a dopiero ich porównujemy ze wszystkimi.
  */
-export function searchByHash(query: Uint8Array, limit = 10, candidateIds?: string[]): HashMatch[] {
+export function searchByHash(query: Uint8Array | Uint8Array[], limit = 10, candidateIds?: string[]): HashMatch[] {
+  const variants = (Array.isArray(query) ? query : [query]).map(asWords);
+  if (!variants.length || count === 0) return [];
   const best = new Map<string, number>();
-  const consider = (i: number) => {
+  const consider = (i: number, vs: Uint32Array[]) => {
+    let d = Infinity;
+    for (const v of vs) {
+      const dv = combinedDistance32(v, store32, i * HASH_WORDS);
+      if (dv < d) d = dv;
+    }
     const id = ids[i];
-    const d = combinedDistance(query, store, i * HASH_BYTES);
     const prev = best.get(id);
     if (prev === undefined || d < prev) best.set(id, d);
   };
+
   if (candidateIds) {
-    for (const id of candidateIds) for (const i of positions.get(id) || []) consider(i);
+    for (const id of candidateIds) for (const i of positions.get(id) || []) consider(i, variants);
   } else {
-    for (let i = 0; i < count; i++) consider(i);
+    // zgrubnie: pierwszy wariant po całym indeksie, zachowujemy N najbliższych pozycji
+    const coarse = variants[0];
+    const k = Math.min(count, Math.max(limit, COARSE_CANDIDATES));
+    const topD = new Float64Array(k).fill(Infinity);
+    const topI = new Int32Array(k).fill(-1);
+    let worst = 0; // indeks najgorszego elementu w topD
+    for (let i = 0; i < count; i++) {
+      const d = combinedDistance32(coarse, store32, i * HASH_WORDS);
+      if (d >= topD[worst]) continue;
+      topD[worst] = d;
+      topI[worst] = i;
+      for (let j = 0; j < k; j++) if (topD[j] > topD[worst]) worst = j;
+    }
+    for (let j = 0; j < k; j++) if (topI[j] >= 0) consider(topI[j], variants);
   }
   return [...best.entries()]
     .map(([id, distance]) => ({ id, distance }))

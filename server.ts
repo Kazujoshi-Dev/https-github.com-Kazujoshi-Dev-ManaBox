@@ -16,7 +16,7 @@ const translateToEnglish = (message: string) => translateWith(EN, EN_PATTERNS, m
 import { getCommanderRecommendations } from './src/server/edhrec';
 import * as cards from './src/server/cards/cardStore';
 import * as hashes from './src/server/cards/hashIndex';
-import { computeCardHash, decodeJpegToGray } from './src/server/cards/imageHash';
+import { computeQueryHashes, decodeJpegToGray } from './src/server/cards/imageHash';
 import { normalizeName, nameSimilarity } from './src/server/cards/nameMatch';
 import { searchCities, resolveSuggestion } from './src/server/geo';
 import { APP_USER_AGENT } from './src/server/userAgent';
@@ -1000,9 +1000,18 @@ app.post('/api/scanner/delver-identify', authMiddleware, scannerLimiter, async (
       return res.status(400).json({ error: 'Brak obrazu karty, odczytanej nazwy ani kodu setu i numeru.' });
     }
 
-    const result = cards.isCardDbReady()
+    let result = cards.isCardDbReady()
       ? await identifyWithLocalDb(hintTitle, hintSet, hintCollector, queryHash)
       : await identifyWithScryfallApi(hintTitle, hintSet, hintCollector);
+
+    // Karta położona do góry nogami: obraz obrócony o 180° (OCR takiej karty i tak nic nie da).
+    if (!result.matchedCard && cards.isCardDbReady() && queryHash) {
+      const rotated = hashCardImage(req.body?.cardImageBase64, true);
+      if (rotated) {
+        const flipped = await identifyWithLocalDb('', '', '', rotated);
+        if (flipped.matchedCard) result = flipped;
+      }
+    }
 
     const matched = result.matchedCard;
     // Jedna linia na skan — do strojenia progów na prawdziwych zdjęciach (bez danych użytkownika).
@@ -1044,20 +1053,26 @@ const MAX_PRINTINGS = 40;
 const IMAGE_ACCEPT_DISTANCE = 300; // rozpoznanie wyłącznie po obrazie
 const IMAGE_MIN_MARGIN = 25; // wymagana przewaga nad najlepszą inną kartą
 const IMAGE_SET_TOLERANCE = 40; // set z OCR wygrywa, jeśli jego obraz jest niewiele gorszy
+const IMAGE_TITLE_BONUS = 40; // luźniejszy próg obrazu, gdy częściowo odczytana nazwa się zgadza
 
-/** Odcisk przesłanego zdjęcia karty (JPEG jako data URL); null, gdy brak lub niepoprawny. */
-function hashCardImage(dataUrl: unknown): Uint8Array | null {
+/**
+ * Odciski przesłanego zdjęcia karty (JPEG jako data URL); null, gdy brak lub niepoprawny.
+ * Kilka wariantów kadru, bo rogi wykryte na zdjęciu bywają przesunięte o parę procent.
+ */
+function hashCardImage(dataUrl: unknown, rotate180 = false): Uint8Array[] | null {
   if (typeof dataUrl !== 'string' || !dataUrl.startsWith('data:image/jpeg;base64,')) return null;
   if (dataUrl.length > 2_000_000) return null;
   try {
-    return computeCardHash(decodeJpegToGray(Buffer.from(dataUrl.slice(23), 'base64')));
+    const img = decodeJpegToGray(Buffer.from(dataUrl.slice(23), 'base64'));
+    if (rotate180) img.data.reverse();
+    return computeQueryHashes(img);
   } catch {
     return null;
   }
 }
 
 /** Sortuje wydania wg podobieństwa obrazu (gdy jest odcisk), zachowując resztę na końcu. */
-function rankByImage(ids: string[], queryHash: Uint8Array | null) {
+function rankByImage(ids: string[], queryHash: Uint8Array[] | null) {
   if (!queryHash || !hashes.hasHashes()) return { ordered: ids, distances: new Map<string, number>() };
   const ranked = hashes.searchByHash(queryHash, ids.length, ids);
   const distances = new Map(ranked.map((r) => [r.id, r.distance]));
@@ -1065,7 +1080,7 @@ function rankByImage(ids: string[], queryHash: Uint8Array | null) {
   return { ordered: [...withHash, ...ids.filter((id) => !distances.has(id))], distances };
 }
 
-async function identifyWithLocalDb(title: string, set: string, collector: string, queryHash: Uint8Array | null): Promise<IdentifyResult> {
+async function identifyWithLocalDb(title: string, set: string, collector: string, queryHash: Uint8Array[] | null): Promise<IdentifyResult> {
   const nameHits = title ? cards.findByName(title, 3) : [];
   const exactId = set && collector ? cards.findIdBySetNumber(set, collector) : null;
 
@@ -1119,13 +1134,18 @@ async function identifyWithLocalDb(title: string, set: string, collector: string
     const bestName = best ? cards.nameOfId(best.id) : null;
     const rival = top.find((m) => cards.nameOfId(m.id) !== bestName);
     const margin = rival ? rival.distance - best.distance : Infinity;
-    if (best && bestName && best.distance <= IMAGE_ACCEPT_DISTANCE && margin >= IMAGE_MIN_MARGIN) {
+    // Częściowo odczytana nazwa (np. 2 błędne litery) potwierdza kartę wskazaną przez obraz.
+    const titleAgrees = Boolean(title.length >= 4 && bestName && nameSimilarity(normalizeName(bestName), normalizeName(title)) >= 0.5);
+    const imageSure = best && best.distance <= IMAGE_ACCEPT_DISTANCE && margin >= IMAGE_MIN_MARGIN;
+    const imageWithTitle = best && titleAgrees && best.distance <= IMAGE_ACCEPT_DISTANCE + IMAGE_TITLE_BONUS;
+    if (best && bestName && (imageSure || imageWithTitle)) {
       const ranked = rankByImage(cards.printingsOfName(bestName), queryHash);
       printings = ranked.ordered;
       distances = ranked.distances;
       matchedId = printings[0];
       method = 'image';
       confidence = Math.round(Math.min(95, 60 + margin / 2));
+      if (titleAgrees) confidence = Math.max(confidence, 90);
     }
   }
 

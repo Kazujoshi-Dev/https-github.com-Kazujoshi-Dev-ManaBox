@@ -80,6 +80,36 @@ function areaResize(img: GrayImage, r: Region, outW: number, outH: number): Floa
   return out;
 }
 
+/**
+ * Niedokładnie wykryte rogi karty przesuwają lub skalują cały kadr. Wariant odcisku
+ * zapytania liczymy z regionów przekształconych tak samo, jak zrobiłby to taki błąd:
+ * u' = 0.5 + (u − 0.5)·s + dx (analogicznie v).
+ */
+export interface FrameJitter {
+  dx: number;
+  dy: number;
+  s: number;
+}
+
+const NO_JITTER: FrameJitter = { dx: 0, dy: 0, s: 1 };
+
+function jitterRegion(r: Region, j: FrameJitter): Region {
+  const fx = (u: number) => 0.5 + (u - 0.5) * j.s + j.dx;
+  const fy = (v: number) => 0.5 + (v - 0.5) * j.s + j.dy;
+  return { x0: fx(r.x0), y0: fy(r.y0), x1: fx(r.x1), y1: fy(r.y1) };
+}
+
+/**
+ * Warianty dla zdjęcia z kamery: przesunięcia o ±2% i skala ±3%. Pierwszy to wariant
+ * bez zmian (do zgrubnego przeszukania całego indeksu), pozostałe do dokładnego porównania.
+ */
+const QUERY_JITTERS: FrameJitter[] = [
+  NO_JITTER,
+  ...[-0.02, 0, 0.02].flatMap((dx) => [-0.02, 0, 0.02].map((dy) => ({ dx, dy, s: 1 }))).filter((j) => j.dx || j.dy),
+  { dx: 0, dy: 0, s: 0.97 },
+  { dx: 0, dy: 0, s: 1.03 }
+];
+
 function regionHash(img: GrayImage, r: Region, out: Uint8Array, offset: number): void {
   let bit = 0;
   const setBit = (on: boolean) => {
@@ -99,11 +129,16 @@ function regionHash(img: GrayImage, r: Region, out: Uint8Array, offset: number):
 }
 
 /** Odcisk karty: 64 bajty ilustracji + 64 bajty całej karty. Obraz musi być wyprostowaną, całą kartą. */
-export function computeCardHash(img: GrayImage): Uint8Array {
+export function computeCardHash(img: GrayImage, jitter: FrameJitter = NO_JITTER): Uint8Array {
   const out = new Uint8Array(HASH_BYTES);
-  regionHash(img, ART_REGION, out, 0);
-  regionHash(img, CARD_REGION, out, REGION_BYTES);
+  regionHash(img, jitterRegion(ART_REGION, jitter), out, 0);
+  regionHash(img, jitterRegion(CARD_REGION, jitter), out, REGION_BYTES);
   return out;
+}
+
+/** Odciski zdjęcia z kamery: [0] bez zmian, dalej warianty tolerujące niedokładne rogi. */
+export function computeQueryHashes(img: GrayImage): Uint8Array[] {
+  return QUERY_JITTERS.map((j) => computeCardHash(img, j));
 }
 
 const POPCOUNT8 = new Uint8Array(256);
@@ -124,4 +159,28 @@ export function combinedDistance(query: Uint8Array, store: Uint8Array, offset: n
   const art = hamming(query, 0, store, offset, REGION_BYTES);
   const card = hamming(query, REGION_BYTES, store, offset + REGION_BYTES, REGION_BYTES);
   return art * 1.25 + card * 0.75;
+}
+
+export const HASH_WORDS = HASH_BYTES / 4;
+const REGION_WORDS = REGION_BYTES / 4;
+
+function popcount32(x: number): number {
+  x = x - ((x >>> 1) & 0x55555555);
+  x = (x & 0x33333333) + ((x >>> 2) & 0x33333333);
+  return (Math.imul((x + (x >>> 4)) & 0x0f0f0f0f, 0x01010101) >>> 24);
+}
+
+/** To samo co combinedDistance, ale na słowach 32-bitowych (ok. 2× szybciej przy przeszukiwaniu całego indeksu). */
+export function combinedDistance32(query: Uint32Array, store: Uint32Array, wordOffset: number): number {
+  let art = 0;
+  let card = 0;
+  for (let k = 0; k < REGION_WORDS; k++) art += popcount32(query[k] ^ store[wordOffset + k]);
+  for (let k = REGION_WORDS; k < HASH_WORDS; k++) card += popcount32(query[k] ^ store[wordOffset + k]);
+  return art * 1.25 + card * 0.75;
+}
+
+/** Widok 32-bitowy odcisku (kopiuje, gdy bufor nie jest wyrównany do 4 bajtów). */
+export function asWords(hash: Uint8Array): Uint32Array {
+  if (hash.byteOffset % 4 === 0) return new Uint32Array(hash.buffer, hash.byteOffset, hash.byteLength >> 2);
+  return new Uint32Array(hash.slice().buffer);
 }

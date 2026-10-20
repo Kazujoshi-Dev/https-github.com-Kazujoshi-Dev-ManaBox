@@ -2,8 +2,10 @@
  * Silnik skanera kart (przeglądarka).
  *
  *  klatka kamery → wykrycie rogów karty → wyprostowanie perspektywy →
- *  OCR nazwy (pasek tytułu) i stopki (kod setu + numer) → serwer
- *  (lokalna baza kart + odciski obrazów) → wynik z listą wydań.
+ *  1) sam obraz do serwera (odciski ilustracji i całej karty, jak w Delver Lens) —
+ *     zwykle wystarcza i trwa ułamek sekundy;
+ *  2) gdy obraz nie jest jednoznaczny: OCR nazwy (pasek tytułu) i stopki
+ *     (kod setu + numer) → serwer (lokalna baza kart + odciski) → wynik z listą wydań.
  */
 import type { Worker } from 'tesseract.js';
 import { fetchWithAuth } from '../../services/api';
@@ -208,12 +210,27 @@ async function ocrFooter(canvas: HTMLCanvasElement): Promise<string> {
   });
 }
 
+/** Pewność, od której wynik samego obrazu uznajemy bez czekania na OCR. */
+export const QUICK_IMAGE_CONFIDENCE = 85;
+
+async function identify(body: Record<string, unknown>, onStatus?: (text: string) => void): Promise<any> {
+  const res = await fetchWithAuth('/api/scanner/delver-identify', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body)
+  });
+  if (res.status === 429) onStatus?.(t('Skanujesz zbyt szybko, chwila przerwy.'));
+  return res.ok ? res.json() : {};
+}
+
 export interface RecognizeOptions {
   onStatus?: (text: string) => void;
   /** Wynik szybkiego wykrywania z pętli na żywo (oszczędza ponowne wykrywanie). */
   quad?: Quad | null;
   /** Celownik we współrzędnych źródła — gdzie szukać karty, gdy brak `quad`. */
   guide?: Rect;
+  /** Najpierw samo rozpoznanie po obrazie (domyślnie tak); OCR tylko, gdy obraz nie wystarczy. */
+  imageFirst?: boolean;
 }
 
 /** Pełne rozpoznanie karty z klatki kamery lub zdjęcia. */
@@ -242,11 +259,40 @@ export async function recognizeCard(
   const cardRgba = warpCardRegion(pixels, w, h, quad, 300, 420);
   const cardCanvas = toCanvas(cardRgba, 300, 420);
   const cardDataUrl = cardCanvas.toDataURL('image/jpeg', 0.85);
+  frame.width = frame.height = 0; // zwolnienie pamięci (piksele zostają w `pixels`)
+
+  const base: ScanResult = {
+    rawText: '',
+    cleanedTitle: '',
+    confidence: 0,
+    matchedCard: null,
+    possibleCards: [],
+    debugCropUrl: cardDataUrl,
+    engineUsed: 'delver_lens',
+    isAutoCropped: detected,
+    quad: detected ? quad : undefined
+  };
+
+  // 1. Szybka ścieżka: tylko obraz. Bez OCR odpowiedź przychodzi w ułamku sekundy.
+  if (detected && opts.imageFirst !== false) {
+    opts.onStatus?.(t('Dopasowywanie w bazie kart...'));
+    const quick = await identify({ cardImageBase64: cardDataUrl }, opts.onStatus).catch(() => ({}));
+    if (quick.matchedCard && (quick.confidence || 0) >= QUICK_IMAGE_CONFIDENCE) {
+      return {
+        ...base,
+        confidence: quick.confidence,
+        matchedCard: quick.matchedCard,
+        possibleCards: quick.possibleCards || [],
+        method: quick.method
+      };
+    }
+  }
+
+  // 2. Obraz niejednoznaczny: OCR nazwy i stopki, potem pełne dopasowanie.
   const titleRgba = warpCardRegion(pixels, w, h, quad, 640, 100, TITLE_REGION);
   const footerRgba = warpCardRegion(pixels, w, h, quad, 600, 150, FOOTER_REGION);
   const titleCanvas = prepareForOcr(titleRgba, 640, 100);
   const footerCanvas = prepareForOcr(footerRgba, 600, 150);
-  frame.width = frame.height = 0; // zwolnienie pamięci
 
   opts.onStatus?.(t('Odczyt nazwy i numeru karty...'));
   const [title, footerText] = await Promise.all([
@@ -256,20 +302,18 @@ export async function recognizeCard(
   const footer = parseFooter(footerText);
 
   opts.onStatus?.(t('Dopasowywanie w bazie kart...'));
-  const res = await fetchWithAuth('/api/scanner/delver-identify', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
+  const data: any = await identify(
+    {
       cardImageBase64: cardDataUrl,
       hintTitle: title,
       hintSet: footer.set,
       hintCollector: footer.collectorNumber
-    })
-  });
-  const data: any = res.ok ? await res.json() : {};
-  if (res.status === 429) opts.onStatus?.(t('Skanujesz zbyt szybko, chwila przerwy.'));
+    },
+    opts.onStatus
+  );
 
   return {
+    ...base,
     rawText: title,
     cleanedTitle: title,
     detectedSet: footer.set,
@@ -277,12 +321,8 @@ export async function recognizeCard(
     confidence: data.confidence || 0,
     matchedCard: data.matchedCard || null,
     possibleCards: data.possibleCards || [],
-    debugCropUrl: cardDataUrl,
     debugTitleUrl: titleCanvas.toDataURL('image/png'),
     debugBottomUrl: footerCanvas.toDataURL('image/png'),
-    engineUsed: 'delver_lens',
-    isAutoCropped: detected,
-    method: data.method,
-    quad: detected ? quad : undefined
+    method: data.method
   };
 }

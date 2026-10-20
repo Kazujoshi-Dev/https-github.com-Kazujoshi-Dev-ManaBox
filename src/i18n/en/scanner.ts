@@ -168,4 +168,7 @@ export const en_scanner: Record<string, string> = {
   "„Uruchom kamerę wirtualną”": "“Start Virtual Camera”",
   "„Zeskanuj”": "“Scan”",
   "✕ Zamknij": "✕ Close",
+  "Sprawdzam: \"{title}\"...": "Checking: \"{title}\"...",
+  "Rozpoznawanie... przytrzymaj kartę nieruchomo": "Recognising... hold the card still",
+  "Rozpoznano": "Recognised",
 };
