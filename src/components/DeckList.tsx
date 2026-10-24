@@ -7,7 +7,8 @@ import { ArtistCredit } from './ui/ArtistCredit';
 import { exportDeckToTxt, downloadTxtFile } from '../utils/textCardList';
 import { DECK_FORMATS, computeWildcardCost, getDeckFormat, type DeckFormat } from '../utils/mtgFormats';
 import { WildcardCost } from './deck-builder/WildcardCost';
-import { Swords, Plus, Crown, Trash2, Download, Copy, Check, Upload, FileText, Pencil, FolderInput, Loader2 } from 'lucide-react';
+import { Swords, Plus, Crown, Trash2, Download, Copy, Check, Upload, FileText, Pencil, FolderInput, Loader2, Search } from 'lucide-react';
+import { DeckCardSearchResults } from './deck-builder/DeckCardSearchResults';
 import { useT, MAIN_BINDER, binderName } from '../i18n';
 
 interface DeckListProps {
@@ -42,6 +43,9 @@ export const DeckList: React.FC<DeckListProps> = ({
   const [copyingId, setCopyingId] = useState<string | null>(null);
   // Podzakładki formatów: pojawiają się, gdy w danym formacie jest choć jedna talia
   const [formatTab, setFormatTab] = useState<string>('all');
+  // Wyszukiwarka kart we wszystkich taliach
+  const [cardQuery, setCardQuery] = useState('');
+  const isSearching = cardQuery.trim().length > 0;
 
   const formatTabs = useMemo(() => {
     const counts = new Map<string, number>();
@@ -135,6 +139,22 @@ export const DeckList: React.FC<DeckListProps> = ({
           </div>
         </div>
       ) : (
+        <>
+        <label className="relative block md:max-w-sm">
+          <Search className="w-4 h-4 text-stone-500 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+          <input
+            type="search"
+            value={cardQuery}
+            onChange={(e) => setCardQuery(e.target.value)}
+            onKeyDown={(e) => { if (e.key === 'Escape') setCardQuery(''); }}
+            placeholder={t('Szukaj karty we wszystkich taliach')}
+            aria-label={t('Szukaj karty we wszystkich taliach')}
+            className="w-full h-9 bg-stone-950 border border-stone-800 rounded-lg pl-9 pr-3 text-sm text-stone-200 placeholder:text-stone-500 focus:outline-none focus:border-stone-600"
+          />
+        </label>
+        {isSearching ? (
+          <DeckCardSearchResults decks={decks} query={cardQuery} onSelectDeck={onSelectDeck} />
+        ) : (
         <>
         <div
           className="flex gap-1.5 overflow-x-auto no-scrollbar -mx-4 px-4 sm:mx-0 sm:px-0"
@@ -292,6 +312,8 @@ export const DeckList: React.FC<DeckListProps> = ({
             );
           })}
         </div>
+        </>
+        )}
         </>
       )}
     </div>

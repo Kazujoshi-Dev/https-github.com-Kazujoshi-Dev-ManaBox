@@ -1,4 +1,11 @@
 export const en_decks: Record<string, string> = {
+  "Szukaj karty we wszystkich taliach": "Search for a card in all decks",
+  "Wpisz co najmniej {n} znaki nazwy karty.": "Type at least {n} characters of the card name.",
+  "Żadna z Twoich talii nie zawiera karty „{q}”.": "None of your decks contains the card “{q}”.",
+  "Znalezione karty: {cards}, w taliach: {decks}": "Cards found: {cards}, in decks: {decks}",
+  "{n} szt. w {d} taliach": "{n} copies in {d} decks",
+  "Sideboard": "Sideboard",
+  "Pokazano {n} pierwszych wyników. Doprecyzuj nazwę, żeby zawęzić listę.": "Showing the first {n} results. Refine the name to narrow the list.",
   " Ten format nie ma dowódcy, więc dowódca zostanie usunięty.": " This format has no commander, so the commander will be removed.",
   "Bez dowódcy": "No commander",
   "Buduj talię wyłącznie z kart, które posiadasz fizycznie w swojej kolekcji ({n} pozycji).": "Build the deck only from cards you physically own in your collection ({n} entries).",
