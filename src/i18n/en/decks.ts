@@ -211,6 +211,7 @@ export const en_decks: Record<string, string> = {
   "Lands dają": "Lands produce",
   "Lands w ręce:": "Lands in hand:",
   "Lepsze odpowiedniki": "Better alternatives",
+  "rzadko": "rarely",
   "Liczba kart w talii:": "Cards in deck:",
   "Liczba kroków:": "Number of steps:",
   "Liczba potrzebnych źródeł to tyle Lands danego koloru, by najbardziej wymagającą kartę zagrać w turze równej jej kosztowi z szansą ok. 90% (gra na wyjściu, Land co turę), według metody Franka Karstena. Hybrydy i koszty phyrexian liczą się do rozkładu po 0,5.": "The required number of sources is how many Lands of a colour you need to cast the most demanding card on the turn equal to its mana value with about a 90% chance (on the play, a Land every turn), following Frank Karsten's method. Hybrid and Phyrexian costs count as 0.5 towards the split.",
