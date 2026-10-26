@@ -1,4 +1,4 @@
-import { CollectionItem, DeckItem, ScryfallCard } from '../types';
+import { CollectionItem, DeckItem, ScryfallCard, CardCondition, CardLanguage } from '../types';
 import { t } from '../i18n';
 
 export interface ParsedCardLine {
@@ -9,6 +9,14 @@ export interface ParsedCardLine {
   collectorNumber?: string;
   isFoil: boolean;
   isCommander: boolean;
+  /** Dokładny print (Scryfall ID), np. z pliku CSV z ManaBox. */
+  scryfallId?: string;
+  /** Stan i język z pliku (gdy plik je podaje). */
+  condition?: CardCondition;
+  language?: CardLanguage;
+  /** Nazwa i rodzaj klasera z ManaBox („binder”, „deck”, „list”). */
+  binder?: string;
+  binderType?: string;
 }
 
 export interface ParsedTextList {
@@ -185,8 +193,72 @@ export function parseTxtDeckOrCollection(text: string): ParsedTextList {
   };
 }
 
+type CollectionIdentifier =
+  | { id: string }
+  | { set: string; collector_number: string }
+  | { name: string; set: string }
+  | { name: string };
+
+const cleanNum = (n: string | undefined) => (n || '').toLowerCase().replace(/^0+/, '');
+
+function identifierOf(p: ParsedCardLine): CollectionIdentifier {
+  if (p.scryfallId) return { id: p.scryfallId };
+  if (p.set && p.collectorNumber) return { set: p.set.toLowerCase(), collector_number: p.collectorNumber };
+  if (p.set && p.name) return { name: p.name, set: p.set.toLowerCase() };
+  return { name: p.name };
+}
+
+const identKey = (i: CollectionIdentifier) => JSON.stringify(i).toLowerCase();
+
+/** Indeks znalezionych kart: po id, secie i numerze, nazwie z setem i samej nazwie (pierwsza karta wygrywa). */
+class CardPool {
+  private byId = new Map<string, ScryfallCard>();
+  private bySetNum = new Map<string, ScryfallCard>();
+  private byNameSet = new Map<string, ScryfallCard>();
+  private byName = new Map<string, ScryfallCard>();
+
+  add(cards: ScryfallCard[]) {
+    const setIfMissing = (m: Map<string, ScryfallCard>, k: string, c: ScryfallCard) => {
+      if (!m.has(k)) m.set(k, c);
+    };
+    for (const c of cards) {
+      if (!c) continue;
+      if (c.id) setIfMissing(this.byId, c.id.toLowerCase(), c);
+      const set = (c.set || '').toLowerCase();
+      if (set && c.collector_number) setIfMissing(this.bySetNum, `${set}|${cleanNum(c.collector_number)}`, c);
+      const full = (c.name || '').toLowerCase();
+      if (!full) continue;
+      const names = full.includes(' // ') ? [full, full.split(' // ')[0]] : [full];
+      for (const n of names) {
+        setIfMissing(this.byName, n, c);
+        if (set) setIfMissing(this.byNameSet, `${n}|${set}`, c);
+      }
+    }
+  }
+
+  match(p: ParsedCardLine): ScryfallCard | undefined {
+    const set = (p.set || '').toLowerCase();
+    const name = p.name.toLowerCase();
+    // 0: dokładny print (Scryfall ID)
+    if (p.scryfallId) {
+      const hit = this.byId.get(p.scryfallId.toLowerCase());
+      if (hit) return hit;
+    }
+    // 1: set + numer kolekcjonerski (bez zer z przodu)
+    if (set && p.collectorNumber) {
+      const hit = this.bySetNum.get(`${set}|${cleanNum(p.collectorNumber)}`);
+      if (hit) return hit;
+    }
+    if (!name) return undefined;
+    // 2: nazwa + set, 3: sama nazwa
+    return (set && this.byNameSet.get(`${name}|${set}`)) || this.byName.get(name);
+  }
+}
+
 /**
- * Resolves an array of parsed card lines with Scryfall via batch /cards/collection API
+ * Resolves an array of parsed card lines with Scryfall via batch /cards/collection API.
+ * Do serwera trafiają tylko unikalne identyfikatory (np. ta sama karta w kilku stanach lub klaserach
+ * pyta raz), a karty z pliku z Scryfall ID są dopasowywane do dokładnego printu.
  */
 export async function resolveCardsFromScryfall(
   parsedLines: ParsedCardLine[],
@@ -194,93 +266,76 @@ export async function resolveCardsFromScryfall(
 ): Promise<ResolvedImportItem[]> {
   if (parsedLines.length === 0) return [];
 
-  onProgress?.(0, parsedLines.length, t('Przygotowywanie zapytania do Scryfall...'));
+  const total = parsedLines.length;
+  onProgress?.(0, total, t('Przygotowywanie zapytania do Scryfall...'));
 
-  // Build identifiers for Scryfall
-  const identifiers = parsedLines.map((p) => {
-    if (p.set && p.collectorNumber) {
-      return { set: p.set.toLowerCase(), collector_number: p.collectorNumber };
+  const pool = new CardPool();
+
+  /** Wysyła unikalne identyfikatory paczkami i dokłada znalezione karty do puli. */
+  const fetchIdentifiers = async (idents: CollectionIdentifier[], progressBase: number, progressSpan: number) => {
+    const unique = new Map<string, CollectionIdentifier>();
+    for (const i of idents) unique.set(identKey(i), i);
+    const list = [...unique.values()];
+    // Paczki po 500: przy dużych importach widać postęp, a pojedyncze zapytanie nie trwa długo
+    const CHUNK = 500;
+    for (let start = 0; start < list.length; start += CHUNK) {
+      const done = progressBase + Math.round((start / list.length) * progressSpan);
+      onProgress?.(done, total, t('Dopasowywanie kart: {n} z {total}', { n: done, total }));
+      try {
+        const res = await fetch('/api/scryfall/collection', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ identifiers: list.slice(start, start + CHUNK) }),
+        });
+        if (res.status === 429) {
+          const data = await res.json().catch(() => ({}));
+          throw new Error(data.error ? t(data.error) : t('Za dużo importów w krótkim czasie. Spróbuj za kilka minut.'));
+        }
+        if (res.ok) {
+          const data = await res.json();
+          pool.add(Array.isArray(data.data) ? data.data : []);
+        }
+      } catch (err: any) {
+        if (/Spróbuj|limit|Za dużo|Try|Too many/i.test(String(err?.message))) throw err;
+        console.error('Błąd pobierania zbiorczego ze Scryfall:', err);
+      }
     }
-    if (p.set && p.name) {
-      return { name: p.name, set: p.set.toLowerCase() };
-    }
-    return { name: p.name };
+  };
+
+  await fetchIdentifiers(parsedLines.map(identifierOf), 0, total);
+  const resolvedItems: ResolvedImportItem[] = parsedLines.map((p) => {
+    const card = pool.match(p);
+    return { parsed: p, card: card || null, error: card ? undefined : t('Nie znaleziono w Scryfall') };
   });
 
-  const resolvedItems: ResolvedImportItem[] = [];
-  const total = parsedLines.length;
-
-  // Paczki po 500 linii: przy dużych importach widać postęp, a pojedyncze zapytanie nie trwa długo
-  const CHUNK = 500;
-  for (let start = 0; start < total; start += CHUNK) {
-    const chunkLines = parsedLines.slice(start, start + CHUNK);
-    const chunkIdents = identifiers.slice(start, start + CHUNK);
-    onProgress?.(start, total, t('Dopasowywanie kart: {n} z {total}', { n: start, total }));
-
-    let foundCards: ScryfallCard[] = [];
-    try {
-      const res = await fetch('/api/scryfall/collection', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ identifiers: chunkIdents }),
-      });
-      if (res.status === 429) {
-        const data = await res.json().catch(() => ({}));
-        throw new Error(data.error ? t(data.error) : t('Za dużo importów w krótkim czasie. Spróbuj za kilka minut.'));
+  // Nieznane Scryfall ID (np. print usunięty ze Scryfall): druga próba po secie i numerze
+  const missingById = resolvedItems.filter((r) => !r.card && r.parsed.scryfallId && r.parsed.set && r.parsed.collectorNumber);
+  if (missingById.length > 0) {
+    await fetchIdentifiers(
+      missingById.map((r) => ({ set: r.parsed.set!.toLowerCase(), collector_number: r.parsed.collectorNumber! })),
+      total - missingById.length,
+      missingById.length
+    );
+    for (const item of missingById) {
+      const card = pool.match({ ...item.parsed, scryfallId: undefined });
+      if (card) {
+        item.card = card;
+        item.error = undefined;
       }
-      if (res.ok) {
-        const data = await res.json();
-        foundCards = Array.isArray(data.data) ? data.data : [];
-      }
-    } catch (err: any) {
-      if (/Spróbuj|limit|Za dużo/i.test(String(err?.message))) throw err;
-      console.error('Błąd pobierania zbiorczego ze Scryfall:', err);
-    }
-
-    for (const p of chunkLines) {
-      let matched: ScryfallCard | undefined;
-      const cleanPNum = (p.collectorNumber || '').toLowerCase().replace(/^0+/, '');
-      const cleanPName = p.name.toLowerCase();
-
-      // 1: dokładny set + numer kolekcjonerski (bez zer z przodu)
-      if (p.set && p.collectorNumber) {
-        matched = foundCards.find((c) => {
-          const cleanCNum = (c.collector_number || '').toLowerCase().replace(/^0+/, '');
-          return c.set?.toLowerCase() === p.set?.toLowerCase() && cleanCNum === cleanPNum;
-        });
-      }
-      // 2: nazwa + set
-      if (!matched && p.set) {
-        matched = foundCards.find(
-          (c) =>
-            (c.name?.toLowerCase() === cleanPName || c.name?.toLowerCase().startsWith(cleanPName + ' //')) &&
-            c.set?.toLowerCase() === p.set?.toLowerCase()
-        );
-      }
-      // 3: sama nazwa
-      if (!matched) {
-        matched = foundCards.find(
-          (c) => c.name?.toLowerCase() === cleanPName || c.name?.toLowerCase().startsWith(cleanPName + ' //')
-        );
-      }
-
-      resolvedItems.push({
-        parsed: p,
-        card: matched || null,
-        error: matched ? undefined : t('Nie znaleziono w Scryfall'),
-      });
     }
   }
 
   // Fallback for any cards not found in batch collection: try fuzzy named lookup
-  const missingItems = resolvedItems.filter((r) => !r.card);
+  const missingItems = resolvedItems.filter((r) => !r.card && r.parsed.name);
   if (missingItems.length > 0) {
     onProgress?.(
-      parsedLines.length - missingItems.length,
-      parsedLines.length,
+      total - missingItems.length,
+      total,
       t('Wyszukiwanie uzupełniające dla {n} kart...', { n: missingItems.length })
     );
 
+    // Ta sama nazwa i set szukane raz
+    const fuzzyCache = new Map<string, ScryfallCard | null>();
     for (let i = 0; i < missingItems.length; i++) {
       const item = missingItems[i];
       if (i % 5 === 0) {
@@ -290,29 +345,34 @@ export async function resolveCardsFromScryfall(
           t('Wyszukiwanie uzupełniające: {n} z {total} kart', { n: i, total: missingItems.length })
         );
       }
-      try {
-        const queryUrl = item.parsed.set
-          ? `/api/scryfall/named?fuzzy=${encodeURIComponent(item.parsed.name)}&set=${encodeURIComponent(item.parsed.set)}`
-          : `/api/scryfall/named?fuzzy=${encodeURIComponent(item.parsed.name)}`;
+      const cacheKey = `${item.parsed.name.toLowerCase()}|${item.parsed.set || ''}`;
+      if (!fuzzyCache.has(cacheKey)) {
+        let found: ScryfallCard | null = null;
+        try {
+          const queryUrl = item.parsed.set
+            ? `/api/scryfall/named?fuzzy=${encodeURIComponent(item.parsed.name)}&set=${encodeURIComponent(item.parsed.set)}`
+            : `/api/scryfall/named?fuzzy=${encodeURIComponent(item.parsed.name)}`;
 
-        const fuzzyRes = await fetch(queryUrl);
-        if (fuzzyRes.ok) {
-          const card: ScryfallCard = await fuzzyRes.json();
-          item.card = card;
-          item.error = undefined;
-        } else {
-          // Fallback without set
-          const nameOnlyRes = await fetch(`/api/scryfall/named?fuzzy=${encodeURIComponent(item.parsed.name)}`);
-          if (nameOnlyRes.ok) {
-            item.card = await nameOnlyRes.json();
-            item.error = undefined;
+          const fuzzyRes = await fetch(queryUrl);
+          if (fuzzyRes.ok) {
+            found = await fuzzyRes.json();
+          } else if (item.parsed.set) {
+            // Fallback without set
+            const nameOnlyRes = await fetch(`/api/scryfall/named?fuzzy=${encodeURIComponent(item.parsed.name)}`);
+            if (nameOnlyRes.ok) found = await nameOnlyRes.json();
           }
-        }
-      } catch (_) {}
+        } catch (_) {}
+        fuzzyCache.set(cacheKey, found);
+      }
+      const card = fuzzyCache.get(cacheKey);
+      if (card) {
+        item.card = card;
+        item.error = undefined;
+      }
     }
   }
 
-  onProgress?.(parsedLines.length, parsedLines.length, t('Gotowe'));
+  onProgress?.(total, total, t('Gotowe'));
   return resolvedItems;
 }
 

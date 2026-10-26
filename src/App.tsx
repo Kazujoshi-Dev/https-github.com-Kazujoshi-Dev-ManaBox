@@ -1025,6 +1025,7 @@ export default function App() {
             const ok = await bulkAddToCollection(items, onProgress);
             if (!ok) throw new Error(t('Nie udało się zapisać wszystkich kart. Część mogła zostać dodana, sprawdź kolekcję.'));
           }}
+          onCreateCatalog={(name) => createCatalog(name)}
           onClose={() => setIsCollectionImportExportOpen(false)}
           showToast={showToast}
         />

@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { X, Download, Upload, FileText, Check, Copy, AlertCircle, RefreshCw, Layers, Sparkles } from 'lucide-react';
+import React, { useMemo, useState } from 'react';
+import { X, Download, Upload, FileText, Check, Copy, AlertCircle, RefreshCw, Layers, Sparkles, FileSpreadsheet } from 'lucide-react';
 import { CollectionItem, Catalog } from '../types';
 import { useBackToClose } from '../hooks/useBackButton';
 import { 
@@ -9,6 +9,8 @@ import {
   downloadTxtFile,
   ResolvedImportItem
 } from '../utils/textCardList';
+import { looksLikeCollectionCsv, parseCollectionCsv } from '../utils/manaboxCsv';
+import { langFromCard } from '../utils/formatters';
 import { useT, locale, MAIN_BINDER, binderName } from '../i18n';
 
 interface ImportExportModalProps {
@@ -17,6 +19,8 @@ interface ImportExportModalProps {
   collection: CollectionItem[];
   catalogs: Catalog[];
   onImportBulk: (items: any[], onProgress?: (done: number, total: number) => void) => Promise<void>;
+  /** Tworzy brakujący katalog (import z klaserami z ManaBox). */
+  onCreateCatalog?: (name: string) => Promise<Catalog | null>;
   showToast: (message: string) => void;
   initialTab?: 'export' | 'import';
 }
@@ -27,6 +31,7 @@ export const ImportExportModal: React.FC<ImportExportModalProps> = ({
   collection,
   catalogs,
   onImportBulk,
+  onCreateCatalog,
   showToast,
   initialTab = 'export',
 }) => {
@@ -54,6 +59,19 @@ export const ImportExportModal: React.FC<ImportExportModalProps> = ({
   // Postęp dużych importów (dopasowanie kart i zapis w paczkach)
   const [progress, setProgress] = useState<{ label: string; done: number; total: number } | null>(null);
   const busy = isResolving || isImporting;
+
+  // Plik CSV z ManaBox (lub podobny): rozpoznajemy po nagłówku
+  const csv = useMemo(
+    () => (looksLikeCollectionCsv(importText) ? parseCollectionCsv(importText) : null),
+    [importText]
+  );
+  const [keepBinders, setKeepBinders] = useState<boolean>(true);
+  const [skipLists, setSkipLists] = useState<boolean>(true);
+  const csvLines = useMemo(
+    () => (csv ? csv.lines.filter((l) => !(skipLists && l.binderType === 'list')) : []),
+    [csv, skipLists]
+  );
+  const useCsvBinders = Boolean(csv && keepBinders && csv.binders.length > 0 && onCreateCatalog);
   // Zamknięcie w trakcie importu przerwałoby dodawanie kart
   const safeClose = React.useCallback(() => {
     if (busy) {
@@ -138,15 +156,15 @@ export const ImportExportModal: React.FC<ImportExportModalProps> = ({
     setResolveProgress(t('Analizowanie tekstu...'));
 
     try {
-      const parsed = parseTxtDeckOrCollection(importText);
-      if (parsed.allLines.length === 0) {
+      const lines = csv ? csvLines : parseTxtDeckOrCollection(importText).allLines;
+      if (lines.length === 0) {
         showToast(t('Nie znaleziono prawidłowych linii z kartami w podanym tekście.'));
         setIsResolving(false);
         return;
       }
 
-      setResolveProgress(t('Dopasowywanie {length} kart...', { length: parsed.allLines.length }));
-      const resolved = await resolveCardsFromScryfall(parsed.allLines, (curr, tot, msg) => {
+      setResolveProgress(t('Dopasowywanie {length} kart...', { length: lines.length }));
+      const resolved = await resolveCardsFromScryfall(lines, (curr, tot, msg) => {
         setResolveProgress(msg);
         setProgress({ label: t('Rozpoznawanie kart'), done: curr, total: tot });
       });
@@ -169,24 +187,51 @@ export const ImportExportModal: React.FC<ImportExportModalProps> = ({
 
     setIsImporting(true);
     try {
-      const validItems = resolvedCards
-        .filter((r) => r.card != null)
-        .map((r) => ({
-          card: r.card!,
-          quantity: r.parsed.isFoil ? 0 : r.parsed.quantity,
-          quantityFoil: r.parsed.isFoil ? r.parsed.quantity : 0,
-          condition: 'NM',
-          language: 'EN',
-          binder: selectedCatalog,
-        }));
-
-      if (validItems.length === 0) {
+      const found = resolvedCards.filter((r) => r.card != null);
+      if (found.length === 0) {
         showToast(t('Brak poprawnych kart do zaimportowania.'));
         return;
       }
 
+      // Klasery z ManaBox: istniejące katalogi dopasowujemy po nazwie, brakujące tworzymy
+      const binderFor = new Map<string, string>();
+      if (useCsvBinders && onCreateCatalog) {
+        const existing = new Map<string, string>(catalogs.map((c) => [c.name.toLowerCase(), c.name]));
+        for (const r of found) {
+          const name = r.parsed.binder?.trim().slice(0, 150);
+          if (!name || binderFor.has(name.toLowerCase())) continue;
+          const hit = existing.get(name.toLowerCase());
+          if (hit) {
+            binderFor.set(name.toLowerCase(), hit);
+            continue;
+          }
+          const created = await onCreateCatalog(name);
+          if (!created) throw new Error(t('Nie udało się utworzyć katalogu'));
+          existing.set(created.name.toLowerCase(), created.name);
+          binderFor.set(name.toLowerCase(), created.name);
+        }
+      }
+      const targetBinder = (r: ResolvedImportItem) => {
+        const name = r.parsed.binder?.trim().slice(0, 150).toLowerCase();
+        return (useCsvBinders && name && binderFor.get(name)) || selectedCatalog;
+      };
+
+      const validItems = found.map((r) => ({
+        card: r.card!,
+        quantity: r.parsed.isFoil ? 0 : r.parsed.quantity,
+        quantityFoil: r.parsed.isFoil ? r.parsed.quantity : 0,
+        condition: r.parsed.condition || 'NM',
+        // Plik bez kolumny języka: przy dokładnym printcie bierzemy język karty
+        language: r.parsed.language || (r.parsed.scryfallId ? langFromCard(r.card) : 'EN'),
+        binder: targetBinder(r),
+      }));
+
       await onImportBulk(validItems, (done, total) => setProgress({ label: t('Zapisywanie kart w kolekcji'), done, total }));
-      showToast(t('Zaimportowano {length} kart do klasera "{selectedCatalog}"!', { length: validItems.length, selectedCatalog: binderName(selectedCatalog) }));
+      showToast(
+        useCsvBinders
+          ? t('Zaimportowano {length} pozycji do kolekcji (klasery: {n}).', { length: validItems.length, n: new Set(validItems.map((i) => i.binder)).size })
+          : t('Zaimportowano {length} kart do klasera "{selectedCatalog}"!', { length: validItems.length, selectedCatalog: binderName(selectedCatalog) })
+      );
       onClose();
     } catch (err: any) {
       console.error('Błąd importu:', err);
@@ -222,7 +267,7 @@ export const ImportExportModal: React.FC<ImportExportModalProps> = ({
                 {t('Eksport i Import Kolekcji')}
               </h2>
               <p className="text-xs text-stone-400">
-                {t('Pliki tekstowe .txt (format')} <code className="text-amber-300 font-mono">{t('1x Nazwa (dodatek) nr')}</code>) {t('oraz kopie JSON')}
+                {t('Pliki tekstowe .txt (format')} <code className="text-amber-300 font-mono">{t('1x Nazwa (dodatek) nr')}</code>), {t('CSV z ManaBox oraz kopie JSON')}
               </p>
             </div>
           </div>
@@ -346,26 +391,47 @@ export const ImportExportModal: React.FC<ImportExportModalProps> = ({
               {/* File upload shortcut */}
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 bg-stone-950/70 border border-stone-800 rounded-xl">
                 <div>
-                  <p className="font-bold text-stone-200 text-xs">{t('Wczytaj plik z dysku (.txt lub .json)')}</p>
-                  <p className="text-[11px] text-stone-400">{t('Wybierz zapisany plik tekstowy lub przeciągnij go tutaj')}</p>
+                  <p className="font-bold text-stone-200 text-xs">{t('Wczytaj plik z dysku (.txt, .csv lub .json)')}</p>
+                  <p className="text-[11px] text-stone-400">{t('Lista tekstowa, plik CSV wyeksportowany z ManaBox lub kopia JSON')}</p>
                 </div>
                 <label className="px-4 py-2 rounded-xl bg-stone-800 hover:bg-stone-750 border border-stone-700 text-stone-200 font-bold text-xs flex items-center justify-center gap-2 cursor-pointer transition-colors shrink-0">
                   <Upload className="w-4 h-4 text-amber-400" />
-                  <span>{t('Wybierz plik (.txt / .json)')}</span>
+                  <span>{t('Wybierz plik (.txt / .csv / .json)')}</span>
                   <input
                     type="file"
-                    accept=".txt,.json"
+                    accept=".txt,.csv,.json,text/csv"
                     onChange={handleFileUpload}
                     className="hidden"
                   />
                 </label>
               </div>
 
+              {/* Plik CSV z ManaBox: podsumowanie i opcje */}
+              {csv && (
+                <ManaBoxCsvPanel
+                  rows={csvLines.length}
+                  cards={csvLines.reduce((s, l) => s + l.quantity, 0)}
+                  invalid={csv.invalidLines.length}
+                  binders={onCreateCatalog ? csv.binders : []}
+                  listRows={csv.listRows}
+                  keepBinders={keepBinders}
+                  onKeepBinders={(v) => {
+                    setKeepBinders(v);
+                    setResolvedCards(null);
+                  }}
+                  skipLists={skipLists}
+                  onSkipLists={(v) => {
+                    setSkipLists(v);
+                    setResolvedCards(null);
+                  }}
+                />
+              )}
+
               {/* Catalog target select */}
               <div className="space-y-1.5">
                 <label className="font-bold text-stone-300 text-xs flex items-center gap-1.5">
                   <Layers className="w-4 h-4 text-amber-400" />
-                  <span>{t('Docelowy klaser dla importowanych kart:')}</span>
+                  <span>{useCsvBinders ? t('Klaser dla kart bez klasera w pliku:') : t('Docelowy klaser dla importowanych kart:')}</span>
                 </label>
                 <select
                   value={selectedCatalog}
@@ -463,6 +529,15 @@ export const ImportExportModal: React.FC<ImportExportModalProps> = ({
                           {res.parsed.isFoil && (
                             <span className="text-[11px] text-amber-300">{t('Foil')}</span>
                           )}
+                          {res.parsed.condition && res.parsed.condition !== 'NM' && (
+                            <span className="text-[11px] text-stone-500">{res.parsed.condition}</span>
+                          )}
+                          {res.parsed.language && res.parsed.language !== 'EN' && (
+                            <span className="text-[11px] text-stone-500">{res.parsed.language}</span>
+                          )}
+                          {useCsvBinders && res.parsed.binder && (
+                            <span className="text-[11px] text-stone-500 truncate">· {res.parsed.binder}</span>
+                          )}
                         </div>
                         {res.card ? (
                           <span className="text-emerald-400 text-[11px] shrink-0 font-sans font-semibold">{t('OK')}</span>
@@ -497,7 +572,11 @@ export const ImportExportModal: React.FC<ImportExportModalProps> = ({
                       ) : (
                         <>
                           <Check className="w-4 h-4 stroke-[3]" />
-                          <span>{t('Dodaj {n} kart do klasera „{name}”', { n: foundCount, name: binderName(selectedCatalog) })}</span>
+                          <span>
+                            {useCsvBinders
+                              ? t('Dodaj {n} pozycji do kolekcji', { n: foundCount })
+                              : t('Dodaj {n} kart do klasera „{name}”', { n: foundCount, name: binderName(selectedCatalog) })}
+                          </span>
                         </>
                       )}
                     </button>
@@ -508,6 +587,69 @@ export const ImportExportModal: React.FC<ImportExportModalProps> = ({
           )}
         </div>
       </div>
+    </div>
+  );
+};
+
+/** Podsumowanie pliku CSV z ManaBox i opcje importu (klasery, listy). */
+const ManaBoxCsvPanel: React.FC<{
+  rows: number;
+  cards: number;
+  invalid: number;
+  binders: string[];
+  listRows: number;
+  keepBinders: boolean;
+  onKeepBinders: (v: boolean) => void;
+  skipLists: boolean;
+  onSkipLists: (v: boolean) => void;
+}> = ({ rows, cards, invalid, binders, listRows, keepBinders, onKeepBinders, skipLists, onSkipLists }) => {
+  const t = useT();
+  const fmt = (n: number) => n.toLocaleString(locale());
+  return (
+    <div className="p-3.5 bg-amber-500/5 border border-amber-500/20 rounded-xl space-y-2.5">
+      <div className="flex items-center justify-between gap-3">
+        <span className="font-bold text-amber-300 text-xs flex items-center gap-1.5">
+          <FileSpreadsheet className="w-4 h-4" />
+          {t('Plik CSV z ManaBox')}
+        </span>
+        <span className="text-[11px] text-stone-400 tabular-nums">
+          {t('{rows} pozycji, {cards} kart', { rows: fmt(rows), cards: fmt(cards) })}
+        </span>
+      </div>
+      <p className="text-[11px] text-stone-400">
+        {t('Zachowamy wydanie (Scryfall ID), foil, stan i język każdej karty.')}
+      </p>
+      {invalid > 0 && (
+        <p className="text-[11px] text-rose-400 flex items-center gap-1.5">
+          <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+          {t('Pominięto {n} wierszy bez nazwy karty lub z błędną liczbą sztuk.', { n: fmt(invalid) })}
+        </p>
+      )}
+      {binders.length > 0 && (
+        <label className="flex items-start gap-2 text-[11px] text-stone-300 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={keepBinders}
+            onChange={(e) => onKeepBinders(e.target.checked)}
+            className="mt-0.5 accent-amber-500 cursor-pointer"
+          />
+          <span>
+            {t('Rozłóż karty do klaserów jak w ManaBox ({n}); brakujące katalogi zostaną utworzone.', { n: binders.length })}
+            <span className="block text-stone-500 truncate">{binders.slice(0, 6).join(', ')}{binders.length > 6 ? ', …' : ''}</span>
+          </span>
+        </label>
+      )}
+      {listRows > 0 && (
+        <label className="flex items-start gap-2 text-[11px] text-stone-300 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={skipLists}
+            onChange={(e) => onSkipLists(e.target.checked)}
+            className="mt-0.5 accent-amber-500 cursor-pointer"
+          />
+          <span>{t('Pomiń karty z list ManaBox, np. list życzeń ({n} pozycji).', { n: fmt(listRows) })}</span>
+        </label>
+      )}
     </div>
   );
 };
