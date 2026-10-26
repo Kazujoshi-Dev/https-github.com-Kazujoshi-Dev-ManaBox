@@ -10,6 +10,7 @@ export const CollectionGridView: React.FC<CollectionGridViewProps> = ({
   onEditItem,
   onViewCardDetails,
   onToggleForSale,
+  deckNames,
 }) => {
   return (
     <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
@@ -24,6 +25,7 @@ export const CollectionGridView: React.FC<CollectionGridViewProps> = ({
           onEditItem={onEditItem}
           onViewCardDetails={onViewCardDetails}
           onToggleForSale={onToggleForSale}
+          sourceDeckName={item.sourceDeckId ? deckNames?.get(item.sourceDeckId) : undefined}
         />
       ))}
     </div>

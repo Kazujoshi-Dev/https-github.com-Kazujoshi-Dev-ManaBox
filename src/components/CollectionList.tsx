@@ -1,4 +1,4 @@
-import React, { useState, useRef, Suspense } from 'react';
+import React, { useState, useRef, Suspense, useMemo } from 'react';
 import { lazyWithReload } from '../utils/lazyWithReload';
 import { CircleDollarSign, Plus } from 'lucide-react';
 import {
@@ -51,6 +51,8 @@ export const CollectionList: React.FC<CollectionListProps> = ({
   onAddCardForSale,
   onUpdateSettings,
 }) => {
+  // Nazwy istniejących talii: karty skopiowane z usuniętej talii nie dostają plakietki
+  const deckNames = useMemo(() => new Map(decks.map((d) => [d.id, d.name] as [string, string])), [decks]);
   const t = useT();
   const [isForSaleAddOpen, setIsForSaleAddOpen] = useState(false);
   // Na telefonie domyślnie lista (więcej kart na ekranie), na większych ekranach siatka.
@@ -290,6 +292,7 @@ export const CollectionList: React.FC<CollectionListProps> = ({
           onEditItem={onEditItem}
           onViewCardDetails={onViewCardDetails}
           onToggleForSale={onToggleForSale}
+          deckNames={deckNames}
         />
       ) : (
         <CollectionTableView
@@ -300,6 +303,7 @@ export const CollectionList: React.FC<CollectionListProps> = ({
           onEditItem={onEditItem}
           onViewCardDetails={onViewCardDetails}
           onToggleForSale={onToggleForSale}
+          deckNames={deckNames}
         />
       )}
 

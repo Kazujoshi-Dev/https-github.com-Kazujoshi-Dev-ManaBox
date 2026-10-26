@@ -12,7 +12,7 @@ import {
 } from '../utils/formatters';
 import { ManaSymbol } from './ManaSymbol';
 import { EdhrecBadge } from './EdhrecBadge';
-import { Plus, Minus, Trash2, Edit3, ExternalLink, Sparkles, Folder, Check, Eye, Trophy, CircleDollarSign, DollarSign } from 'lucide-react';
+import { Plus, Minus, Trash2, Edit3, ExternalLink, Sparkles, Folder, Check, Eye, Trophy, CircleDollarSign, DollarSign, Swords } from 'lucide-react';
 import { useT, locale, binderName, MAIN_BINDER } from '../i18n';
 import { useShowEdhrecRank } from '../utils/displayPrefs';
 
@@ -25,6 +25,8 @@ interface CardItemProps {
   onEditItem: (item: CollectionItem) => void;
   onViewCardDetails: (item: CollectionItem) => void;
   onToggleForSale?: (item: CollectionItem) => void;
+  /** Nazwa talii, z której skopiowano kartę do kolekcji. */
+  sourceDeckName?: string;
 }
 
 export const CardItem: React.FC<CardItemProps> = ({
@@ -36,8 +38,18 @@ export const CardItem: React.FC<CardItemProps> = ({
   onEditItem,
   onViewCardDetails,
   onToggleForSale,
+  sourceDeckName,
 }) => {
   const t = useT();
+  const deckBadge = sourceDeckName ? (
+    <span
+      title={t('Skopiowano z talii „{name}”', { name: sourceDeckName })}
+      className="text-[11px] text-stone-300 bg-stone-800 px-1.5 py-0.5 rounded border border-stone-700 font-medium inline-flex items-center gap-1 max-w-full min-w-0"
+    >
+      <Swords className="w-3 h-3 text-amber-400 shrink-0" />
+      <span className="truncate">{t('z talii {name}', { name: sourceDeckName })}</span>
+    </span>
+  ) : null;
   const { card, quantity, quantityFoil, condition, language, binder } = item;
   const imageUri = getCardImageUri(card, 'normal');
   const priceNormal = getCardPrice(card, false, settings);
@@ -89,6 +101,7 @@ export const CardItem: React.FC<CardItemProps> = ({
                     {binderName(binder || MAIN_BINDER)}
                   </span>
                 )}
+                {deckBadge}
                 {edhrecRank != null && (
                   <EdhrecBadge rank={edhrecRank} size="xs" />
                 )}
@@ -321,6 +334,7 @@ export const CardItem: React.FC<CardItemProps> = ({
             <span className="text-[11px] text-stone-400 bg-stone-800 px-1.5 py-0.5 rounded border border-stone-800">
               {condition} • {language}
             </span>
+            {deckBadge}
           </div>
         </div>
 

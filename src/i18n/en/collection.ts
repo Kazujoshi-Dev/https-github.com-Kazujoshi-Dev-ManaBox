@@ -107,4 +107,6 @@ export const en_collection: Record<string, string> = {
   "Dodaj kartę na sprzedaż": "Add a card for sale",
   "Dodatki w kolekcji:": "Sets in collection:",
   "· kliknij dodatek, aby zobaczyć jego karty": "· click a set to see its cards",
+  "Skopiowano z talii „{name}”": "Copied from deck “{name}”",
+  "z talii {name}": "from deck {name}",
 };

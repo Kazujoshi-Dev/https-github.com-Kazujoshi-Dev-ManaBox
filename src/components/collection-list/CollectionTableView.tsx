@@ -13,6 +13,7 @@ export const CollectionTableView: React.FC<CollectionTableViewProps> = ({
   onEditItem,
   onViewCardDetails,
   onToggleForSale,
+  deckNames,
 }) => {
   const t = useT();
   return (
@@ -122,6 +123,7 @@ export const CollectionTableView: React.FC<CollectionTableViewProps> = ({
                 onEditItem={onEditItem}
                 onViewCardDetails={onViewCardDetails}
                 onToggleForSale={onToggleForSale}
+                sourceDeckName={item.sourceDeckId ? deckNames?.get(item.sourceDeckId) : undefined}
               />
             ))}
           </tbody>

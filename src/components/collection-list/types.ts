@@ -91,6 +91,8 @@ export interface CollectionItemHandlers {
   onEditItem: (item: CollectionItem) => void;
   onViewCardDetails: (item: CollectionItem) => void;
   onToggleForSale?: (item: CollectionItem) => void;
+  /** Nazwy talii po id: plakietka „z talii …” przy kartach skopiowanych z talii. */
+  deckNames?: Map<string, string>;
 }
 
 export interface CollectionGridViewProps extends CollectionItemHandlers {
