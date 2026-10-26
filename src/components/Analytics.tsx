@@ -106,19 +106,20 @@ export const Analytics: React.FC<AnalyticsProps> = ({ collection, settings, onVi
     };
   }, [collection, settings]);
 
-  // Najcenniejsze karty: ranking po cenie jednej sztuki (liczba egzemplarzy nie ma znaczenia)
+  // Najcenniejsze karty (top 10): ranking po cenie jednej sztuki (liczba egzemplarzy nie ma znaczenia).
+  // Wersja zwykła i foil to osobne pozycje, bo mają różne ceny.
   const topValuable = useMemo(() => {
     return collection
       .filter(item => item.card)
-      .map(item => {
-        const priceNorm = item.quantity > 0 ? getCardPrice(item.card, false, settings) : 0;
-        const priceFoil = item.quantityFoil > 0 ? getCardPrice(item.card, true, settings) : 0;
-        const unitPrice = Math.max(priceNorm, priceFoil);
-        return { item, unitPrice };
+      .flatMap(item => {
+        const rows: { item: CollectionItem; isFoil: boolean; qty: number; unitPrice: number }[] = [];
+        if (item.quantity > 0) rows.push({ item, isFoil: false, qty: item.quantity, unitPrice: getCardPrice(item.card, false, settings) });
+        if (item.quantityFoil > 0) rows.push({ item, isFoil: true, qty: item.quantityFoil, unitPrice: getCardPrice(item.card, true, settings) });
+        return rows;
       })
       .filter(row => row.unitPrice > 0)
       .sort((a, b) => b.unitPrice - a.unitPrice)
-      .slice(0, 5);
+      .slice(0, 10);
   }, [collection, settings]);
 
   // Recharts Data Formats
@@ -274,7 +275,7 @@ export const Analytics: React.FC<AnalyticsProps> = ({ collection, settings, onVi
 
       </div>
 
-      {/* Top 5 Most Valuable Cards */}
+      {/* Top 10 najcenniejszych kart */}
       <div className="bg-stone-900 border border-stone-800 rounded-2xl p-6 shadow-lg space-y-4">
         <div className="flex items-center justify-between">
           <h3 className="text-sm font-bold text-stone-200 flex items-center gap-2">
@@ -284,14 +285,14 @@ export const Analytics: React.FC<AnalyticsProps> = ({ collection, settings, onVi
           <span className="text-[11px] text-stone-500">{t('Cena za 1 sztukę')}</span>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-5 gap-4 pt-2">
-          {topValuable.map(({ item, unitPrice }, index) => {
+        <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 sm:gap-4 pt-2">
+          {topValuable.map(({ item, isFoil, qty, unitPrice }, index) => {
             const card = item.card;
             const img = getCardImageUri(card, 'normal');
 
             return (
               <div
-                key={item.id}
+                key={`${item.id}-${isFoil ? 'foil' : 'normal'}`}
                 onClick={() => onViewCardDetails(item)}
                 className="group bg-stone-950 p-3 rounded-xl border border-stone-800 hover:border-amber-500/50 transition-all cursor-pointer flex flex-col justify-between space-y-3"
               >
@@ -303,9 +304,14 @@ export const Analytics: React.FC<AnalyticsProps> = ({ collection, settings, onVi
                     onError={(e) => handleCardImageError(e, img)}
                     className="w-full h-full object-contain transition-transform" 
                   />
-                  <div className="absolute top-1 left-1 bg-amber-500 text-stone-950 font-bold text-[11px] w-5 h-5 rounded-full flex items-center justify-center shadow">
+                  <div className="absolute top-1 left-1 bg-amber-500 text-stone-950 font-bold text-[11px] min-w-5 h-5 px-1 rounded-full flex items-center justify-center shadow tabular-nums">
                     #{index + 1}
                   </div>
+                  {isFoil && (
+                    <div className="absolute top-1 right-1 text-[11px] font-bold px-2 py-0.5 rounded-full bg-stone-950/85 text-amber-300 border border-amber-400/50 shadow">
+                      {t('FOIL')}
+                    </div>
+                  )}
                 </div>
 
                 <div>
@@ -313,7 +319,7 @@ export const Analytics: React.FC<AnalyticsProps> = ({ collection, settings, onVi
                     {card.name}
                   </h4>
                   <p className="text-[11px] text-stone-400 tabular-nums mt-0.5">
-                    {card.set.toUpperCase()} • {item.quantity + item.quantityFoil} {t('szt.')}
+                    {card.set.toUpperCase()} • {qty} {t('szt.')}{isFoil ? ` • ${t('Foil')}` : ''}
                   </p>
                   <p className="text-xs tabular-nums font-bold text-emerald-400 mt-1">
                     {formatCurrency(unitPrice, settings.currency)}
