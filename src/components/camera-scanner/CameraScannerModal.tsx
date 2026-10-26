@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { 
   Camera, 
   X, 
@@ -28,7 +28,8 @@ import {
   Cpu
 } from 'lucide-react';
 import { ScryfallCard, CardCondition, CardLanguage, Catalog, AppSettings } from '../../types';
-import { formatCurrency, getCardImageUri, getCardPrice, getRarityColor, getRarityLabel, handleCardImageError } from '../../utils/formatters';
+import { formatCurrency, getCardImageUri, getCardPrice, getRarityColor, getRarityLabel, handleCardImageError, langFromCard } from '../../utils/formatters';
+import { filterPrints, isExactPrint, parseSetAndNumber } from '../../utils/printMatch';
 import { CameraScannerModalProps, CameraDeviceOption, ScanResult } from './types';
 import { searchCardInScryfall, playScannerChime, getTesseractWorker } from './ocrProcessor';
 import { calculateVideoSensorCrop } from './cvCardPipeline';
@@ -127,6 +128,8 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
   const [isPrintsOpen, setIsPrintsOpen] = useState<boolean>(false);
   const [prints, setPrints] = useState<ScryfallCard[]>([]);
   const [isLoadingPrints, setIsLoadingPrints] = useState<boolean>(false);
+  const [printFilter, setPrintFilter] = useState<string>('');
+  const [isLookingUpPrint, setIsLookingUpPrint] = useState<boolean>(false);
 
   // Manual fallback search
   const [manualQuery, setManualQuery] = useState<string>('');
@@ -582,14 +585,21 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
   }, [isOpen, processImageFile]);
 
   // 5. Fetch Alternate Prints for active card
-  const loadAlternatePrints = useCallback(async (card: ScryfallCard) => {
-    setIsLoadingPrints(true);
+  /** Wszystkie wydania karty (także japońskie i phyrexian); `preferred` (np. trafienia ze skanu) idą na początek listy. */
+  const loadAlternatePrints = useCallback(async (card: ScryfallCard, preferred: ScryfallCard[] = []) => {
+    setIsLoadingPrints(preferred.length === 0);
     try {
-      const res = await fetch(`/api/scryfall/prints?name=${encodeURIComponent(card.name)}`);
+      const q = new URLSearchParams();
+      if (card.id) q.set('cardId', card.id);
+      if (card.oracle_id) q.set('oracle_id', card.oracle_id);
+      q.set('name', card.name);
+      const res = await fetch(`/api/scryfall/prints?${q.toString()}`);
       if (res.ok) {
         const data = await res.json();
         const list: ScryfallCard[] = Array.isArray(data.data) ? data.data : [];
-        setPrints(list);
+        const seen = new Set(preferred.map((p) => p.id));
+        const merged = [...preferred, ...list.filter((p) => !seen.has(p.id))];
+        if (merged.length) setPrints(merged);
       }
     } catch (err) {
       console.error('Błąd pobierania wydań:', err);
@@ -601,17 +611,44 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
   const handleOpenPrints = useCallback(() => {
     if (!activeCard) return;
     setIsPrintsOpen(true);
-    // Wydania ze skanu są już posortowane wg podobieństwa do zdjęcia — nie trzeba pytać Scryfall.
+    setPrintFilter('');
+    // Wydania ze skanu są posortowane wg podobieństwa do zdjęcia, więc pokazujemy je od razu na górze,
+    // a pełną listę (z innymi wersjami językowymi) dociągamy pod nimi.
     const fromScan = scanResult?.possibleCards?.filter((c) => c.name === activeCard.name) || [];
-    if (fromScan.length > 1) setPrints(fromScan);
-    else loadAlternatePrints(activeCard);
+    const preferred = fromScan.length ? fromScan : [activeCard];
+    setPrints(preferred);
+    loadAlternatePrints(activeCard, preferred);
   }, [activeCard, loadAlternatePrints, scanResult]);
 
   const handleSelectAlternatePrint = useCallback((printCard: ScryfallCard) => {
+    // Wersja w innym języku (np. japońska) od razu ustawia język egzemplarza
+    if ((printCard.lang || 'en') !== (activeCard?.lang || 'en')) setLanguage(langFromCard(printCard));
     setActiveCard(printCard);
     setIsPrintsOpen(false);
+    setPrintFilter('');
     showToast(t('Wybrano wersję [{v1}] #{collector_number}', { v1: printCard.set.toUpperCase(), collector_number: printCard.collector_number }));
-  }, [showToast]);
+  }, [activeCard, showToast]);
+
+  const shownPrints = useMemo(() => filterPrints(prints, printFilter), [prints, printFilter]);
+  const typedSetNumber = useMemo(() => parseSetAndNumber(printFilter), [printFilter]);
+  const typedPrintListed = Boolean(typedSetNumber && prints.some((p) => isExactPrint(p, typedSetNumber.set, typedSetNumber.number)));
+
+  /** Wpisany kod dodatku i numer spoza listy: szukamy tej konkretnej karty w bazie Scryfall. */
+  const handleLookupTypedPrint = useCallback(async () => {
+    if (!typedSetNumber) return;
+    setIsLookingUpPrint(true);
+    try {
+      const res = await fetch(`/api/scryfall/card-print/${encodeURIComponent(typedSetNumber.set)}/${encodeURIComponent(typedSetNumber.number)}`);
+      const card = res.ok ? await res.json() : null;
+      if (card && card.id && card.name) handleSelectAlternatePrint(card as ScryfallCard);
+      else showToast(t('Nie znaleziono karty {set} #{number}. Sprawdź kod dodatku i numer z dołu karty.', { set: typedSetNumber.set.toUpperCase(), number: typedSetNumber.number }));
+    } catch (err) {
+      console.error('Błąd wyszukiwania wydania:', err);
+      showToast(t('Nie znaleziono karty {set} #{number}. Sprawdź kod dodatku i numer z dołu karty.', { set: typedSetNumber.set.toUpperCase(), number: typedSetNumber.number }));
+    } finally {
+      setIsLookingUpPrint(false);
+    }
+  }, [typedSetNumber, handleSelectAlternatePrint, showToast]);
 
   // 6. Manual Query Search
   const handleManualSearch = useCallback(async () => {
@@ -1461,17 +1498,54 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
 
                 {/* Alternate Prints Selector Drawer */}
                 {isPrintsOpen && (
-                  <div className="p-3 bg-stone-950 rounded-xl border border-stone-800 space-y-2 max-h-56 overflow-y-auto">
-                    <div className="flex items-center justify-between sticky top-0 bg-stone-950 pb-1 z-10 border-b border-stone-800/60">
-                      <span className="text-[11px] font-bold text-amber-300 tabular-nums">
-                        {t('Dostępne wydania ({n}):', { n: prints.length })}
-                      </span>
-                      <button
-                        onClick={() => setIsPrintsOpen(false)}
-                        className="text-[11px] text-stone-400 hover:text-stone-200"
-                      >
-                        {t('✕ Zamknij')}
-                      </button>
+                  <div className="p-3 bg-stone-950 rounded-xl border border-stone-800 space-y-2 max-h-80 overflow-y-auto">
+                    <div className="sticky top-0 bg-stone-950 pb-2 z-10 border-b border-stone-800/60 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[11px] font-bold text-amber-300 tabular-nums">
+                          {printFilter.trim()
+                            ? t('Dostępne wydania ({n}):', { n: t('{n} z {total}', { n: shownPrints.length, total: prints.length }) })
+                            : t('Dostępne wydania ({n}):', { n: prints.length })}
+                        </span>
+                        <button
+                          onClick={() => setIsPrintsOpen(false)}
+                          className="text-[11px] text-stone-400 hover:text-stone-200"
+                        >
+                          {t('✕ Zamknij')}
+                        </button>
+                      </div>
+                      <div className="relative">
+                        <Search className="w-3.5 h-3.5 text-stone-500 absolute left-2.5 top-1/2 -translate-y-1/2" />
+                        <input
+                          type="text"
+                          value={printFilter}
+                          onChange={(e) => setPrintFilter(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key !== 'Enter') return;
+                            e.preventDefault();
+                            // Enter: jedno pasujące wydanie albo dokładny kod i numer = wybór; numer spoza listy = wyszukanie
+                            const exact = typedSetNumber ? shownPrints.filter((p) => isExactPrint(p, typedSetNumber.set, typedSetNumber.number)) : [];
+                            if (exact.length === 1) handleSelectAlternatePrint(exact[0]);
+                            else if (shownPrints.length === 1) handleSelectAlternatePrint(shownPrints[0]);
+                            else if (typedSetNumber && !typedPrintListed) handleLookupTypedPrint();
+                          }}
+                          placeholder={t('Kod setu i numer, np. DSC 114')}
+                          aria-label={t('Filtruj wydania po kodzie dodatku, numerze karty lub nazwie dodatku')}
+                          autoComplete="off"
+                          autoCapitalize="characters"
+                          spellCheck={false}
+                          className="w-full h-9 bg-stone-900 border border-stone-700 rounded-lg pl-8 pr-8 text-xs text-stone-100 placeholder-stone-500 focus:outline-none focus:border-amber-500"
+                        />
+                        {printFilter && (
+                          <button
+                            type="button"
+                            onClick={() => setPrintFilter('')}
+                            aria-label={t('Wyczyść filtr')}
+                            className="absolute right-1.5 top-1/2 -translate-y-1/2 w-6 h-6 rounded flex items-center justify-center text-stone-400 hover:text-stone-100 cursor-pointer"
+                          >
+                            <X className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                      </div>
                     </div>
 
                     {isLoadingPrints ? (
@@ -1481,23 +1555,34 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
                       </div>
                     ) : (
                       <div className="space-y-1.5">
-                        {prints.map((p) => {
+                        {shownPrints.map((p) => {
                           const isCur = p.id === activeCard.id;
+                          const lang = langFromCard(p);
                           return (
                             <div
                               key={p.id}
                               onClick={() => handleSelectAlternatePrint(p)}
-                              className={`p-2 rounded-lg border text-xs flex items-center justify-between cursor-pointer transition-colors ${
+                              className={`p-2 rounded-lg border text-xs flex items-center justify-between gap-2 cursor-pointer transition-colors ${
                                 isCur
                                   ? 'bg-amber-500/20 border-amber-500 text-stone-100 font-bold'
                                   : 'bg-stone-900 hover:bg-stone-850 border-stone-800 text-stone-300'
                               }`}
                             >
-                              <div className="flex items-center gap-2 truncate">
-                                <span className="tabular-nums text-[11px] bg-stone-800 px-1 py-0.2 rounded border border-stone-700">
+                              <div className="flex items-center gap-2 min-w-0">
+                                <span className="tabular-nums text-[11px] bg-stone-800 px-1 py-0.2 rounded border border-stone-700 shrink-0">
                                   {p.set.toUpperCase()}
                                 </span>
-                                <span className="truncate">{p.set_name} (#{p.collector_number})</span>
+                                <span
+                                  title={t('Język karty')}
+                                  className={`text-[11px] px-1 py-0.2 rounded border shrink-0 ${
+                                    lang === 'EN' ? 'bg-stone-900 border-stone-700 text-stone-400' : 'bg-stone-700 border-stone-600 text-stone-100'
+                                  }`}
+                                >
+                                  {lang}
+                                </span>
+                                <span className="truncate">
+                                  {p.set_name} (<span className="tabular-nums">#{p.collector_number}</span>)
+                                </span>
                               </div>
                               <div className="shrink-0 tabular-nums text-emerald-400 text-[11px]">
                                 {formatCurrency(getCardPrice(p, false, { ...settings, currency: 'PLN' }), 'PLN')}
@@ -1505,6 +1590,24 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
                             </div>
                           );
                         })}
+                        {printFilter.trim() && shownPrints.length === 0 && !typedSetNumber && (
+                          <p className="text-[11px] text-stone-400 py-2">
+                            {t('Brak wydań pasujących do „{filter}”. Sprawdź kod dodatku i numer z dołu karty.', { filter: printFilter.trim() })}
+                          </p>
+                        )}
+                        {typedSetNumber && !typedPrintListed && (
+                          <button
+                            type="button"
+                            onClick={handleLookupTypedPrint}
+                            disabled={isLookingUpPrint}
+                            className="btn btn-secondary w-full justify-center text-xs"
+                          >
+                            {isLookingUpPrint ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Search className="w-3.5 h-3.5" />}
+                            <span className="tabular-nums">
+                              {t('Szukaj karty {set} #{number}', { set: typedSetNumber.set.toUpperCase(), number: typedSetNumber.number })}
+                            </span>
+                          </button>
+                        )}
                       </div>
                     )}
                   </div>

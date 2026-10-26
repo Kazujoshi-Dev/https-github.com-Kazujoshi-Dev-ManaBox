@@ -171,4 +171,7 @@ export const en_scanner: Record<string, string> = {
   "Sprawdzam: \"{title}\"...": "Checking: \"{title}\"...",
   "Rozpoznawanie... przytrzymaj kartę nieruchomo": "Recognising... hold the card still",
   "Rozpoznano": "Recognised",
+  "Język karty": "Card language",
+  "Szukaj karty {set} #{number}": "Find card {set} #{number}",
+  "Nie znaleziono karty {set} #{number}. Sprawdź kod dodatku i numer z dołu karty.": "Card {set} #{number} not found. Check the set code and number at the bottom of the card.",
 };

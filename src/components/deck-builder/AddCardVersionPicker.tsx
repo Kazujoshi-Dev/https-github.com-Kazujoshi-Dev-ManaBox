@@ -3,6 +3,7 @@ import { ArrowLeft, Crown, Plus, Sparkles, Loader2, Check, Search, X } from 'luc
 import type { AppSettings, CollectionItem, DeckCardEntry, ScryfallCard } from '../../types';
 import { formatCurrency, getCardImageUri, getCardPrice, handleCardImageError, langFromCard } from '../../utils/formatters';
 import { useT } from '../../i18n';
+import { filterPrints } from '../../utils/printMatch';
 
 interface AddCardVersionPickerProps {
   card: ScryfallCard;
@@ -21,23 +22,6 @@ interface AddCardVersionPickerProps {
   singleton?: boolean;
   /** Jakie wydania pokazywać: papierowe (domyślnie) albo dostępne w MTG Arena. */
   game?: 'paper' | 'arena';
-}
-
-/**
- * Filtr wydań: każde słowo musi pasować do kodu dodatku, numeru karty lub nazwy dodatku.
- * Np. „dsc 114”, „#114”, „sld”, „duskmourn”, „dsc/114”.
- */
-function matchesPrint(p: ScryfallCard, query: string): boolean {
-  const tokens = query.toLowerCase().replace(/[#/,]/g, ' ').split(/\s+/).filter(Boolean);
-  if (!tokens.length) return true;
-  const set = (p.set || '').toLowerCase();
-  const num = (p.collector_number || '').toLowerCase();
-  const numBare = num.replace(/^0+(?=\d)/, '');
-  const setName = (p.set_name || '').toLowerCase();
-  return tokens.every((t) => {
-    const tb = t.replace(/^0+(?=\d)/, '');
-    return set === t || set.startsWith(t) || num === t || numBare === tb || num.startsWith(t) || setName.includes(t);
-  });
 }
 
 const hasFinish = (c: ScryfallCard, finish: 'foil' | 'nonfoil') => {
@@ -103,14 +87,7 @@ export const AddCardVersionPicker: React.FC<AddCardVersionPickerProps> = ({
   }, [prints, card, owned, ownedIds, collectionOnly]);
 
   // Wydania po filtrze; dokładne trafienie kodu i numeru (np. „dsc 114”) na początku
-  const shown = useMemo(() => {
-    const q = printFilter.trim();
-    if (!q) return list;
-    const out = list.filter((p) => matchesPrint(p, q));
-    const [a, b] = q.toLowerCase().replace(/[#/,]/g, ' ').split(/\s+/).filter(Boolean);
-    const exact = (p: ScryfallCard) => (p.set || '').toLowerCase() === a && (p.collector_number || '').toLowerCase().replace(/^0+(?=\d)/, '') === (b || '').replace(/^0+(?=\d)/, '');
-    return b ? [...out.filter(exact), ...out.filter((p) => !exact(p))] : out;
-  }, [list, printFilter]);
+  const shown = useMemo(() => filterPrints(list, printFilter), [list, printFilter]);
 
   // Jedno pasujące wydanie: od razu je zaznaczamy
   useEffect(() => {
