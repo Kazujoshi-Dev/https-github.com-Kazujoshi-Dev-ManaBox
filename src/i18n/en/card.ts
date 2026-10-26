@@ -99,7 +99,7 @@ export const en_card: Record<string, string> = {
   "Zmień i zapisz print": "Change and save printing",
   "Zmień wersję printu": "Change printing",
   "Znalezione oficjalne kombinacje i nieskończone pętle z udziałem tej karty ({n}).": "Official combos and infinite loops found involving this card ({n}).",
-  "Zobacz ten print na Scryfall.com": "View this printing on Scryfall.com",
+  "Pokaż na MagicCardMarket (MCM)": "View on MagicCardMarket (MCM)",
   "np. Karta z pre-release, podpisana...": "e.g. Pre-release card, signed...",
   "szt": "pcs",
   "✓ Aktywna wersja błyszcząca": "✓ Active foil version",

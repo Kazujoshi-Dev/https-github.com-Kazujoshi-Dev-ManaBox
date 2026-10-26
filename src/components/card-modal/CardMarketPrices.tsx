@@ -1,7 +1,7 @@
 import React from 'react';
 import { Coins, Sparkles, Check, ExternalLink, FolderHeart, Gamepad2 } from 'lucide-react';
 import { ScryfallCard } from '../../types';
-import { formatCurrency } from '../../utils/formatters';
+import { formatCurrency, getCardmarketUrl } from '../../utils/formatters';
 import { CardMarketPricesProps } from './types';
 import { isDigitalOnly } from '../../utils/mtgFormats';
 import { useT } from '../../i18n';
@@ -16,6 +16,7 @@ export const CardMarketPrices: React.FC<CardMarketPricesProps> = ({
   isOnWishlist = false,
 }) => {
   const t = useT();
+  const cardmarketUrl = getCardmarketUrl(activeCard);
   return (
     <>
       {/* Price Table from Scryfall (Interactive Foil / Standard selector) */}
@@ -109,14 +110,14 @@ export const CardMarketPrices: React.FC<CardMarketPricesProps> = ({
           </div>
         </div>
 
-        {activeCard.scryfall_uri && (
+        {cardmarketUrl && (
           <a
-            href={activeCard.scryfall_uri}
+            href={cardmarketUrl}
             target="_blank"
-            rel="noreferrer"
+            rel="noopener noreferrer"
             className="w-full mt-2 py-2 px-3 bg-stone-900 hover:bg-stone-800 text-stone-300 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 border border-stone-800 transition-colors"
           >
-            <span>{t('Zobacz ten print na Scryfall.com')}</span>
+            <span>{t('Pokaż na MagicCardMarket (MCM)')}</span>
             <ExternalLink className="w-3.5 h-3.5" />
           </a>
         )}

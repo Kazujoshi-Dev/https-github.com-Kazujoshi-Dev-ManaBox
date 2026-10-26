@@ -268,6 +268,29 @@ export function getCardEdhrecRank(card?: ScryfallCard | null): number | null {
 
 
 
+/**
+ * Strona karty na Cardmarket (MCM). Scryfall podaje link do konkretnego wydania;
+ * bez niego (np. stara karta zapisana w kolekcji) szukamy karty po nazwie.
+ * Karty istniejące tylko w grach cyfrowych nie mają strony na Cardmarket (null).
+ */
+export function getCardmarketUrl(card: Pick<ScryfallCard, 'name' | 'purchase_uris' | 'digital' | 'games'> | null | undefined): string | null {
+  if (!card?.name) return null;
+  const direct = card.purchase_uris?.cardmarket;
+  if (direct) {
+    try {
+      const url = new URL(direct);
+      // Bez parametrów śledzących Scryfall
+      [...url.searchParams.keys()].filter((k) => k.startsWith('utm_')).forEach((k) => url.searchParams.delete(k));
+      return url.toString();
+    } catch {
+      return direct;
+    }
+  }
+  const digitalOnly = card.digital || (Array.isArray(card.games) && card.games.length > 0 && !card.games.includes('paper'));
+  if (digitalOnly) return null;
+  return `https://www.cardmarket.com/en/Magic/Products/Search?searchString=${encodeURIComponent(card.name.split(' // ')[0])}`;
+}
+
 /** Język karty w kolekcji na podstawie wydania Scryfall (np. "ja" → JP). */
 export function langFromCard(card: { lang?: string } | null | undefined): import('../types').CardLanguage {
   const map: Record<string, import('../types').CardLanguage> = { en: 'EN', ja: 'JP', de: 'DE', fr: 'FR', it: 'IT', es: 'ES', pl: 'PL', ph: 'PH' };

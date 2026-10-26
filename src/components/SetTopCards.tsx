@@ -1,7 +1,7 @@
 import { PageHeader } from './ui/PageHeader';
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { ScryfallCard, AppSettings, MTGSet, SetTopCardsResponse } from '../types';
-import { formatCurrency, getCardImageUri, handleCardImageError, getCardEdhrecRank } from '../utils/formatters';
+import { formatCurrency, getCardImageUri, handleCardImageError, getCardEdhrecRank, getCardmarketUrl } from '../utils/formatters';
 import { ManaSymbol } from './ManaSymbol';
 import { EdhrecBadge } from './EdhrecBadge';
 import { 
@@ -627,7 +627,7 @@ export const SetTopCards: React.FC<SetTopCardsProps> = ({
                           const normalPrice = formatMcmPln(card.prices?.eur);
                           const foilPrice = formatMcmPln(card.prices?.eur_foil);
                           const imgUri = getCardImageUri(card, 'normal');
-                          const cardmarketUrl = (card as any).purchase_uris?.cardmarket || `https://www.cardmarket.com/en/Magic/Products/Search?searchString=${encodeURIComponent(card.name)}`;
+                          const cardmarketUrl = getCardmarketUrl(card) || `https://www.cardmarket.com/en/Magic/Products/Search?searchString=${encodeURIComponent(card.name)}`;
 
                           // Rank medal styling
                           let rankBadge = (

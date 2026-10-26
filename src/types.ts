@@ -60,6 +60,8 @@ export interface ScryfallCard {
   games?: string[];
   layout?: string;
   scryfall_uri?: string;
+  /** Linki do sklepów ze Scryfall (np. strona karty na Cardmarket). */
+  purchase_uris?: { cardmarket?: string; tcgplayer?: string; cardhoarder?: string };
   edhrec_rank?: number;
   artist?: string;
 }
