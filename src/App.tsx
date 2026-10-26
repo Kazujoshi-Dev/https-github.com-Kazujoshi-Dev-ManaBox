@@ -920,6 +920,8 @@ export default function App() {
                   condition: 'NM',
                   language: langFromCard(card),
                   binder,
+                  // znacznik talii-źródła: sugestie wiedzą, które egzemplarze należą do tej talii
+                  sourceDeckId: deck.id,
                   addedAt: new Date().toISOString()
                 };
                 if (foil) prev.quantityFoil += qty;

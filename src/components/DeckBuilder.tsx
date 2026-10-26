@@ -36,6 +36,7 @@ export { DECK_CATEGORIES, getCardCategory };
 export const DeckBuilder: React.FC<DeckBuilderProps> = ({
   deck,
   collection,
+  decks,
   settings,
   onUpdateDeck,
   onBack,
@@ -602,6 +603,7 @@ export const DeckBuilder: React.FC<DeckBuilderProps> = ({
       <DeckSuggestions
         deck={deck}
         collection={collection}
+        decks={decks}
         onViewCardDetails={onViewCardDetails}
         onAddCard={handleAddRecommended}
         onReplaceCard={handleReplaceWithRecommended}

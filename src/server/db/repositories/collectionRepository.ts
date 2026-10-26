@@ -3,7 +3,7 @@ import crypto from 'crypto';
 import { CollectionItem } from '../../../types';
 import { withDb, readJsonFile, writeJsonAtomic, getUserDir } from '../storage';
 import { mapCollectionRow } from '../mappers';
-import { entryKeyOf, matchesEntry, splitByFinish } from '../../../utils/collectionEntry';
+import { entryKeyOf, matchesEntry, normalizeSourceDeckId, splitByFinish } from '../../../utils/collectionEntry';
 
 const newCollectionId = () => `col-${crypto.randomUUID()}`;
 
@@ -15,7 +15,8 @@ export async function getCollection(userId: string): Promise<CollectionItem[]> {
                 condition, language, purchase_price as "purchasePrice", notes, binder,
                 added_at as "addedAt", last_updated_price_at as "lastUpdatedPriceAt",
                 is_for_sale as "isForSale", sale_price as "salePrice",
-                previous_prices as "previousPrices", prices_changed_at as "pricesChangedAt"
+                previous_prices as "previousPrices", prices_changed_at as "pricesChangedAt",
+                source_deck_id as "sourceDeckId"
          FROM user_collections WHERE user_id = $1 ORDER BY added_at DESC`,
         [userId]
       );
@@ -35,8 +36,8 @@ export async function addCollectionItem(userId: string, item: CollectionItem): P
         `INSERT INTO user_collections (
           id, user_id, card_id, card, quantity, quantity_foil,
           condition, language, purchase_price, notes, binder,
-          added_at, last_updated_price_at, is_for_sale, sale_price
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)`,
+          added_at, last_updated_price_at, is_for_sale, sale_price, source_deck_id
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)`,
         [
           item.id,
           userId,
@@ -52,7 +53,8 @@ export async function addCollectionItem(userId: string, item: CollectionItem): P
           item.addedAt || new Date().toISOString(),
           item.lastUpdatedPriceAt || null,
           Boolean(item.isForSale),
-          item.salePrice ?? null
+          item.salePrice ?? null,
+          normalizeSourceDeckId(item.sourceDeckId)
         ]
       );
       return item;
@@ -252,10 +254,11 @@ export async function addCollectionItems(
             `SELECT id, quantity, quantity_foil FROM user_collections
              WHERE user_id = $1 AND card_id = $2 AND binder = $3 AND condition = $4 AND language = $5
                AND COALESCE(is_for_sale, FALSE) = FALSE
+               AND source_deck_id IS NOT DISTINCT FROM $6
                AND ${foil ? 'quantity_foil > 0 AND quantity = 0' : 'quantity > 0 AND quantity_foil = 0'}
              ORDER BY added_at DESC
              LIMIT 1`,
-            [userId, key.cardId, key.binder, key.condition, key.language]
+            [userId, key.cardId, key.binder, key.condition, key.language, key.sourceDeckId]
           );
 
           if (existingRes.rows.length > 0) {
@@ -277,8 +280,8 @@ export async function addCollectionItems(
               `INSERT INTO user_collections (
                 id, user_id, card_id, card, quantity, quantity_foil,
                 condition, language, purchase_price, notes, binder,
-                added_at, last_updated_price_at
-              ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)`,
+                added_at, last_updated_price_at, source_deck_id
+              ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)`,
               [
                 id,
                 userId,
@@ -293,11 +296,13 @@ export async function addCollectionItems(
                 key.binder,
                 addedAt,
                 item.lastUpdatedPriceAt || null,
+                key.sourceDeckId,
               ]
             );
             inserted.push({
               ...item,
               id,
+              sourceDeckId: key.sourceDeckId,
               cardId: key.cardId,
               condition: key.condition as CollectionItem['condition'],
               language: key.language as CollectionItem['language'],
@@ -337,6 +342,7 @@ export async function addCollectionItems(
             binder: key.binder,
             condition: key.condition as CollectionItem['condition'],
             language: key.language as CollectionItem['language'],
+            sourceDeckId: key.sourceDeckId,
           };
           items.unshift(newItem);
           inserted.push(newItem);

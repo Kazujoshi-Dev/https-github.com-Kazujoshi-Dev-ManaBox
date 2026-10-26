@@ -40,6 +40,8 @@ CREATE TABLE IF NOT EXISTS user_collections (
   purchase_price NUMERIC(10, 2),
   notes TEXT,
   binder VARCHAR(150) DEFAULT 'Klaser Główny',
+  -- talia, z której karty skopiowano do kolekcji
+  source_deck_id VARCHAR(64),
   added_at TIMESTAMPTZ DEFAULT NOW(),
   last_updated_price_at TIMESTAMPTZ
 );

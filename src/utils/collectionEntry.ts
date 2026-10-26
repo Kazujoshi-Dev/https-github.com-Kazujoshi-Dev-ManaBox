@@ -12,10 +12,17 @@ export interface CollectionEntryKey {
   condition: string;
   language: string;
   binder: string;
+  /** Talia, z której skopiowano karty (null = dodane w inny sposób). */
+  sourceDeckId: string | null;
+}
+
+/** Identyfikator talii-źródła z danych od klienta: tylko krótki identyfikator, inaczej null. */
+export function normalizeSourceDeckId(value: unknown): string | null {
+  return typeof value === 'string' && /^[\w-]{1,64}$/.test(value) ? value : null;
 }
 
 export function entryKeyOf(
-  data: { cardId?: string; card?: { id: string }; condition?: string; language?: string; binder?: string },
+  data: { cardId?: string; card?: { id: string }; condition?: string; language?: string; binder?: string; sourceDeckId?: string | null },
   foil: boolean
 ): CollectionEntryKey {
   return {
@@ -24,12 +31,13 @@ export function entryKeyOf(
     condition: data.condition || 'NM',
     language: data.language || 'EN',
     binder: data.binder || DEFAULT_BINDER,
+    sourceDeckId: normalizeSourceDeckId(data.sourceDeckId),
   };
 }
 
 /**
  * Czy dodawane sztuki można dopisać do istniejącej pozycji: tylko gdy to dokładnie ta sama karta
- * (to samo wydanie, ta sama wersja foil / zwykła, stan, język i klaser), która nie jest wystawiona na sprzedaż.
+ * (to samo wydanie, ta sama wersja foil / zwykła, stan, język, klaser i talia-źródło), która nie jest wystawiona na sprzedaż.
  */
 export function matchesEntry(item: CollectionItem, key: CollectionEntryKey): boolean {
   if (item.isForSale) return false;
@@ -38,6 +46,7 @@ export function matchesEntry(item: CollectionItem, key: CollectionEntryKey): boo
   if ((item.condition || 'NM') !== key.condition) return false;
   if ((item.language || 'EN') !== key.language) return false;
   if ((item.binder || DEFAULT_BINDER) !== key.binder) return false;
+  if (normalizeSourceDeckId(item.sourceDeckId) !== key.sourceDeckId) return false;
   const normal = item.quantity || 0;
   const foil = item.quantityFoil || 0;
   return key.foil ? foil > 0 && normal === 0 : normal > 0 && foil === 0;

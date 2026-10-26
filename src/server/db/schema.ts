@@ -156,6 +156,8 @@ export async function initDb(): Promise<void> {
           -- ceny sprzed ostatniej zmiany rynkowej (do wskaźnika zmiany wartości kolekcji)
           ALTER TABLE user_collections ADD COLUMN IF NOT EXISTS previous_prices JSONB;
           ALTER TABLE user_collections ADD COLUMN IF NOT EXISTS prices_changed_at TIMESTAMPTZ;
+          -- talia, z której karty skopiowano do kolekcji (do sugestii: wolne egzemplarze vs karty w taliach)
+          ALTER TABLE user_collections ADD COLUMN IF NOT EXISTS source_deck_id VARCHAR(64);
           ALTER TABLE user_settings ADD COLUMN IF NOT EXISTS auto_nbp_rate BOOLEAN DEFAULT TRUE;
           -- liczba wierszy kart na stronie kolekcji
           ALTER TABLE user_settings ADD COLUMN IF NOT EXISTS collection_rows_per_page SMALLINT;

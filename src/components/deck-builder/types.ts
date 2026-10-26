@@ -5,6 +5,8 @@ import { DeckCategoryConfig } from './constants';
 export interface DeckBuilderProps {
   deck: DeckItem;
   collection: CollectionItem[];
+  /** Wszystkie talie użytkownika (do sprawdzania, które karty z kolekcji są już w innych taliach). */
+  decks?: DeckItem[];
   settings: AppSettings;
   onUpdateDeck: (updated: DeckItem) => void;
   onBack: () => void;

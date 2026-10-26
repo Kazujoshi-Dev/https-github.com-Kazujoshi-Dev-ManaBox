@@ -145,6 +145,8 @@ export interface CollectionItem {
   previousPrices?: ScryfallCard['prices'] | null;
   /** Kiedy ceny ostatnio się zmieniły (względem previousPrices). */
   pricesChangedAt?: string | null;
+  /** Talia, z której karty skopiowano do kolekcji („Dodaj karty talii do klasera”). */
+  sourceDeckId?: string | null;
 }
 
 export interface WishlistItem {

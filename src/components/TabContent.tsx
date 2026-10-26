@@ -175,6 +175,7 @@ export const TabContent: React.FC<TabContentProps> = ({
           <DeckBuilder
             deck={selectedDeck}
             collection={collection}
+            decks={decks}
             settings={settings}
             onUpdateDeck={onUpdateDeck}
             onBack={onBackFromDeck}
@@ -196,6 +197,7 @@ export const TabContent: React.FC<TabContentProps> = ({
           onEditDeck={onEditDeck}
           onOpenImportDeck={onOpenImportDeck}
           onCopyToCollection={onCopyDeckToCollection}
+          collection={collection}
           defaultBinder={catalogs.find((c) => c.isDefault)?.name || MAIN_BINDER}
           showToast={showToast}
         />

@@ -1,7 +1,7 @@
 import { PageHeader } from './ui/PageHeader';
 import { computeDeckValue } from './deck-builder/useDeckStats';
 import React, { useEffect, useMemo, useState } from 'react';
-import { DeckItem, AppSettings } from '../types';
+import { DeckItem, AppSettings, CollectionItem } from '../types';
 import { formatCurrency, getCardArtist } from '../utils/formatters';
 import { ArtistCredit } from './ui/ArtistCredit';
 import { exportDeckToTxt, downloadTxtFile } from '../utils/textCardList';
@@ -9,7 +9,7 @@ import { DECK_FORMATS, computeWildcardCost, getDeckFormat, type DeckFormat } fro
 import { WildcardCost } from './deck-builder/WildcardCost';
 import { Swords, Plus, Crown, Trash2, Download, Copy, Check, Upload, FileText, Pencil, FolderInput, Loader2, Search } from 'lucide-react';
 import { DeckCardSearchResults } from './deck-builder/DeckCardSearchResults';
-import { useT, MAIN_BINDER, binderName } from '../i18n';
+import { useT, MAIN_BINDER, binderName, locale } from '../i18n';
 
 interface DeckListProps {
   decks: DeckItem[];
@@ -23,6 +23,8 @@ interface DeckListProps {
   /** Dodaje wszystkie karty talii (te same wydania i foil) do domyślnego klasera. */
   onCopyToCollection?: (deck: DeckItem) => Promise<boolean>;
   defaultBinder?: string;
+  /** Kolekcja: do ostrzeżenia, że karty tej talii już raz skopiowano do klasera. */
+  collection?: CollectionItem[];
 }
 
 export const DeckList: React.FC<DeckListProps> = ({
@@ -36,8 +38,21 @@ export const DeckList: React.FC<DeckListProps> = ({
   showToast,
   onCopyToCollection,
   defaultBinder = MAIN_BINDER,
+  collection,
 }) => {
   const t = useT();
+  // Karty skopiowane wcześniej z każdej talii („Dodaj karty talii do klasera”)
+  const copiedFromDeck = useMemo(() => {
+    const out = new Map<string, { qty: number; lastAt: string }>();
+    for (const item of collection || []) {
+      if (!item.sourceDeckId) continue;
+      const prev = out.get(item.sourceDeckId) || { qty: 0, lastAt: '' };
+      prev.qty += (item.quantity || 0) + (item.quantityFoil || 0);
+      if ((item.addedAt || '') > prev.lastAt) prev.lastAt = item.addedAt || '';
+      out.set(item.sourceDeckId, prev);
+    }
+    return out;
+  }, [collection]);
   const [copiedDeckId, setCopiedDeckId] = useState<string | null>(null);
   const [confirmCopyId, setConfirmCopyId] = useState<string | null>(null);
   const [copyingId, setCopyingId] = useState<string | null>(null);
@@ -286,6 +301,15 @@ export const DeckList: React.FC<DeckListProps> = ({
                       <p className="text-sm text-stone-300">
                         {t('Dodać {n} kart do klasera „{name}”? Te same wydania i wersje foil co w talii.', { n: count, name: binderName(defaultBinder) })}
                       </p>
+                      {copiedFromDeck.get(deck.id) && (() => {
+                        const prev = copiedFromDeck.get(deck.id)!;
+                        const date = prev.lastAt ? new Date(prev.lastAt).toLocaleDateString(locale()) : '';
+                        return (
+                          <p className="text-xs text-amber-300">
+                            {t('Karty z tej talii już są w kolekcji ({n} szt., dodane {date}). Ponowne dodanie utworzy kolejne egzemplarze.', { n: prev.qty, date })}
+                          </p>
+                        );
+                      })()}
                       <div className="flex justify-end gap-1.5">
                         <button type="button" onClick={() => setConfirmCopyId(null)} className="btn btn-ghost h-8 px-3">
                           {t('Anuluj')}

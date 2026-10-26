@@ -6,11 +6,14 @@ import { getCardImageUri, handleCardImageError, scryfallNamedImageUrl } from '..
 import { edhrecApi, type EdhrecCommanderData, type EdhrecRecommendation } from '../../services/api';
 import { getCardCategory } from './constants';
 import { ReplaceCardModal } from './ReplaceCardModal';
-import { useT, locale } from '../../i18n';
+import { useT, locale, binderName } from '../../i18n';
+import { computeCardAvailability, type CardAvailability } from '../../utils/cardAvailability';
 
 interface DeckSuggestionsProps {
   deck: DeckItem;
   collection: CollectionItem[];
+  /** Wszystkie talie użytkownika: karty z kolekcji, które już są w innych taliach, nie są „wolne”. */
+  decks?: DeckItem[];
   onViewCardDetails: (card: ScryfallCard) => void;
   /** Dodaje kartę (gdy mamy jej dane) albo szuka jej po nazwie. */
   onAddCard: (rec: EdhrecRecommendation) => void;
@@ -64,7 +67,7 @@ function previewPosition(el: HTMLElement): { x: number; y: number } {
 const isBasicLand = (card: ScryfallCard) => /\bbasic\b/i.test(card.type_line || '') && /\bland\b/i.test(card.type_line || '');
 
 /** Sugestie z EDHREC: popularne karty dla dowódcy, których brak w talii, i lepsze odpowiedniki. */
-export const DeckSuggestions: React.FC<DeckSuggestionsProps> = ({ deck, collection, onViewCardDetails, onAddCard, onReplaceCard, wishlistNames, onAddToWishlist }) => {
+export const DeckSuggestions: React.FC<DeckSuggestionsProps> = ({ deck, collection, decks, onViewCardDetails, onAddCard, onReplaceCard, wishlistNames, onAddToWishlist }) => {
   const t = useT();
   const [wishBusy, setWishBusy] = useState<string | null>(null);
   const commanderName = deck.commander?.name || '';
@@ -120,6 +123,10 @@ export const DeckSuggestions: React.FC<DeckSuggestionsProps> = ({ deck, collecti
   }, [deck]);
 
   const owned = useMemo(() => new Set(collection.map((c) => frontName(c.card?.name || ''))), [collection]);
+  // Wolne egzemplarze: posiadane minus te, które zajmują Twoje inne talie papierowe
+  const availability = useMemo(() => computeCardAvailability(collection, decks || [], deck.id), [collection, decks, deck.id]);
+  const availOf = (name: string): CardAvailability | undefined => availability.get(frontName(name));
+  const hasFree = (name: string) => (availOf(name)?.free || 0) > 0;
   const collectionOnly = (deck.cardSource || 'collection') === 'collection';
 
   const inclusionByName = useMemo(
@@ -136,8 +143,8 @@ export const DeckSuggestions: React.FC<DeckSuggestionsProps> = ({ deck, collecti
     () =>
       missing
         .filter((r) => tab === 'Wszystkie' || categoryOf(r) === tab)
-        .filter((r) => !ownedOnly || owned.has(frontName(r.name))),
-    [missing, tab, ownedOnly, owned]
+        .filter((r) => !ownedOnly || (availability.get(frontName(r.name))?.free || 0) > 0),
+    [missing, tab, ownedOnly, availability]
   );
 
   // Lepsze odpowiedniki: rzadko grane karty z talii → popularne karty tego samego typu i podobnego kosztu
@@ -160,7 +167,7 @@ export const DeckSuggestions: React.FC<DeckSuggestionsProps> = ({ deck, collecti
           !used.has(r.name) &&
           getCardCategory(r.card!) === cat &&
           (r.card!.cmc || 0) <= cmc + 1 &&
-          (!collectionOnly || owned.has(frontName(r.name)))
+          (!collectionOnly || (availability.get(frontName(r.name))?.free || 0) > 0)
       );
       if (!candidate) continue;
       used.add(candidate.name);
@@ -168,7 +175,7 @@ export const DeckSuggestions: React.FC<DeckSuggestionsProps> = ({ deck, collecti
       if (pairs.length >= 12) break;
     }
     return pairs;
-  }, [data, deck.cards, missing, collectionOnly, owned]);
+  }, [data, deck.cards, missing, collectionOnly, availability]);
 
   if (!deck.commander) {
     return (
@@ -180,6 +187,30 @@ export const DeckSuggestions: React.FC<DeckSuggestionsProps> = ({ deck, collecti
       </section>
     );
   }
+
+  /** Krótka i pełna informacja, gdzie leży karta: wolne egzemplarze w klaserach albo zajęte przez inne talie. */
+  const availabilityNote = (avail?: CardAvailability): { short: string; full: string } | null => {
+    if (!avail || avail.owned === 0) return null;
+    if (avail.free > 0) {
+      const [first, ...rest] = avail.freeBinders;
+      const short = rest.length
+        ? t('W klaserze „{name}” (+{n})', { name: binderName(first.binder), n: rest.length })
+        : t('W klaserze „{name}”', { name: binderName(first.binder) });
+      const list = avail.freeBinders.map((b) => `${binderName(b.binder)} (${b.qty})`).join(', ');
+      const inDecks = avail.inDecks.length ? ' ' + t('Pozostałe są w taliach: {list}.', { list: avail.inDecks.map((d) => d.deckName).join(', ') }) : '';
+      return { short, full: t('Wolne egzemplarze w klaserach: {list}.', { list }) + inDecks };
+    }
+    const names = avail.inDecks.map((d) => d.deckName);
+    const short = names.length > 1
+      ? t('W taliach: {list}', { list: names.join(', ') })
+      : t('W talii „{name}”', { name: names[0] || '' });
+    return {
+      short,
+      full: avail.owned > 1
+        ? t('Wszystkie Twoje egzemplarze ({n}) są w innych taliach: {list}.', { n: avail.owned, list: names.join(', ') })
+        : t('Masz tę kartę, ale jest w innej talii: {list}.', { list: names.join(', ') })
+    };
+  };
 
   const addDisabledReason = (rec: EdhrecRecommendation) =>
     collectionOnly && !owned.has(frontName(rec.name)) ? t('Talia korzysta tylko z kart z kolekcji. Przełącz źródło na „Wszystkie karty”, aby dodać') : null;
@@ -266,7 +297,7 @@ export const DeckSuggestions: React.FC<DeckSuggestionsProps> = ({ deck, collecti
               </div>
               <label className="flex items-center gap-2 text-xs text-stone-300 cursor-pointer h-9">
                 <input type="checkbox" checked={ownedOnly} onChange={(e) => setOwnedOnly(e.target.checked)} className="w-4 h-4 accent-amber-500" />
-                <Library className="w-3.5 h-3.5 text-amber-400" /> {t('Tylko z mojej kolekcji')}
+                <Library className="w-3.5 h-3.5 text-amber-400" /> {t('Tylko wolne z mojej kolekcji')}
               </label>
             </div>
 
@@ -290,7 +321,7 @@ export const DeckSuggestions: React.FC<DeckSuggestionsProps> = ({ deck, collecti
             </div>
 
             {visible.length === 0 ? (
-              <p className="text-sm text-stone-400 py-2">{ownedOnly ? t('Brak kart w tej kategorii w Twojej kolekcji.') : t('Brak kart w tej kategorii.')}</p>
+              <p className="text-sm text-stone-400 py-2">{ownedOnly ? t('Brak w tej kategorii wolnych kart z Twojej kolekcji (spoza innych talii).') : t('Brak kart w tej kategorii.')}</p>
             ) : (
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
                 {visible.slice(0, limit).map((rec) => {
@@ -298,7 +329,11 @@ export const DeckSuggestions: React.FC<DeckSuggestionsProps> = ({ deck, collecti
                   const img = rec.card
                     ? getCardImageUri(rec.card, 'normal')
                     : scryfallNamedImageUrl(rec.name.split('//')[0].trim(), 'normal');
-                  const isOwned = owned.has(frontName(rec.name));
+                  const avail = availOf(rec.name);
+                  const free = avail?.free || 0;
+                  // Masz kartę, ale wszystkie egzemplarze są w innych taliach
+                  const allInDecks = Boolean(avail && avail.owned > 0 && free === 0);
+                  const where = availabilityNote(avail);
                   const blocked = addDisabledReason(rec);
                   return (
                     <div key={rec.name} className="bg-stone-950 border border-stone-800 rounded-xl overflow-hidden flex flex-col">
@@ -313,12 +348,21 @@ export const DeckSuggestions: React.FC<DeckSuggestionsProps> = ({ deck, collecti
                         ) : (
                           <span className="absolute inset-0 flex items-center justify-center p-2 text-xs text-stone-300 text-center">{rec.name}</span>
                         )}
-                        {isOwned && (
-                          <span className="absolute top-1.5 left-1.5 text-[11px] font-bold px-1.5 py-0.5 rounded bg-emerald-600 text-white">{t('W kolekcji')}</span>
-                        )}
+                        {free > 0 ? (
+                          <span className="absolute top-1.5 left-1.5 text-[11px] font-bold px-1.5 py-0.5 rounded bg-emerald-600 text-white tabular-nums">
+                            {free > 1 ? t('Wolne: {n}', { n: free }) : t('Wolna')}
+                          </span>
+                        ) : allInDecks ? (
+                          <span className="absolute top-1.5 left-1.5 text-[11px] font-bold px-1.5 py-0.5 rounded bg-amber-400 text-stone-950">{t('W innej talii')}</span>
+                        ) : null}
                       </button>
                       <div className="p-2 space-y-1.5 flex-1 flex flex-col">
                         <p className="text-xs font-semibold text-stone-100 truncate" title={rec.name}>{rec.name}</p>
+                        {where && (
+                          <p className={`text-[11px] truncate ${free > 0 ? 'text-emerald-300' : 'text-amber-300'}`} title={where.full}>
+                            {where.short}
+                          </p>
+                        )}
                         <div className="h-1.5 rounded-full bg-stone-800 overflow-hidden">
                           <div className="h-full bg-amber-500" style={{ width: pct(rec.inclusion) }} />
                         </div>
@@ -335,7 +379,7 @@ export const DeckSuggestions: React.FC<DeckSuggestionsProps> = ({ deck, collecti
                             type="button"
                             onClick={() => onAddCard(rec)}
                             disabled={Boolean(blocked)}
-                            title={blocked || t('Dodaj do talii')}
+                            title={blocked || (allInDecks && where ? `${t('Dodaj do talii')}. ${where.full}` : t('Dodaj do talii'))}
                             className="h-8 rounded-md bg-amber-400 hover:bg-amber-300 text-stone-950 text-xs font-semibold flex items-center justify-center gap-1 cursor-pointer disabled:bg-stone-800 disabled:text-stone-500 disabled:cursor-not-allowed"
                           >
                             <Plus className="w-3.5 h-3.5" /> {t('Dodaj')}

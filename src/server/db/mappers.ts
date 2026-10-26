@@ -77,6 +77,7 @@ export function mapCollectionRow(r: any): CollectionItem {
       const v = r.previousPrices ?? r.previous_prices ?? null;
       return typeof v === 'string' ? JSON.parse(v) : v;
     })(),
+    sourceDeckId: r.sourceDeckId ?? r.source_deck_id ?? null,
     pricesChangedAt: (() => {
       const v = r.pricesChangedAt ?? r.prices_changed_at ?? null;
       return v ? new Date(v).toISOString() : null;
