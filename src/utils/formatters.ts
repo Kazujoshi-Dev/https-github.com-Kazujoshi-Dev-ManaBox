@@ -16,6 +16,45 @@ export const DEFAULT_SETTINGS: AppSettings = {
   showFoilBadge: true,
 };
 
+/** Dozwolony zakres korekty ceny sprzedaży względem Cardmarket Trend (w procentach). */
+export const SALE_ADJUST_MIN = -90;
+export const SALE_ADJUST_MAX = 200;
+
+/** Korekta ceny sprzedaży z ustawień, przycięta do dozwolonego zakresu (0 = bez korekty). */
+export function getSaleAdjustPct(settings?: Partial<AppSettings> | null): number {
+  const n = Number(settings?.saleTrendAdjustPct);
+  if (!Number.isFinite(n) || n === 0) return 0;
+  return Math.min(SALE_ADJUST_MAX, Math.max(SALE_ADJUST_MIN, n));
+}
+
+/** Korekta w czytelnej postaci, np. „+10%” lub „-5,5%”. */
+export function formatSaleAdjustPct(pct: number): string {
+  const abs = Math.abs(pct).toLocaleString(locale(), { maximumFractionDigits: 2 });
+  return `${pct > 0 ? '+' : '-'}${abs}%`;
+}
+
+/**
+ * Domyślna cena sprzedaży karty (gdy sprzedawca nie ustawił własnej).
+ * Bez korekty to zwykła cena rynkowa; z korektą liczymy ją od Cardmarket Trend (MCM)
+ * powiększonego lub pomniejszonego o ustawiony procent.
+ */
+export function getSaleMarketPrice(card: ScryfallCard, preferFoil: boolean, settings: AppSettings): number {
+  const pct = getSaleAdjustPct(settings);
+  if (!pct) return getCardPrice(card, preferFoil, settings);
+  const trend = getCardPrice(card, preferFoil, { ...settings, pricingSource: 'CARDMARKET' });
+  if (!trend) return 0;
+  return Math.round(trend * (1 + pct / 100) * 100) / 100;
+}
+
+/** Cena ofertowa pozycji: własna cena sprzedawcy albo cena rynkowa z korektą. */
+export function getItemSalePrice(
+  item: { salePrice?: number | null; card: ScryfallCard },
+  preferFoil: boolean,
+  settings: AppSettings
+): number {
+  return item.salePrice !== undefined && item.salePrice !== null ? item.salePrice : getSaleMarketPrice(item.card, preferFoil, settings);
+}
+
 export function formatCurrency(
   amount: number | string | null | undefined, 
   currency: CurrencyCode = 'PLN'

@@ -3,7 +3,7 @@ import { publicUrl } from '../utils/publicLinks';
 import React, { useState, useMemo, Suspense } from 'react';
 import { lazyWithReload } from '../utils/lazyWithReload';
 import { CollectionItem, AppSettings, AuthUser } from '../types';
-import { formatCurrency, getCardPrice, getCardImageUri, getRarityColor, getRarityLabel, getCardEdhrecRank, handleCardImageError } from '../utils/formatters';
+import { formatCurrency, getCardPrice, getSaleMarketPrice, getItemSalePrice, getCardImageUri, getRarityColor, getRarityLabel, getCardEdhrecRank, handleCardImageError } from '../utils/formatters';
 import { ManaSymbol } from './ManaSymbol';
 import { EdhrecBadge } from './EdhrecBadge';
 import { 
@@ -86,8 +86,8 @@ export const ForSaleList: React.FC<ForSaleListProps> = ({
       if (item.salePrice !== undefined && item.salePrice !== null) {
         return sum + (item.salePrice * (item.quantity + item.quantityFoil));
       }
-      const priceNorm = getCardPrice(item.card, false, settings);
-      const priceFoil = getCardPrice(item.card, true, settings);
+      const priceNorm = getSaleMarketPrice(item.card, false, settings);
+      const priceFoil = getSaleMarketPrice(item.card, true, settings);
       return sum + (item.quantity * priceNorm) + (item.quantityFoil * priceFoil);
     }, 0);
   }, [allForSaleCards, settings]);
@@ -111,7 +111,7 @@ export const ForSaleList: React.FC<ForSaleListProps> = ({
         const foilTag = item.quantityFoil > 0 ? ' [FOIL]' : '';
         const price = item.salePrice !== undefined && item.salePrice !== null
           ? formatCurrency(item.salePrice, settings.currency)
-          : formatCurrency(getCardPrice(item.card, Boolean(item.quantityFoil > 0), settings), settings.currency);
+          : formatCurrency(getSaleMarketPrice(item.card, Boolean(item.quantityFoil > 0), settings), settings.currency);
         return `${totalQty}x ${item.card.name} (${item.card.set.toUpperCase()}) #${item.card.collector_number}${foilTag} [${item.condition}, ${item.language}] - ${price}`;
       })
       .join('\n');
@@ -134,7 +134,7 @@ export const ForSaleList: React.FC<ForSaleListProps> = ({
         cards: displayedCards.map(item => {
           const foil = item.quantityFoil > 0;
           const qty = item.quantity + item.quantityFoil;
-          const price = item.salePrice ?? getCardPrice(item.card, foil, settings);
+          const price = getItemSalePrice(item, foil, settings);
           return {
             imageUri: getCardImageUri(item.card, 'normal'),
             name: item.card.name,
@@ -193,13 +193,13 @@ export const ForSaleList: React.FC<ForSaleListProps> = ({
       })
       .sort((a, b) => {
         if (sortBy === 'price-desc') {
-          const valA = a.salePrice ?? getCardPrice(a.card, Boolean(a.quantityFoil > 0), settings);
-          const valB = b.salePrice ?? getCardPrice(b.card, Boolean(b.quantityFoil > 0), settings);
+          const valA = getItemSalePrice(a, Boolean(a.quantityFoil > 0), settings);
+          const valB = getItemSalePrice(b, Boolean(b.quantityFoil > 0), settings);
           return valB - valA;
         }
         if (sortBy === 'price-asc') {
-          const valA = a.salePrice ?? getCardPrice(a.card, Boolean(a.quantityFoil > 0), settings);
-          const valB = b.salePrice ?? getCardPrice(b.card, Boolean(b.quantityFoil > 0), settings);
+          const valA = getItemSalePrice(a, Boolean(a.quantityFoil > 0), settings);
+          const valB = getItemSalePrice(b, Boolean(b.quantityFoil > 0), settings);
           return valA - valB;
         }
         if (sortBy === 'name') {
@@ -386,8 +386,8 @@ export const ForSaleList: React.FC<ForSaleListProps> = ({
             {displayedCards.map(item => {
               const imageUri = getCardImageUri(item.card, 'normal');
               const edhrecRank = getCardEdhrecRank(item.card);
-              const marketPriceNormal = getCardPrice(item.card, false, settings);
-              const marketPriceFoil = getCardPrice(item.card, true, settings);
+              const marketPriceNormal = getSaleMarketPrice(item.card, false, settings);
+              const marketPriceFoil = getSaleMarketPrice(item.card, true, settings);
               const activeMarketPrice = item.quantityFoil > 0 ? marketPriceFoil : marketPriceNormal;
               const effectivePrice = item.salePrice ?? activeMarketPrice;
               const isEditingPrice = editingPriceId === item.id;

@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { X, Search, Loader2, ArrowLeft, CircleDollarSign, Minus, Plus, Sparkles } from 'lucide-react';
 import type { AppSettings, CardCondition, CardLanguage, CollectionItem, ScryfallCard } from '../../types';
 import { AddCardVersionPicker } from '../deck-builder/AddCardVersionPicker';
-import { formatCurrency, getCardImageUri, getCardPrice, handleCardImageError, langFromCard } from '../../utils/formatters';
+import { formatCurrency, getCardImageUri, getCardPrice, getSaleMarketPrice, getSaleAdjustPct, formatSaleAdjustPct, handleCardImageError, langFromCard } from '../../utils/formatters';
 import { useBackToClose } from '../../hooks/useBackButton';
 import { useT, tk } from '../../i18n';
 
@@ -301,7 +301,11 @@ export const ForSaleAddModal: React.FC<ForSaleAddModalProps> = ({ collection, se
                     inputMode="decimal"
                     value={price}
                     onChange={(e) => setPrice(e.target.value.replace(/[^\d.,]/g, ''))}
-                    placeholder={t('Cena rynkowa: {price}', { price: formatCurrency(getCardPrice(step.card, step.isFoil, settings), settings.currency) })}
+                    placeholder={
+                      getSaleAdjustPct(settings)
+                        ? t('MCM Trend {pct}: {price}', { pct: formatSaleAdjustPct(getSaleAdjustPct(settings)), price: formatCurrency(getSaleMarketPrice(step.card, step.isFoil, settings), settings.currency) })
+                        : t('Cena rynkowa: {price}', { price: formatCurrency(getCardPrice(step.card, step.isFoil, settings), settings.currency) })
+                    }
                     className="w-full h-10 rounded-lg bg-stone-950 border border-stone-800 px-3 text-sm text-stone-100 placeholder-stone-500 tabular-nums"
                   />
                   <p className="text-xs text-stone-500 mt-1.5">{t('Zostaw puste, aby sprzedawać po aktualnej cenie rynkowej.')}</p>

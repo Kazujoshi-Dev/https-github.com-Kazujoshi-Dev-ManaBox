@@ -1,7 +1,7 @@
 import { SendMessageModal } from './messages/SendMessageModal';
 import React, { useState, useMemo } from 'react';
 import { CollectionItem, AppSettings, ScryfallCard } from '../types';
-import { formatCurrency, getCardPrice, getCardImageUri, getRarityColor, getRarityLabel, getCardEdhrecRank, handleCardImageError } from '../utils/formatters';
+import { formatCurrency, getCardPrice, getSaleMarketPrice, getItemSalePrice, getCardImageUri, getRarityColor, getRarityLabel, getCardEdhrecRank, handleCardImageError } from '../utils/formatters';
 import { ManaSymbol } from './ManaSymbol';
 import { EdhrecBadge } from './EdhrecBadge';
 import { AppFooter } from './AppFooter';
@@ -77,8 +77,8 @@ export const PublicSaleView: React.FC<PublicSaleViewProps> = ({
       if (item.salePrice !== undefined && item.salePrice !== null) {
         return sum + (item.salePrice * (item.quantity + item.quantityFoil));
       }
-      const priceNorm = getCardPrice(item.card, false, settings);
-      const priceFoil = getCardPrice(item.card, true, settings);
+      const priceNorm = getSaleMarketPrice(item.card, false, settings);
+      const priceFoil = getSaleMarketPrice(item.card, true, settings);
       return sum + (item.quantity * priceNorm) + (item.quantityFoil * priceFoil);
     }, 0);
   }, [cards, settings]);
@@ -100,7 +100,7 @@ export const PublicSaleView: React.FC<PublicSaleViewProps> = ({
         const foilTag = item.quantityFoil > 0 ? ' [FOIL]' : '';
         const price = item.salePrice !== undefined && item.salePrice !== null
           ? formatCurrency(item.salePrice, settings.currency)
-          : formatCurrency(getCardPrice(item.card, Boolean(item.quantityFoil > 0), settings), settings.currency);
+          : formatCurrency(getSaleMarketPrice(item.card, Boolean(item.quantityFoil > 0), settings), settings.currency);
         return `${totalQty}x ${item.card.name} (${item.card.set.toUpperCase()}) #${item.card.collector_number}${foilTag} [${item.condition}, ${item.language}] - ${price}`;
       })
       .join('\n');
@@ -136,13 +136,13 @@ export const PublicSaleView: React.FC<PublicSaleViewProps> = ({
       })
       .sort((a, b) => {
         if (sortBy === 'price-desc') {
-          const valA = a.salePrice ?? getCardPrice(a.card, Boolean(a.quantityFoil > 0), settings);
-          const valB = b.salePrice ?? getCardPrice(b.card, Boolean(b.quantityFoil > 0), settings);
+          const valA = getItemSalePrice(a, Boolean(a.quantityFoil > 0), settings);
+          const valB = getItemSalePrice(b, Boolean(b.quantityFoil > 0), settings);
           return valB - valA;
         }
         if (sortBy === 'price-asc') {
-          const valA = a.salePrice ?? getCardPrice(a.card, Boolean(a.quantityFoil > 0), settings);
-          const valB = b.salePrice ?? getCardPrice(b.card, Boolean(b.quantityFoil > 0), settings);
+          const valA = getItemSalePrice(a, Boolean(a.quantityFoil > 0), settings);
+          const valB = getItemSalePrice(b, Boolean(b.quantityFoil > 0), settings);
           return valA - valB;
         }
         if (sortBy === 'name') {
@@ -318,8 +318,8 @@ export const PublicSaleView: React.FC<PublicSaleViewProps> = ({
             {displayedCards.map(item => {
               const imageUri = getCardImageUri(item.card, 'normal');
               const edhrecRank = getCardEdhrecRank(item.card);
-              const marketPriceNormal = getCardPrice(item.card, false, settings);
-              const marketPriceFoil = getCardPrice(item.card, true, settings);
+              const marketPriceNormal = getSaleMarketPrice(item.card, false, settings);
+              const marketPriceFoil = getSaleMarketPrice(item.card, true, settings);
               const activeMarketPrice = item.quantityFoil > 0 ? marketPriceFoil : marketPriceNormal;
               const effectivePrice = item.salePrice ?? activeMarketPrice;
 
@@ -435,7 +435,7 @@ export const PublicSaleView: React.FC<PublicSaleViewProps> = ({
                   <span className="text-[11px] font-bold text-stone-400 block">{t('Cena sprzedaży')}</span>
                   <div className="text-xl font-bold tabular-nums text-emerald-300">
                     {formatCurrency(
-                      selectedPreviewCard.salePrice ?? getCardPrice(selectedPreviewCard.card, Boolean(selectedPreviewCard.quantityFoil > 0), settings),
+                      getItemSalePrice(selectedPreviewCard, Boolean(selectedPreviewCard.quantityFoil > 0), settings),
                       settings.currency
                     )}
                   </div>

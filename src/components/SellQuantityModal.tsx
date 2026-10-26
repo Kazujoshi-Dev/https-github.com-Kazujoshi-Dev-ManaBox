@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { CollectionItem, AppSettings } from '../types';
-import { formatCurrency, getCardPrice, getCardImageUri, getRarityColor, getRarityLabel, handleCardImageError } from '../utils/formatters';
+import { formatCurrency, getCardPrice, getSaleMarketPrice, getSaleAdjustPct, formatSaleAdjustPct, getCardImageUri, getRarityColor, getRarityLabel, handleCardImageError } from '../utils/formatters';
 import { CircleDollarSign, X, Plus, Minus, Sparkles, Tag, Layers } from 'lucide-react';
 
 import { useBackToClose } from '../hooks/useBackButton';
@@ -54,6 +54,8 @@ export const SellQuantityModal: React.FC<SellQuantityModalProps> = ({
   const maxAvailable = selectedFinish === 'foil' ? foilQty : (normalQty > 0 ? normalQty : foilQty);
   const isFoil = selectedFinish === 'foil';
   const marketPrice = getCardPrice(item.card, isFoil, settings);
+  const adjustPct = getSaleAdjustPct(settings);
+  const defaultSalePrice = getSaleMarketPrice(item.card, isFoil, settings);
   const imageUri = getCardImageUri(item.card, 'normal');
   const rarityColor = getRarityColor(item.card.rarity);
 
@@ -151,6 +153,12 @@ export const SellQuantityModal: React.FC<SellQuantityModalProps> = ({
                 <span>{t('Cena rynkowa:')}</span>
                 <strong className="text-emerald-300 tabular-nums font-bold">{formatCurrency(marketPrice, settings.currency)}</strong>
               </div>
+              {adjustPct !== 0 && (
+                <div className="flex items-center gap-1.5 text-xs text-stone-400">
+                  <span>{t('Cena w ofercie (MCM Trend {pct}):', { pct: formatSaleAdjustPct(adjustPct) })}</span>
+                  <strong className="text-emerald-300 tabular-nums font-bold">{formatCurrency(defaultSalePrice, settings.currency)}</strong>
+                </div>
+              )}
             </div>
           </div>
 
@@ -260,7 +268,7 @@ export const SellQuantityModal: React.FC<SellQuantityModalProps> = ({
               type="text"
               value={customPriceInput}
               onChange={(e) => setCustomPriceInput(e.target.value)}
-              placeholder={t('np. {price} (domyślnie rynkowa)', { price: formatCurrency(marketPrice, settings.currency) })}
+              placeholder={t('np. {price} (domyślnie rynkowa)', { price: formatCurrency(defaultSalePrice, settings.currency) })}
               className="w-full bg-stone-950 border border-stone-800 focus:border-emerald-500 rounded-xl px-3.5 py-2.5 text-sm text-stone-100 placeholder-stone-600 focus:outline-none transition-colors tabular-nums"
             />
             <p className="text-[11px] text-stone-500 mt-1">

@@ -1,4 +1,6 @@
 export const en_sale: Record<string, string> = {
+  "Cena w ofercie (MCM Trend {pct}):": "Offer price (MCM Trend {pct}):",
+  "MCM Trend {pct}: {price}": "MCM Trend {pct}: {price}",
   "(Ty)": "(You)",
   "Angielski": "English",
   "Brak sprzedawców na mapie": "No sellers on the map",

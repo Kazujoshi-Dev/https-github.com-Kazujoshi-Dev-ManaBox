@@ -113,6 +113,8 @@ export interface AppSettings {
   showPriceTag?: boolean;
   /** Plakietka „Foil” na obrazie karty w kolekcji (domyślnie włączona). */
   showFoilBadge?: boolean;
+  /** Korekta domyślnej ceny wystawianych kart względem Cardmarket Trend, w procentach (np. -10 lub 15). */
+  saleTrendAdjustPct?: number;
 }
 
 export interface Catalog {

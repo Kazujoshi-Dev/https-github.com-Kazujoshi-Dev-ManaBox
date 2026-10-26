@@ -4,7 +4,7 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { RegisteredUserSummary, AppSettings, AuthUser, CollectionItem, ScryfallCard, WishlistItem, WishlistMatches } from '../types';
 import { usersApi, publicSaleApi, sellersApi } from '../services/api';
 import { useBackToClose } from '../hooks/useBackButton';
-import { formatCurrency, getCardPrice, getCardImageUri, getRarityColor, getRarityLabel, getCardEdhrecRank, handleCardImageError } from '../utils/formatters';
+import { formatCurrency, getCardPrice, getSaleMarketPrice, getItemSalePrice, getCardImageUri, getRarityColor, getRarityLabel, getCardEdhrecRank, handleCardImageError } from '../utils/formatters';
 import { ManaSymbol } from './ManaSymbol';
 import { EdhrecBadge } from './EdhrecBadge';
 import { 
@@ -269,13 +269,13 @@ export const UsersList: React.FC<UsersListProps> = ({
       .sort((a, b) => {
         const effSettings = sellerOffers.settings || settings;
         if (cardSortBy === 'price-desc') {
-          const valA = a.salePrice ?? getCardPrice(a.card, Boolean(a.quantityFoil > 0), effSettings);
-          const valB = b.salePrice ?? getCardPrice(b.card, Boolean(b.quantityFoil > 0), effSettings);
+          const valA = getItemSalePrice(a, Boolean(a.quantityFoil > 0), effSettings);
+          const valB = getItemSalePrice(b, Boolean(b.quantityFoil > 0), effSettings);
           return valB - valA;
         }
         if (cardSortBy === 'price-asc') {
-          const valA = a.salePrice ?? getCardPrice(a.card, Boolean(a.quantityFoil > 0), effSettings);
-          const valB = b.salePrice ?? getCardPrice(b.card, Boolean(b.quantityFoil > 0), effSettings);
+          const valA = getItemSalePrice(a, Boolean(a.quantityFoil > 0), effSettings);
+          const valB = getItemSalePrice(b, Boolean(b.quantityFoil > 0), effSettings);
           return valA - valB;
         }
         if (cardSortBy === 'name') {
@@ -297,8 +297,8 @@ export const UsersList: React.FC<UsersListProps> = ({
       if (item.salePrice !== undefined && item.salePrice !== null) {
         return sum + item.salePrice * (item.quantity + item.quantityFoil);
       }
-      const priceNorm = getCardPrice(item.card, false, effSettings);
-      const priceFoil = getCardPrice(item.card, true, effSettings);
+      const priceNorm = getSaleMarketPrice(item.card, false, effSettings);
+      const priceFoil = getSaleMarketPrice(item.card, true, effSettings);
       return sum + item.quantity * priceNorm + item.quantityFoil * priceFoil;
     }, 0);
   }, [sellerOffers, settings]);
@@ -371,7 +371,7 @@ export const UsersList: React.FC<UsersListProps> = ({
         const price =
           item.salePrice !== undefined && item.salePrice !== null
             ? formatCurrency(item.salePrice, effSettings.currency)
-            : formatCurrency(getCardPrice(item.card, Boolean(item.quantityFoil > 0), effSettings), effSettings.currency);
+            : formatCurrency(getSaleMarketPrice(item.card, Boolean(item.quantityFoil > 0), effSettings), effSettings.currency);
         return `${totalQty}x ${item.card.name} (${item.card.set.toUpperCase()}) #${item.card.collector_number}${foilTag} [${item.condition}, ${item.language}] - ${price}`;
       })
       .join('\n');
@@ -665,10 +665,7 @@ export const UsersList: React.FC<UsersListProps> = ({
                     const imageUri = getCardImageUri(card, 'normal');
                     const rarityColor = getRarityColor(card.rarity);
                     const isFoil = item.quantityFoil > 0;
-                    const effectivePrice =
-                      item.salePrice !== undefined && item.salePrice !== null
-                        ? item.salePrice
-                        : getCardPrice(card, isFoil, effSettings);
+                    const effectivePrice = getItemSalePrice(item, isFoil, effSettings);
                     const rank = getCardEdhrecRank(card);
 
                     return (

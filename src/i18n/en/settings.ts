@@ -1,4 +1,12 @@
 export const en_settings: Record<string, string> = {
+  "Źródło cen, kursy NBP, ceny sprzedaży": "Price source, NBP rates, sale prices",
+  "Ceny w ofercie „Sprzedam”": "Prices in the “For sale” offer",
+  "Domyślna cena wystawianych kart to Cardmarket Trend (MCM) powiększony lub pomniejszony o wybrany procent. Karty z własną ceną zachowują swoją cenę.": "The default price of the cards you list is the Cardmarket Trend (MCM) raised or lowered by the chosen percentage. Cards with a custom price keep their own price.",
+  "Szybki wybór korekty": "Quick adjustment choice",
+  "Korekta względem MCM Trend": "Adjustment to MCM Trend",
+  "Podaj wartość od {min}% do +{max}%.": "Enter a value from {min}% to +{max}%.",
+  "Bez korekty karty są wystawiane po cenie rynkowej z wybranego źródła cen.": "Without an adjustment, cards are listed at the market price from your chosen price source.",
+  "Przykład: karta z MCM Trend {trend} trafi do oferty za": "Example: a card with an MCM Trend of {trend} will be listed for",
   "Zmiany zapisują się automatycznie i od razu przeliczają ceny w całej aplikacji.": "Changes are saved automatically and prices across the app are recalculated straight away.",
   "Zapisano. Ceny w aplikacji są już przeliczone.": "Saved. Prices across the app have been recalculated.",
   "Zapisywanie…": "Saving…",

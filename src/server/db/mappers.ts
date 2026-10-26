@@ -135,6 +135,10 @@ export function mapSettingsRow(r: any): AppSettings {
     ...(typeof (r.showFoilBadge ?? r.show_foil_badge) === 'boolean'
       ? { showFoilBadge: Boolean(r.showFoilBadge ?? r.show_foil_badge) }
       : {}),
+    ...((r.saleTrendAdjustPct ?? r.sale_trend_adjust_pct) != null &&
+    Number.isFinite(parseFloat(r.saleTrendAdjustPct ?? r.sale_trend_adjust_pct))
+      ? { saleTrendAdjustPct: parseFloat(r.saleTrendAdjustPct ?? r.sale_trend_adjust_pct) }
+      : {}),
   };
 }
 

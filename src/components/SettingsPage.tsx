@@ -6,7 +6,7 @@ import {
   KeyRound, Eye, EyeOff, LayoutGrid, Folder, Trophy, Tag, Sparkles, Copy, ExternalLink, Download, Upload, AlertCircle, CheckCircle2, Trash2
 } from 'lucide-react';
 import { AppSettings, AuthUser, CurrencyCode, PricingSource } from '../types';
-import { DEFAULT_SETTINGS, formatCurrency } from '../utils/formatters';
+import { DEFAULT_SETTINGS, formatCurrency, getSaleAdjustPct, formatSaleAdjustPct, SALE_ADJUST_MIN, SALE_ADJUST_MAX } from '../utils/formatters';
 import { authApi, messagesApi } from '../services/api';
 import { CityPicker } from './CityPicker';
 import { useT, useLang, locale, tk, type Lang } from '../i18n';
@@ -16,7 +16,7 @@ type Section = 'account' | 'pricing' | 'display' | 'security' | 'sharing' | 'dat
 
 const SECTIONS: Array<{ id: Section; label: string; hint: string; icon: React.ElementType }> = [
   { id: 'account', label: tk('Konto i profil'), hint: tk('Dane konta, język, miejscowość, usunięcie'), icon: User },
-  { id: 'pricing', label: tk('Wycena i waluta'), hint: tk('Źródło cen, kursy NBP'), icon: Coins },
+  { id: 'pricing', label: tk('Wycena i waluta'), hint: tk('Źródło cen, kursy NBP, ceny sprzedaży'), icon: Coins },
   { id: 'display', label: tk('Wygląd kart'), hint: tk('Oznaczenia na kartach kolekcji'), icon: LayoutGrid },
   { id: 'security', label: tk('Bezpieczeństwo'), hint: tk('Hasło, sesje'), icon: ShieldCheck },
   { id: 'sharing', label: tk('Udostępnianie'), hint: tk('Publiczne linki'), icon: Share2 },
@@ -571,6 +571,8 @@ const PricingSection: React.FC<{ settings: AppSettings; onSave: (s: AppSettings)
         </p>
       </div>
 
+      <SaleAdjustCard settings={settings} eurRate={parseFloat(eurRate) || 0} onApply={apply} />
+
       {/* Stan zapisu */}
       <div className="flex flex-wrap items-center justify-between gap-3 px-1">
         <p className="text-xs text-stone-400 flex items-center gap-1.5" role="status" aria-live="polite">
@@ -590,6 +592,108 @@ const PricingSection: React.FC<{ settings: AppSettings; onSave: (s: AppSettings)
           {t('Przywróć domyślne')}
         </button>
       </div>
+    </div>
+  );
+};
+
+/* ---------- Ceny w ofercie „Sprzedam” ---------- */
+
+const SALE_ADJUST_PRESETS = [-15, -10, -5, 0, 5, 10, 15];
+
+/** Korekta domyślnej ceny wystawianych kart: +/- % względem Cardmarket Trend. */
+const SaleAdjustCard: React.FC<{
+  settings: AppSettings;
+  eurRate: number;
+  onApply: (patch: Partial<AppSettings>) => Promise<void>;
+}> = ({ settings, eurRate, onApply }) => {
+  const t = useT();
+  const saved = getSaleAdjustPct(settings);
+  const [value, setValue] = useState(saved ? String(saved) : '0');
+
+  // Wartość zmieniona poza formularzem (np. na innym urządzeniu) pokazujemy w polu
+  useEffect(() => {
+    if (parseFloat(value.replace(',', '.')) !== saved) setValue(String(saved));
+  }, [saved]);
+
+  const parsed = parseFloat(value.replace(',', '.'));
+  const valid = Number.isFinite(parsed) && parsed >= SALE_ADJUST_MIN && parsed <= SALE_ADJUST_MAX;
+
+  // Wpisana wartość zapisuje się po chwili od ostatniej zmiany
+  useEffect(() => {
+    if (!valid || parsed === saved) return;
+    const timer = setTimeout(() => onApply({ saleTrendAdjustPct: Math.round(parsed * 100) / 100 }), 700);
+    return () => clearTimeout(timer);
+  }, [value]);
+
+  const pick = (pct: number) => {
+    setValue(String(pct));
+    if (pct !== saved) onApply({ saleTrendAdjustPct: pct });
+  };
+
+  const current = valid ? parsed : saved;
+  // Przykład: karta z Cardmarket Trend 10 EUR w walucie użytkownika
+  const trendExample =
+    settings.currency === 'PLN' ? 10 * eurRate : settings.currency === 'EUR' ? 10 : 10 * (eurRate / (settings.usdToPlnRate || 3.96));
+  const adjustedExample = Math.round(trendExample * (1 + current / 100) * 100) / 100;
+
+  return (
+    <div className={card}>
+      <SectionHeader
+        title={t('Ceny w ofercie „Sprzedam”')}
+        description={t('Domyślna cena wystawianych kart to Cardmarket Trend (MCM) powiększony lub pomniejszony o wybrany procent. Karty z własną ceną zachowują swoją cenę.')}
+      />
+      <div className="flex flex-wrap gap-2 mb-4" role="group" aria-label={t('Szybki wybór korekty')}>
+        {SALE_ADJUST_PRESETS.map((pct) => {
+          const active = valid && parsed === pct;
+          return (
+            <button
+              key={pct}
+              type="button"
+              onClick={() => pick(pct)}
+              aria-pressed={active}
+              className={`h-10 min-w-[3.5rem] px-3 rounded-xl border text-sm font-bold tabular-nums cursor-pointer transition-colors ${
+                active ? 'bg-amber-500 text-stone-950 border-amber-400' : 'bg-stone-950/60 border-stone-800 text-stone-300 hover:border-stone-700'
+              }`}
+            >
+              {pct === 0 ? '0%' : formatSaleAdjustPct(pct)}
+            </button>
+          );
+        })}
+      </div>
+      <label className="block max-w-[14rem]">
+        <span className={labelCls}>{t('Korekta względem MCM Trend')}</span>
+        <span className="relative block">
+          <input
+            type="number"
+            inputMode="decimal"
+            step="0.5"
+            min={SALE_ADJUST_MIN}
+            max={SALE_ADJUST_MAX}
+            value={value}
+            onChange={(e) => setValue(e.target.value)}
+            aria-invalid={!valid}
+            className={`${inputCls} tabular-nums font-bold pr-10 ${valid ? '' : 'border-rose-500/70 focus:border-rose-500'}`}
+          />
+          <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-stone-500 tabular-nums text-xs">%</span>
+        </span>
+      </label>
+      {!valid && (
+        <p className="mt-2 text-xs text-rose-300 flex items-center gap-1.5">
+          <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+          {t('Podaj wartość od {min}% do +{max}%.', { min: SALE_ADJUST_MIN, max: SALE_ADJUST_MAX })}
+        </p>
+      )}
+      <p className="mt-4 text-xs text-stone-400">
+        {current === 0
+          ? t('Bez korekty karty są wystawiane po cenie rynkowej z wybranego źródła cen.')
+          : t('Przykład: karta z MCM Trend {trend} trafi do oferty za', { trend: formatCurrency(trendExample, settings.currency) })}
+        {current !== 0 && (
+          <>
+            {' '}
+            <strong className="text-emerald-400 tabular-nums">{formatCurrency(adjustedExample, settings.currency)}</strong> ({formatSaleAdjustPct(current)}).
+          </>
+        )}
+      </p>
     </div>
   );
 };

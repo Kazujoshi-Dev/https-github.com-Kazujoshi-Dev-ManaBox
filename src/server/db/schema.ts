@@ -168,6 +168,8 @@ export async function initDb(): Promise<void> {
           ALTER TABLE user_settings ADD COLUMN IF NOT EXISTS show_edhrec_rank BOOLEAN;
           ALTER TABLE user_settings ADD COLUMN IF NOT EXISTS show_price_tag BOOLEAN;
           ALTER TABLE user_settings ADD COLUMN IF NOT EXISTS show_foil_badge BOOLEAN;
+          -- korekta ceny wystawianych kart względem Cardmarket Trend (%)
+          ALTER TABLE user_settings ADD COLUMN IF NOT EXISTS sale_trend_adjust_pct NUMERIC(6, 2);
           -- publiczny link do talii (domyślnie wyłączony)
           ALTER TABLE user_decks ADD COLUMN IF NOT EXISTS is_public BOOLEAN NOT NULL DEFAULT FALSE;
           -- panel administratora: blokady kont, wymuszona zmiana hasła, ukrycie oferty

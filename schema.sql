@@ -60,6 +60,11 @@ CREATE TABLE IF NOT EXISTS user_settings (
   auto_nbp_rate BOOLEAN DEFAULT TRUE,
   collection_rows_per_page SMALLINT,
   ui_language VARCHAR(5),
+  show_binder_badge BOOLEAN,
+  show_edhrec_rank BOOLEAN,
+  show_price_tag BOOLEAN,
+  show_foil_badge BOOLEAN,
+  sale_trend_adjust_pct NUMERIC(6, 2),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
