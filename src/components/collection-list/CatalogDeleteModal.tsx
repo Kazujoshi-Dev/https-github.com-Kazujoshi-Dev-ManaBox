@@ -18,6 +18,7 @@ export const CatalogDeleteModal: React.FC<CatalogDeleteModalProps> = ({
   cardQuantity,
   forSaleCount,
   mainCatalogName,
+  withCards = false,
   onClose,
   onConfirmDelete,
 }) => {
@@ -45,7 +46,13 @@ export const CatalogDeleteModal: React.FC<CatalogDeleteModalProps> = ({
       <div className="bg-stone-900 border border-stone-800 rounded-2xl max-w-md w-full p-6 text-stone-100 space-y-4 shadow-2xl max-sm:max-w-none max-sm:rounded-b-none max-sm:rounded-t-3xl max-sm:pb-[calc(1.5rem+env(safe-area-inset-bottom))]">
         <h3 id="catalog-delete-title" className="text-base font-semibold text-stone-50 flex items-start gap-2.5">
           <Icon className="w-5 h-5 text-rose-400 shrink-0 mt-0.5" />
-          <span>{isEmpty ? t('Opróżnić „{name}”?', { name }) : t('Usunąć katalog „{name}”?', { name })}</span>
+          <span>
+            {isEmpty
+              ? t('Opróżnić „{name}”?', { name })
+              : withCards
+                ? t('Usunąć katalog „{name}” razem z kartami?', { name })
+                : t('Usunąć katalog „{name}”?', { name })}
+          </span>
         </h3>
 
         {isEmpty ? (
@@ -62,6 +69,25 @@ export const CatalogDeleteModal: React.FC<CatalogDeleteModalProps> = ({
             )}
             {forSaleCount > 0 && <p>{t('Karty wystawione na sprzedaż ({count}) zostaną w ofercie.', { count: pozycji(forSaleCount) })}</p>}
             <p className="text-stone-400">{t('Sam katalog zostanie.')}</p>
+          </div>
+        ) : withCards ? (
+          <div className="space-y-3 text-sm text-stone-300 leading-relaxed">
+            {hasCards ? (
+              <p className="flex gap-2.5 p-3 rounded-lg bg-rose-500/10 border border-rose-500/30 text-rose-100">
+                <AlertTriangle className="w-4 h-4 text-rose-400 shrink-0 mt-0.5" />
+                <span>
+                  {t('Katalog i wszystkie jego karty,')} <strong className="tabular-nums">{pozycji(cardCount)} ({kart(cardQuantity)})</strong>, {t('zostaną usunięte z kolekcji. Tego nie da się cofnąć.')}
+                </span>
+              </p>
+            ) : (
+              <p>{t('Ten katalog jest pusty.')}</p>
+            )}
+            {forSaleCount > 0 && (
+              <p>
+                {t('Karty wystawione na sprzedaż ({count}) zostaną w ofercie i trafią do', { count: pozycji(forSaleCount) })}{' '}
+                <strong className="text-stone-100">„{binderName(mainCatalogName)}”</strong>.
+              </p>
+            )}
           </div>
         ) : (
           <div className="space-y-2 text-sm text-stone-300 leading-relaxed">
@@ -86,7 +112,7 @@ export const CatalogDeleteModal: React.FC<CatalogDeleteModalProps> = ({
             disabled={isEmpty && !hasCards}
             className="btn bg-rose-600 hover:bg-rose-500 text-white font-semibold disabled:opacity-50"
           >
-            {isEmpty ? t('Usuń karty z katalogu') : t('Usuń katalog')}
+            {isEmpty ? t('Usuń karty z katalogu') : withCards && hasCards ? t('Usuń katalog i karty') : t('Usuń katalog')}
           </button>
         </div>
       </div>

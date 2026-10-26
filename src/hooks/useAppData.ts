@@ -570,9 +570,10 @@ export function useAppData({ userId, onUnauthorized, showToast, onSettingsLoaded
     }
   }, [catalogs, onUnauthorized, showToast]);
 
-  const deleteCatalog = useCallback(async (id: string) => {
+  /** Usuwa katalog; `withCards` usuwa też jego karty z kolekcji (poza wystawionymi na sprzedaż). */
+  const deleteCatalog = useCallback(async (id: string, withCards = false) => {
     try {
-      const res = await catalogsApi.delete(id, onUnauthorized);
+      const res = await catalogsApi.delete(id, onUnauthorized, withCards);
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
         showToast(tServer(err.error) || t('Nie udało się usunąć katalogu.'));
@@ -586,7 +587,11 @@ export function useAppData({ userId, onUnauthorized, showToast, onSettingsLoaded
       }
       const colRes = await collectionApi.getAll(onUnauthorized);
       if (colRes.ok) setCollection(await colRes.json());
-      showToast(t('Usunięto katalog. Jego karty są teraz w: {reassignedTo}', { reassignedTo: binderName(data.reassignedTo) }));
+      showToast(
+        withCards
+          ? t('Usunięto katalog razem z kartami ({n} poz.).', { n: data.deletedCards || 0 })
+          : t('Usunięto katalog. Jego karty są teraz w: {reassignedTo}', { reassignedTo: binderName(data.reassignedTo) })
+      );
     } catch (err) {
       console.error('Failed to delete catalog:', err);
     }

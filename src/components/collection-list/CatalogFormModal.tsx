@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { FolderPlus, X, Star, Trash2 } from 'lucide-react';
 import { CatalogFormModalProps } from './types';
 import { COLOR_MAP } from './constants';
@@ -27,6 +27,11 @@ export const CatalogFormModal: React.FC<CatalogFormModalProps> = ({
   const t = useT();
   // „Wstecz” na telefonie zamyka to okno zamiast opuszczać stronę
   useBackToClose(isOpen, onClose);
+  // „razem z kartami”: za każdym otwarciem okna domyślnie wyłączone
+  const [withCards, setWithCards] = useState(false);
+  useEffect(() => {
+    if (isOpen) setWithCards(false);
+  }, [isOpen, editingCatalog?.id]);
 
   if (!isOpen) return null;
 
@@ -134,14 +139,28 @@ export const CatalogFormModal: React.FC<CatalogFormModalProps> = ({
 
           <div className="pt-3 border-t border-stone-800 flex items-center justify-between gap-2">
             {editingCatalog && canDelete ? (
-              <button
-                type="button"
-                onClick={onRequestDelete}
-                className="px-3 py-2 bg-stone-900 hover:bg-rose-950/60 text-rose-400 border border-stone-800 hover:border-rose-800/60 rounded-xl text-xs font-semibold flex items-center gap-1.5 cursor-pointer transition-colors"
-              >
-                <Trash2 className="w-3.5 h-3.5" />
-                <span>{t('Usuń katalog')}</span>
-              </button>
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-2 min-w-0">
+                <button
+                  type="button"
+                  onClick={() => onRequestDelete(withCards)}
+                  className="px-3 py-2 bg-stone-900 hover:bg-rose-950/60 text-rose-400 border border-stone-800 hover:border-rose-800/60 rounded-xl text-xs font-semibold flex items-center gap-1.5 cursor-pointer transition-colors"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  <span>{t('Usuń katalog')}</span>
+                </button>
+                <label
+                  className={`flex items-center gap-1.5 text-[11px] cursor-pointer select-none ${withCards ? 'text-rose-300' : 'text-stone-400 hover:text-stone-200'}`}
+                  title={t('Zaznacz, aby usunąć katalog razem z kartami zamiast przenosić je do głównego klasera')}
+                >
+                  <input
+                    type="checkbox"
+                    checked={withCards}
+                    onChange={(e) => setWithCards(e.target.checked)}
+                    className="w-4 h-4 accent-rose-500 cursor-pointer"
+                  />
+                  <span>{t('razem z kartami')}</span>
+                </label>
+              </div>
             ) : (
               <div />
             )}

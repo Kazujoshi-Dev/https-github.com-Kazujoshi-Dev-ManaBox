@@ -109,4 +109,11 @@ export const en_collection: Record<string, string> = {
   "· kliknij dodatek, aby zobaczyć jego karty": "· click a set to see its cards",
   "Skopiowano z talii „{name}”": "Copied from deck “{name}”",
   "z talii {name}": "from deck {name}",
+  "Usunięto katalog razem z kartami ({n} poz.).": "Deleted the binder together with its cards ({n} entries).",
+  "Zaznacz, aby usunąć katalog razem z kartami zamiast przenosić je do głównego klasera": "Tick to delete the binder together with its cards instead of moving them to the main binder",
+  "razem z kartami": "with its cards",
+  "Usunąć katalog „{name}” razem z kartami?": "Delete binder “{name}” together with its cards?",
+  "Katalog i wszystkie jego karty,": "The binder and all its cards,",
+  "Karty wystawione na sprzedaż ({count}) zostaną w ofercie i trafią do": "Cards listed for sale ({count}) will stay listed and move to",
+  "Usuń katalog i karty": "Delete binder and cards",
 };

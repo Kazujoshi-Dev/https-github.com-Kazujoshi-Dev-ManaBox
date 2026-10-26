@@ -198,8 +198,8 @@ export const catalogsApi = {
     fetchWithAuth(`/api/catalogs/${encodeURIComponent(id)}/empty`, { method: 'POST' }, onUnauthorized),
   setDefault: (id: string, onUnauthorized?: () => void) =>
     fetchWithAuth(`/api/catalogs/${id}/set-default`, { method: 'POST' }, onUnauthorized),
-  delete: (id: string, onUnauthorized?: () => void) =>
-    fetchWithAuth(`/api/catalogs/${id}`, { method: 'DELETE' }, onUnauthorized)
+  delete: (id: string, onUnauthorized?: () => void, withCards = false) =>
+    fetchWithAuth(`/api/catalogs/${encodeURIComponent(id)}${withCards ? '?withCards=1' : ''}`, { method: 'DELETE' }, onUnauthorized)
 };
 
 export const decksApi = {

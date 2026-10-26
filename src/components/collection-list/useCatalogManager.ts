@@ -13,7 +13,7 @@ interface UseCatalogManagerProps {
   onSelectBinder: (binder: string) => void;
   onCreateCatalog?: (name: string, description?: string, color?: string, isDefault?: boolean) => Promise<Catalog | null>;
   onUpdateCatalog?: (id: string, updates: Partial<Catalog>) => Promise<void>;
-  onDeleteCatalog?: (id: string) => Promise<void>;
+  onDeleteCatalog?: (id: string, withCards?: boolean) => Promise<void>;
   onEmptyCatalog?: (id: string) => Promise<void>;
 }
 
@@ -40,6 +40,8 @@ export function useCatalogManager({
 
   // Delete catalog confirmation
   const [catalogToDelete, setCatalogToDelete] = useState<Catalog | null>(null);
+  // Usunięcie katalogu razem z kartami (zamiast przenoszenia ich do głównego klasera)
+  const [deleteWithCards, setDeleteWithCards] = useState<boolean>(false);
   // Opróżnienie katalogu (usunięcie jego kart)
   const [catalogToEmpty, setCatalogToEmpty] = useState<Catalog | null>(null);
 
@@ -137,7 +139,7 @@ export function useCatalogManager({
     if (!catalogToDelete || !onDeleteCatalog) return;
     try {
       const deletedName = catalogToDelete.name;
-      await onDeleteCatalog(catalogToDelete.id);
+      await onDeleteCatalog(catalogToDelete.id, deleteWithCards);
       if (activeBinder === deletedName) {
         onSelectBinder('ALL');
       }
@@ -146,7 +148,7 @@ export function useCatalogManager({
       console.error('Failed to delete catalog:', err);
       alert(err.message || t('Nie udało się usunąć katalogu'));
     }
-  }, [catalogToDelete, onDeleteCatalog, activeBinder, onSelectBinder]);
+  }, [catalogToDelete, deleteWithCards, onDeleteCatalog, activeBinder, onSelectBinder]);
 
   const handleEmptyCatalogConfirm = useCallback(async () => {
     if (!catalogToEmpty || !onEmptyCatalog) return;
@@ -168,6 +170,8 @@ export function useCatalogManager({
     catalogModalError,
     isCatalogSaving,
     catalogToDelete,
+    deleteWithCards,
+    setDeleteWithCards,
     setModalCatName,
     setModalCatDesc,
     setModalCatColor,

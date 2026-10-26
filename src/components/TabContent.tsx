@@ -51,7 +51,7 @@ interface TabContentProps {
   // Catalog interactions
   onCreateCatalog: (name: string, description?: string, color?: string, isDefault?: boolean) => Promise<Catalog | null>;
   onUpdateCatalog: (id: string, updates: Partial<Catalog>) => Promise<void>;
-  onDeleteCatalog: (id: string) => Promise<void>;
+  onDeleteCatalog: (id: string, withCards?: boolean) => Promise<void>;
   onEmptyCatalog: (id: string) => Promise<void>;
   onSetDefaultCatalog: (id: string) => Promise<void>;
 

@@ -2125,8 +2125,18 @@ app.delete('/api/catalogs/:id', authMiddleware, async (req, res) => {
   try {
     const userId = (req as any).userId;
     const { id } = req.params;
+    // ?withCards=1: najpierw usuwamy karty katalogu z kolekcji (poza wystawionymi na sprzedaż), potem sam katalog
+    const withCards = req.query.withCards === '1' || req.query.withCards === 'true';
+    const emptied = withCards ? await db.emptyCatalog(userId, id) : null;
     const result = await db.deleteCatalog(userId, id);
-    res.json({ success: true, id, reassignedTo: result.reassignedTo, deletedItems: result.deletedItems, catalogs: result.catalogs });
+    res.json({
+      success: true,
+      id,
+      reassignedTo: result.reassignedTo,
+      deletedItems: result.deletedItems,
+      deletedCards: emptied ? emptied.deletedItems : 0,
+      catalogs: result.catalogs
+    });
   } catch (err: any) {
     if (err instanceof db.CatalogError) return res.status(err.status).json({ error: err.message });
     sendServerError(res, err, '/api/catalogs/:id');

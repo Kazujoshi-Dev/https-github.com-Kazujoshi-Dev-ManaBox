@@ -11,7 +11,7 @@ export interface CollectionListProps {
   decks?: DeckItem[];
   onCreateCatalog?: (name: string, description?: string, color?: string, isDefault?: boolean) => Promise<Catalog | null>;
   onUpdateCatalog?: (id: string, updates: Partial<Catalog>) => Promise<void>;
-  onDeleteCatalog?: (id: string) => Promise<void>;
+  onDeleteCatalog?: (id: string, withCards?: boolean) => Promise<void>;
   /** Usuwa karty katalogu z kolekcji (katalog zostaje). */
   onEmptyCatalog?: (id: string) => Promise<void>;
   onSetDefaultCatalog?: (id: string) => Promise<void>;
@@ -123,7 +123,8 @@ export interface CatalogFormModalProps {
   onIsDefaultChange: (val: boolean) => void;
   onClose: () => void;
   onSubmit: (e: FormEvent) => void;
-  onRequestDelete: () => void;
+  /** Prośba o usunięcie katalogu; `withCards` = razem z jego kartami. */
+  onRequestDelete: (withCards: boolean) => void;
 }
 
 export interface CatalogDeleteModalProps {
@@ -138,6 +139,8 @@ export interface CatalogDeleteModalProps {
   forSaleCount: number;
   /** Główny klaser, do którego trafią karty usuwanego katalogu. */
   mainCatalogName: string;
+  /** Usunięcie katalogu razem z kartami (tryb `delete`). */
+  withCards?: boolean;
   onClose: () => void;
   onConfirmDelete: () => void;
 }

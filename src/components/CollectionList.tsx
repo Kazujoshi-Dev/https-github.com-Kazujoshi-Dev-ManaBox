@@ -138,6 +138,8 @@ export const CollectionList: React.FC<CollectionListProps> = ({
     catalogModalError,
     isCatalogSaving,
     catalogToDelete,
+    deleteWithCards,
+    setDeleteWithCards,
     setModalCatName,
     setModalCatDesc,
     setModalCatColor,
@@ -330,8 +332,9 @@ export const CollectionList: React.FC<CollectionListProps> = ({
         onIsDefaultChange={setModalCatIsDefault}
         onClose={closeCatalogModal}
         onSubmit={handleSaveCatalogModal}
-        onRequestDelete={() => {
+        onRequestDelete={(withCards) => {
           closeCatalogModal();
+          setDeleteWithCards(withCards);
           if (editingCatalog) setCatalogToDelete(editingCatalog);
         }}
       />
@@ -353,6 +356,7 @@ export const CollectionList: React.FC<CollectionListProps> = ({
             cardQuantity={cardQuantity}
             forSaleCount={inCatalog.length - kept.length}
             mainCatalogName={mainName}
+            withCards={mode === 'delete' && deleteWithCards}
             onClose={() => (catalogToEmpty ? setCatalogToEmpty(null) : setCatalogToDelete(null))}
             onConfirmDelete={catalogToEmpty ? handleEmptyCatalogConfirm : handleDeleteCatalogConfirm}
           />
