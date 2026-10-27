@@ -1,4 +1,4 @@
-import { CommunityDeckSummary, AdminUser, AdminStats, AdminAuditEntry, AdminActivityStats, AuthUser, AppSettings, Catalog, CollectionItem, DeckItem, ScryfallCard, WishlistItem, SpellbookFindCombosResponse, SpellbookVariant, RegisteredUserSummary, UserMessage, UserProfile, CitySuggestion, MapCity, WishlistMatches, PriceMoversResponse } from '../types';
+import { CommunityDeckSummary, AdminUser, AdminStats, AdminAuditEntry, AdminActivityStats, SaleFolder, AuthUser, AppSettings, Catalog, CollectionItem, DeckItem, ScryfallCard, WishlistItem, SpellbookFindCombosResponse, SpellbookVariant, RegisteredUserSummary, UserMessage, UserProfile, CitySuggestion, MapCity, WishlistMatches, PriceMoversResponse } from '../types';
 import { noteResponseVersion } from '../utils/appVersion';
 import { t, tServer, tk } from '../i18n';
 
@@ -121,6 +121,24 @@ export const adminApi = {
   verifyEmail: (id: string) => adminPost(`/api/admin/users/${encodeURIComponent(id)}/verify-email`),
   setSaleHidden: (id: string, hidden: boolean) => adminPost(`/api/admin/users/${encodeURIComponent(id)}/sale-hidden`, { hidden }),
   remove: (id: string, confirmUsername: string) => adminPost(`/api/admin/users/${encodeURIComponent(id)}`, { confirmUsername }, 'DELETE')
+};
+
+/** Foldery w zakładce „Sprzedam”. */
+const saleFolderCall = async <T,>(url: string, method: string, body?: unknown): Promise<T> =>
+  jsonOrThrow<T>(
+    await fetchWithAuth(url, {
+      method,
+      ...(body !== undefined ? { headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) } : {})
+    }),
+    tk('Operacja nie powiodła się.')
+  );
+export const saleFoldersApi = {
+  list: async (): Promise<SaleFolder[]> => (await saleFolderCall<{ folders: SaleFolder[] }>('/api/sale-folders', 'GET')).folders,
+  create: (name: string) => saleFolderCall<SaleFolder>('/api/sale-folders', 'POST', { name }),
+  rename: (id: string, name: string) => saleFolderCall<SaleFolder>(`/api/sale-folders/${encodeURIComponent(id)}`, 'PUT', { name }),
+  remove: (id: string) => saleFolderCall<{ success: boolean }>(`/api/sale-folders/${encodeURIComponent(id)}`, 'DELETE'),
+  move: (itemIds: string[], folderId: string | null) =>
+    saleFolderCall<{ moved: string[]; folderId: string | null }>('/api/sale-folders/move', 'POST', { itemIds, folderId })
 };
 
 export const collectionApi = {
@@ -350,12 +368,14 @@ export const spellbookApi = {
 };
 
 export const publicSaleApi = {
-  getOffers: async (userRef: string): Promise<{
+  getOffers: async (userRef: string, folderSlug?: string): Promise<{
     seller: { id: string; username: string; email?: string; createdAt?: string };
+    folder?: { name: string; slug: string } | null;
+    folders?: Array<{ id: string; name: string; slug: string }>;
     cards: CollectionItem[];
     settings: AppSettings;
   }> => {
-    const res = await fetch(`/api/public/sale/${encodeURIComponent(userRef)}`);
+    const res = await fetch(`/api/public/sale/${encodeURIComponent(userRef)}${folderSlug ? `/${encodeURIComponent(folderSlug)}` : ''}`);
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
       throw new Error(tServer(err.error) || t('Błąd pobierania oferty ({status})', { status: res.status }));

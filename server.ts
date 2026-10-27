@@ -2910,11 +2910,68 @@ app.get('/api/price-movers', authMiddleware, priceMoversLimiter, async (req, res
   }
 });
 
+// --- FOLDERY W ZAKŁADCE „SPRZEDAM” ---
+
+const saleFoldersLimiter = rateLimit({ name: 'sale-folders', windowMs: 60_000, max: 120, key: userKey });
+function sendSaleFolderError(res: express.Response, err: any, route: string) {
+  if (err instanceof db.SaleFolderError) return res.status(err.status).json({ error: err.message });
+  sendServerError(res, err, route);
+}
+
+app.get('/api/sale-folders', authMiddleware, async (req, res) => {
+  try {
+    res.json({ folders: await db.getSaleFolders((req as any).userId) });
+  } catch (err: any) {
+    sendSaleFolderError(res, err, '/api/sale-folders');
+  }
+});
+
+app.post('/api/sale-folders', authMiddleware, saleFoldersLimiter, async (req, res) => {
+  try {
+    res.status(201).json(await db.createSaleFolder((req as any).userId, req.body?.name));
+  } catch (err: any) {
+    sendSaleFolderError(res, err, 'POST /api/sale-folders');
+  }
+});
+
+// Przeniesienie kart z oferty do folderu (folderId: null = lista domyślna)
+app.post('/api/sale-folders/move', authMiddleware, saleFoldersLimiter, async (req, res) => {
+  try {
+    const itemIds = Array.isArray(req.body?.itemIds) ? req.body.itemIds : [];
+    const folderId = typeof req.body?.folderId === 'string' && req.body.folderId ? req.body.folderId : null;
+    const moved = await db.moveItemsToSaleFolder((req as any).userId, itemIds, folderId);
+    res.json({ moved, folderId });
+  } catch (err: any) {
+    sendSaleFolderError(res, err, '/api/sale-folders/move');
+  }
+});
+
+app.put('/api/sale-folders/:id', authMiddleware, saleFoldersLimiter, async (req, res) => {
+  try {
+    const folder = await db.renameSaleFolder((req as any).userId, req.params.id, req.body?.name);
+    if (!folder) return res.status(404).json({ error: 'Nie znaleziono folderu.' });
+    res.json(folder);
+  } catch (err: any) {
+    sendSaleFolderError(res, err, 'PUT /api/sale-folders/:id');
+  }
+});
+
+app.delete('/api/sale-folders/:id', authMiddleware, saleFoldersLimiter, async (req, res) => {
+  try {
+    const ok = await db.deleteSaleFolder((req as any).userId, req.params.id);
+    if (!ok) return res.status(404).json({ error: 'Nie znaleziono folderu.' });
+    res.json({ success: true });
+  } catch (err: any) {
+    sendSaleFolderError(res, err, 'DELETE /api/sale-folders/:id');
+  }
+});
+
 // --- PUBLIC SALE ENDPOINT (NO AUTH REQUIRED) ---
 
-app.get('/api/public/sale/:userRef', async (req, res) => {
+// Zbiorcza oferta (/sprzedam/<nazwa>) albo jeden folder (/sprzedam/<nazwa>/<slug folderu>)
+app.get(['/api/public/sale/:userRef', '/api/public/sale/:userRef/:folderSlug'], async (req, res) => {
   try {
-    const { userRef } = req.params;
+    const { userRef, folderSlug } = req.params;
     if (!userRef || !userRef.trim()) {
       return res.status(400).json({ error: 'Identyfikator lub nazwa użytkownika jest wymagana' });
     }
@@ -2924,8 +2981,14 @@ app.get('/api/public/sale/:userRef', async (req, res) => {
       return res.status(404).json({ error: 'Nie znaleziono oferty dla tego użytkownika' });
     }
 
+    const folders = await db.getSaleFolders(user.id);
+    const folder = folderSlug ? folders.find((f) => f.slug === folderSlug.trim().toLowerCase()) : null;
+    if (folderSlug && !folder) {
+      return res.status(404).json({ error: 'Nie znaleziono tego folderu oferty. Mógł zostać usunięty.' });
+    }
+
     const collection = await db.getCollection(user.id);
-    const forSaleItems = collection.filter((item) => Boolean(item.isForSale));
+    const forSaleItems = collection.filter((item) => Boolean(item.isForSale) && (!folder || item.saleFolderId === folder.id));
     const settings = await db.getSettings(user.id);
 
     res.json({
@@ -2934,6 +2997,9 @@ app.get('/api/public/sale/:userRef', async (req, res) => {
         username: user.username,
         createdAt: user.created_at
       },
+      folder: folder ? { name: folder.name, slug: folder.slug } : null,
+      // nazwy folderów do filtrowania oferty zbiorczej (karty z usuniętych folderów są w domyślnej grupie)
+      folders: folder ? [] : folders.map((f) => ({ id: f.id, name: f.name, slug: f.slug })),
       cards: forSaleItems,
       settings: settings || {
         currency: 'PLN',

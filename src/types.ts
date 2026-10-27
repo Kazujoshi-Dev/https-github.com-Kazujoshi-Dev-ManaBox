@@ -147,6 +147,8 @@ export interface CollectionItem {
   lastUpdatedPriceAt?: string;
   isForSale?: boolean;
   salePrice?: number | null; // Optional custom asking price in user's currency
+  /** Folder w zakładce „Sprzedam” (null = lista domyślna). */
+  saleFolderId?: string | null;
   /** Ceny karty sprzed ostatniej zmiany rynkowej (do wskaźnika „zmiana wartości”). */
   previousPrices?: ScryfallCard['prices'] | null;
   /** Kiedy ceny ostatnio się zmieniły (względem previousPrices). */
@@ -259,6 +261,14 @@ export interface AdminStats {
   forSaleCards: number;
   wishlistItems: number;
   cardDb: { ready: boolean; cards: number; syncing: boolean; lastSyncAt: string | null; lastSyncError: string | null };
+}
+
+export interface SaleFolder {
+  id: string;
+  name: string;
+  slug: string;
+  position: number;
+  createdAt: string;
 }
 
 export interface AdminActivityDay {

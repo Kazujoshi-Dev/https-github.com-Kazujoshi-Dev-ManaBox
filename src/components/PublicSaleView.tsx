@@ -19,8 +19,11 @@ import {
   LogIn,
   Share2,
   Mail,
-  X
+  X,
+  Folder as FolderIcon,
+  ArrowLeft
 } from 'lucide-react';
+import { publicPath } from '../utils/publicLinks';
 import { LanguageSwitcher } from './ui/LanguageSwitcher';
 import { useT } from '../i18n';
 
@@ -29,6 +32,10 @@ interface PublicSaleViewProps {
     id: string;
     username: string;
   };
+  /** Otwarty link jednego folderu oferty (null = oferta zbiorcza). */
+  folder?: { name: string; slug: string } | null;
+  /** Foldery sprzedawcy (tylko w ofercie zbiorczej, do filtrowania). */
+  folders?: Array<{ id: string; name: string; slug: string }>;
   cards: CollectionItem[];
   settings: AppSettings;
   onOpenLogin: () => void;
@@ -40,7 +47,9 @@ interface PublicSaleViewProps {
 
 export const PublicSaleView: React.FC<PublicSaleViewProps> = ({
   seller,
-  cards,
+  folder = null,
+  folders = [],
+  cards: allCards,
   settings,
   onOpenLogin,
   onViewCardDetails,
@@ -66,6 +75,27 @@ export const PublicSaleView: React.FC<PublicSaleViewProps> = ({
   const [copiedLink, setCopiedLink] = useState(false);
   const [copiedText, setCopiedText] = useState(false);
   const [selectedPreviewCard, setSelectedPreviewCard] = useState<CollectionItem | null>(null);
+  // Oferta zbiorcza: filtr po folderach sprzedawcy ('all', id folderu albo 'main' = karty poza folderami)
+  const [folderFilter, setFolderFilter] = useState<string>('all');
+  const folderChips = useMemo(() => {
+    if (folder || folders.length === 0) return [];
+    const known = new Set(folders.map((f) => f.id));
+    const count = (pred: (i: CollectionItem) => boolean) => allCards.filter(pred).reduce((s, i) => s + i.quantity + i.quantityFoil, 0);
+    const chips = folders
+      .map((f) => ({ id: f.id, label: f.name, n: count((i) => i.saleFolderId === f.id) }))
+      .filter((c) => c.n > 0);
+    const main = count((i) => !i.saleFolderId || !known.has(i.saleFolderId));
+    if (!chips.length) return [];
+    return [...(main > 0 ? [{ id: 'main', label: t('Pozostałe karty'), n: main }] : []), ...chips];
+  }, [folder, folders, allCards, t]);
+  const cards = useMemo(() => {
+    if (folderFilter === 'all' || folderChips.length === 0) return allCards;
+    if (folderFilter === 'main') {
+      const known = new Set(folders.map((f) => f.id));
+      return allCards.filter((i) => !i.saleFolderId || !known.has(i.saleFolderId));
+    }
+    return allCards.filter((i) => i.saleFolderId === folderFilter);
+  }, [allCards, folderFilter, folderChips.length, folders]);
 
   // Metrics
   const totalCardsCount = useMemo(() => {
@@ -219,9 +249,25 @@ export const PublicSaleView: React.FC<PublicSaleViewProps> = ({
             <span className="px-2.5 py-0.5 rounded-full text-xs tabular-nums font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 ">
               {t('Oferta Sprzedaży')}
             </span>
-            <h2 className="text-2xl sm:text-3xl font-bold text-white tracking-tight">
-              {t('Karty gracza @{name}', { name: seller.username })}
-            </h2>
+            {folder ? (
+              <>
+                <h2 className="text-2xl sm:text-3xl font-bold text-white tracking-tight flex items-center gap-2 min-w-0">
+                  <FolderIcon className="w-6 h-6 text-amber-400 shrink-0" />
+                  <span className="truncate">{folder.name}</span>
+                </h2>
+                <p className="text-xs text-stone-400">
+                  {t('Część oferty gracza @{name}.', { name: seller.username })}{' '}
+                  <a href={publicPath('sale', seller.username)} className="text-amber-300 hover:text-amber-200 underline inline-flex items-center gap-1">
+                    <ArrowLeft className="w-3 h-3" />
+                    {t('Zobacz całą ofertę')}
+                  </a>
+                </p>
+              </>
+            ) : (
+              <h2 className="text-2xl sm:text-3xl font-bold text-white tracking-tight">
+                {t('Karty gracza @{name}', { name: seller.username })}
+              </h2>
+            )}
             <p className="text-xs text-stone-400 max-w-xl">
               {t('Przeglądaj karty wystawione na sprzedaż. Ceny podane są w walucie')} <strong>{settings.currency}</strong> {t('(wycena rynkowa Cardmarket / TCGPlayer lub cena ustalona przez sprzedawcę).')}
             </p>
@@ -305,6 +351,27 @@ export const PublicSaleView: React.FC<PublicSaleViewProps> = ({
             </div>
           </div>
         </div>
+
+        {folderChips.length > 0 && (
+          <div className="flex items-center gap-2 flex-wrap" role="tablist" aria-label={t('Foldery oferty')}>
+            {[{ id: 'all', label: t('Wszystkie'), n: allCards.reduce((s, i) => s + i.quantity + i.quantityFoil, 0) }, ...folderChips].map((c) => (
+              <button
+                key={c.id}
+                type="button"
+                role="tab"
+                aria-selected={folderFilter === c.id}
+                onClick={() => setFolderFilter(c.id)}
+                className={`h-8 px-3 rounded-lg text-xs font-medium border flex items-center gap-1.5 cursor-pointer ${
+                  folderFilter === c.id ? 'bg-stone-800 border-stone-700 text-stone-50' : 'bg-stone-900 border-stone-800 text-stone-400 hover:text-stone-200'
+                }`}
+              >
+                {c.id !== 'all' && c.id !== 'main' && <FolderIcon className="w-3.5 h-3.5 text-amber-400" />}
+                <span className="truncate max-w-[180px]">{c.label}</span>
+                <span className="tabular-nums text-stone-500">{c.n}</span>
+              </button>
+            ))}
+          </div>
+        )}
 
         {/* Cards Grid */}
         {displayedCards.length === 0 ? (

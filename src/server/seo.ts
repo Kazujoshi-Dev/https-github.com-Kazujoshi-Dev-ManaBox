@@ -295,19 +295,30 @@ ${appFooter}`;
   };
 }
 
-async function salePage(ref: string): Promise<RenderedPage> {
-  const path = `/sprzedam/${encodeURIComponent(ref)}`;
+async function salePage(ref: string, folderSlug?: string): Promise<RenderedPage> {
+  const path = `/sprzedam/${encodeURIComponent(ref)}${folderSlug ? `/${encodeURIComponent(folderSlug)}` : ''}`;
   const user = ref.length <= 100 ? await db.getUserByIdOrUsername(ref.trim()) : null;
   if (!user || db.isBanActive(user) || user.sale_hidden) return notFoundPage(path, 'Nie znaleziono oferty dla tego użytkownika.');
-  const canonical = `/sprzedam/${encodeURIComponent(user.username)}`;
-  const items = ((await db.getCollection(user.id)) as CollectionItem[]).filter((i) => i.isForSale);
+  const folder = folderSlug
+    ? (await db.getSaleFolders(user.id)).find((f) => f.slug === folderSlug.trim().toLowerCase()) || null
+    : null;
+  if (folderSlug && !folder) return notFoundPage(path, 'Nie znaleziono tego folderu oferty.');
+  const canonical = `/sprzedam/${encodeURIComponent(user.username)}${folder ? `/${folder.slug}` : ''}`;
+  const items = ((await db.getCollection(user.id)) as CollectionItem[]).filter(
+    (i) => i.isForSale && (!folder || i.saleFolderId === folder.id)
+  );
   const settings: any = (await db.getSettings(user.id)) || {};
   const currency = settings.currency || 'PLN';
   const sorted = [...items].sort((a, b) => (Number(b.salePrice) || eur(b.card)) - (Number(a.salePrice) || eur(a.card)));
   const n = items.reduce((s, i) => s + (i.quantity || 0) + (i.quantityFoil || 0), 0) || items.length;
 
   const top = sorted.slice(0, 3).map((i) => i.card.name);
-  const title = clip(`Karty MTG na sprzedaż: ${user.username} (${kart(n)}) | ${SITE_NAME}`, 90);
+  const title = clip(
+    folder
+      ? `${folder.name}: karty MTG na sprzedaż od ${user.username} (${kart(n)}) | ${SITE_NAME}`
+      : `Karty MTG na sprzedaż: ${user.username} (${kart(n)}) | ${SITE_NAME}`,
+    90
+  );
   const description = clip(
     n
       ? `${kart(n)} Magic: The Gathering na sprzedaż od ${user.username}${top.length ? `${n > top.length ? ', między innymi' : ':'} ${top.join(', ')}` : ''}. Zobacz ceny i napisz do sprzedawcy w Mana Screw.`
@@ -326,7 +337,7 @@ async function salePage(ref: string): Promise<RenderedPage> {
     .join('');
 
   const body = `${breadcrumbNav('Sprzedam')}
-<h1>Karty MTG na sprzedaż: ${esc(user.username)}</h1>
+<h1>${folder ? `${esc(folder.name)}: karty MTG na sprzedaż od ${esc(user.username)}` : `Karty MTG na sprzedaż: ${esc(user.username)}`}</h1>
 <p>${n ? `${esc(kart(n))} Magic: The Gathering wystawionych na sprzedaż przez gracza ${esc(user.username)}.` : 'Ten gracz nie ma obecnie kart na sprzedaż.'} Aby kupić kartę, zaloguj się i napisz do sprzedawcy.</p>
 ${rows ? `<h2>Lista kart</h2><ul>${rows}</ul>` : ''}
 ${appFooter}`;
@@ -338,6 +349,8 @@ ${appFooter}`;
       description,
       path: canonical,
       type: 'profile',
+      // link folderu bywa przeznaczony dla jednej osoby: wyszukiwarki go nie indeksują
+      noindex: Boolean(folder),
       image: cardImage(sorted[0]?.card, 'large') || undefined,
       imageAlt: sorted[0]?.card.name
     },
@@ -460,7 +473,7 @@ export function registerSeoRoutes(app: express.Express, getTemplate: (req: expre
       }
 
       let page: RenderedPage;
-      const m = req.path.match(/^\/(talia|sprzedam|szukam)\/([^/]+)\/?$/);
+      const m = req.path.match(/^\/(talia|sprzedam|szukam)\/([^/]+)\/?$/) || req.path.match(/^\/(sprzedam)\/([^/]+)\/([a-z0-9]{6,24})\/?$/i);
       if (req.path === '/' || req.path === '/index.html') {
         page = homePage();
       } else if (/^\/(potwierdz-email|nowe-haslo)\/?$/.test(req.path)) {
@@ -473,8 +486,9 @@ export function registerSeoRoutes(app: express.Express, getTemplate: (req: expre
         } catch {
           /* surowy */
         }
-        const key = `${m[1]}:${ref.toLowerCase()}`;
-        page = await cachedPage(key, () => (m[1] === 'talia' ? deckPage(ref) : m[1] === 'sprzedam' ? salePage(ref) : wishlistPage(ref)));
+        const folderSlug = m[3] ? m[3].toLowerCase() : undefined;
+        const key = `${m[1]}:${ref.toLowerCase()}${folderSlug ? `/${folderSlug}` : ''}`;
+        page = await cachedPage(key, () => (m[1] === 'talia' ? deckPage(ref) : m[1] === 'sprzedam' ? salePage(ref, folderSlug) : wishlistPage(ref)));
       } else {
         page = notFoundPage(req.path, 'Ta strona nie istnieje.');
       }

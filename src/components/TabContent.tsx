@@ -81,6 +81,8 @@ interface TabContentProps {
   onToggleForSale?: (item: CollectionItem, customPrice?: number | null) => Promise<void> | void;
   onAddCardForSale?: (data: import('./for-sale/ForSaleAddModal').ForSaleAddData) => Promise<boolean>;
   onUpdateCollectionItem?: (id: string, updates: Partial<CollectionItem>) => Promise<CollectionItem | null> | void;
+  /** Zmiana pozycji tylko w stanie aplikacji (foldery „Sprzedam”). */
+  onPatchCollectionItems?: (ids: string[], patch: Partial<CollectionItem>) => void;
   /** Otwiera profil sprzedawcy (z mapy sprzedawców). */
   onOpenSellerProfile?: (username: string) => void;
   /** Profil do automatycznego otwarcia w zakładce Użytkownicy. */
@@ -132,6 +134,7 @@ export const TabContent: React.FC<TabContentProps> = ({
   onToggleForSale,
   onAddCardForSale,
   onUpdateCollectionItem,
+  onPatchCollectionItems,
   showToast,
   onOpenSellerProfile,
   profileRequest,
@@ -264,6 +267,7 @@ export const TabContent: React.FC<TabContentProps> = ({
           currentUser={currentUser || null}
           onToggleForSale={onToggleForSale || (() => {})}
           onUpdateCollectionItem={onUpdateCollectionItem || (() => {})}
+          onPatchCollectionItems={onPatchCollectionItems}
           onViewCardDetails={onViewCollectionItemDetails}
           onGoToCollection={() => setActiveTab('collection')}
           showToast={showToast}

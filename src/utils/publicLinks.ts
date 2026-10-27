@@ -6,7 +6,20 @@ export type PublicLinkKind = 'deck' | 'sale' | 'wishlist';
 
 const PATH_PREFIX: Record<PublicLinkKind, string> = { deck: 'talia', sale: 'sprzedam', wishlist: 'szukam' };
 
-export function parsePublicLink(loc: Pick<Location, 'pathname' | 'search'> = window.location): { kind: PublicLinkKind; ref: string } | null {
+export function parsePublicLink(
+  loc: Pick<Location, 'pathname' | 'search'> = window.location
+): { kind: PublicLinkKind; ref: string; folder?: string } | null {
+  // Folder oferty: /sprzedam/nazwa/slug
+  const f = loc.pathname.match(/^\/sprzedam\/([^/]+)\/([a-z0-9]{6,24})\/?$/i);
+  if (f) {
+    let ref = f[1];
+    try {
+      ref = decodeURIComponent(ref);
+    } catch {
+      /* zostawiamy surowy */
+    }
+    return ref ? { kind: 'sale', ref, folder: f[2].toLowerCase() } : null;
+  }
   const m = loc.pathname.match(/^\/(talia|sprzedam|szukam)\/([^/]+)\/?$/);
   if (m) {
     let ref = m[2];
@@ -32,3 +45,6 @@ export const publicPath = (kind: PublicLinkKind, ref: string) => `/${PATH_PREFIX
 
 export const publicUrl = (kind: PublicLinkKind, ref: string) =>
   `${typeof window !== 'undefined' ? window.location.origin : 'https://manascrew.eu'}${publicPath(kind, ref)}`;
+
+/** Publiczny link jednego folderu oferty „Sprzedam”. */
+export const saleFolderUrl = (sellerRef: string, slug: string) => `${publicUrl('sale', sellerRef)}/${encodeURIComponent(slug)}`;

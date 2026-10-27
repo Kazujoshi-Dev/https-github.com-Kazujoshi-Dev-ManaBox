@@ -124,4 +124,9 @@ export const en_server: Record<string, string> = {
   "DELVER_SCAN_FAILED": "DELVER_SCAN_FAILED",
   "Błąd pobierania talii społeczności.": "Error loading community decks.",
   "Nie możesz polubić własnej talii.": "You can't like your own deck.",
+  "Podaj nazwę folderu.": "Enter a folder name.",
+  "Nazwa folderu może mieć najwyżej 60 znaków.": "A folder name can have at most 60 characters.",
+  "Możesz mieć najwyżej 50 folderów.": "You can have at most 50 folders.",
+  "Nie znaleziono folderu.": "Folder not found.",
+  "Nie znaleziono tego folderu oferty. Mógł zostać usunięty.": "This offer folder was not found. It may have been deleted.",
 };

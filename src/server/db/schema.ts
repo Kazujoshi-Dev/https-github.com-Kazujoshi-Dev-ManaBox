@@ -158,6 +158,17 @@ export async function initDb(): Promise<void> {
           ALTER TABLE user_collections ADD COLUMN IF NOT EXISTS prices_changed_at TIMESTAMPTZ;
           -- talia, z której karty skopiowano do kolekcji (do sugestii: wolne egzemplarze vs karty w taliach)
           ALTER TABLE user_collections ADD COLUMN IF NOT EXISTS source_deck_id VARCHAR(64);
+          -- folder w zakładce „Sprzedam” (NULL = lista domyślna); bez klucza obcego, patrz saleFolderRepository
+          ALTER TABLE user_collections ADD COLUMN IF NOT EXISTS sale_folder_id VARCHAR(64);
+          CREATE TABLE IF NOT EXISTS sale_folders (
+            id VARCHAR(64) PRIMARY KEY,
+            user_id VARCHAR(64) NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            name VARCHAR(60) NOT NULL,
+            slug VARCHAR(24) NOT NULL UNIQUE,
+            position INT NOT NULL DEFAULT 0,
+            created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+          );
+          CREATE INDEX IF NOT EXISTS idx_sale_folders_user ON sale_folders(user_id);
           ALTER TABLE user_settings ADD COLUMN IF NOT EXISTS auto_nbp_rate BOOLEAN DEFAULT TRUE;
           -- liczba wierszy kart na stronie kolekcji
           ALTER TABLE user_settings ADD COLUMN IF NOT EXISTS collection_rows_per_page SMALLINT;

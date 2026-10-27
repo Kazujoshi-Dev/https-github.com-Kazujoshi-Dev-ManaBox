@@ -162,6 +162,12 @@ export function useAppData({ userId, onUnauthorized, showToast, onSettingsLoaded
     return null;
   }, [onUnauthorized]);
 
+  /** Zmiana kilku pozycji tylko w stanie aplikacji (np. po przeniesieniu kart do folderu „Sprzedam”). */
+  const patchCollectionItemsLocal = useCallback((ids: string[], patch: Partial<CollectionItem>) => {
+    const set = new Set(ids);
+    setCollection(prev => prev.map(c => (set.has(c.id) ? { ...c, ...patch } : c)));
+  }, []);
+
   const toggleForSale = useCallback(async (item: CollectionItem, customPrice?: number | null) => {
     const nextForSale = !item.isForSale;
     if (nextForSale && isDigitalOnly(item.card)) {
@@ -763,6 +769,7 @@ export function useAppData({ userId, onUnauthorized, showToast, onSettingsLoaded
     importCollection,
     bulkAddToCollection,
     updateCollectionItemData,
+    patchCollectionItemsLocal,
     toggleForSale,
     sellItemQuantity,
     addCardForSale

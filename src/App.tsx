@@ -81,6 +81,7 @@ export default function App() {
     importCollection,
     bulkAddToCollection,
     updateCollectionItemData,
+    patchCollectionItemsLocal,
     toggleForSale,
     sellItemQuantity,
     addCardForSale
@@ -118,6 +119,8 @@ export default function App() {
   // Public sale offer state (when accessed via ?sprzedam=... or ?sale=...)
   const [publicSaleData, setPublicSaleData] = useState<{
     seller: { id: string; username: string; email?: string; createdAt?: string };
+    folder?: { name: string; slug: string } | null;
+    folders?: Array<{ id: string; name: string; slug: string }>;
     cards: CollectionItem[];
     settings: AppSettings;
   } | null>(null);
@@ -188,7 +191,7 @@ export default function App() {
           .finally(() => setIsLoadingPublicSale(false));
       } else if (saleParam) {
         setIsLoadingPublicSale(true);
-        publicSaleApi.getOffers(saleParam)
+        publicSaleApi.getOffers(saleParam, publicLink?.folder)
           .then(data => {
             setPublicSaleData(data);
             setPublicSaleError(null);
@@ -762,6 +765,8 @@ export default function App() {
       <>
         <PublicSaleView
           seller={publicSaleData.seller}
+          folder={publicSaleData.folder || null}
+          folders={publicSaleData.folders || []}
           cards={publicSaleData.cards}
           settings={publicSaleData.settings}
           onOpenLogin={() => setShowLoginModalFromPublic(true)}
@@ -970,6 +975,7 @@ export default function App() {
             onToggleForSale={handleRequestToggleForSale}
             onAddCardForSale={addCardForSale}
             onUpdateCollectionItem={updateCollectionItemData}
+            onPatchCollectionItems={patchCollectionItemsLocal}
             showToast={showToast}
             onOpenSellerProfile={handleOpenSellerProfile}
             profileRequest={profileRequest}

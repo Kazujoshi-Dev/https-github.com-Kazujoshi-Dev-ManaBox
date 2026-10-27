@@ -16,7 +16,7 @@ export async function getCollection(userId: string): Promise<CollectionItem[]> {
                 added_at as "addedAt", last_updated_price_at as "lastUpdatedPriceAt",
                 is_for_sale as "isForSale", sale_price as "salePrice",
                 previous_prices as "previousPrices", prices_changed_at as "pricesChangedAt",
-                source_deck_id as "sourceDeckId"
+                source_deck_id as "sourceDeckId", sale_folder_id as "saleFolderId"
          FROM user_collections WHERE user_id = $1 ORDER BY added_at DESC`,
         [userId]
       );
@@ -100,6 +100,8 @@ export async function updateCollectionItem(
         `UPDATE user_collections
          SET card_id = $1::varchar, card = $2, quantity = $3, quantity_foil = $4, condition = $5,
              language = $6, purchase_price = $7, notes = $8, binder = $9, is_for_sale = $10, sale_price = $11,
+             -- karta wycofana ze sprzedaży wychodzi też z folderu „Sprzedam”
+             sale_folder_id = CASE WHEN $10 THEN sale_folder_id ELSE NULL END,
              -- zmiana wydania karty: poprzednie ceny dotyczyły innego druku
              previous_prices = CASE WHEN card_id IS DISTINCT FROM $1::varchar THEN NULL ELSE previous_prices END,
              prices_changed_at = CASE WHEN card_id IS DISTINCT FROM $1::varchar THEN NULL ELSE prices_changed_at END
@@ -108,7 +110,8 @@ export async function updateCollectionItem(
                    condition, language, purchase_price as "purchasePrice", notes, binder,
                    added_at as "addedAt", last_updated_price_at as "lastUpdatedPriceAt",
                    is_for_sale as "isForSale", sale_price as "salePrice",
-                   previous_prices as "previousPrices", prices_changed_at as "pricesChangedAt"`,
+                   previous_prices as "previousPrices", prices_changed_at as "pricesChangedAt",
+                   source_deck_id as "sourceDeckId", sale_folder_id as "saleFolderId"`,
         [newCardId, newCard, newQty, newQtyFoil, newCond, newLang, newPrice, newNotes, newBinder, newIsForSale, newSalePrice, id, userId]
       );
 
@@ -126,6 +129,7 @@ export async function updateCollectionItem(
         ...updates,
         cardId: updates.card?.id || updates.cardId || items[idx].cardId
       };
+      if (!items[idx].isForSale) items[idx].saleFolderId = null;
       writeJsonAtomic(colFile, items);
       return items[idx];
     }
@@ -169,9 +173,9 @@ export async function saveFullCollection(userId: string, collection: CollectionI
             const params: any[] = [userId];
 
             chunk.forEach((item, idx) => {
-              const baseIndex = 2 + idx * 17;
+              const baseIndex = 2 + idx * 18;
               valueClauses.push(
-                `($${baseIndex}, $1, ${Array.from({ length: 16 }, (_, k) => `$${baseIndex + 1 + k}`).join(', ')})`
+                `($${baseIndex}, $1, ${Array.from({ length: 17 }, (_, k) => `$${baseIndex + 1 + k}`).join(', ')})`
               );
               params.push(
                 item.id,
@@ -190,7 +194,8 @@ export async function saveFullCollection(userId: string, collection: CollectionI
                 item.salePrice ?? null,
                 item.previousPrices ? JSON.stringify(item.previousPrices) : null,
                 item.pricesChangedAt || null,
-                normalizeSourceDeckId(item.sourceDeckId)
+                normalizeSourceDeckId(item.sourceDeckId),
+                item.isForSale && typeof item.saleFolderId === 'string' ? item.saleFolderId.slice(0, 64) : null
               );
             });
 
@@ -199,7 +204,7 @@ export async function saveFullCollection(userId: string, collection: CollectionI
                 id, user_id, card_id, card, quantity, quantity_foil,
                 condition, language, purchase_price, notes, binder,
                 added_at, last_updated_price_at, is_for_sale, sale_price,
-                previous_prices, prices_changed_at, source_deck_id
+                previous_prices, prices_changed_at, source_deck_id, sale_folder_id
               ) VALUES ${valueClauses.join(', ')}`,
               params
             );
