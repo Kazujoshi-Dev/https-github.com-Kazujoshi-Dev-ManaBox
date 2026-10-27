@@ -390,3 +390,28 @@ export interface SpellbookFindCombosResponse {
   };
 }
 
+
+/** Format w zakładce „Alerty cenowe” (klucz `legalities` Scryfall). */
+export type PriceAlertFormat =
+  | 'standard' | 'pioneer' | 'modern' | 'pauper' | 'legacy' | 'vintage' | 'commander' | 'historic' | 'brawl' | 'premodern';
+
+export interface PriceMover {
+  card: ScryfallCard;
+  /** Cena na początku okresu i teraz (EUR, Cardmarket Trend). */
+  from: number;
+  to: number;
+  /** Zmiana w procentach. */
+  pct: number;
+  /** Notowania z okresu (EUR), do wykresu. */
+  series: number[];
+}
+
+export interface PriceMoversResponse {
+  ready: boolean;
+  /** Dzień ostatniego notowania (RRRR-MM-DD). */
+  day: string | null;
+  /** Ile dni historii cen jest dostępne. */
+  coverageDays: number;
+  gainers: PriceMover[];
+  losers: PriceMover[];
+}

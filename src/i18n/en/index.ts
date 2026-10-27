@@ -15,7 +15,8 @@ import { en_app } from './app';
 import { en_scanner } from './scanner';
 import { en_admin } from './admin';
 import { en_server } from './server';
-const parts: Record<string, string>[] = [en_server, en_admin, en_scanner, en_app, en_decks, en_settings, en_messages, en_users, en_layout, en_auth, en_collection, en_card, en_search, en_stats, en_sale, en_public];
+import { en_alerts } from './alerts';
+const parts: Record<string, string>[] = [en_alerts, en_server, en_admin, en_scanner, en_app, en_decks, en_settings, en_messages, en_users, en_layout, en_auth, en_collection, en_card, en_search, en_stats, en_sale, en_public];
 
 export const EN: Record<string, string> = Object.assign({}, ...parts);
 

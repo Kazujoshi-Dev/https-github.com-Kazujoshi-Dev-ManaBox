@@ -12,6 +12,7 @@ import {
   Settings,
   Trophy,
   Telescope,
+  BellRing,
   LogOut,
   Swords,
   Camera,
@@ -31,7 +32,7 @@ import { LanguageSwitcher } from './ui/LanguageSwitcher';
 import { useT, locale, plural, type Lang } from '../i18n';
 import { AppSettings, AuthUser } from '../types';
 
-type Tab = 'collection' | 'community-decks' | 'search' | 'set-top' | 'spoilers' | 'analytics' | 'wishlist' | 'decks' | 'for-sale' | 'users' | 'changelog' | 'admin' | 'settings';
+type Tab = 'collection' | 'community-decks' | 'search' | 'set-top' | 'price-alerts' | 'spoilers' | 'analytics' | 'wishlist' | 'decks' | 'for-sale' | 'users' | 'changelog' | 'admin' | 'settings';
 
 interface HeaderProps {
   /** Nowe wpisy w dzienniku zmian, których użytkownik nie widział. */
@@ -219,6 +220,7 @@ export const Header: React.FC<HeaderProps> = ({
     { id: 'community-decks', label: t('Talie społeczności'), icon: Globe },
     { id: 'search', label: t('Szukaj kart'), icon: Search },
     { id: 'set-top', label: t('Top z dodatku'), icon: Trophy },
+    { id: 'price-alerts', label: t('Alerty cenowe'), icon: BellRing },
     { id: 'spoilers', label: t('Spoilery'), icon: Telescope },
     { id: 'analytics', label: t('Statystyki'), icon: BarChart3 },
     { id: 'wishlist', label: t('Lista życzeń'), icon: FolderHeart },
@@ -379,7 +381,7 @@ export const Header: React.FC<HeaderProps> = ({
         </div>
 
         {/* Zakładki: jedna linia, aktywna podkreślona */}
-        <nav aria-label={t('Zakładki')} className="-mb-px flex items-center gap-1 overflow-x-auto no-scrollbar">
+        <nav aria-label={t('Zakładki')} className="-mb-px flex items-center overflow-x-auto no-scrollbar">
           {tabs.map(({ id, label, icon: Icon, count, dot }) => {
             const active = activeTab === id;
             return (
@@ -388,7 +390,7 @@ export const Header: React.FC<HeaderProps> = ({
                 type="button"
                 onClick={() => setActiveTab(id)}
                 aria-current={active ? 'page' : undefined}
-                className={`relative h-11 px-3 flex items-center gap-2 text-sm whitespace-nowrap cursor-pointer border-b-2 ${
+                className={`relative h-11 px-2 flex items-center gap-1.5 text-sm whitespace-nowrap cursor-pointer border-b-2 ${
                   active
                     ? 'border-amber-400 text-stone-50 font-medium'
                     : 'border-transparent text-stone-400 hover:text-stone-200 hover:border-stone-700'

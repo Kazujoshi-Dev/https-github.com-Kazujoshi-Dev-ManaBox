@@ -16,6 +16,8 @@ const translateToEnglish = (message: string) => translateWith(EN, EN_PATTERNS, m
 import { getCommanderRecommendations } from './src/server/edhrec';
 import * as cards from './src/server/cards/cardStore';
 import * as hashes from './src/server/cards/hashIndex';
+import * as priceHistory from './src/server/cards/priceHistory';
+import { getPool } from './src/server/db/storage';
 import { computeQueryHashes, decodeJpegToGray } from './src/server/cards/imageHash';
 import { normalizeName, nameSimilarity } from './src/server/cards/nameMatch';
 import { searchCities, resolveSuggestion } from './src/server/geo';
@@ -2451,7 +2453,7 @@ admin.use(authMiddleware, requireAdmin, adminLimiter);
 
 admin.get('/stats', async (_req, res) => {
   try {
-    res.json({ ...(await db.adminStats()), cardDb: cards.cardDbStatus() });
+    res.json({ ...(await db.adminStats()), cardDb: cards.cardDbStatus(), priceHistory: priceHistory.priceHistoryStatus() });
   } catch (err) {
     sendServerError(res, err, '/api/admin/stats');
   }
@@ -2743,6 +2745,46 @@ admin.delete('/bug-reports/:id', async (req, res) => {
 registerChangelogRoutes(app, admin, sendServerError);
 
 app.use('/api/admin', admin);
+
+// --- ALERTY CENOWE: karty, które w ostatnich dniach najmocniej zdrożały lub potaniały ---
+const priceMoversLimiter = rateLimit({ name: 'price-movers', windowMs: 60_000, max: 60, key: userKey });
+const PRICE_MOVER_DAYS = [1, 7, 30, 90];
+/** Pola karty potrzebne w zakładce i w oknie szczegółów (bez dużych, zbędnych tu danych). */
+const MOVER_CARD_DROP = ['legalities', 'related_uris', 'multiverse_ids', 'mtgo_id', 'mtgo_foil_id', 'arena_id', 'tcgplayer_id', 'all_parts', 'preview'];
+app.get('/api/price-movers', authMiddleware, priceMoversLimiter, async (req, res) => {
+  try {
+    const format = String(req.query.format || 'modern') as priceHistory.PriceAlertFormat;
+    if (!priceHistory.PRICE_ALERT_FORMATS.includes(format)) return res.status(400).json({ error: 'Nieznany format.' });
+    const daysRaw = Number(req.query.days);
+    const days = PRICE_MOVER_DAYS.includes(daysRaw) ? daysRaw : 7;
+    const minEur = Math.min(Math.max(Number(req.query.min) || 0, 0), 1000);
+    const minPct = Math.min(Math.max(Number(req.query.pct) || 0, 0), 1000);
+    const result = priceHistory.getPriceMovers({ format, days, foil: req.query.finish === 'foil', minEur, minPct, limit: 40 });
+    const ids = [...result.gainers, ...result.losers].map((m) => m.id);
+    const cardsById = new Map<string, any>();
+    const p = getPool();
+    if (p && ids.length) {
+      const r = await p.query('SELECT id::text AS id, data FROM scryfall_cards WHERE id = ANY($1::uuid[])', [ids]);
+      for (const row of r.rows) {
+        const card = { ...row.data };
+        for (const k of MOVER_CARD_DROP) delete card[k];
+        cardsById.set(row.id, card);
+      }
+    }
+    const withCards = (list: priceHistory.PriceMover[]) =>
+      list.filter((m) => cardsById.has(m.id)).map(({ id, ...m }) => ({ ...m, card: cardsById.get(id) }));
+    res.json({
+      ready: result.ready,
+      day: result.day,
+      coverageDays: result.coverageDays,
+      formats: priceHistory.PRICE_ALERT_FORMATS,
+      gainers: withCards(result.gainers),
+      losers: withCards(result.losers)
+    });
+  } catch (err: any) {
+    sendServerError(res, err, '/api/price-movers', 'Błąd pobierania alertów cenowych.');
+  }
+});
 
 // --- PUBLIC SALE ENDPOINT (NO AUTH REQUIRED) ---
 
@@ -3473,6 +3515,8 @@ async function startServer() {
   startChangelog().catch(() => {});
   // Lokalna baza kart dla skanera (import w tle, nie blokuje startu).
   cards.startCardDb().catch((err) => console.warn('[Karty] Start nieudany:', err?.message || err));
+  // Historia cen kart (alerty cenowe): migawki po synchronizacji i jednorazowy import z MTGJSON.
+  priceHistory.startPriceHistory().catch((err) => console.warn('[Ceny] Start nieudany:', err?.message || err));
   // Porządki w tabeli sesji: przy starcie i raz na dobę.
   const purge = () => db.purgeOldSessions().catch((err) => console.warn('[Sesje] Czyszczenie nieudane:', err?.message || err));
   purge();

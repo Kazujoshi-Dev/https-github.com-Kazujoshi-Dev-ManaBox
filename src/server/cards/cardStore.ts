@@ -206,7 +206,7 @@ async function upsertBatch(p: pg.Pool, cards: any[], syncStart: string): Promise
  * (Scryfall publikuje .jsonl.gz), rozpakowuje je w locie — rozpoznaje to
  * po sygnaturze 1f 8b, więc działa też, gdy serwer sam zdekompresował odpowiedź.
  */
-async function* decodeStream(body: ReadableStream<Uint8Array>): AsyncGenerator<string> {
+export async function* decodeStream(body: ReadableStream<Uint8Array>): AsyncGenerator<string> {
   const reader = body.getReader();
   const first = await reader.read();
   if (first.done) return;

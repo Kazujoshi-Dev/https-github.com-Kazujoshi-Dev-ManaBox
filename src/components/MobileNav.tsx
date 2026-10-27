@@ -8,6 +8,7 @@ import {
   Menu,
   Trophy,
   Telescope,
+  BellRing,
   BarChart3,
   FolderHeart,
   CircleDollarSign,
@@ -49,6 +50,7 @@ interface MobileNavProps {
 const MORE_TABS: Array<{ tab: NavigationTab; label: string; icon: React.ElementType }> = [
   { tab: 'community-decks', label: tk('Talie społeczności'), icon: Globe },
   { tab: 'set-top', label: tk('Top z dodatku'), icon: Trophy },
+  { tab: 'price-alerts', label: tk('Alerty cenowe'), icon: BellRing },
   { tab: 'spoilers', label: tk('Spoilery'), icon: Telescope },
   { tab: 'analytics', label: tk('Statystyki'), icon: BarChart3 },
   { tab: 'wishlist', label: tk('Lista życzeń'), icon: FolderHeart },

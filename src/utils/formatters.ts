@@ -16,6 +16,15 @@ export const DEFAULT_SETTINGS: AppSettings = {
   showFoilBadge: true,
 };
 
+/** Przelicza kwotę w EUR (np. Cardmarket Trend) na walutę z ustawień. */
+export function convertEur(amount: number, settings: AppSettings): number {
+  const eurRate = settings.eurToPlnRate > 0 ? settings.eurToPlnRate : 4.31;
+  const usdRate = settings.usdToPlnRate > 0 ? settings.usdToPlnRate : 3.96;
+  if (settings.currency === 'EUR') return amount;
+  if (settings.currency === 'USD') return (amount * eurRate) / usdRate;
+  return amount * eurRate;
+}
+
 /** Dozwolony zakres korekty ceny sprzedaży względem Cardmarket Trend (w procentach). */
 export const SALE_ADJUST_MIN = -90;
 export const SALE_ADJUST_MAX = 200;

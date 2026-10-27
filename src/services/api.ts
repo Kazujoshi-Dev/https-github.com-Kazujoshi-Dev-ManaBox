@@ -1,4 +1,4 @@
-import { CommunityDeckSummary, AdminUser, AdminStats, AdminAuditEntry, AuthUser, AppSettings, Catalog, CollectionItem, DeckItem, ScryfallCard, WishlistItem, SpellbookFindCombosResponse, SpellbookVariant, RegisteredUserSummary, UserMessage, UserProfile, CitySuggestion, MapCity, WishlistMatches } from '../types';
+import { CommunityDeckSummary, AdminUser, AdminStats, AdminAuditEntry, AuthUser, AppSettings, Catalog, CollectionItem, DeckItem, ScryfallCard, WishlistItem, SpellbookFindCombosResponse, SpellbookVariant, RegisteredUserSummary, UserMessage, UserProfile, CitySuggestion, MapCity, WishlistMatches, PriceMoversResponse } from '../types';
 import { noteResponseVersion } from '../utils/appVersion';
 import { t, tServer, tk } from '../i18n';
 
@@ -388,6 +388,16 @@ export const profileApi = {
     ),
   searchCities: async (q: string): Promise<CitySuggestion[]> =>
     jsonOrThrow(await fetchWithAuth(`/api/geo/cities?q=${encodeURIComponent(q)}`), tk('Błąd wyszukiwania miejscowości'))
+};
+
+export const priceMoversApi = {
+  get: async (q: { format: string; days: number; finish: 'normal' | 'foil'; min: number; pct: number }): Promise<PriceMoversResponse> =>
+    jsonOrThrow(
+      await fetchWithAuth(
+        `/api/price-movers?format=${encodeURIComponent(q.format)}&days=${q.days}&finish=${q.finish}&min=${q.min}&pct=${q.pct}`
+      ),
+      tk('Nie udało się pobrać alertów cenowych.')
+    )
 };
 
 export const sellersApi = {

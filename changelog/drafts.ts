@@ -33,6 +33,7 @@ export interface ChangelogDraft {
 /** Angielskie nazwy części aplikacji (klucz: polska nazwa z pola `area`). */
 export const CHANGELOG_AREAS_EN: Record<string, string> = {
   Aplikacja: 'App',
+  'Alerty cenowe': 'Price alerts',
   'Dziennik zmian': 'Changelog',
   Gracze: 'Players',
   Import: 'Import',
@@ -179,4 +180,5 @@ export const CHANGELOG_DRAFTS: ChangelogDraft[] = [
   { id: '2026-10-27-import-csv-manabox', day: '2026-10-27', type: 'new', area: 'Import', text: 'W oknie „Eksport i Import Kolekcji” możesz wczytać plik CSV wyeksportowany z ManaBox: karty trafią do kolekcji z tym samym wydaniem, foilem, stanem i językiem, a na życzenie także do tych samych klaserów.', textEn: 'In the “Collection export and import” window you can load a CSV file exported from ManaBox: cards are added to your collection with the same printing, foil, condition and language, and optionally into the same binders.' },
   { id: '2026-10-27-statystyki-top10-foil', day: '2026-10-27', type: 'improved', area: 'Statystyki', text: 'Sekcja „Najcenniejsze karty” w Statystykach pokazuje teraz 10 kart zamiast 5, a karty foil mają oznaczenie FOIL i są liczone po cenie wersji foil.', textEn: 'The “Most valuable cards” section in Statistics now shows 10 cards instead of 5, and foil cards are marked FOIL and ranked by their foil price.' },
   { id: '2026-10-27-korekta-ceny-sprzedazy-mcm', day: '2026-10-27', type: 'new', area: 'Ustawienia', text: 'W Ustawieniach, w sekcji „Wycena i waluta”, możesz ustawić korektę ceny wystawianych kart o +/- % względem Cardmarket Trend (MCM), a karty bez własnej ceny pojawią się w ofercie „Sprzedam” po tak skorygowanej cenie.', textEn: 'In Settings, under “Pricing and currency”, you can set an adjustment of +/- % to the Cardmarket Trend (MCM) for the cards you list, and cards without a custom price will appear in your “For sale” offer at the adjusted price.' },
+  { id: '2026-10-27-alerty-cenowe', day: '2026-10-27', type: 'new', area: 'Alerty cenowe', text: 'Nowa zakładka „Alerty cenowe” pokazuje karty, które w ostatnich 24 godzinach, 7, 30 lub 90 dniach najmocniej zdrożały lub potaniały na Cardmarket, osobno dla formatów Standard, Pioneer, Modern, Pauper, Legacy, Vintage, Commander, Historic, Brawl i Premodern, z oznaczeniem kart, które masz w kolekcji lub na liście życzeń.', textEn: 'The new “Price alerts” tab shows the cards whose Cardmarket price rose or fell the most over the last 24 hours, 7, 30 or 90 days, separately for Standard, Pioneer, Modern, Pauper, Legacy, Vintage, Commander, Historic, Brawl and Premodern, and marks the cards you own or have on your wishlist.' },
 ];
