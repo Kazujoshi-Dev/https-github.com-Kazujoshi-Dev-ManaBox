@@ -5,7 +5,7 @@ import { formatCurrency, getCardmarketUrl } from '../../utils/formatters';
 import { CardMarketPricesProps } from './types';
 import { isDigitalOnly } from '../../utils/mtgFormats';
 import { useT } from '../../i18n';
-import { isMtgCard, priceSourceLabel } from '../../utils/cardSource';
+import { gameOfCard, isMtgCard, priceSourceLabel } from '../../utils/cardSource';
 
 export const CardMarketPrices: React.FC<CardMarketPricesProps> = ({
   activeCard,
@@ -19,6 +19,9 @@ export const CardMarketPrices: React.FC<CardMarketPricesProps> = ({
   const t = useT();
   const cardmarketUrl = getCardmarketUrl(activeCard);
   const isMtg = isMtgCard(activeCard);
+  const game = gameOfCard(activeCard);
+  // Pokémon: druga wersja karty to reverse holo
+  const foilName = game === 'pokemon' ? 'Reverse Holo' : 'Foil';
   const tcgplayerUrl = !isMtg ? activeCard.purchase_uris?.tcgplayer : undefined;
   return (
     <>
@@ -69,7 +72,7 @@ export const CardMarketPrices: React.FC<CardMarketPricesProps> = ({
           <button
             type="button"
             onClick={() => onToggleFoil(true, true)}
-            title={t('Kliknij, aby wybrać wersję Foil (Błyszcząca) i przestawić cenę')}
+            title={game === 'pokemon' ? t('Kliknij, aby wybrać wersję {name} i przestawić cenę', { name: foilName }) : t('Kliknij, aby wybrać wersję Foil (Błyszcząca) i przestawić cenę')}
             className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer relative group flex flex-col justify-between ${
               isFoil
                 ? 'bg-amber-500/20 border-amber-400 ring-2 ring-amber-500/50 shadow-lg'
@@ -79,7 +82,7 @@ export const CardMarketPrices: React.FC<CardMarketPricesProps> = ({
             <div className="flex items-center justify-between gap-1 w-full">
               <p className="text-[11px] text-amber-400 font-bold flex items-center gap-1">
                 <Sparkles className="w-3 h-3 text-amber-400" />
-                <span>{t('PLN Foil')}</span>
+                <span>{game === 'pokemon' ? 'PLN Reverse Holo' : t('PLN Foil')}</span>
               </p>
               {isFoil && (
                 <span className="text-[11px] font-bold text-amber-300 bg-amber-500/30 px-1 py-0.2 rounded flex items-center gap-0.5">
@@ -97,7 +100,7 @@ export const CardMarketPrices: React.FC<CardMarketPricesProps> = ({
           </button>
 
           {/* EUR Standard (MTG) albo USD Foil (Lorcana: ceny tylko z TCGplayer) */}
-          {isMtg ? (
+          {game !== 'lorcana' ? (
             <div className="bg-stone-900 p-2 rounded-lg border border-stone-800 text-left">
               <p className="text-[11px] text-stone-400">{t('EUR Standard')}</p>
               <p className="tabular-nums font-bold text-amber-300 text-sm mt-0.5">

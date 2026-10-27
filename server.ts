@@ -19,6 +19,7 @@ import * as cards from './src/server/cards/cardStore';
 import * as hashes from './src/server/cards/hashIndex';
 import * as priceHistory from './src/server/cards/priceHistory';
 import * as lorcana from './src/server/lorcana/lorcastStore';
+import * as pokemon from './src/server/pokemon/tcgdexStore';
 import { getPool } from './src/server/db/storage';
 import { computeQueryHashes, decodeJpegToGray } from './src/server/cards/imageHash';
 import { normalizeName, nameSimilarity } from './src/server/cards/nameMatch';
@@ -71,7 +72,7 @@ const CSP = [
   "script-src 'self' 'wasm-unsafe-eval' https://cdn.jsdelivr.net blob:",
   "worker-src 'self' blob: https://cdn.jsdelivr.net",
   "connect-src 'self' https://api.nbp.pl https://cdn.jsdelivr.net blob: data:",
-  "img-src 'self' data: blob: https://*.scryfall.io https://api.scryfall.com https://*.lorcast.io https://tile.openstreetmap.org",
+  "img-src 'self' data: blob: https://*.scryfall.io https://api.scryfall.com https://*.lorcast.io https://assets.tcgdex.net https://tile.openstreetmap.org",
   "style-src 'self' 'unsafe-inline'",
   "font-src 'self' data:",
   "media-src 'self' blob:",
@@ -1216,7 +1217,7 @@ app.get('/api/scanner/status', authMiddleware, (_req, res) => {
 
 // Proxy obrazków przyjmuje wyłącznie HTTPS do domen Scryfall (ochrona przed SSRF).
 // lorcast.io: grafiki kart Disney Lorcana (np. do generowania grafik „Sprzedam”)
-const ALLOWED_IMAGE_DOMAINS = ['scryfall.io', 'scryfall.com', 'lorcast.io'];
+const ALLOWED_IMAGE_DOMAINS = ['scryfall.io', 'scryfall.com', 'lorcast.io', 'assets.tcgdex.net'];
 function isAllowedScryfallImageUrl(raw: string): boolean {
   if (!raw || raw.length > 2048) return false;
   let u: URL;
@@ -1855,6 +1856,73 @@ app.get('/api/lorcana/status', (_req, res) => {
   res.json(lorcana.lorcanaStatus());
 });
 
+// --- POKÉMON TCG: karty z TCGdex (lista lokalnie, szczegóły i ceny na żądanie) ---
+const pokemonLimiter = rateLimit({ name: 'pokemon', windowMs: 60_000, max: 120 });
+// Pełna karta może wymagać zapytania do TCGdex: osobny, mniejszy limit
+const pokemonCardLimiter = rateLimit({ name: 'pokemon-card', windowMs: 60_000, max: 60 });
+const POKEMON_NOT_READY = 'Baza kart Pokémon jeszcze się wczytuje. Spróbuj za kilka minut.';
+
+app.get('/api/pokemon/search', pokemonLimiter, async (req, res) => {
+  try {
+    if (!pokemon.isPokemonReady()) return res.status(503).json({ error: POKEMON_NOT_READY });
+    const data = await pokemon.searchPokemon(String(req.query.q || '').slice(0, 300));
+    if (!data.length) return res.status(404).json({ error: 'Nie znaleziono kart dla podanego zapytania' });
+    res.json({ data, total_cards: data.length });
+  } catch (err: any) {
+    sendServerError(res, err, '/api/pokemon/search');
+  }
+});
+
+app.get('/api/pokemon/autocomplete', pokemonLimiter, (req, res) => {
+  res.json({ data: pokemon.autocompletePokemon(String(req.query.q || '').slice(0, 100)) });
+});
+
+app.get('/api/pokemon/card/:id', pokemonCardLimiter, async (req, res) => {
+  try {
+    const card = await pokemon.getPokemonCard(String(req.params.id).slice(0, 64));
+    if (!card) return res.status(pokemon.isPokemonReady() ? 404 : 503).json({ error: pokemon.isPokemonReady() ? 'Nie znaleziono karty.' : POKEMON_NOT_READY });
+    res.json(card);
+  } catch (err: any) {
+    if (err instanceof pokemon.TcgdexBusyError) return res.status(503).json({ error: err.message });
+    sendServerError(res, err, '/api/pokemon/card/:id');
+  }
+});
+
+app.get('/api/pokemon/prints', pokemonLimiter, async (req, res) => {
+  try {
+    const data = await pokemon.getPokemonPrints({
+      name: typeof req.query.name === 'string' ? req.query.name.slice(0, 200) : undefined,
+      id: typeof req.query.cardId === 'string' ? req.query.cardId.slice(0, 64) : undefined
+    });
+    res.json({ data });
+  } catch (err: any) {
+    sendServerError(res, err, '/api/pokemon/prints');
+  }
+});
+
+app.get('/api/pokemon/sets', pokemonLimiter, (_req, res) => {
+  res.json({ data: pokemon.getPokemonSets() });
+});
+
+app.get('/api/pokemon/status', (_req, res) => {
+  res.json(pokemon.pokemonStatus());
+});
+
+/**
+ * Karty Pokémon z wyszukiwarki bywają niepełne (bez rzadkości i cen): przed zapisem w kolekcji
+ * lub na liście życzeń uzupełniamy je pełnymi danymi z TCGdex.
+ */
+async function completeCards<T extends { card?: any }>(game: GameId, items: T[]): Promise<T[]> {
+  if (game !== 'pokemon') return items;
+  const ids = items.filter((i) => i?.card?.partial && typeof i.card.id === 'string').map((i) => i.card.id as string);
+  if (!ids.length) return items;
+  const full = await pokemon.getPokemonCards(ids, 60).catch(() => new Map<string, any>());
+  return items.map((i) => {
+    const f = i?.card?.partial ? full.get(i.card.id) : null;
+    return f && !f.partial ? { ...i, card: f, cardId: f.id } : i;
+  });
+}
+
 // --- AKTYWNA GRA (MTG, Pokémon, Lorcana) ---
 // Przeglądarka przesyła wybraną grę w nagłówku; kolekcja, klasery, lista życzeń, talie i foldery
 // „Sprzedam” są osobne dla każdej gry. Gra jeszcze niedostępna (lub brak nagłówka) = MTG.
@@ -1890,11 +1958,11 @@ app.post('/api/collection', authMiddleware, async (req, res) => {
     if (req.body?.isForSale && isDigitalOnly(req.body?.card)) {
       return res.status(400).json({ error: DIGITAL_BLOCK_MESSAGE });
     }
-    const newItem = {
+    const [newItem] = await completeCards(gameOf(req), [{
       id: `col-${crypto.randomUUID()}`,
       addedAt: new Date().toISOString(),
       ...req.body
-    };
+    }]);
     const saved = await db.addCollectionItem(userId, newItem, gameOf(req));
     res.status(201).json(saved);
   } catch (err: any) {
@@ -1915,7 +1983,8 @@ app.put('/api/collection/:id', authMiddleware, async (req, res) => {
         return res.status(400).json({ error: DIGITAL_BLOCK_MESSAGE });
       }
     }
-    const updated = await db.updateCollectionItem(userId, id, body, gameOf(req));
+    const [completed] = await completeCards(gameOf(req), [body]);
+    const updated = await db.updateCollectionItem(userId, id, completed, gameOf(req));
     if (!updated) {
       return res.status(404).json({ error: 'Nie znaleziono pozycji w Twojej kolekcji' });
     }
@@ -2063,7 +2132,7 @@ app.post('/api/backups/:kind/restore', authMiddleware, restoreBackupLimiter, asy
 app.post('/api/collection/bulk-import', authMiddleware, async (req, res) => {
   try {
     const userId = (req as any).userId;
-    const items = stripDigitalSale(Array.isArray(req.body) ? req.body : []);
+    const items = await completeCards(gameOf(req), stripDigitalSale(Array.isArray(req.body) ? req.body : []));
     await db.saveFullCollection(userId, items, gameOf(req));
     res.json({ success: true, count: items.length });
   } catch (err: any) {
@@ -2074,7 +2143,7 @@ app.post('/api/collection/bulk-import', authMiddleware, async (req, res) => {
 app.post('/api/collection/bulk-add', authMiddleware, async (req, res) => {
   try {
     const userId = (req as any).userId;
-    const items = stripDigitalSale(Array.isArray(req.body) ? req.body : []);
+    const items = await completeCards(gameOf(req), stripDigitalSale(Array.isArray(req.body) ? req.body : []));
     const added = await db.addCollectionItems(userId, items, gameOf(req));
     res.json({ success: true, count: added.length, items: added });
   } catch (err: any) {
@@ -2114,6 +2183,12 @@ app.post('/api/collection/refresh-prices', authMiddleware, refreshPricesLimiter,
     const ids = game === 'mtg' ? [...new Set(items.map(item => String(item.card.id)))].filter(id => UUID_RE.test(id)) : [];
     const fresh = new Map<string, any>();
 
+    // Pokémon TCG: zapisane ceny TCGdex; kilkadziesiąt najstarszych pobieramy od razu,
+    // resztę odświeża dobowe zadanie serwera
+    if (game === 'pokemon') {
+      const full = await pokemon.getPokemonCards(items.map((item) => String(item.card.id)), 40).catch(() => new Map<string, any>());
+      for (const [id, c] of full) if (c && !c.partial) fresh.set(id, c);
+    }
     // Disney Lorcana: ceny z lokalnej bazy Lorcast (synchronizowanej raz na dobę)
     if (game === 'lorcana') {
       for (const item of items) {
@@ -2190,7 +2265,8 @@ app.post('/api/collection/refresh-prices', authMiddleware, refreshPricesLimiter,
         pricesChangedAt = now;
         changedCount++;
       }
-      const card = { ...item.card };
+      // Karta zapisana bez szczegółów (np. TCGdex był niedostępny): uzupełniamy całość
+      const card = item.card.partial && !updatedCard.partial ? { ...updatedCard } : { ...item.card };
       if (updatedCard.prices) card.prices = updatedCard.prices;
       if (updatedCard.prices_from_en) {
         card.prices_from_en = true;
@@ -3234,11 +3310,11 @@ app.post('/api/wishlist', authMiddleware, async (req, res) => {
     const userId = (req as any).userId;
     if (isDigitalOnly(req.body?.card)) return res.status(400).json({ error: DIGITAL_BLOCK_MESSAGE });
     // id i data dodania nadaje serwer (klient nie może ich narzucić)
-    const newItem = {
+    const [newItem] = await completeCards(gameOf(req), [{
       ...req.body,
       id: `wish-${crypto.randomUUID()}`,
       addedAt: new Date().toISOString()
-    };
+    }]);
     const saved = await db.addWishlistItem(userId, newItem, gameOf(req));
     res.status(201).json(saved);
   } catch (err: any) {
@@ -3256,7 +3332,7 @@ app.put('/api/wishlist/:id', authMiddleware, async (req, res) => {
         return res.status(400).json({ error: 'Nieprawidłowe dane karty.' });
       }
       if (isDigitalOnly(b.card)) return res.status(400).json({ error: DIGITAL_BLOCK_MESSAGE });
-      patch.card = b.card;
+      patch.card = (await completeCards(gameOf(req), [{ card: b.card }]))[0].card;
     }
     if (b.isFoil !== undefined) patch.isFoil = Boolean(b.isFoil);
     if (b.targetQuantity !== undefined) {
@@ -3791,6 +3867,8 @@ async function startServer() {
   priceHistory.startPriceHistory().catch((err) => console.warn('[Ceny] Start nieudany:', err?.message || err));
   // Disney Lorcana: lokalna baza kart z API Lorcast (synchronizacja raz na dobę)
   lorcana.startLorcanaDb().catch((err) => console.warn('[Lorcana] Start nieudany:', err?.message || err));
+  // Pokémon TCG: lista kart z TCGdex (raz na dobę), szczegóły i ceny na żądanie
+  pokemon.startPokemonDb().catch((err) => console.warn('[Pokémon] Start nieudany:', err?.message || err));
   // Porządki w tabeli sesji: przy starcie i raz na dobę.
   const purge = () => db.purgeOldSessions().catch((err) => console.warn('[Sesje] Czyszczenie nieudane:', err?.message || err));
   purge();

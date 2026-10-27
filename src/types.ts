@@ -83,6 +83,14 @@ export interface ScryfallCard {
   move_cost?: number | null;
   /** Identyfikator produktu TCGplayer (link do sklepu). */
   tcgplayer_id?: number | null;
+  /** Pokémon TCG: punkty życia i etap ewolucji (Basic, Stage1, Stage2). */
+  hp?: number | null;
+  stage?: string | null;
+  /**
+   * Karta z listy (np. wyniki wyszukiwania Pokémon) bez szczegółów i cen;
+   * pełne dane pobiera się przed zapisem i w oknie karty.
+   */
+  partial?: boolean;
 }
 
 export interface MTGSet {

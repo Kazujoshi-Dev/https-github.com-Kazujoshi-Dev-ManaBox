@@ -81,6 +81,44 @@ export const LORCANA_RARITIES = [
   { value: 'promo', label: 'Promo' }
 ];
 
+/** Pokémon TCG: filtry kolekcji (typy energii, rodzaje kart, rzadkości). */
+export const POKEMON_TYPE_PILLS = [
+  { id: 'ALL', label: tk('Wszystkie') },
+  { id: 'Grass', label: 'Grass', bg: 'bg-emerald-600 text-white font-bold' },
+  { id: 'Fire', label: 'Fire', bg: 'bg-red-600 text-white font-bold' },
+  { id: 'Water', label: 'Water', bg: 'bg-blue-600 text-white font-bold' },
+  { id: 'Lightning', label: 'Lightning', bg: 'bg-yellow-400 text-stone-950 font-bold' },
+  { id: 'Psychic', label: 'Psychic', bg: 'bg-purple-600 text-white font-bold' },
+  { id: 'Fighting', label: 'Fighting', bg: 'bg-orange-700 text-white font-bold' },
+  { id: 'Darkness', label: 'Darkness', bg: 'bg-stone-800 text-stone-200 font-bold' },
+  { id: 'Metal', label: 'Metal', bg: 'bg-stone-400 text-stone-950 font-bold' },
+  { id: 'Dragon', label: 'Dragon', bg: 'bg-amber-700 text-white font-bold' },
+  { id: 'Fairy', label: 'Fairy', bg: 'bg-pink-500 text-white font-bold' },
+  { id: 'Colorless', label: 'Colorless', bg: 'bg-stone-200 text-stone-900 font-bold' }
+];
+
+export const POKEMON_CARD_TYPES = [
+  { value: 'ALL', label: tk('Wszystkie typy') },
+  { value: 'Pokémon', label: 'Pokémon' },
+  { value: 'Trainer', label: 'Trainer' },
+  { value: 'Energy', label: 'Energy' }
+];
+
+export const POKEMON_RARITIES = [
+  { value: 'ALL', label: tk('Wszystkie rzadkości') },
+  { value: 'common', label: 'Common' },
+  { value: 'uncommon', label: 'Uncommon' },
+  { value: 'rare', label: 'Rare' },
+  { value: 'rare holo', label: 'Rare Holo' },
+  { value: 'double rare', label: 'Double Rare' },
+  { value: 'ultra rare', label: 'Ultra Rare' },
+  { value: 'illustration rare', label: 'Illustration Rare' },
+  { value: 'special illustration rare', label: 'Special Illustration Rare' },
+  { value: 'hyper rare', label: 'Hyper Rare' },
+  { value: 'secret rare', label: 'Secret Rare' },
+  { value: 'promo', label: 'Promo' }
+];
+
 export const SORT_OPTIONS: { value: FilterOptions['sortBy']; label: string }[] = [
   { value: 'price_desc', label: tk('Cena: Najwyższa') },
   { value: 'price_asc', label: tk('Cena: Najniższa') },

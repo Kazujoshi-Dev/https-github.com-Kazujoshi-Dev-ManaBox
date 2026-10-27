@@ -1,4 +1,5 @@
 import React from 'react';
+import { getActiveGame } from '../../utils/activeGame';
 import { FolderPlus, Folder, Plus, Sparkles, Check } from 'lucide-react';
 import { CardCondition, CardLanguage } from '../../types';
 import { CardCollectionFormProps } from './types';
@@ -151,7 +152,7 @@ export const CardCollectionForm: React.FC<CardCollectionFormProps> = ({
         <div>
           <label className="block text-[11px] font-semibold text-amber-400 mb-1 flex items-center gap-1">
             <Sparkles className="w-2.5 h-2.5" />
-            <span>{t('Ilość (Foil)')}</span>
+            <span>{getActiveGame() === 'pokemon' ? t('Ilość (Reverse Holo)') : t('Ilość (Foil)')}</span>
           </label>
           <input
             type="number"

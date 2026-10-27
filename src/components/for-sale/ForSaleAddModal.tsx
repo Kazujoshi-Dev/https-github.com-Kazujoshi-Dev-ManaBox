@@ -6,7 +6,7 @@ import { formatCurrency, getCardImageUri, getCardPrice, getSaleMarketPrice, getS
 import { useBackToClose } from '../../hooks/useBackButton';
 import { useT, tk } from '../../i18n';
 import { getActiveGame } from '../../utils/activeGame';
-import { searchUrl } from '../../utils/cardSource';
+import { fetchFullCard, searchUrl } from '../../utils/cardSource';
 
 export interface ForSaleAddData {
   card: ScryfallCard;
@@ -125,6 +125,12 @@ export const ForSaleAddModal: React.FC<ForSaleAddModalProps> = ({ collection, se
     setLanguage(langFromCard(card));
     setPrice('');
     setStep({ kind: 'details', card, isFoil });
+    // Pokémon: karta z wyszukiwarki nie ma jeszcze ceny, uzupełniamy ją w tle
+    if (card.partial) {
+      fetchFullCard(card).then((full) => {
+        if (!full.partial) setStep((s) => (s.kind === 'details' && s.card.id === full.id ? { ...s, card: full } : s));
+      });
+    }
   };
 
   const submit = async (e: React.FormEvent) => {

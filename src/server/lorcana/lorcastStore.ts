@@ -12,6 +12,7 @@
  */
 import { getPool, isPostgresActive } from '../db/storage';
 import { APP_USER_AGENT } from '../userAgent';
+import { normalizeText } from '../cardText';
 import { lorcastToAppCard, type LorcastCard, type LorcastSet } from './adapter';
 import type { ScryfallCard } from '../../types';
 
@@ -41,16 +42,7 @@ let lastSyncError: string | null = null;
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
-/** Tekst do porównań: małe litery, bez polskich i francuskich znaków, bez apostrofów. */
-export function normalizeText(s: string): string {
-  return s
-    .normalize('NFKD')
-    .replace(/[̀-ͯ]/g, '')
-    .toLowerCase()
-    .replace(/[’'`]/g, '')
-    .replace(/\s+/g, ' ')
-    .trim();
-}
+export { normalizeText };
 
 async function lorcastGet<T>(path: string): Promise<T> {
   const res = await fetch(`${API_BASE}${path}`, {

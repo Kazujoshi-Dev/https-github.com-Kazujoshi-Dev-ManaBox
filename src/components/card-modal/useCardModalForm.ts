@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useCallback, FormEvent } from 'react';
+import { fetchFullCard } from '../../utils/cardSource';
 import { CollectionItem, ScryfallCard, CardCondition, CardLanguage, Catalog, WishlistItem } from '../../types';
 import { CardSaveData } from './types';
 import { langFromCard } from '../../utils/formatters';
@@ -85,6 +86,18 @@ export function useCardModalForm({
       if (closeTimerRef.current) clearTimeout(closeTimerRef.current);
     };
   }, []);
+
+  // Karta z listy (Pokémon) bez szczegółów i cen: pobieramy pełne dane i podmieniamy po cichu
+  useEffect(() => {
+    if (!activeCard?.partial) return;
+    let cancelled = false;
+    fetchFullCard(activeCard).then((full) => {
+      if (!cancelled && !full.partial) setActiveCard((prev) => (prev.id === full.id ? full : prev));
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [activeCard?.id, activeCard?.partial]);
 
   // Sync activeCard if prop card changes
   useEffect(() => {

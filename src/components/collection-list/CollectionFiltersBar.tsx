@@ -2,14 +2,17 @@ import { FOR_SALE_BINDER } from './constants';
 import React, { useState } from 'react';
 import { Search, X, Sparkles, LayoutGrid, List, SlidersHorizontal, Library } from 'lucide-react';
 import { CollectionFiltersBarProps } from './types';
-import { COLOR_PILLS as MTG_COLOR_PILLS, CARD_TYPES as MTG_CARD_TYPES, CARD_RARITIES as MTG_CARD_RARITIES, LORCANA_INK_PILLS, LORCANA_CARD_TYPES, LORCANA_RARITIES, SORT_OPTIONS, ROWS_PER_PAGE_OPTIONS } from './constants';
+import { COLOR_PILLS as MTG_COLOR_PILLS, CARD_TYPES as MTG_CARD_TYPES, CARD_RARITIES as MTG_CARD_RARITIES, LORCANA_INK_PILLS, LORCANA_CARD_TYPES, LORCANA_RARITIES, POKEMON_TYPE_PILLS, POKEMON_CARD_TYPES, POKEMON_RARITIES, SORT_OPTIONS, ROWS_PER_PAGE_OPTIONS } from './constants';
 import { getActiveGame } from '../../utils/activeGame';
 
-// Filtry kolorów, typów i rzadkości zależą od gry (MTG albo Disney Lorcana)
-const isLorcana = () => getActiveGame() === 'lorcana';
-const colorPills = () => (isLorcana() ? LORCANA_INK_PILLS : MTG_COLOR_PILLS);
-const cardTypes = () => (isLorcana() ? LORCANA_CARD_TYPES : MTG_CARD_TYPES);
-const cardRarities = () => (isLorcana() ? LORCANA_RARITIES : MTG_CARD_RARITIES);
+// Filtry kolorów, typów i rzadkości zależą od gry (MTG, Disney Lorcana, Pokémon TCG)
+const byGame = <T,>(mtg: T, lorcana: T, pokemon: T): T => {
+  const g = getActiveGame();
+  return g === 'lorcana' ? lorcana : g === 'pokemon' ? pokemon : mtg;
+};
+const colorPills = () => byGame(MTG_COLOR_PILLS, LORCANA_INK_PILLS, POKEMON_TYPE_PILLS);
+const cardTypes = () => byGame(MTG_CARD_TYPES, LORCANA_CARD_TYPES, POKEMON_CARD_TYPES);
+const cardRarities = () => byGame(MTG_CARD_RARITIES, LORCANA_RARITIES, POKEMON_RARITIES);
 import { useT, plural, binderName } from '../../i18n';
 
 /** Rozwijany wybór liczby wierszy na stronie. */

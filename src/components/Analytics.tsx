@@ -1,7 +1,7 @@
 import { PageHeader } from './ui/PageHeader';
 import React, { useMemo, useState } from 'react';
 import { CollectionItem, AppSettings } from '../types';
-import { formatCurrency, getCardImageUri, getCardPrice, handleCardImageError } from '../utils/formatters';
+import { formatCurrency, getCardImageUri, getCardPrice, getRarityLabel, handleCardImageError } from '../utils/formatters';
 import { computeValueChange, itemValue } from '../hooks/useCollectionStats';
 import { CollectionHistoryPanel } from './CollectionHistoryModal';
 import { 
@@ -54,6 +54,22 @@ const LORCANA_RARITIES: Array<{ key: string; label: string; color: string }> = [
   { key: 'common', label: 'Common', color: '#78716c' }
 ];
 
+/** Pokémon TCG: typy energii i kolory wykresu rzadkości. */
+const POKEMON_TYPES: Array<{ key: string; color: string }> = [
+  { key: 'Grass', color: '#16a34a' },
+  { key: 'Fire', color: '#dc2626' },
+  { key: 'Water', color: '#2563eb' },
+  { key: 'Lightning', color: '#facc15' },
+  { key: 'Psychic', color: '#9333ea' },
+  { key: 'Fighting', color: '#c2410c' },
+  { key: 'Darkness', color: '#44403c' },
+  { key: 'Metal', color: '#a8a29e' },
+  { key: 'Dragon', color: '#b45309' },
+  { key: 'Fairy', color: '#ec4899' },
+  { key: 'Colorless', color: '#e7e5e4' }
+];
+const POKEMON_RARITY_COLORS = ['#78716c', '#cbd5e1', '#eab308', '#f59e0b', '#c084fc', '#38bdf8', '#f472b6', '#a3e635'];
+
 type Mover = { item: CollectionItem; now: number; before: number; delta: number; pct: number | null };
 
 interface AnalyticsProps {
@@ -65,6 +81,8 @@ interface AnalyticsProps {
 export const Analytics: React.FC<AnalyticsProps> = ({ collection, settings, onViewCardDetails }) => {
   const t = useT();
   const isLorcana = getActiveGame() === 'lorcana';
+  // Pokémon TCG: typy energii i rzadkości zamiast kolorów many; bez wykresu kosztu
+  const isPokemon = getActiveGame() === 'pokemon';
   
   // Overall metrics
   const stats = useMemo(() => {
@@ -91,7 +109,7 @@ export const Analytics: React.FC<AnalyticsProps> = ({ collection, settings, onVi
 
       // Rzadkość liczymy dla wszystkich kart; kolory i krzywą many bez lądów
       const rarity = card.rarity ? card.rarity.toLowerCase() : 'common';
-      if (isLorcana) {
+      if (isLorcana || isPokemon) {
         lorcanaRarityCounts[rarity] = (lorcanaRarityCounts[rarity] || 0) + qty;
         const ink = card.ink || (card.colors && card.colors[0]) || '';
         inkCounts[ink] = (inkCounts[ink] || 0) + qty;
@@ -138,7 +156,7 @@ export const Analytics: React.FC<AnalyticsProps> = ({ collection, settings, onVi
       inkCounts,
       lorcanaRarityCounts
     };
-  }, [collection, settings, isLorcana]);
+  }, [collection, settings, isLorcana, isPokemon]);
 
   // Najcenniejsze karty (top 10): ranking po cenie jednej sztuki (liczba egzemplarzy nie ma znaczenia).
   // Wersja zwykła i foil to osobne pozycje, bo mają różne ceny.
@@ -160,7 +178,18 @@ export const Analytics: React.FC<AnalyticsProps> = ({ collection, settings, onVi
   const costLabel = isLorcana ? t('Koszt') : 'CMC';
   const cmcChartData = ['0', '1', '2', '3', '4', '5', '6+'].map((k) => ({ cmc: `${costLabel} ${k}`, ilosc: stats.cmcCounts[k] }));
 
-  const colorChartData = isLorcana
+  const colorChartData = isPokemon
+    ? [
+        ...POKEMON_TYPES.map((ty) => ({ name: ty.key, value: stats.inkCounts[ty.key] || 0, color: ty.color })),
+        {
+          name: t('Bez typu'),
+          value: Object.entries(stats.inkCounts)
+            .filter(([k]) => !POKEMON_TYPES.some((ty) => ty.key === k))
+            .reduce((sum, [, v]) => sum + Number(v), 0),
+          color: '#57534e'
+        }
+      ].filter(d => d.value > 0)
+    : isLorcana
     ? [
         ...LORCANA_INKS.map((ink) => ({ name: ink.key, value: stats.inkCounts[ink.key] || 0, color: ink.color })),
         {
@@ -181,7 +210,13 @@ export const Analytics: React.FC<AnalyticsProps> = ({ collection, settings, onVi
     { name: t('Wielobarwne'), value: stats.colorCounts.Multi, color: '#d97706' },
   ].filter(d => d.value > 0);
 
-  const rarityChartData = isLorcana
+  const rarityChartData = isPokemon
+    ? Object.entries(stats.lorcanaRarityCounts)
+        .filter(([, v]) => Number(v) > 0)
+        .sort((a, b) => Number(b[1]) - Number(a[1]))
+        .slice(0, 8)
+        .map(([k, v], i) => ({ name: k ? getRarityLabel(k) : t('Inne'), value: Number(v), color: POKEMON_RARITY_COLORS[i % POKEMON_RARITY_COLORS.length] }))
+    : isLorcana
     ? LORCANA_RARITIES.map((r) => ({ name: r.label, value: stats.lorcanaRarityCounts[r.key] || 0, color: r.color })).filter(d => d.value > 0)
     : [
     { name: 'Mythic', value: stats.rarityCounts.Mythic, color: '#f59e0b' },
@@ -215,7 +250,7 @@ export const Analytics: React.FC<AnalyticsProps> = ({ collection, settings, onVi
   return (
     <div className="space-y-6">
       
-      <PageHeader title={t('Statystyki')} description={isLorcana ? t('Wartość kolekcji, atramenty, koszty i rzadkość kart.') : t('Wartość kolekcji, kolory, krzywa many i rzadkość kart.')} />
+      <PageHeader title={t('Statystyki')} description={isPokemon ? t('Wartość kolekcji, typy energii i rzadkość kart.') : isLorcana ? t('Wartość kolekcji, atramenty, koszty i rzadkość kart.') : t('Wartość kolekcji, kolory, krzywa many i rzadkość kart.')} />
 
       <div className="grid grid-cols-2 lg:grid-cols-3 rounded-xl border border-stone-800 bg-stone-900 [&>*]:p-4">
         <div className="space-y-1 border-stone-800">
@@ -253,6 +288,7 @@ export const Analytics: React.FC<AnalyticsProps> = ({ collection, settings, onVi
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         
         {/* Mana Curve (CMC) Bar Chart */}
+        {!isPokemon && (
         <div className="bg-stone-900 border border-stone-800 rounded-2xl p-5 shadow-lg space-y-4">
           <div className="flex items-center justify-between">
             <h3 className="text-sm font-bold text-stone-200 flex items-center gap-1.5">
@@ -276,13 +312,14 @@ export const Analytics: React.FC<AnalyticsProps> = ({ collection, settings, onVi
             </ResponsiveContainer>
           </div>
         </div>
+        )}
 
         {/* Color Pie Chart */}
         <div className="bg-stone-900 border border-stone-800 rounded-2xl p-5 shadow-lg space-y-4">
           <div className="flex items-center justify-between">
             <h3 className="text-sm font-bold text-stone-200 flex items-center gap-1.5">
               <PieIcon className="w-4 h-4 text-amber-400" />
-              <span>{isLorcana ? t('Atramenty') : t('Kolory kart')}</span>
+              <span>{isPokemon ? t('Typy energii') : isLorcana ? t('Atramenty') : t('Kolory kart')}</span>
             </h3>
           </div>
 
@@ -310,7 +347,7 @@ export const Analytics: React.FC<AnalyticsProps> = ({ collection, settings, onVi
               </PieChart>
             </ResponsiveContainer>
           </div>
-          {!isLorcana && <p className="text-[11px] text-stone-500 text-center">{t('Lądy nie są wliczane do statystyki kolorów.')}</p>}
+          {!isLorcana && !isPokemon && <p className="text-[11px] text-stone-500 text-center">{t('Lądy nie są wliczane do statystyki kolorów.')}</p>}
         </div>
 
       </div>

@@ -36,7 +36,7 @@ export interface GameInfo {
 
 export const GAMES: Record<GameId, GameInfo> = {
   mtg: { id: 'mtg', name: 'Magic: The Gathering', shortName: 'Magic', available: true },
-  pokemon: { id: 'pokemon', name: 'Pokémon TCG', shortName: 'Pokémon', available: false },
+  pokemon: { id: 'pokemon', name: 'Pokémon TCG', shortName: 'Pokémon', available: true },
   lorcana: { id: 'lorcana', name: 'Disney Lorcana', shortName: 'Lorcana', available: true }
 };
 

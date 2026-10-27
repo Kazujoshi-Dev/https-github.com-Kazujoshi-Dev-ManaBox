@@ -124,6 +124,10 @@ export const CardSearch: React.FC<CardSearchProps> = ({ onSelectCard, settings }
               <>
                 {t('Nazwa karty, dodatek albo zapytanie Scryfall, np.')} <code className="text-stone-200">c:blue t:instant</code> {t('lub')} <code className="text-stone-200">rarity:mythic cmc&lt;3</code>.
               </>
+            ) : game === 'pokemon' ? (
+              <>
+                {t('Nazwa karty, np.')} <code className="text-stone-200">charizard</code>, {t('dodatek')} <code className="text-stone-200">pikachu set:sv3</code> {t('lub numer')} <code className="text-stone-200">set:"obsidian flames" number:125</code>.
+              </>
             ) : (
               <>
                 {t('Nazwa karty albo filtry, np.')} <code className="text-stone-200">ink:amethyst cost&lt;=3</code> {t('lub')} <code className="text-stone-200">set:1 rarity:enchanted</code>.
@@ -145,7 +149,7 @@ export const CardSearch: React.FC<CardSearchProps> = ({ onSelectCard, settings }
               <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-5 h-5 text-amber-400" />
               <input
                 type="text"
-                placeholder={isMtg ? t('Wpisz nazwę karty (np. Black Lotus, Counterspell, Ragavan)...') : t('Wpisz nazwę karty (np. Elsa, Stitch, Mickey Mouse)...')}
+                placeholder={isMtg ? t('Wpisz nazwę karty (np. Black Lotus, Counterspell, Ragavan)...') : game === 'pokemon' ? t('Wpisz nazwę karty (np. Charizard, Pikachu, Mewtwo)...') : t('Wpisz nazwę karty (np. Elsa, Stitch, Mickey Mouse)...')}
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 onFocus={() => {
@@ -189,7 +193,7 @@ export const CardSearch: React.FC<CardSearchProps> = ({ onSelectCard, settings }
                   className="w-full px-4 py-2.5 text-left text-xs text-stone-200 hover:bg-stone-800/80 hover:text-amber-300 flex items-center justify-between transition-colors cursor-pointer"
                 >
                   <span className="font-semibold">{cardName}</span>
-                  <span className="text-[11px] tabular-nums text-stone-500 ">{isMtg ? t('Scryfall') : 'Lorcast'}</span>
+                  <span className="text-[11px] tabular-nums text-stone-500 ">{isMtg ? t('Scryfall') : game === 'pokemon' ? 'TCGdex' : 'Lorcast'}</span>
                 </button>
               ))}
             </div>
@@ -290,7 +294,7 @@ export const CardSearch: React.FC<CardSearchProps> = ({ onSelectCard, settings }
                         <Gamepad2 className="w-3 h-3 text-amber-400" />
                         <span className="text-[11px] font-semibold text-amber-300">{t(digitalLabel(card))}</span>
                       </div>
-                    ) : (
+                    ) : card.partial ? null : (
                     <div className="absolute bottom-[8%] right-2 bg-stone-950/90 backdrop-blur-md px-2 py-0.5 rounded border border-stone-800">
                       <p className="text-xs font-bold tabular-nums text-emerald-400">
                         {formatCurrency(price, settings ? settings.currency : 'USD')}
@@ -312,16 +316,18 @@ export const CardSearch: React.FC<CardSearchProps> = ({ onSelectCard, settings }
                       </div>
 
                       <p className="text-[11px] text-stone-400 line-clamp-1 mt-0.5">
-                        {card.type_line}
+                        {card.type_line || `${card.set_name} #${card.collector_number}`}
                       </p>
 
                       <div className="flex items-center gap-1.5 mt-2">
                         <span className="tabular-nums text-[11px] font-bold bg-stone-800 text-stone-300 px-1.5 py-0.5 rounded border border-stone-700">
                           {card.set.toUpperCase()}
                         </span>
-                        <span className={`text-[11px] px-1.5 py-0.5 rounded border font-semibold ${getRarityColor(card.rarity)}`}>
-                          {getRarityLabel(card.rarity)}
-                        </span>
+                        {card.rarity && (
+                          <span className={`text-[11px] px-1.5 py-0.5 rounded border font-semibold ${getRarityColor(card.rarity)}`}>
+                            {getRarityLabel(card.rarity)}
+                          </span>
+                        )}
                       </div>
                     </div>
 

@@ -224,7 +224,8 @@ export function getRarityLabel(rarity: string): string {
     case 'special': return 'Special';
     case 'bonus': return 'Bonus';
     case 'super_rare': return 'Super Rare';
-    default: return rarity ? (rarity.charAt(0).toUpperCase() + rarity.slice(1)) : rarity;
+    // pozostałe (np. Pokémon „rare holo v”, „special illustration rare”): każde słowo wielką literą
+    default: return rarity ? rarity.replace(/_/g, ' ').replace(/\b\p{L}/gu, (ch) => ch.toUpperCase()) : rarity;
   }
 }
 
@@ -334,9 +335,12 @@ export function getCardEdhrecRank(card?: ScryfallCard | null): number | null {
  */
 export function getCardmarketUrl(card: Pick<ScryfallCard, 'name' | 'purchase_uris' | 'digital' | 'games' | 'game'> | null | undefined): string | null {
   if (!card?.name) return null;
-  // Disney Lorcana: wyszukiwarka Cardmarket w kategorii Lorcana (Lorcast nie podaje linków do Cardmarket)
+  // Disney Lorcana i Pokémon: wyszukiwarka Cardmarket w kategorii gry (API nie podają bezpośrednich linków)
   if (card.game === 'lorcana') {
     return `https://www.cardmarket.com/en/Lorcana/Products/Search?searchString=${encodeURIComponent(card.name.split(' - ')[0])}`;
+  }
+  if (card.game === 'pokemon') {
+    return `https://www.cardmarket.com/en/Pokemon/Products/Search?searchString=${encodeURIComponent(card.name)}`;
   }
   const direct = card.purchase_uris?.cardmarket;
   if (direct) {

@@ -5,11 +5,12 @@ import { getRarityColor, getRarityLabel, getCardEdhrecRank } from '../../utils/f
 import { EdhrecBadge } from '../EdhrecBadge';
 import { CardInfoSummaryProps } from './types';
 import { useT } from '../../i18n';
-import { isMtgCard } from '../../utils/cardSource';
+import { gameOfCard, isMtgCard } from '../../utils/cardSource';
 
 const RECOGNIZED_FORMATS = ['commander', 'modern', 'standard', 'pioneer', 'legacy', 'pauper', 'vintage'];
-/** Disney Lorcana: format Core Constructed. */
+/** Disney Lorcana: format Core Constructed; Pokémon: Standard i Expanded. */
 const LORCANA_FORMATS = ['core'];
+const POKEMON_FORMATS = ['standard', 'expanded'];
 
 export const CardInfoSummary: React.FC<CardInfoSummaryProps> = ({
   activeCard,
@@ -20,8 +21,14 @@ export const CardInfoSummary: React.FC<CardInfoSummaryProps> = ({
 }) => {
   const t = useT();
   const isMtg = isMtgCard(activeCard);
-  // Disney Lorcana: koszt, atrament i statystyki postaci
-  const lorcanaStats = isMtg
+  const game = gameOfCard(activeCard);
+  // Disney Lorcana: koszt, atrament i statystyki postaci; Pokémon: HP i etap
+  const lorcanaStats = game === 'pokemon'
+    ? [
+        { label: 'HP', value: activeCard.hp },
+        { label: t('Etap'), value: activeCard.stage }
+      ].filter((s) => s.value !== null && s.value !== undefined && s.value !== '')
+    : isMtg
     ? []
     : [
         { label: t('Koszt'), value: activeCard.cmc },
@@ -38,9 +45,11 @@ export const CardInfoSummary: React.FC<CardInfoSummaryProps> = ({
         <span className="tabular-nums text-xs font-bold bg-amber-500/10 text-amber-300 px-2 py-0.5 rounded border border-amber-500/30">
           {activeCard.set_name} ({activeCard.set.toUpperCase()}) #{activeCard.collector_number}
         </span>
-        <span className={`text-xs px-2 py-0.5 rounded border font-semibold ${getRarityColor(activeCard.rarity)}`}>
-          {getRarityLabel(activeCard.rarity)}
-        </span>
+        {activeCard.rarity && (
+          <span className={`text-xs px-2 py-0.5 rounded border font-semibold ${getRarityColor(activeCard.rarity)}`}>
+            {getRarityLabel(activeCard.rarity)}
+          </span>
+        )}
         {getCardEdhrecRank(activeCard) != null && (
           <EdhrecBadge rank={getCardEdhrecRank(activeCard)} size="md" />
         )}
@@ -107,7 +116,7 @@ export const CardInfoSummary: React.FC<CardInfoSummaryProps> = ({
             <span>{t('Formaty i Legalność')}</span>
           </p>
           <div className="flex flex-wrap gap-1.5">
-            {(isMtg ? RECOGNIZED_FORMATS : LORCANA_FORMATS).map((format) => {
+            {(isMtg ? RECOGNIZED_FORMATS : game === 'pokemon' ? POKEMON_FORMATS : LORCANA_FORMATS).map((format) => {
               const legality = activeCard.legalities?.[format];
               if (!legality) return null;
               const isLegal = legality === 'legal';
