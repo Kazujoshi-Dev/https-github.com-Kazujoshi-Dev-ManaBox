@@ -6,7 +6,7 @@ import crypto from 'crypto';
 import path from 'path';
 import fs from 'fs';
 import * as db from './src/server/db';
-import { DEFAULT_GAME, GAME_HEADER, isGameAvailable, isGameId, type GameId } from './src/games';
+import { DEFAULT_GAME, GAME_HEADER, GAME_IDS, isGameAvailable, isGameId, type GameId } from './src/games';
 import type { PriceUpdate } from './src/server/db';
 import { hashPassword, verifyPassword, generateToken, verifyToken } from './src/server/auth';
 import { rateLimit, hit, clientIp } from './src/server/rateLimit';
@@ -1937,6 +1937,43 @@ async function completeCards<T extends { card?: any }>(game: GameId, items: T[])
     return f && !f.partial ? { ...i, card: f, cardId: f.id } : i;
   });
 }
+
+// --- EKRAN WYBORU GRY: ilustracja i stan kolekcji gracza dla każdej gry ---
+interface GameShowcase { image: string; name: string; artist: string | null }
+let gameShowcaseCache: { day: number; data: Record<GameId, GameShowcase | null> } | null = null;
+
+async function gameShowcases(): Promise<Record<GameId, GameShowcase | null>> {
+  const day = Math.floor(Date.now() / 86_400_000);
+  if (gameShowcaseCache?.day === day && Object.values(gameShowcaseCache.data).every(Boolean)) return gameShowcaseCache.data;
+  const mtgCards = await cards.getShowcaseCards(16).catch(() => []);
+  const mtgPick = mtgCards.find((c) => c.legendary) || mtgCards[0];
+  const data: Record<GameId, GameShowcase | null> = {
+    // pełna karta w większej rozdzielczości (adres Scryfall różni się tylko rozmiarem)
+    mtg: mtgPick ? { image: mtgPick.image.replace('/normal/', '/large/'), name: mtgPick.name, artist: mtgPick.artist } : null,
+    pokemon: await pokemon.pickPokemonShowcase().catch(() => null),
+    lorcana: lorcana.pickLorcanaShowcase()
+  };
+  gameShowcaseCache = { day, data };
+  return data;
+}
+
+app.get('/api/games/overview', authMiddleware, async (req, res) => {
+  try {
+    const userId = (req as any).userId;
+    const settings = ((await db.getSettings(userId)) || {}) as any;
+    const showcases = await gameShowcases();
+    const games = await Promise.all(
+      GAME_IDS.map(async (id) => {
+        const collection = await db.getCollection(userId, id);
+        const { cards: count, value } = collectionTotals(collection as any, settings);
+        return { id, cards: count, value: Math.round(value * 100) / 100, art: showcases[id] };
+      })
+    );
+    res.json({ currency: settings.currency || 'PLN', games });
+  } catch (err: any) {
+    sendServerError(res, err, '/api/games/overview');
+  }
+});
 
 // --- AKTYWNA GRA (MTG, Pokémon, Lorcana) ---
 // Przeglądarka przesyła wybraną grę w nagłówku; kolekcja, klasery, lista życzeń, talie i foldery

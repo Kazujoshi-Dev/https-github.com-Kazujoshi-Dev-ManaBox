@@ -310,6 +310,19 @@ export const publicDeckApi = {
   }
 };
 
+/** Ekran wyboru gry: ilustracja dnia i liczba kart oraz wartość kolekcji gracza w każdej grze. */
+export interface GameOverview {
+  id: import('../games').GameId;
+  cards: number;
+  value: number;
+  art: { image: string; name: string; artist: string | null } | null;
+}
+export const gamesApi = {
+  overview: async (): Promise<{ currency: CurrencyCodeLike; games: GameOverview[] }> =>
+    jsonOrThrow(await fetchWithAuth('/api/games/overview'), tk('Nie udało się wczytać kolekcji.'))
+};
+type CurrencyCodeLike = 'PLN' | 'EUR' | 'USD';
+
 export const settingsApi = {
   get: (onUnauthorized?: () => void) =>
     fetchWithAuth('/api/settings', {}, onUnauthorized),

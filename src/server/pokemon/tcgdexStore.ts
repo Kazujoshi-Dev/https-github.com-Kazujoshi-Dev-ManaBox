@@ -513,3 +513,21 @@ export async function getPokemonPrints(opts: { name?: string; id?: string }): Pr
   const key = normalizeText(name);
   return withStoredDetails(index.cards.filter((c) => normalizeText(c.name) === key).slice(0, MAX_PRINTS));
 }
+
+/**
+ * Karta na ekran wyboru gry: jedna z ostatnich kart najnowszego dodatku z grafikami
+ * (tam są ilustracje na całą kartę), inna każdego dnia.
+ */
+export async function pickPokemonShowcase(): Promise<{ image: string; name: string; artist: string | null } | null> {
+  if (!index) return null;
+  const num = (s: string) => parseInt(s, 10) || 0;
+  for (const set of index.sets) {
+    const cards = index.cards.filter((c) => c.set === set.id.toLowerCase() && c.image_uris?.large);
+    if (cards.length < 20) continue;
+    const top = [...cards].sort((a, b) => num(b.collector_number) - num(a.collector_number)).slice(0, 12);
+    const c = top[Math.floor(Date.now() / 86_400_000) % top.length];
+    const stored = (await readStoredDetails([c.id]).catch(() => new Map())).get(c.id);
+    return { image: c.image_uris!.large!, name: c.name, artist: stored?.card.artist || null };
+  }
+  return null;
+}

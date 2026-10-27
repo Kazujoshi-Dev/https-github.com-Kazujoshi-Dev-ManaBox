@@ -380,3 +380,13 @@ export function getLorcanaByNumber(set: string, number: string): ScryfallCard | 
   const n = number.toLowerCase();
   return index.cards.find((c) => c.set === s && c.collector_number.toLowerCase() === n) || null;
 }
+
+/** Karta na ekran wyboru gry: wydanie Enchanted (pełna ilustracja), inne każdego dnia. */
+export function pickLorcanaShowcase(): { image: string; name: string; artist: string | null } | null {
+  if (!index) return null;
+  const pool = index.cards.filter((c) => c.rarity === 'enchanted' && c.image_uris?.large);
+  const list = pool.length ? pool : index.cards.filter((c) => c.image_uris?.large);
+  if (!list.length) return null;
+  const c = list[Math.floor(Date.now() / 86_400_000) % list.length];
+  return { image: c.image_uris!.large!, name: c.name, artist: c.artist || null };
+}
