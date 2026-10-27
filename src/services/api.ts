@@ -1,4 +1,4 @@
-import { CommunityDeckSummary, AdminUser, AdminStats, AdminAuditEntry, AuthUser, AppSettings, Catalog, CollectionItem, DeckItem, ScryfallCard, WishlistItem, SpellbookFindCombosResponse, SpellbookVariant, RegisteredUserSummary, UserMessage, UserProfile, CitySuggestion, MapCity, WishlistMatches, PriceMoversResponse } from '../types';
+import { CommunityDeckSummary, AdminUser, AdminStats, AdminAuditEntry, AdminActivityStats, AuthUser, AppSettings, Catalog, CollectionItem, DeckItem, ScryfallCard, WishlistItem, SpellbookFindCombosResponse, SpellbookVariant, RegisteredUserSummary, UserMessage, UserProfile, CitySuggestion, MapCity, WishlistMatches, PriceMoversResponse } from '../types';
 import { noteResponseVersion } from '../utils/appVersion';
 import { t, tServer, tk } from '../i18n';
 
@@ -109,6 +109,8 @@ export const adminApi = {
       await fetchWithAuth(`/api/admin/users?q=${encodeURIComponent(q)}&offset=${offset}&limit=${limit}`),
       tk('Błąd pobierania użytkowników.')
     ),
+  activity: async (days: number): Promise<AdminActivityStats> =>
+    jsonOrThrow(await fetchWithAuth(`/api/admin/activity?days=${days}`), tk('Błąd pobierania statystyk.')),
   audit: async (): Promise<AdminAuditEntry[]> => jsonOrThrow(await fetchWithAuth('/api/admin/audit'), tk('Błąd pobierania dziennika.')),
   rename: (id: string, username: string) => adminPost(`/api/admin/users/${encodeURIComponent(id)}/rename`, { username }),
   resetPassword: (id: string): Promise<{ tempPassword: string }> => adminPost(`/api/admin/users/${encodeURIComponent(id)}/reset-password`),

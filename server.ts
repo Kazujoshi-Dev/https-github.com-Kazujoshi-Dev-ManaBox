@@ -178,6 +178,8 @@ async function authMiddleware(req: express.Request, res: express.Response, next:
       return res.status(403).json({ error: 'Najpierw ustaw nowe hasło.', code: 'MUST_CHANGE_PASSWORD' });
     }
     db.touchSession(session).catch((err) => console.warn('[Sesje] Nie udało się odświeżyć sesji:', err?.message || err));
+    // Statystyki aktywności: tylko w pamięci, zapis do bazy zbiorczo raz na minutę
+    db.recordUserActivity(payload.userId, req.get('user-agent'));
     (req as any).user = payload;
     (req as any).userId = payload.userId;
     (req as any).sessionId = session.id;
@@ -306,6 +308,7 @@ app.post(['/api/auth/register', '/api/auth/register/', '/api/register'], registe
     // Gdy serwer wysyła maile, konto trzeba potwierdzić linkiem; bez SMTP (np. lokalnie) działa od razu.
     const requireVerification = mailer.isMailConfigured();
     const user = await db.createUser(userId, email, username.trim(), hash, salt, !requireVerification);
+    db.recordAuthEvent('register');
 
     if (requireVerification) {
       let mailSent = true;
@@ -336,11 +339,13 @@ app.post(['/api/auth/login', '/api/auth/login/', '/api/login'], loginIpLimiter, 
 
     const user = await db.getUserByEmail(email);
     if (!user) {
+      db.recordAuthEvent('login_failed');
       return res.status(401).json({ error: 'Nieprawidłowy adres e-mail lub hasło.' });
     }
 
     const isValid = verifyPassword(password, user.password_hash, user.salt);
     if (!isValid) {
+      db.recordAuthEvent('login_failed');
       return res.status(401).json({ error: 'Nieprawidłowy adres e-mail lub hasło.' });
     }
 
@@ -358,6 +363,8 @@ app.post(['/api/auth/login', '/api/auth/login/', '/api/login'], loginIpLimiter, 
 
     const token = await issueSessionToken(req, user);
 
+    db.recordAuthEvent('login');
+    db.recordUserActivity(user.id, req.get('user-agent'));
     res.json({ token, user: publicUser(user) });
   } catch (err: any) {
     console.error('Error during login:', err);
@@ -388,7 +395,10 @@ app.post('/api/auth/logout', async (req, res) => {
   // Unieważnia bieżącą sesję. Zawsze zwraca sukces — klient i tak czyści token.
   try {
     const payload = verifyToken(bearerToken(req));
-    if (payload) await db.revokeSession(payload.sid, payload.userId);
+    if (payload) {
+      await db.revokeSession(payload.sid, payload.userId);
+      db.recordAuthEvent('logout');
+    }
   } catch (err) {
     console.warn('[Sesje] Błąd podczas wylogowania:', (err as any)?.message || err);
   }
@@ -2563,6 +2573,16 @@ admin.get('/stats', async (_req, res) => {
   }
 });
 
+// Statystyki logowań i aktywności (zagregowane dane dzienne, wynik w pamięci przez minutę)
+admin.get('/activity', async (req, res) => {
+  try {
+    const days = Math.min(Math.max(parseInt(String(req.query.days || '30'), 10) || 30, 7), 365);
+    res.json(await db.getActivityStats(days));
+  } catch (err) {
+    sendServerError(res, err, '/api/admin/activity');
+  }
+});
+
 admin.get('/users', async (req, res) => {
   try {
     const q = typeof req.query.q === 'string' ? req.query.q : '';
@@ -3616,6 +3636,14 @@ app.get('/api/spellbook/status', (_req, res) => {
 
 async function startServer() {
   await db.initDb();
+  await db.startActivityTracking().catch((err) => console.warn('[Aktywność] Start nieudany:', err?.message || err));
+  // Przy zatrzymaniu kontenera zapisujemy statystyki z ostatniej minuty
+  for (const sig of ['SIGTERM', 'SIGINT'] as const) {
+    process.once(sig, () => {
+      db.flushActivity().catch(() => {}).finally(() => process.exit(0));
+      setTimeout(() => process.exit(0), 3000).unref();
+    });
+  }
   startChangelog().catch(() => {});
   // Lokalna baza kart dla skanera (import w tle, nie blokuje startu).
   cards.startCardDb().catch((err) => console.warn('[Karty] Start nieudany:', err?.message || err));

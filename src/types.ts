@@ -261,6 +261,32 @@ export interface AdminStats {
   cardDb: { ready: boolean; cards: number; syncing: boolean; lastSyncAt: string | null; lastSyncError: string | null };
 }
 
+export interface AdminActivityDay {
+  day: string;
+  active: number;
+  mobile: number;
+  desktop: number;
+  logins: number;
+  failedLogins: number;
+  registrations: number;
+}
+
+export interface AdminActivityStats {
+  available: boolean;
+  days: number;
+  onlineNow: number;
+  activeToday: number;
+  active7d: number;
+  active30d: number;
+  logins7d: number;
+  failedLogins7d: number;
+  registrations30d: number;
+  returningPct: number | null;
+  series: AdminActivityDay[];
+  topUsers: { id: string; username: string; activeDays: number; lastActiveAt: string | null }[];
+  generatedAt: string;
+}
+
 export interface AdminAuditEntry {
   id: string;
   adminUsername: string | null;

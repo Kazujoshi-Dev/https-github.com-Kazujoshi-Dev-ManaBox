@@ -2,9 +2,10 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { AdminBugReports } from './admin/AdminBugReports';
 import { bugReportsApi } from '../services/api';
 import { AdminChangelog } from './admin/AdminChangelog';
+import { AdminActivity } from './admin/AdminActivity';
 import {
   ShieldCheck, Users, UserPlus, Activity, Ban, Layers, CircleDollarSign, Database, Search, Loader2, X,
-  KeyRound, LogOut, EyeOff, Eye, Trash2, Pencil, Copy, Check, ScrollText, Newspaper, Bug, AlertTriangle, RefreshCw, ChevronRight
+  KeyRound, LogOut, EyeOff, Eye, Trash2, Pencil, Copy, Check, ScrollText, Newspaper, Bug, LineChart, AlertTriangle, RefreshCw, ChevronRight
 } from 'lucide-react';
 import { adminApi } from '../services/api';
 import { useBackToClose } from '../hooks/useBackButton';
@@ -60,7 +61,7 @@ function auditDetails(e: AdminAuditEntry): string {
 
 export const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, showToast }) => {
   const t = useT();
-  const [view, setView] = useState<'users' | 'audit' | 'changelog' | 'bugs'>('users');
+  const [view, setView] = useState<'users' | 'activity' | 'audit' | 'changelog' | 'bugs'>('users');
   const [bugCount, setBugCount] = useState(0);
   useEffect(() => {
     bugReportsApi.list('new').then((d) => setBugCount(d.newCount)).catch(() => {});
@@ -183,6 +184,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, showToast }
       <div className="flex flex-wrap gap-2">
         {[
           { id: 'users' as const, label: t('Użytkownicy'), icon: Users },
+          { id: 'activity' as const, label: t('Aktywność'), icon: LineChart },
           { id: 'audit' as const, label: t('Dziennik działań'), icon: ScrollText },
           { id: 'bugs' as const, label: bugCount ? `${t('Zgłoszenia')} (${bugCount})` : t('Zgłoszenia'), icon: Bug },
           { id: 'changelog' as const, label: t('Dziennik zmian'), icon: Newspaper }
@@ -203,7 +205,9 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, showToast }
 
       {error && <p className="text-sm text-rose-300 bg-rose-500/10 border border-rose-500/30 rounded-xl p-3">{error}</p>}
 
-      {view === 'bugs' ? (
+      {view === 'activity' ? (
+        <AdminActivity />
+      ) : view === 'bugs' ? (
         <AdminBugReports showToast={showToast} onCountChange={setBugCount} />
       ) : view === 'changelog' ? (
         <AdminChangelog showToast={showToast} />

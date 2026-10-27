@@ -18,3 +18,4 @@ export * from './repositories/seoRepository';
 export * from './repositories/changelogRepository';
 export * from './repositories/bugReportRepository';
 export * from './repositories/emailTokenRepository';
+export * from './repositories/activityRepository';
