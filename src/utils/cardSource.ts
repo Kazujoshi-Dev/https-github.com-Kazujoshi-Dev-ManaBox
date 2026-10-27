@@ -36,7 +36,8 @@ export function printsUrl(card: Pick<ScryfallCard, 'id' | 'oracle_id' | 'name' |
 }
 
 /** Nazwa źródła cen pokazywana przy cenach karty. */
-export const priceSourceLabel = (card: Pick<ScryfallCard, 'game'>): string => {
+export const priceSourceLabel = (card: Pick<ScryfallCard, 'game' | 'price_source'>): string => {
+  if (card.price_source) return card.price_source;
   const game = gameOfCard(card);
   return game === 'lorcana' ? 'Lorcast' : game === 'pokemon' ? 'TCGdex' : 'Scryfall';
 };

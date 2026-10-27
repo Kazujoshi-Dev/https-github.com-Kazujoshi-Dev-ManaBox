@@ -23,6 +23,8 @@ services:
       SMTP_USER: ${SMTP_USER:-}
       SMTP_PASSWORD: ${SMTP_PASSWORD:-}
       MAIL_FROM: ${MAIL_FROM:-Mana Screw <noreply@manascrew.eu>}
+      # Zapasowe ceny kart Pokémon (pokemontcg.io); klucz opcjonalny, podnosi limit zapytań
+      POKEMONTCG_API_KEY: ${POKEMONTCG_API_KEY:-}
     depends_on:
       db:
         condition: service_healthy

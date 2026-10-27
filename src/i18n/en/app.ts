@@ -123,4 +123,5 @@ export const en_app: Record<string, string> = {
   "Typy energii": "Energy types",
   "Baza kart Pokémon jeszcze się wczytuje. Spróbuj za kilka minut.": "The Pokémon card database is still loading. Try again in a few minutes.",
   "Serwis kart Pokémon jest chwilowo przeciążony. Spróbuj ponownie za chwilę.": "The Pokémon card service is temporarily overloaded. Please try again shortly.",
+  "brak ceny": "no price",
 };

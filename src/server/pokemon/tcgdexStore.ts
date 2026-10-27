@@ -14,6 +14,7 @@ import { getPool, isPostgresActive } from '../db/storage';
 import { APP_USER_AGENT } from '../userAgent';
 import { normalizeText } from '../cardText';
 import { briefToAppCard, tcgdexToAppCard, type TcgdexCard, type TcgdexSet, type TcgdexSetBrief } from './adapter';
+import { lookupFallbackPrices } from './fallbackPrices';
 import type { ScryfallCard } from '../../types';
 
 const API_BASE = (process.env.TCGDEX_API_URL || 'https://api.tcgdex.net/v2/en').replace(/\/+$/, '');
@@ -296,11 +297,33 @@ async function fetchAndStore(id: string): Promise<ScryfallCard | null> {
   }
 }
 
+const hasPrice = (c: ScryfallCard) => Boolean(c.prices?.eur || c.prices?.eur_foil || c.prices?.usd || c.prices?.usd_foil);
+
+/**
+ * Karty pełne bez żadnej ceny z TCGdex dostają ceny zapasowe z pokemontcg.io (kopie kart, bez zmiany
+ * danych w pamięci). `allowFetch = false`: tylko zapisane ceny, bez zapytań (np. wyszukiwanie).
+ */
+async function withFallback(cards: ScryfallCard[], allowFetch: boolean): Promise<ScryfallCard[]> {
+  const missing = cards.filter((c) => !c.partial && !hasPrice(c));
+  if (!missing.length) return cards;
+  const found = await lookupFallbackPrices(missing, allowFetch).catch(() => new Map());
+  if (!found.size) return cards;
+  return cards.map((c) => {
+    const p = found.get(c);
+    return p ? { ...c, prices: { ...c.prices, ...p }, price_source: 'pokemontcg.io' } : c;
+  });
+}
+
 /**
  * Pełna karta: z pamięci lub bazy, a gdy jej nie ma albo jest starsza niż doba, z TCGdex.
  * Przy błędzie TCGdex zwraca ostatnią zapisaną wersję albo kartę z listy dodatku.
  */
 export async function getPokemonCard(id: string, maxAgeMs = DETAILS_MAX_AGE_MS): Promise<ScryfallCard | null> {
+  const card = await getPokemonCardRaw(id, maxAgeMs);
+  return card ? (await withFallback([card], true))[0] : null;
+}
+
+async function getPokemonCardRaw(id: string, maxAgeMs: number): Promise<ScryfallCard | null> {
   const stored = (await readStoredDetails([id])).get(id);
   if (stored && Date.now() - stored.fetchedAt < maxAgeMs) return stored.card;
   try {
@@ -331,6 +354,9 @@ export async function getPokemonCards(ids: string[], fetchLimit = 0): Promise<Ma
       if (err instanceof TcgdexBusyError) break;
     }
   }
+  const ids2 = [...out.keys()];
+  const withPrices = await withFallback(ids2.map((id) => out.get(id)!), true);
+  ids2.forEach((id, i) => out.set(id, withPrices[i]));
   return out;
 }
 
@@ -338,7 +364,7 @@ export async function getPokemonCards(ids: string[], fetchLimit = 0): Promise<Ma
 async function withStoredDetails(cards: ScryfallCard[]): Promise<ScryfallCard[]> {
   if (!cards.length) return cards;
   const stored = await readStoredDetails(cards.map((c) => c.id)).catch(() => new Map());
-  return cards.map((c) => stored.get(c.id)?.card || c);
+  return withFallback(cards.map((c) => stored.get(c.id)?.card || c), false);
 }
 
 /** Uzupełnia kartę zapisywaną w kolekcji lub na liście życzeń (karta z wyszukiwarki bywa niepełna). */

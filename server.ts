@@ -2283,6 +2283,9 @@ app.post('/api/collection/refresh-prices', authMiddleware, refreshPricesLimiter,
       // Karta zapisana bez szczegółów (np. TCGdex był niedostępny): uzupełniamy całość
       const card = item.card.partial && !updatedCard.partial ? { ...updatedCard } : { ...item.card };
       if (updatedCard.prices) card.prices = updatedCard.prices;
+      // Pokémon: ceny zapasowe (pokemontcg.io), gdy TCGdex nie ma żadnej
+      if (updatedCard.price_source) card.price_source = updatedCard.price_source;
+      else delete card.price_source;
       if (updatedCard.prices_from_en) {
         card.prices_from_en = true;
         card.prices_en_fields = updatedCard.prices_en_fields;

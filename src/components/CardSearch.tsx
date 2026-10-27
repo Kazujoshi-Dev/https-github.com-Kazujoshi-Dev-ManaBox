@@ -303,9 +303,13 @@ export const CardSearch: React.FC<CardSearchProps> = ({ onSelectCard, settings }
                       </div>
                     ) : card.partial ? null : (
                     <div className="absolute bottom-[8%] right-2 bg-stone-950/90 backdrop-blur-md px-2 py-0.5 rounded border border-stone-800">
-                      <p className="text-xs font-bold tabular-nums text-emerald-400">
-                        {formatCurrency(price, settings ? settings.currency : 'USD')}
-                      </p>
+                      {price > 0 ? (
+                        <p className="text-xs font-bold tabular-nums text-emerald-400">
+                          {formatCurrency(price, settings ? settings.currency : 'USD')}
+                        </p>
+                      ) : (
+                        <p className="text-[11px] text-stone-400">{t('brak ceny')}</p>
+                      )}
                     </div>
                     )}
                   </div>

@@ -75,6 +75,14 @@ function price(v: unknown): string | null {
   return Number.isFinite(n) && n > 0 ? n.toFixed(2) : null;
 }
 
+const firstPrice = (...vals: unknown[]): string | null => {
+  for (const v of vals) {
+    const p = price(v);
+    if (p) return p;
+  }
+  return null;
+};
+
 const variantPrice = (tcg: Record<string, unknown> | null | undefined, keys: string[]): string | null => {
   for (const k of keys) {
     const v = tcg?.[k];
@@ -167,10 +175,11 @@ export function tcgdexToAppCard(c: TcgdexCard, set: SetContext = {}): ScryfallCa
     image_uris: { small: tcgdexImage(c.image, 'low'), normal: tcgdexImage(c.image, 'high'), large: tcgdexImage(c.image, 'high') },
     finishes: [...(hasNormal ? ['nonfoil'] : []), ...(hasReverse ? ['foil'] : [])],
     prices: {
-      eur: price(cm?.trend ?? cm?.avg),
-      eur_foil: hasReverse ? price(cm?.['trend-holo'] ?? cm?.['avg-holo']) : null,
-      usd: variantPrice(tcg, ['normal', 'holofoil', 'unlimited', 'unlimited-holofoil', '1st-edition', '1st-edition-holofoil']),
-      usd_foil: hasReverse ? variantPrice(tcg, ['reverse-holofoil', 'reverse']) : null
+      // trend, a gdy go brak: średnie z ostatnich dni (TCGdex nie zawsze podaje wszystkie pola)
+      eur: firstPrice(cm?.trend, cm?.avg, cm?.avg7, cm?.avg30, cm?.avg1),
+      eur_foil: hasReverse ? firstPrice(cm?.['trend-holo'], cm?.['avg-holo'], cm?.['avg7-holo'], cm?.['avg30-holo'], cm?.['avg1-holo']) : null,
+      usd: variantPrice(tcg, ['normal', 'holofoil', 'holo', 'unlimited', 'unlimited-holofoil', 'unlimitedHolofoil', '1st-edition', '1st-edition-holofoil', '1stEditionHolofoil']),
+      usd_foil: hasReverse ? variantPrice(tcg, ['reverse-holofoil', 'reverseHolofoil', 'reverse']) : null
     },
     legalities: legal && Object.keys(legal).length ? legal : undefined,
     layout: 'normal',

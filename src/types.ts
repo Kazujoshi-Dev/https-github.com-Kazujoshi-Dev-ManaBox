@@ -91,6 +91,8 @@ export interface ScryfallCard {
    * pełne dane pobiera się przed zapisem i w oknie karty.
    */
   partial?: boolean;
+  /** Źródło cen, gdy inne niż podstawowe dla gry (np. „pokemontcg.io” jako zapas dla TCGdex). */
+  price_source?: string;
 }
 
 export interface MTGSet {
