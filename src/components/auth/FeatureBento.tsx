@@ -42,7 +42,7 @@ export const FeatureBento: React.FC<{ cards: ShowcaseCard[] }> = ({ cards }) => 
       {/* Skaner: duże pole z kartą w ramce celownika */}
       <article className="md:col-span-3 md:row-span-2 relative overflow-hidden rounded-2xl bg-stone-900 ring-1 ring-stone-800 p-6 flex flex-col gap-6 min-h-[320px]">
         <div className="space-y-2 max-w-sm">
-          <h3 className="text-xl font-bold text-stone-50">{t('Skaner kart w telefonie')}</h3>
+          <h3 className="text-xl font-bold text-stone-50">{t('Skaner kart MTG w telefonie')}</h3>
           <p className="text-sm text-stone-400 leading-relaxed">{t('Nakieruj aparat na kartę. Aplikacja rozpozna nazwę, wydanie i cenę, także wersje japońskie. Bez limitu skanów.')}</p>
         </div>
         {scanCard && (

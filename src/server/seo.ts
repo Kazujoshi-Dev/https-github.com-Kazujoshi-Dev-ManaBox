@@ -13,9 +13,9 @@ export const SITE_URL = (process.env.PUBLIC_SITE_URL || 'https://manascrew.eu').
 const SITE_NAME = 'Mana Screw';
 const DEFAULT_IMAGE = `${SITE_URL}/og-image.png`;
 
-const HOME_TITLE = 'Mana Screw | Kolekcja kart MTG, talie Commander i ceny w PLN';
+const HOME_TITLE = 'Mana Screw | Kolekcja kart MTG, Pokémon i Lorcana, ceny w PLN';
 const HOME_DESCRIPTION =
-  'Bezpłatna aplikacja do kolekcji kart Magic: The Gathering. Skanuj karty aparatem, śledź ceny z Cardmarket w złotówkach, buduj talie Commander i sprzedawaj karty.';
+  'Bezpłatna aplikacja do kolekcji kart Magic: The Gathering, Pokémon TCG i Disney Lorcana. Śledź ceny z Cardmarket w złotówkach, skanuj karty MTG aparatem, buduj talie i sprzedawaj karty.';
 
 export interface PageMeta {
   title: string;

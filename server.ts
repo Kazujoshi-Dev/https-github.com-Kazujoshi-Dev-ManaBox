@@ -1962,6 +1962,23 @@ async function gameShowcases(): Promise<Record<GameId, GameShowcase | null>> {
   return data;
 }
 
+// Strona główna (bez logowania): ilustracja dnia i liczba kart w bazie każdej gry
+app.get('/api/public/games', async (_req, res) => {
+  try {
+    const showcases = await gameShowcases();
+    const sizes: Record<GameId, number> = {
+      mtg: cards.cardDbStatus().cards,
+      pokemon: pokemon.pokemonStatus().cards,
+      lorcana: lorcana.lorcanaStatus().cards
+    };
+    const complete = GAME_IDS.every((id) => showcases[id] && sizes[id] > 0);
+    res.setHeader('Cache-Control', complete ? 'public, max-age=1800' : 'no-store');
+    res.json({ games: GAME_IDS.map((id) => ({ id, art: showcases[id], cards: sizes[id] })) });
+  } catch (err: any) {
+    sendServerError(res, err, '/api/public/games');
+  }
+});
+
 app.get('/api/games/overview', authMiddleware, async (req, res) => {
   try {
     const userId = (req as any).userId;

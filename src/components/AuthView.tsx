@@ -5,6 +5,7 @@ import { TermsLink } from './AppFooter';
 import { versionLabel } from '../utils/appVersion';
 import { BinderShowcase } from './auth/BinderShowcase';
 import { FeatureBento } from './auth/FeatureBento';
+import { GamesSection } from './auth/GamesSection';
 import { useShowcaseCards } from './auth/useShowcaseCards';
 import { AuthUser } from '../types';
 import { emailAuthApi } from '../services/api';
@@ -259,10 +260,10 @@ export const AuthView: React.FC<AuthViewProps> = ({ onAuthSuccess, initialMode =
 
           <div className="space-y-3">
             <h1 className="text-[32px] sm:text-4xl xl:text-[44px] font-bold tracking-tight leading-[1.05] text-stone-50 text-balance">
-              {t('Twoja kolekcja Magic: The Gathering, zawsze pod ręką')}
+              {t('Twoja kolekcja kart, zawsze pod ręką')}
             </h1>
             <p className="text-base text-stone-400 leading-relaxed max-w-[46ch]">
-              {t('Skanuj karty telefonem, buduj talie w każdym formacie, także do MTG Arena, i śledź wartość kolekcji w złotówkach. Sprzedawaj i wymieniaj z graczami z okolicy.')}
+              {t('Magic: The Gathering, Pokémon TCG i Disney Lorcana w jednym miejscu. Śledź wartość kolekcji w złotówkach, skanuj karty MTG telefonem, buduj talie i sprzedawaj graczom z okolicy.')}
             </p>
           </div>
 
@@ -430,7 +431,10 @@ export const AuthView: React.FC<AuthViewProps> = ({ onAuthSuccess, initialMode =
         )}
       </section>
 
-      {/* 2. Funkcje */}
+      {/* 2. Obsługiwane gry */}
+      <GamesSection />
+
+      {/* 3. Funkcje */}
       <section className="relative max-w-[1320px] mx-auto px-4 sm:px-6 lg:px-10 pb-16 lg:pb-24 space-y-8" aria-labelledby="auth-features">
         <h2 id="auth-features" className="text-2xl sm:text-3xl font-bold tracking-tight text-stone-50 max-w-xl">
           {t('Wszystko, czego potrzebuje kolekcjoner')}
@@ -438,13 +442,13 @@ export const AuthView: React.FC<AuthViewProps> = ({ onAuthSuccess, initialMode =
         <FeatureBento cards={cards} />
       </section>
 
-      {/* 3. Zachęta do rejestracji */}
+      {/* 4. Zachęta do rejestracji */}
       {mode === 'login' && !pendingEmail && (
         <section className="relative max-w-[1320px] mx-auto px-4 sm:px-6 lg:px-10 pb-16">
           <div className="rounded-2xl bg-stone-900 ring-1 ring-stone-800 p-6 sm:p-8 flex flex-col sm:flex-row sm:items-center justify-between gap-5">
             <div className="space-y-1">
               <h2 className="text-xl font-bold text-stone-50">{t('Konto jest darmowe')}</h2>
-              <p className="text-sm text-stone-400">{t('Wystarczy e-mail i hasło. Kolekcję możesz zaimportować z pliku tekstowego.')}</p>
+              <p className="text-sm text-stone-400">{t('Wystarczy e-mail i hasło. Jedno konto obejmuje wszystkie trzy gry, a kolekcję MTG możesz zaimportować z pliku tekstowego lub z ManaBox.')}</p>
             </div>
             <button
               type="button"
@@ -457,13 +461,19 @@ export const AuthView: React.FC<AuthViewProps> = ({ onAuthSuccess, initialMode =
         </section>
       )}
 
-      {/* 4. Stopka: informacja prawna wymagana przez Fan Content Policy */}
+      {/* 5. Stopka: informacje prawne (Fan Content Policy WotC, prawa Pokémon i Disney) */}
       <footer className="relative border-t border-stone-900">
         <div className="max-w-[1320px] mx-auto px-4 sm:px-6 lg:px-10 py-8 pb-[calc(2rem+env(safe-area-inset-bottom))] space-y-2 text-xs text-stone-500 leading-relaxed">
           <FanContentNotice />
           <p>
+            {t('Pokémon i nazwy postaci są znakami towarowymi Nintendo, Creatures Inc. i GAME FREAK inc. Disney Lorcana i jej ilustracje są własnością Disney, a grę wydaje Ravensburger. Mana Screw nie jest powiązany z tymi firmami ani przez nie zatwierdzony.')}
+          </p>
+          <p>
             {t('Dane i obrazy kart:')}{' '}
-            <a href="https://scryfall.com" target="_blank" rel="noopener noreferrer" className="underline hover:text-stone-300">Scryfall</a>. {t('Ceny: Cardmarket i TCGPlayer. Mapa:')} ©{' '}
+            <a href="https://scryfall.com" target="_blank" rel="noopener noreferrer" className="underline hover:text-stone-300">Scryfall</a>,{' '}
+            <a href="https://tcgdex.dev" target="_blank" rel="noopener noreferrer" className="underline hover:text-stone-300">TCGdex</a>,{' '}
+            <a href="https://pokemontcg.io" target="_blank" rel="noopener noreferrer" className="underline hover:text-stone-300">Pokémon TCG API</a>,{' '}
+            <a href="https://lorcast.com" target="_blank" rel="noopener noreferrer" className="underline hover:text-stone-300">Lorcast</a>. {t('Ceny: Cardmarket i TCGPlayer. Mapa:')} ©{' '}
             <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer" className="underline hover:text-stone-300">OpenStreetMap</a>.
           </p>
           <p>
