@@ -954,3 +954,40 @@ export async function getPrintsLocal(oracleId: string | null, name: string | nul
       );
   return res.rows.map((r) => r.data);
 }
+
+/**
+ * Karta MTG na ekran wyboru gry: rzadka lub mityczna, najlepiej legendarna istota, angielska,
+ * ze zwykłą czarną ramką. Losujemy kilkaset wydań z indeksu w pamięci (inne każdego dnia)
+ * i pobieramy tylko je, więc zapytanie jest lekkie także na małym serwerze.
+ */
+export async function pickMtgShowcase(): Promise<{ image: string; name: string; artist: string | null } | null> {
+  const p = pool();
+  if (!p || !index || index.entries.length === 0) return null;
+  const day = Math.floor(Date.now() / 86_400_000);
+  let seed = ((day + 7919) * 2654435761) >>> 0;
+  const rand = () => {
+    seed = (seed * 1664525 + 1013904223) >>> 0;
+    return seed / 4294967296;
+  };
+  const total = index.entries.length;
+  const ids = new Set<string>();
+  for (let n = 0; n < 600 && ids.size < 400; n++) ids.add(index.entries[Math.floor(rand() * total)].id);
+  try {
+    const res = await p.query({
+      text: `SELECT name, lang, data->'image_uris'->>'large' AS image, data->>'artist' AS artist,
+                    COALESCE(data->>'type_line', '') AS type_line, data->>'rarity' AS rarity,
+                    data->>'border_color' AS border, data->>'promo' AS promo, data->>'digital' AS digital
+               FROM scryfall_cards WHERE id = ANY($1::uuid[])`,
+      values: [[...ids]],
+      query_timeout: 15_000
+    } as any);
+    const ok = res.rows.filter(
+      (r: any) => r.image && r.lang === 'en' && r.digital !== 'true' && r.promo !== 'true' && (r.border || 'black') === 'black' && (r.rarity === 'rare' || r.rarity === 'mythic') && !/land/i.test(r.type_line)
+    );
+    const best = ok.find((r: any) => /legendary creature/i.test(r.type_line) && r.rarity === 'mythic') || ok.find((r: any) => /legendary creature/i.test(r.type_line)) || ok[0];
+    return best ? { image: best.image, name: best.name, artist: best.artist || null } : null;
+  } catch (err: any) {
+    console.warn('[Karty] Nie udało się wybrać karty na ekran wyboru gry:', err?.message || err);
+    return null;
+  }
+}

@@ -1945,11 +1945,16 @@ let gameShowcaseCache: { day: number; data: Record<GameId, GameShowcase | null> 
 async function gameShowcases(): Promise<Record<GameId, GameShowcase | null>> {
   const day = Math.floor(Date.now() / 86_400_000);
   if (gameShowcaseCache?.day === day && Object.values(gameShowcaseCache.data).every(Boolean)) return gameShowcaseCache.data;
-  const mtgCards = await cards.getShowcaseCards(16).catch(() => []);
-  const mtgPick = mtgCards.find((c) => c.legendary) || mtgCards[0];
-  const data: Record<GameId, GameShowcase | null> = {
+  // MTG: osobny, lekki wybór z bazy Scryfall; gdy się nie uda, karta z ekranu logowania
+  let mtg: GameShowcase | null = await cards.pickMtgShowcase().catch(() => null);
+  if (!mtg) {
+    const mtgCards = await cards.getShowcaseCards(16).catch(() => []);
+    const pick = mtgCards.find((c) => c.legendary) || mtgCards[0];
     // pełna karta w większej rozdzielczości (adres Scryfall różni się tylko rozmiarem)
-    mtg: mtgPick ? { image: mtgPick.image.replace('/normal/', '/large/'), name: mtgPick.name, artist: mtgPick.artist } : null,
+    if (pick) mtg = { image: pick.image.replace('/normal/', '/large/'), name: pick.name, artist: pick.artist };
+  }
+  const data: Record<GameId, GameShowcase | null> = {
+    mtg,
     pokemon: await pokemon.pickPokemonShowcase().catch(() => null),
     lorcana: lorcana.pickLorcanaShowcase()
   };

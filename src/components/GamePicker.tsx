@@ -45,6 +45,7 @@ export const GamePicker: React.FC<GamePickerProps> = ({ current, username, onCho
   const [overview, setOverview] = useState<{ currency: CurrencyCode; games: GameOverview[] } | null>(null);
   const [lit, setLit] = useState<GameId | null>(null);
   const [loaded, setLoaded] = useState<Partial<Record<GameId, boolean>>>({});
+  const [failed, setFailed] = useState<Partial<Record<GameId, boolean>>>({});
 
   useEffect(() => {
     let cancelled = false;
@@ -101,7 +102,7 @@ export const GamePicker: React.FC<GamePickerProps> = ({ current, username, onCho
           {GAME_LIST.map((game, i) => {
             const look = LOOK[game.id];
             const data = info(game.id);
-            const art = data?.art || null;
+            const art = data?.art && !failed[game.id] ? data.art : null;
             const isCurrent = game.id === current;
             const disabled = !game.available;
             const isLit = lit === game.id;
@@ -141,6 +142,7 @@ export const GamePicker: React.FC<GamePickerProps> = ({ current, username, onCho
                       alt=""
                       referrerPolicy="no-referrer"
                       onLoad={() => setLoaded((v) => ({ ...v, [game.id]: true }))}
+                      onError={() => setFailed((v) => ({ ...v, [game.id]: true }))}
                       className={`game-panel-art absolute inset-0 h-full w-full object-cover object-[50%_28%] ${
                         loaded[game.id] ? 'opacity-100' : 'opacity-0'
                       } ${isLit ? 'scale-[1.07] grayscale-0 brightness-100' : canHover ? 'scale-[1.02] grayscale-[0.6] brightness-[0.55]' : 'scale-[1.02] brightness-[0.85]'}`}
