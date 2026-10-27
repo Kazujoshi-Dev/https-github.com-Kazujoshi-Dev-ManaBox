@@ -169,6 +169,19 @@ export async function initDb(): Promise<void> {
             created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
           );
           CREATE INDEX IF NOT EXISTS idx_sale_folders_user ON sale_folders(user_id);
+          -- Wiele gier karcianych: każda gra ma osobną kolekcję, klasery, listę życzeń, talie i foldery
+          -- „Sprzedam”. Dane sprzed tej zmiany należą do Magic: The Gathering ('mtg').
+          ALTER TABLE user_collections ADD COLUMN IF NOT EXISTS game VARCHAR(16) NOT NULL DEFAULT 'mtg';
+          ALTER TABLE user_catalogs ADD COLUMN IF NOT EXISTS game VARCHAR(16) NOT NULL DEFAULT 'mtg';
+          ALTER TABLE user_wishlists ADD COLUMN IF NOT EXISTS game VARCHAR(16) NOT NULL DEFAULT 'mtg';
+          ALTER TABLE user_decks ADD COLUMN IF NOT EXISTS game VARCHAR(16) NOT NULL DEFAULT 'mtg';
+          ALTER TABLE sale_folders ADD COLUMN IF NOT EXISTS game VARCHAR(16) NOT NULL DEFAULT 'mtg';
+          CREATE INDEX IF NOT EXISTS idx_user_collections_user_game ON user_collections(user_id, game);
+          CREATE INDEX IF NOT EXISTS idx_user_catalogs_user_game ON user_catalogs(user_id, game);
+          CREATE INDEX IF NOT EXISTS idx_user_wishlists_user_game ON user_wishlists(user_id, game);
+          CREATE INDEX IF NOT EXISTS idx_user_decks_user_game ON user_decks(user_id, game);
+          -- ostatnio wybrana gra (ekran wyboru po zalogowaniu)
+          ALTER TABLE user_settings ADD COLUMN IF NOT EXISTS active_game VARCHAR(16);
           ALTER TABLE user_settings ADD COLUMN IF NOT EXISTS auto_nbp_rate BOOLEAN DEFAULT TRUE;
           -- liczba wierszy kart na stronie kolekcji
           ALTER TABLE user_settings ADD COLUMN IF NOT EXISTS collection_rows_per_page SMALLINT;
@@ -292,11 +305,11 @@ export async function initDb(): Promise<void> {
             INSERT INTO user_collections (
               id, user_id, card_id, card, quantity, quantity_foil, condition, language,
               purchase_price, notes, binder, added_at, last_updated_price_at,
-              is_for_sale, sale_price, previous_prices, prices_changed_at
+              is_for_sale, sale_price, previous_prices, prices_changed_at, game
             )
             SELECT 'col-' || gen_random_uuid()::text, user_id, card_id, card, 0, quantity_foil, condition, language,
                    purchase_price, notes, binder, added_at, last_updated_price_at,
-                   is_for_sale, sale_price, previous_prices, prices_changed_at
+                   is_for_sale, sale_price, previous_prices, prices_changed_at, game
             FROM mixed
             RETURNING id
           )
@@ -304,18 +317,21 @@ export async function initDb(): Promise<void> {
 
           -- Główny klaser każdego konta: najstarszy katalog o nazwie „Klaser Główny”,
           -- a gdy go nie ma (np. zmieniono mu nazwę), nowy, pusty „Klaser Główny”.
+          -- (Tylko klasery MTG: klasery innych gier powstają przy pierwszym wejściu do danej gry.)
           UPDATE user_catalogs SET is_main = TRUE WHERE id IN (
             SELECT DISTINCT ON (user_id) id FROM user_catalogs
-            WHERE name = 'Klaser Główny'
-              AND user_id NOT IN (SELECT user_id FROM user_catalogs WHERE is_main)
+            WHERE name = 'Klaser Główny' AND game = 'mtg'
+              AND user_id NOT IN (SELECT user_id FROM user_catalogs WHERE is_main AND game = 'mtg')
             ORDER BY user_id, created_at, id
           );
-          INSERT INTO user_catalogs (id, user_id, name, description, color, is_default, is_main, created_at)
+          INSERT INTO user_catalogs (id, user_id, name, description, color, is_default, is_main, created_at, game)
           SELECT 'cat-main-' || gen_random_uuid()::text, u.id, 'Klaser Główny', 'Główny klaser całej kolekcji', 'amber',
-                 NOT EXISTS (SELECT 1 FROM user_catalogs d WHERE d.user_id = u.id AND d.is_default), TRUE, u.created_at
+                 NOT EXISTS (SELECT 1 FROM user_catalogs d WHERE d.user_id = u.id AND d.is_default AND d.game = 'mtg'), TRUE, u.created_at, 'mtg'
           FROM users u
-          WHERE NOT EXISTS (SELECT 1 FROM user_catalogs m WHERE m.user_id = u.id AND m.is_main);
-          CREATE UNIQUE INDEX IF NOT EXISTS uq_user_catalogs_main ON user_catalogs(user_id) WHERE is_main;
+          WHERE NOT EXISTS (SELECT 1 FROM user_catalogs m WHERE m.user_id = u.id AND m.is_main AND m.game = 'mtg');
+          -- jeden główny klaser na konto i grę
+          DROP INDEX IF EXISTS uq_user_catalogs_main;
+          CREATE UNIQUE INDEX IF NOT EXISTS uq_user_catalogs_main_game ON user_catalogs(user_id, game) WHERE is_main;
         `);
         setPostgresActive(true);
         console.log('[Storage] PostgreSQL connected & database schema verified successfully');

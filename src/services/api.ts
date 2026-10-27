@@ -1,5 +1,7 @@
 import { CommunityDeckSummary, AdminUser, AdminStats, AdminAuditEntry, AdminActivityStats, SaleFolder, AuthUser, AppSettings, Catalog, CollectionItem, DeckItem, ScryfallCard, WishlistItem, SpellbookFindCombosResponse, SpellbookVariant, RegisteredUserSummary, UserMessage, UserProfile, CitySuggestion, MapCity, WishlistMatches, PriceMoversResponse } from '../types';
 import { noteResponseVersion } from '../utils/appVersion';
+import { getActiveGame } from '../utils/activeGame';
+import { GAME_HEADER } from '../games';
 import { t, tServer, tk } from '../i18n';
 
 const TOKEN_KEY = 'mtg_auth_token';
@@ -33,6 +35,8 @@ export async function fetchWithAuth(
   const token = tokenStorage.getToken();
   const headers: Record<string, string> = {
     ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    // Wybrana gra: kolekcja, klasery, lista życzeń, talie i „Sprzedam” są osobne dla każdej gry
+    [GAME_HEADER]: getActiveGame(),
     ...((options.headers as Record<string, string>) || {})
   };
 

@@ -1,28 +1,27 @@
-import path from 'path';
 import { DeckItem, CommunityDeckSummary } from '../../../types';
-import { withDb, readJsonFile, writeJsonAtomic, getUserDir } from '../storage';
+import { withDb, readJsonFile, writeJsonAtomic, userGameFile } from '../storage';
+import { DEFAULT_GAME, type GameId } from '../../../games';
+
+const decksFile = (userId: string, game: GameId) => userGameFile(userId, 'decks', game);
 import { mapDeckRow } from '../mappers';
 
-export async function getDecks(userId: string): Promise<DeckItem[]> {
+export async function getDecks(userId: string, game: GameId = DEFAULT_GAME): Promise<DeckItem[]> {
   return withDb(
     async (p) => {
       const res = await p.query(
         `SELECT id, name, format, description, card_source as "cardSource", commander,
                 commander_is_foil as "commanderIsFoil", cards, is_public as "isPublic",
                 created_at as "createdAt", updated_at as "updatedAt"
-         FROM user_decks WHERE user_id = $1 ORDER BY updated_at DESC`,
-        [userId]
+         FROM user_decks WHERE user_id = $1 AND game = $2 ORDER BY updated_at DESC`,
+        [userId, game]
       );
       return res.rows.map(mapDeckRow);
     },
-    () => {
-      const userDir = getUserDir(userId);
-      return readJsonFile<DeckItem[]>(path.join(userDir, 'decks.json'), []);
-    }
+    () => readJsonFile<DeckItem[]>(decksFile(userId, game), [])
   );
 }
 
-export async function saveDeck(userId: string, deck: DeckItem): Promise<DeckItem | null> {
+export async function saveDeck(userId: string, deck: DeckItem, game: GameId = DEFAULT_GAME): Promise<DeckItem | null> {
   const format = deck.format || 'EDH Commander';
   const cardSource = deck.cardSource || 'collection';
   const now = new Date().toISOString();
@@ -37,8 +36,8 @@ export async function saveDeck(userId: string, deck: DeckItem): Promise<DeckItem
     async (p) => {
       // Aktualizacja tylko własnej talii: przy cudzym id konflikt nie zmienia wiersza (null → 404)
       const res = await p.query(
-        `INSERT INTO user_decks (id, user_id, name, format, description, card_source, commander, commander_is_foil, cards, created_at, updated_at)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+        `INSERT INTO user_decks (id, user_id, name, format, description, card_source, commander, commander_is_foil, cards, created_at, updated_at, game)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
          ON CONFLICT (id) DO UPDATE SET
            name = EXCLUDED.name,
            format = EXCLUDED.format,
@@ -48,7 +47,7 @@ export async function saveDeck(userId: string, deck: DeckItem): Promise<DeckItem
            commander_is_foil = EXCLUDED.commander_is_foil,
            cards = EXCLUDED.cards,
            updated_at = EXCLUDED.updated_at
-         WHERE user_decks.user_id = EXCLUDED.user_id
+         WHERE user_decks.user_id = EXCLUDED.user_id AND user_decks.game = EXCLUDED.game
          RETURNING is_public`,
         [
           deckToSave.id,
@@ -61,15 +60,15 @@ export async function saveDeck(userId: string, deck: DeckItem): Promise<DeckItem
           Boolean(deckToSave.commanderIsFoil),
           JSON.stringify(deckToSave.cards || []),
           deckToSave.createdAt || now,
-          now
+          now,
+          game
         ]
       );
       if (!res.rows[0]) return null;
       return { ...deckToSave, isPublic: Boolean(res.rows[0].is_public) };
     },
     () => {
-      const userDir = getUserDir(userId);
-      const file = path.join(userDir, 'decks.json');
+      const file = decksFile(userId, game);
       const decks = readJsonFile<DeckItem[]>(file, []);
       const idx = decks.findIndex((d) => d.id === deck.id);
       if (idx >= 0) {
@@ -84,14 +83,14 @@ export async function saveDeck(userId: string, deck: DeckItem): Promise<DeckItem
 }
 
 /** Włącza/wyłącza publiczny link do talii. */
-export async function setDeckPublic(userId: string, id: string, isPublic: boolean): Promise<boolean> {
+export async function setDeckPublic(userId: string, id: string, isPublic: boolean, game: GameId = DEFAULT_GAME): Promise<boolean> {
   return withDb(
     async (p) => {
-      const res = await p.query('UPDATE user_decks SET is_public = $3 WHERE id = $1 AND user_id = $2', [id, userId, isPublic]);
+      const res = await p.query('UPDATE user_decks SET is_public = $3 WHERE id = $1 AND user_id = $2 AND game = $4', [id, userId, isPublic, game]);
       return (res.rowCount ?? 0) > 0;
     },
     () => {
-      const file = path.join(getUserDir(userId), 'decks.json');
+      const file = decksFile(userId, game);
       const decks = readJsonFile<DeckItem[]>(file, []);
       const deck = decks.find((d) => d.id === id);
       if (!deck) return false;
@@ -119,15 +118,14 @@ export async function getPublicDeck(id: string): Promise<{ deck: DeckItem; userI
   );
 }
 
-export async function deleteDeck(userId: string, id: string): Promise<boolean> {
+export async function deleteDeck(userId: string, id: string, game: GameId = DEFAULT_GAME): Promise<boolean> {
   return withDb(
     async (p) => {
-      const res = await p.query('DELETE FROM user_decks WHERE id = $1 AND user_id = $2', [id, userId]);
+      const res = await p.query('DELETE FROM user_decks WHERE id = $1 AND user_id = $2 AND game = $3', [id, userId, game]);
       return (res.rowCount ?? 0) > 0;
     },
     () => {
-      const userDir = getUserDir(userId);
-      const file = path.join(userDir, 'decks.json');
+      const file = decksFile(userId, game);
       const decks = readJsonFile<DeckItem[]>(file, []);
       const nextDecks = decks.filter((d) => d.id !== id);
       if (nextDecks.length !== decks.length) {
@@ -173,7 +171,7 @@ export async function listCommunityDecks(viewerId: string | null, limit = 300): 
               WHERE ${art("e->'card'")} IS NOT NULL
               LIMIT 1
            ) first_card ON TRUE
-          WHERE d.is_public = TRUE
+          WHERE d.is_public = TRUE AND d.game = 'mtg'
             AND NOT COALESCE(u.ban_permanent, FALSE)
             AND (u.banned_until IS NULL OR u.banned_until < NOW())
           ORDER BY likes DESC, updated_at DESC

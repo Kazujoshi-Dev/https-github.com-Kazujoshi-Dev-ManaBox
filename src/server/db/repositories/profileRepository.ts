@@ -94,7 +94,7 @@ export async function getForSaleCounts(): Promise<Map<string, { cards: number; i
     async (p) => {
       const res = await p.query(
         `SELECT user_id, COALESCE(SUM(quantity + quantity_foil), 0)::int AS cards, COUNT(*)::int AS items
-         FROM user_collections WHERE is_for_sale = TRUE GROUP BY user_id`
+         FROM user_collections WHERE is_for_sale = TRUE AND game = 'mtg' GROUP BY user_id`
       );
       return new Map(res.rows.map((r) => [r.user_id, { cards: r.cards, items: r.items }]));
     },
@@ -119,7 +119,7 @@ export async function getWishlistMatches(
                 COUNT(DISTINCT lower(card->>'name'))::int AS collection,
                 (COUNT(DISTINCT lower(card->>'name')) FILTER (WHERE is_for_sale = TRUE))::int AS for_sale
          FROM user_collections
-         WHERE user_id <> $1 AND lower(card->>'name') = ANY($2::text[]) AND (quantity + quantity_foil) > 0
+         WHERE user_id <> $1 AND game = 'mtg' AND lower(card->>'name') = ANY($2::text[]) AND (quantity + quantity_foil) > 0
          GROUP BY user_id`,
         [userId, names]
       );

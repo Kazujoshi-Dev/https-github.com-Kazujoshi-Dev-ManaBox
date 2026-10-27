@@ -1,32 +1,31 @@
-import path from 'path';
 import { WishlistItem } from '../../../types';
-import { withDb, readJsonFile, writeJsonAtomic, getUserDir } from '../storage';
+import { withDb, readJsonFile, writeJsonAtomic, userGameFile } from '../storage';
+import { DEFAULT_GAME, type GameId } from '../../../games';
+
+const wishFile = (userId: string, game: GameId) => userGameFile(userId, 'wishlist', game);
 import { mapWishlistRow } from '../mappers';
 
-export async function getWishlist(userId: string): Promise<WishlistItem[]> {
+export async function getWishlist(userId: string, game: GameId = DEFAULT_GAME): Promise<WishlistItem[]> {
   return withDb(
     async (p) => {
       const res = await p.query(
         `SELECT id, card_id as "cardId", card, target_quantity as "targetQuantity",
                 is_foil as "isFoil", notes, added_at as "addedAt"
-         FROM user_wishlists WHERE user_id = $1 ORDER BY added_at DESC`,
-        [userId]
+         FROM user_wishlists WHERE user_id = $1 AND game = $2 ORDER BY added_at DESC`,
+        [userId, game]
       );
       return res.rows.map(mapWishlistRow);
     },
-    () => {
-      const userDir = getUserDir(userId);
-      return readJsonFile<WishlistItem[]>(path.join(userDir, 'wishlist.json'), []);
-    }
+    () => readJsonFile<WishlistItem[]>(wishFile(userId, game), [])
   );
 }
 
-export async function addWishlistItem(userId: string, item: WishlistItem): Promise<WishlistItem> {
+export async function addWishlistItem(userId: string, item: WishlistItem, game: GameId = DEFAULT_GAME): Promise<WishlistItem> {
   return withDb(
     async (p) => {
       await p.query(
-        `INSERT INTO user_wishlists (id, user_id, card_id, card, target_quantity, is_foil, notes, added_at)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+        `INSERT INTO user_wishlists (id, user_id, card_id, card, target_quantity, is_foil, notes, added_at, game)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
         [
           item.id,
           userId,
@@ -35,14 +34,14 @@ export async function addWishlistItem(userId: string, item: WishlistItem): Promi
           item.targetQuantity || 1,
           Boolean(item.isFoil),
           item.notes || '',
-          item.addedAt || new Date().toISOString()
+          item.addedAt || new Date().toISOString(),
+          game
         ]
       );
       return item;
     },
     () => {
-      const userDir = getUserDir(userId);
-      const file = path.join(userDir, 'wishlist.json');
+      const file = wishFile(userId, game);
       const list = readJsonFile<WishlistItem[]>(file, []);
       list.unshift(item);
       writeJsonAtomic(file, list);
@@ -59,7 +58,7 @@ export interface WishlistItemPatch {
 }
 
 /** Zmiana pozycji listy życzeń (wersja/print, foil, liczba sztuk, notatka). */
-export async function updateWishlistItem(userId: string, id: string, patch: WishlistItemPatch): Promise<WishlistItem | null> {
+export async function updateWishlistItem(userId: string, id: string, patch: WishlistItemPatch, game: GameId = DEFAULT_GAME): Promise<WishlistItem | null> {
   return withDb(
     async (p) => {
       const res = await p.query(
@@ -69,7 +68,7 @@ export async function updateWishlistItem(userId: string, id: string, patch: Wish
            is_foil = COALESCE($5, is_foil),
            target_quantity = COALESCE($6, target_quantity),
            notes = COALESCE($7, notes)
-         WHERE id = $1 AND user_id = $2
+         WHERE id = $1 AND user_id = $2 AND game = $8
          RETURNING id, card_id as "cardId", card, target_quantity as "targetQuantity",
                    is_foil as "isFoil", notes, added_at as "addedAt"`,
         [
@@ -79,14 +78,14 @@ export async function updateWishlistItem(userId: string, id: string, patch: Wish
           patch.card?.id ?? null,
           patch.isFoil ?? null,
           patch.targetQuantity ?? null,
-          patch.notes ?? null
+          patch.notes ?? null,
+          game
         ]
       );
       return res.rows[0] ? mapWishlistRow(res.rows[0]) : null;
     },
     () => {
-      const userDir = getUserDir(userId);
-      const file = path.join(userDir, 'wishlist.json');
+      const file = wishFile(userId, game);
       const list = readJsonFile<WishlistItem[]>(file, []);
       const idx = list.findIndex((i) => i.id === id);
       if (idx === -1) return null;
@@ -104,15 +103,14 @@ export async function updateWishlistItem(userId: string, id: string, patch: Wish
   );
 }
 
-export async function deleteWishlistItem(userId: string, id: string): Promise<boolean> {
+export async function deleteWishlistItem(userId: string, id: string, game: GameId = DEFAULT_GAME): Promise<boolean> {
   return withDb(
     async (p) => {
-      const res = await p.query('DELETE FROM user_wishlists WHERE id = $1 AND user_id = $2', [id, userId]);
+      const res = await p.query('DELETE FROM user_wishlists WHERE id = $1 AND user_id = $2 AND game = $3', [id, userId, game]);
       return (res.rowCount ?? 0) > 0;
     },
     () => {
-      const userDir = getUserDir(userId);
-      const file = path.join(userDir, 'wishlist.json');
+      const file = wishFile(userId, game);
       const list = readJsonFile<WishlistItem[]>(file, []);
       const nextList = list.filter((i) => i.id !== id);
       if (nextList.length !== list.length) {

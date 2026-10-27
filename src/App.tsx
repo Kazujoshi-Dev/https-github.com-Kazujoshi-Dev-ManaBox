@@ -47,12 +47,18 @@ import { useAppData } from './hooks/useAppData';
 import { isArenaFormat } from './utils/mtgFormats';
 import { publicSaleApi, messagesApi, usersApi, publicDeckApi } from './services/api';
 import { useT, t, binderName, plural, MAIN_BINDER } from './i18n';
+import { GamePicker } from './components/GamePicker';
+import { isGameAvailable, isTabAvailable, hasScanner, type GameId } from './games';
+import { getActiveGame, setActiveGame } from './utils/activeGame';
 
 export default function App() {
   const { toastMessage, showToast } = useToast();
   const { currentUser, handleAuthSuccess, handleLogout, handleLogoutAll, handleUnauthorized } = useAuth(showToast);
   useT();
   const { settings, updateSettings, applyRemoteSettings, changeLanguage } = useSettings(handleUnauthorized);
+  // Wybrana gra karciana (osobne dane dla MTG, Pokémon i Lorcany); ekran wyboru pojawia się po zalogowaniu
+  const [game, setGame] = useState<GameId>(getActiveGame);
+  const [isPickingGame, setIsPickingGame] = useState(false);
 
   const {
     collection,
@@ -90,7 +96,8 @@ export default function App() {
     userId: currentUser?.mustChangePassword ? undefined : currentUser?.id,
     onUnauthorized: handleUnauthorized,
     showToast,
-    onSettingsLoaded: applyRemoteSettings
+    onSettingsLoaded: applyRemoteSettings,
+    game
   });
 
   const totals = useCollectionStats(collection, settings);
@@ -218,6 +225,22 @@ export default function App() {
     if (tab !== activeTab && applyOnNavigate(tab)) return;
     setActiveTab(tab);
   }, [activeTab, applyOnNavigate, setActiveTab]);
+  // Zmiana gry: dane wczytują się na nowo (useAppData), zakładki tylko dla MTG wracają do kolekcji
+  const chooseGame = useCallback((next: GameId) => {
+    setIsPickingGame(false);
+    if (!isGameAvailable(next)) return;
+    setActiveGame(next);
+    if (next !== game) {
+      setGame(next);
+      setSelectedDeck(null);
+      if (!isTabAvailable(activeTab, next)) setActiveTab('collection');
+    }
+    if (settings.activeGame !== next) updateSettings({ ...settings, activeGame: next });
+  }, [game, activeTab, setActiveTab, settings, updateSettings]);
+  // Zakładka niedostępna w tej grze (np. przywrócona po przeładowaniu): wracamy do kolekcji
+  useEffect(() => {
+    if (!isTabAvailable(activeTab, game)) setActiveTabState('collection');
+  }, [activeTab, game]);
   // Profil sprzedawcy do otwarcia w zakładce Użytkownicy (np. z mapy sprzedawców)
   const [profileRequest, setProfileRequest] = useState<{ username: string; nonce: number } | null>(null);
   const handleOpenSellerProfile = useCallback((username: string) => {
@@ -798,6 +821,7 @@ export default function App() {
       <>
         <AuthView initialMode={authInitialMode} onAuthSuccess={(user, token) => {
           handleAuthSuccess(user, token);
+          setIsPickingGame(true);
           showToast(t('Witaj w kolekcji, {name}!', { name: user.username }));
         }} />
         <Toast message={toastMessage} />
@@ -816,6 +840,21 @@ export default function App() {
             showToast(t('Hasło zostało zmienione.'));
           }}
           onLogout={handleLogout}
+        />
+        <Toast message={toastMessage} />
+      </>
+    );
+  }
+
+  // 7. Wybór gry (po zalogowaniu albo z przełącznika w nagłówku)
+  if (isPickingGame) {
+    return (
+      <>
+        <GamePicker
+          current={game}
+          username={currentUser.username}
+          onChoose={chooseGame}
+          onCancel={() => setIsPickingGame(false)}
         />
         <Toast message={toastMessage} />
       </>
@@ -841,7 +880,7 @@ export default function App() {
         onRefreshPrices={refreshPrices}
         isRefreshing={isRefreshingPrices}
         onOpenAddModal={() => navigateTab('search')}
-        onOpenScannerModal={() => setIsScannerModalOpen(true)}
+        onOpenScannerModal={hasScanner(game) ? () => setIsScannerModalOpen(true) : undefined}
         onExportCollection={exportCollection}
         onImportCollection={importCollection}
         onOpenImportExport={handleOpenCollectionImportExport}
@@ -852,6 +891,8 @@ export default function App() {
         onOpenHistory={() => setIsHistoryOpen(true)}
         onOpenBugReport={() => setIsBugReportOpen(true)}
         onChangeLanguage={(lang) => changeLanguage(lang, true)}
+        game={game}
+        onSwitchGame={() => setIsPickingGame(true)}
       />
       {isHistoryOpen && <CollectionHistoryModal currency={settings.currency} onClose={() => setIsHistoryOpen(false)} />}
       {isBugReportOpen && (
@@ -967,7 +1008,7 @@ export default function App() {
             onMoveWishlistToCollection={handleMoveWishlistToCollection}
             onSelectCard={(card) => handleOpenCardModal(card, null)}
             onViewDeckCardDetails={handleOpenDeckCardModal}
-            onOpenScannerModal={() => setIsScannerModalOpen(true)}
+            onOpenScannerModal={hasScanner(game) ? () => setIsScannerModalOpen(true) : undefined}
             onOpenImportDeck={handleOpenDeckImport}
             onOpenCollectionImportExport={handleOpenCollectionImportExport}
             onUpdateSettings={updateSettings}
@@ -1004,6 +1045,8 @@ export default function App() {
         hasNewChangelog={changelogBadge.hasNew}
         onOpenBugReport={() => setIsBugReportOpen(true)}
         onChangeLanguage={(lang) => changeLanguage(lang, true)}
+        game={game}
+        onSwitchGame={() => setIsPickingGame(true)}
       />
 
       {/* Settings Modal */}

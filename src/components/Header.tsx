@@ -23,8 +23,10 @@ import {
   ScrollText,
   Bug,
   ChevronDown,
-  Globe
+  Globe,
+  Repeat
 } from 'lucide-react';
+import { DEFAULT_GAME, GAMES, isTabAvailable, type GameId } from '../games';
 import { formatCurrency } from '../utils/formatters';
 import { SupportButton } from './ui/SupportButton';
 import { DiscordButton } from './ui/DiscordButton';
@@ -65,6 +67,10 @@ interface HeaderProps {
   onOpenBugReport?: () => void;
   /** Zmiana języka interfejsu (zapis na profilu). */
   onChangeLanguage?: (lang: Lang) => void;
+  /** Aktywna gra karciana (zakładki tylko dla MTG są w innych grach ukryte). */
+  game?: GameId;
+  /** Otwiera ekran wyboru gry. */
+  onSwitchGame?: () => void;
 }
 
 /** Menu konta: rzadziej używane akcje (ustawienia, import/eksport, okno OBS, wylogowanie). */
@@ -195,7 +201,9 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenMailbox,
   onOpenHistory,
   onOpenBugReport,
-  onChangeLanguage
+  onChangeLanguage,
+  game = DEFAULT_GAME,
+  onSwitchGame
 }) => {
   const t = useT();
   const hasChange = valueChange !== null;
@@ -214,7 +222,8 @@ export const Header: React.FC<HeaderProps> = ({
     : t('Kliknij „Odśwież ceny”, aby zobaczyć zmianę wartości kolekcji');
   const sourceLabel = settings.pricingSource === 'CARDMARKET' ? 'Cardmarket Trend' : 'TCGPlayer Market';
 
-  const tabs: Array<{ id: Tab; label: string; icon: React.ElementType; count?: number; dot?: boolean }> = [
+  type TabDef = { id: Tab; label: string; icon: React.ElementType; count?: number; dot?: boolean };
+  const allTabs: TabDef[] = [
     { id: 'collection', label: t('Kolekcja'), icon: Layers, count: totalCards },
     { id: 'decks', label: t('Talie'), icon: Swords, count: decksCount || undefined },
     { id: 'community-decks', label: t('Talie społeczności'), icon: Globe },
@@ -229,6 +238,7 @@ export const Header: React.FC<HeaderProps> = ({
     { id: 'changelog', label: t('Dziennik zmian'), icon: ScrollText, dot: hasNewChangelog },
     ...(user?.isAdmin ? [{ id: 'admin' as Tab, label: t('Admin'), icon: ShieldCheck }] : [])
   ];
+  const tabs = allTabs.filter((tab) => isTabAvailable(tab.id, game));
 
   const logo = (
     <img src="/logo.webp" alt="" width={36} height={36} className="w-9 h-9 shrink-0" />
@@ -283,6 +293,18 @@ export const Header: React.FC<HeaderProps> = ({
             {logo}
             <span className="text-base font-semibold tracking-tight text-stone-100">Mana Screw</span>
           </button>
+          {onSwitchGame && (
+            <button
+              type="button"
+              onClick={onSwitchGame}
+              title={t('Gra: {name}. Kliknij, aby zmienić', { name: GAMES[game].name })}
+              aria-label={t('Zmień grę')}
+              className="-ml-1 h-8 pl-2.5 pr-2 rounded-lg border border-stone-700 hover:border-stone-600 hover:bg-stone-800 text-xs font-medium text-stone-200 flex items-center gap-1.5 cursor-pointer shrink-0"
+            >
+              {GAMES[game].shortName}
+              <Repeat className="w-3.5 h-3.5 text-stone-400" />
+            </button>
+          )}
 
           {/* Wartość kolekcji */}
           <div className="hidden lg:flex items-center gap-4 ml-4 pl-4 border-l border-stone-800 text-sm tabular-nums">

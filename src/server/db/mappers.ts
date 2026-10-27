@@ -1,3 +1,4 @@
+import { isGameId, type GameId } from '../../games';
 import { CollectionItem, WishlistItem, Catalog, AppSettings, DeckItem, UserMessage } from '../../types';
 import { DbUser } from './types';
 
@@ -140,6 +141,7 @@ export function mapSettingsRow(r: any): AppSettings {
     Number.isFinite(parseFloat(r.saleTrendAdjustPct ?? r.sale_trend_adjust_pct))
       ? { saleTrendAdjustPct: parseFloat(r.saleTrendAdjustPct ?? r.sale_trend_adjust_pct) }
       : {}),
+    ...(isGameId(r.activeGame ?? r.active_game) ? { activeGame: (r.activeGame ?? r.active_game) as GameId } : {}),
   };
 }
 

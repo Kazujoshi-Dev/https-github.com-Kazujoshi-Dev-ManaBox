@@ -3,6 +3,7 @@ import { AppSettings } from '../../../types';
 import { withDb, readJsonFile, writeJsonAtomic, getUserDir } from '../storage';
 import { mapSettingsRow } from '../mappers';
 import { SALE_ADJUST_MIN, SALE_ADJUST_MAX } from '../../../utils/formatters';
+import { isGameAvailable } from '../../../games';
 
 const ROWS_PER_PAGE_OPTIONS = [12, 24, 48, 60];
 
@@ -39,7 +40,7 @@ export async function getSettings(userId: string): Promise<AppSettings | null> {
                 collection_rows_per_page as "collectionRowsPerPage", ui_language as "language",
                 show_binder_badge as "showBinderBadge", show_edhrec_rank as "showEdhrecRank",
                 show_price_tag as "showPriceTag", show_foil_badge as "showFoilBadge",
-                sale_trend_adjust_pct as "saleTrendAdjustPct"
+                sale_trend_adjust_pct as "saleTrendAdjustPct", active_game as "activeGame"
          FROM user_settings WHERE user_id = $1`,
         [userId]
       );
@@ -57,8 +58,8 @@ export async function saveSettings(userId: string, settings: AppSettings): Promi
     async (p) => {
       await p.query(
         `INSERT INTO user_settings (user_id, pricing_source, currency, eur_to_pln_rate, usd_to_pln_rate, auto_nbp_rate, collection_rows_per_page, ui_language,
-                                    show_binder_badge, show_edhrec_rank, show_price_tag, show_foil_badge, sale_trend_adjust_pct, updated_at)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, NOW())
+                                    show_binder_badge, show_edhrec_rank, show_price_tag, show_foil_badge, sale_trend_adjust_pct, active_game, updated_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, NOW())
          ON CONFLICT (user_id) DO UPDATE SET
            pricing_source = EXCLUDED.pricing_source,
            currency = EXCLUDED.currency,
@@ -72,6 +73,7 @@ export async function saveSettings(userId: string, settings: AppSettings): Promi
            show_price_tag = COALESCE(EXCLUDED.show_price_tag, user_settings.show_price_tag),
            show_foil_badge = COALESCE(EXCLUDED.show_foil_badge, user_settings.show_foil_badge),
            sale_trend_adjust_pct = COALESCE(EXCLUDED.sale_trend_adjust_pct, user_settings.sale_trend_adjust_pct),
+           active_game = COALESCE(EXCLUDED.active_game, user_settings.active_game),
            updated_at = NOW()`,
         [
           userId,
@@ -86,7 +88,8 @@ export async function saveSettings(userId: string, settings: AppSettings): Promi
           normalizeFlag(settings.showEdhrecRank),
           normalizeFlag(settings.showPriceTag),
           normalizeFlag(settings.showFoilBadge),
-          normalizeSaleAdjust(settings.saleTrendAdjustPct)
+          normalizeSaleAdjust(settings.saleTrendAdjustPct),
+          isGameAvailable(settings.activeGame) ? settings.activeGame : null
         ]
       );
       return settings;

@@ -46,7 +46,7 @@ export async function usersMissingTodaySnapshot(limit = 500): Promise<string[]> 
     async (p) => {
       const res = await p.query(
         `SELECT DISTINCT c.user_id FROM user_collections c
-          WHERE NOT EXISTS (
+          WHERE c.game = 'mtg' AND NOT EXISTS (
             SELECT 1 FROM collection_snapshots s
              WHERE s.user_id = c.user_id AND s.day = (NOW() AT TIME ZONE 'Europe/Warsaw')::date
           )

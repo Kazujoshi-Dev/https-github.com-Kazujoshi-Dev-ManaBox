@@ -111,3 +111,12 @@ export async function withDb<T>(
   }
   return fallbackOperation();
 }
+
+/**
+ * Plik danych gracza dla danej gry w zapisie lokalnym (bez bazy). MTG zostaje w dotychczasowych
+ * plikach (np. collection.json), inne gry mają własne (np. collection.pokemon.json).
+ */
+export function userGameFile(userId: string, baseName: string, game: string): string {
+  const name = !game || game === 'mtg' ? `${baseName}.json` : `${baseName}.${game.replace(/[^a-z0-9]/g, '')}.json`;
+  return path.join(getUserDir(userId), name);
+}

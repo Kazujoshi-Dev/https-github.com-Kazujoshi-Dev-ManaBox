@@ -1,13 +1,15 @@
-import path from 'path';
 import crypto from 'crypto';
 import { CollectionItem } from '../../../types';
-import { withDb, readJsonFile, writeJsonAtomic, getUserDir } from '../storage';
+import { withDb, readJsonFile, writeJsonAtomic, userGameFile } from '../storage';
+import { DEFAULT_GAME, type GameId } from '../../../games';
 import { mapCollectionRow } from '../mappers';
 import { entryKeyOf, matchesEntry, normalizeSourceDeckId, splitByFinish } from '../../../utils/collectionEntry';
 
 const newCollectionId = () => `col-${crypto.randomUUID()}`;
+/** Plik kolekcji danej gry w zapisie lokalnym. */
+const colFile = (userId: string, game: GameId) => userGameFile(userId, 'collection', game);
 
-export async function getCollection(userId: string): Promise<CollectionItem[]> {
+export async function getCollection(userId: string, game: GameId = DEFAULT_GAME): Promise<CollectionItem[]> {
   return withDb(
     async (p) => {
       const res = await p.query(
@@ -17,27 +19,24 @@ export async function getCollection(userId: string): Promise<CollectionItem[]> {
                 is_for_sale as "isForSale", sale_price as "salePrice",
                 previous_prices as "previousPrices", prices_changed_at as "pricesChangedAt",
                 source_deck_id as "sourceDeckId", sale_folder_id as "saleFolderId"
-         FROM user_collections WHERE user_id = $1 ORDER BY added_at DESC`,
-        [userId]
+         FROM user_collections WHERE user_id = $1 AND game = $2 ORDER BY added_at DESC`,
+        [userId, game]
       );
       return res.rows.map(mapCollectionRow);
     },
-    () => {
-      const userDir = getUserDir(userId);
-      return readJsonFile<CollectionItem[]>(path.join(userDir, 'collection.json'), []);
-    }
+    () => readJsonFile<CollectionItem[]>(colFile(userId, game), [])
   );
 }
 
-export async function addCollectionItem(userId: string, item: CollectionItem): Promise<CollectionItem> {
+export async function addCollectionItem(userId: string, item: CollectionItem, game: GameId = DEFAULT_GAME): Promise<CollectionItem> {
   return withDb(
     async (p) => {
       await p.query(
         `INSERT INTO user_collections (
           id, user_id, card_id, card, quantity, quantity_foil,
           condition, language, purchase_price, notes, binder,
-          added_at, last_updated_price_at, is_for_sale, sale_price, source_deck_id
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)`,
+          added_at, last_updated_price_at, is_for_sale, sale_price, source_deck_id, game
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)`,
         [
           item.id,
           userId,
@@ -54,17 +53,17 @@ export async function addCollectionItem(userId: string, item: CollectionItem): P
           item.lastUpdatedPriceAt || null,
           Boolean(item.isForSale),
           item.salePrice ?? null,
-          normalizeSourceDeckId(item.sourceDeckId)
+          normalizeSourceDeckId(item.sourceDeckId),
+          game
         ]
       );
       return item;
     },
     () => {
-      const userDir = getUserDir(userId);
-      const colFile = path.join(userDir, 'collection.json');
-      const items = readJsonFile<CollectionItem[]>(colFile, []);
+      const file = colFile(userId, game);
+      const items = readJsonFile<CollectionItem[]>(file, []);
       items.unshift(item);
-      writeJsonAtomic(colFile, items);
+      writeJsonAtomic(file, items);
       return item;
     }
   );
@@ -73,13 +72,14 @@ export async function addCollectionItem(userId: string, item: CollectionItem): P
 export async function updateCollectionItem(
   userId: string,
   id: string,
-  updates: Partial<CollectionItem>
+  updates: Partial<CollectionItem>,
+  game: GameId = DEFAULT_GAME
 ): Promise<CollectionItem | null> {
   return withDb(
     async (p) => {
       const existing = await p.query(
-        'SELECT * FROM user_collections WHERE id = $1 AND user_id = $2',
-        [id, userId]
+        'SELECT * FROM user_collections WHERE id = $1 AND user_id = $2 AND game = $3',
+        [id, userId, game]
       );
       if (existing.rows.length === 0) return null;
 
@@ -105,22 +105,21 @@ export async function updateCollectionItem(
              -- zmiana wydania karty: poprzednie ceny dotyczyły innego druku
              previous_prices = CASE WHEN card_id IS DISTINCT FROM $1::varchar THEN NULL ELSE previous_prices END,
              prices_changed_at = CASE WHEN card_id IS DISTINCT FROM $1::varchar THEN NULL ELSE prices_changed_at END
-         WHERE id = $12 AND user_id = $13
+         WHERE id = $12 AND user_id = $13 AND game = $14
          RETURNING id, card_id as "cardId", card, quantity, quantity_foil as "quantityFoil",
                    condition, language, purchase_price as "purchasePrice", notes, binder,
                    added_at as "addedAt", last_updated_price_at as "lastUpdatedPriceAt",
                    is_for_sale as "isForSale", sale_price as "salePrice",
                    previous_prices as "previousPrices", prices_changed_at as "pricesChangedAt",
                    source_deck_id as "sourceDeckId", sale_folder_id as "saleFolderId"`,
-        [newCardId, newCard, newQty, newQtyFoil, newCond, newLang, newPrice, newNotes, newBinder, newIsForSale, newSalePrice, id, userId]
+        [newCardId, newCard, newQty, newQtyFoil, newCond, newLang, newPrice, newNotes, newBinder, newIsForSale, newSalePrice, id, userId, game]
       );
 
       return res.rows[0] ? mapCollectionRow(res.rows[0]) : null;
     },
     () => {
-      const userDir = getUserDir(userId);
-      const colFile = path.join(userDir, 'collection.json');
-      const items = readJsonFile<CollectionItem[]>(colFile, []);
+      const file = colFile(userId, game);
+      const items = readJsonFile<CollectionItem[]>(file, []);
       const idx = items.findIndex((i) => i.id === id);
       if (idx === -1) return null;
 
@@ -130,26 +129,25 @@ export async function updateCollectionItem(
         cardId: updates.card?.id || updates.cardId || items[idx].cardId
       };
       if (!items[idx].isForSale) items[idx].saleFolderId = null;
-      writeJsonAtomic(colFile, items);
+      writeJsonAtomic(file, items);
       return items[idx];
     }
   );
 }
 
 
-export async function deleteCollectionItem(userId: string, id: string): Promise<boolean> {
+export async function deleteCollectionItem(userId: string, id: string, game: GameId = DEFAULT_GAME): Promise<boolean> {
   return withDb(
     async (p) => {
-      const res = await p.query('DELETE FROM user_collections WHERE id = $1 AND user_id = $2', [id, userId]);
+      const res = await p.query('DELETE FROM user_collections WHERE id = $1 AND user_id = $2 AND game = $3', [id, userId, game]);
       return (res.rowCount ?? 0) > 0;
     },
     () => {
-      const userDir = getUserDir(userId);
-      const colFile = path.join(userDir, 'collection.json');
-      const items = readJsonFile<CollectionItem[]>(colFile, []);
+      const file = colFile(userId, game);
+      const items = readJsonFile<CollectionItem[]>(file, []);
       const nextItems = items.filter((i) => i.id !== id);
       if (nextItems.length !== items.length) {
-        writeJsonAtomic(colFile, nextItems);
+        writeJsonAtomic(file, nextItems);
         return true;
       }
       return false;
@@ -157,25 +155,26 @@ export async function deleteCollectionItem(userId: string, id: string): Promise<
   );
 }
 
-export async function saveFullCollection(userId: string, collection: CollectionItem[]): Promise<void> {
+/** Zastępuje całą kolekcję danej gry (kolekcje innych gier zostają). */
+export async function saveFullCollection(userId: string, collection: CollectionItem[], game: GameId = DEFAULT_GAME): Promise<void> {
   return withDb(
     async (p) => {
       const client = await p.connect();
       try {
         await client.query('BEGIN');
-        await client.query('DELETE FROM user_collections WHERE user_id = $1', [userId]);
+        await client.query('DELETE FROM user_collections WHERE user_id = $1 AND game = $2', [userId, game]);
 
         if (collection.length > 0) {
           const CHUNK_SIZE = 50;
           for (let i = 0; i < collection.length; i += CHUNK_SIZE) {
             const chunk = collection.slice(i, i + CHUNK_SIZE);
             const valueClauses: string[] = [];
-            const params: any[] = [userId];
+            const params: any[] = [userId, game];
 
             chunk.forEach((item, idx) => {
-              const baseIndex = 2 + idx * 18;
+              const baseIndex = 3 + idx * 18;
               valueClauses.push(
-                `($${baseIndex}, $1, ${Array.from({ length: 17 }, (_, k) => `$${baseIndex + 1 + k}`).join(', ')})`
+                `($${baseIndex}, $1, $2, ${Array.from({ length: 17 }, (_, k) => `$${baseIndex + 1 + k}`).join(', ')})`
               );
               params.push(
                 item.id,
@@ -201,7 +200,7 @@ export async function saveFullCollection(userId: string, collection: CollectionI
 
             await client.query(
               `INSERT INTO user_collections (
-                id, user_id, card_id, card, quantity, quantity_foil,
+                id, user_id, game, card_id, card, quantity, quantity_foil,
                 condition, language, purchase_price, notes, binder,
                 added_at, last_updated_price_at, is_for_sale, sale_price,
                 previous_prices, prices_changed_at, source_deck_id, sale_folder_id
@@ -220,15 +219,15 @@ export async function saveFullCollection(userId: string, collection: CollectionI
       }
     },
     () => {
-      const userDir = getUserDir(userId);
-      writeJsonAtomic(path.join(userDir, 'collection.json'), collection);
+      writeJsonAtomic(colFile(userId, game), collection);
     }
   );
 }
 
 export async function addCollectionItems(
   userId: string,
-  newItems: CollectionItem[]
+  newItems: CollectionItem[],
+  game: GameId = DEFAULT_GAME
 ): Promise<CollectionItem[]> {
   if (!newItems || newItems.length === 0) return [];
 
@@ -258,13 +257,13 @@ export async function addCollectionItems(
 
           const existingRes = await client.query(
             `SELECT id, quantity, quantity_foil FROM user_collections
-             WHERE user_id = $1 AND card_id = $2 AND binder = $3 AND condition = $4 AND language = $5
+             WHERE user_id = $1 AND game = $7 AND card_id = $2 AND binder = $3 AND condition = $4 AND language = $5
                AND COALESCE(is_for_sale, FALSE) = FALSE
                AND source_deck_id IS NOT DISTINCT FROM $6
                AND ${foil ? 'quantity_foil > 0 AND quantity = 0' : 'quantity > 0 AND quantity_foil = 0'}
              ORDER BY added_at DESC
              LIMIT 1`,
-            [userId, key.cardId, key.binder, key.condition, key.language, key.sourceDeckId]
+            [userId, key.cardId, key.binder, key.condition, key.language, key.sourceDeckId, game]
           );
 
           if (existingRes.rows.length > 0) {
@@ -286,8 +285,8 @@ export async function addCollectionItems(
               `INSERT INTO user_collections (
                 id, user_id, card_id, card, quantity, quantity_foil,
                 condition, language, purchase_price, notes, binder,
-                added_at, last_updated_price_at, source_deck_id
-              ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)`,
+                added_at, last_updated_price_at, source_deck_id, game
+              ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)`,
               [
                 id,
                 userId,
@@ -303,6 +302,7 @@ export async function addCollectionItems(
                 addedAt,
                 item.lastUpdatedPriceAt || null,
                 key.sourceDeckId,
+                game,
               ]
             );
             inserted.push({
@@ -328,9 +328,8 @@ export async function addCollectionItems(
       }
     },
     () => {
-      const userDir = getUserDir(userId);
-      const colFile = path.join(userDir, 'collection.json');
-      const items = readJsonFile<CollectionItem[]>(colFile, []);
+      const file = colFile(userId, game);
+      const items = readJsonFile<CollectionItem[]>(file, []);
       const inserted: CollectionItem[] = [];
 
       for (const { foil, qty, item, key, id } of parts) {
@@ -355,7 +354,7 @@ export async function addCollectionItems(
         }
       }
 
-      writeJsonAtomic(colFile, items);
+      writeJsonAtomic(file, items);
       return inserted;
     }
   );
@@ -373,16 +372,16 @@ export interface PriceUpdate {
  * Aktualizuje wyłącznie dane cenowe pozycji kolekcji (karta z nowymi cenami,
  * poprzednie ceny, daty). Nie dotyka ilości, sprzedaży, notatek itp.
  */
-export async function updateCollectionPrices(userId: string, updates: PriceUpdate[]): Promise<void> {
+export async function updateCollectionPrices(userId: string, updates: PriceUpdate[], game: GameId = DEFAULT_GAME): Promise<void> {
   if (updates.length === 0) return;
   return withDb(
     async (p) => {
       const CHUNK = 200;
       for (let i = 0; i < updates.length; i += CHUNK) {
         const chunk = updates.slice(i, i + CHUNK);
-        const params: any[] = [userId];
+        const params: any[] = [userId, game];
         const rows = chunk.map((u, k) => {
-          const b = 2 + k * 5;
+          const b = 3 + k * 5;
           params.push(u.id, JSON.stringify(u.card), u.previousPrices ? JSON.stringify(u.previousPrices) : null, u.pricesChangedAt, u.lastUpdatedPriceAt);
           return `($${b}, $${b + 1}::jsonb, $${b + 2}::jsonb, $${b + 3}::timestamptz, $${b + 4}::timestamptz)`;
         });
@@ -390,13 +389,13 @@ export async function updateCollectionPrices(userId: string, updates: PriceUpdat
           `UPDATE user_collections AS c
            SET card = v.card, previous_prices = v.prev, prices_changed_at = v.changed_at, last_updated_price_at = v.updated_at
            FROM (VALUES ${rows.join(', ')}) AS v(id, card, prev, changed_at, updated_at)
-           WHERE c.id = v.id AND c.user_id = $1`,
+           WHERE c.id = v.id AND c.user_id = $1 AND c.game = $2`,
           params
         );
       }
     },
     () => {
-      const file = path.join(getUserDir(userId), 'collection.json');
+      const file = colFile(userId, game);
       const items = readJsonFile<CollectionItem[]>(file, []);
       const byId = new Map(updates.map((u) => [u.id, u]));
       for (const item of items) {

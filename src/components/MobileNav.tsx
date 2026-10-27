@@ -24,8 +24,11 @@ import {
   ShieldCheck,
   ScrollText,
   Bug,
-  Globe
+  Globe,
+  Plus,
+  Repeat
 } from 'lucide-react';
+import { DEFAULT_GAME, GAMES, hasScanner, isTabAvailable, type GameId } from '../games';
 import type { NavigationTab } from './TabContent';
 import { useBackToClose } from '../hooks/useBackButton';
 import type { AuthUser } from '../types';
@@ -44,6 +47,10 @@ interface MobileNavProps {
   user: AuthUser;
   hasNewChangelog?: boolean;
   onOpenBugReport?: () => void;
+  /** Aktywna gra: zakładki i skaner dostępne tylko w MTG są ukryte w innych grach. */
+  game?: GameId;
+  /** Otwiera ekran wyboru gry. */
+  onSwitchGame?: () => void;
 }
 
 /** Zakładki dostępne pod „Więcej” — na telefonie nie mieszczą się w dolnym pasku. */
@@ -77,11 +84,15 @@ export const MobileNav: React.FC<MobileNavProps> = ({
   unreadMessagesCount,
   user,
   hasNewChangelog = false,
-  onOpenBugReport
+  onOpenBugReport,
+  game = DEFAULT_GAME,
+  onSwitchGame
 }) => {
   const [isMoreOpen, setIsMoreOpen] = useState(false);
   useBackToClose(isMoreOpen, () => setIsMoreOpen(false));
-  const moreActive = MORE_TABS.some((t) => t.tab === activeTab) || activeTab === 'admin' || activeTab === 'settings';
+  const moreTabs = MORE_TABS.filter((x) => isTabAvailable(x.tab, game));
+  const scanner = hasScanner(game);
+  const moreActive = moreTabs.some((t) => t.tab === activeTab) || activeTab === 'admin' || activeTab === 'settings';
 
   // Zamknięcie arkusza klawiszem Escape i blokada przewijania strony pod spodem
   useEffect(() => {
@@ -132,16 +143,20 @@ export const MobileNav: React.FC<MobileNavProps> = ({
       >
         <div className="flex items-stretch px-1">
           <NavButton tab="collection" label={tk('Kolekcja')} icon={Layers} />
-          <NavButton tab="decks" label={tk('Talie')} icon={Swords} />
+          {isTabAvailable('decks', game) ? (
+            <NavButton tab="decks" label={tk('Talie')} icon={Swords} />
+          ) : (
+            <NavButton tab="wishlist" label={tk('Lista życzeń')} icon={FolderHeart} />
+          )}
           <div className="flex-1 flex justify-center">
             <button
               type="button"
-              onClick={onOpenScanner}
-              aria-label={t('Skanuj kartę')}
+              onClick={scanner ? onOpenScanner : () => go('search')}
+              aria-label={scanner ? t('Skanuj kartę') : t('Dodaj kartę')}
               className="-mt-5 w-16 h-16 rounded-full bg-amber-400 text-stone-950 flex flex-col items-center justify-center shadow-lg shadow-black/40 ring-4 ring-stone-950 active:scale-95 transition-transform"
             >
-              <Camera className="w-6 h-6 stroke-[2.5]" />
-              <span className="text-[11px] font-semibold leading-none mt-0.5">{t('Skanuj')}</span>
+              {scanner ? <Camera className="w-6 h-6 stroke-[2.5]" /> : <Plus className="w-6 h-6 stroke-[2.5]" />}
+              <span className="text-[11px] font-semibold leading-none mt-0.5">{scanner ? t('Skanuj') : t('Dodaj')}</span>
             </button>
           </div>
           <NavButton tab="search" label={tk('Szukaj')} icon={Search} />
@@ -196,7 +211,7 @@ export const MobileNav: React.FC<MobileNavProps> = ({
             </div>
 
             <div className="px-4 pt-4 grid grid-cols-3 gap-2.5">
-              {[...MORE_TABS, ...(user.isAdmin ? [{ tab: 'admin' as NavigationTab, label: tk('Admin'), icon: ShieldCheck }] : [])].map(({ tab, label, icon: Icon }) => (
+              {[...moreTabs, ...(user.isAdmin ? [{ tab: 'admin' as NavigationTab, label: tk('Admin'), icon: ShieldCheck }] : [])].map(({ tab, label, icon: Icon }) => (
                 <button
                   key={tab}
                   type="button"
@@ -230,6 +245,17 @@ export const MobileNav: React.FC<MobileNavProps> = ({
             </div>
 
             <div className="px-4 pt-4 space-y-1.5">
+              {onSwitchGame && (
+                <button
+                  type="button"
+                  onClick={run(onSwitchGame)}
+                  className="w-full h-12 px-4 rounded-xl bg-stone-950/60 border border-stone-800 text-stone-200 active:bg-stone-800 flex items-center gap-3 text-sm font-medium"
+                >
+                  <Repeat className="w-5 h-5 text-amber-400" />
+                  <span className="flex-1 text-left">{t('Zmień grę')}</span>
+                  <span className="text-xs text-stone-400">{GAMES[game].shortName}</span>
+                </button>
+              )}
               {[
                 { label: tk('Odśwież ceny'), icon: RefreshCw, onClick: onRefreshPrices, spin: isRefreshing },
                 { label: tk('Import kolekcji'), icon: Upload, onClick: () => onOpenImportExport('import') },

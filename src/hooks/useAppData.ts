@@ -11,6 +11,8 @@ interface UseAppDataProps {
   onUnauthorized: () => void;
   showToast: (message: string) => void;
   onSettingsLoaded?: (settings: Partial<AppSettings>) => void;
+  /** Aktywna gra: jej zmiana wczytuje dane od nowa (zapytania niosą grę w nagłówku). */
+  game?: string;
 }
 
 interface CardSaveInput {
@@ -24,7 +26,7 @@ interface CardSaveInput {
   binder?: string;
 }
 
-export function useAppData({ userId, onUnauthorized, showToast, onSettingsLoaded }: UseAppDataProps) {
+export function useAppData({ userId, onUnauthorized, showToast, onSettingsLoaded, game }: UseAppDataProps) {
   const t = useT();
   const [collection, setCollection] = useState<CollectionItem[]>([]);
   // Najświeższa kolekcja dla kilku zapisów pod rząd (np. skaner w trybie ciągłym)
@@ -52,6 +54,11 @@ export function useAppData({ userId, onUnauthorized, showToast, onSettingsLoaded
 
       try {
         setIsLoading(true);
+        // Po zmianie gry nie pokazujemy nawet przez chwilę kart poprzedniej gry
+        setCollection([]);
+        setWishlist([]);
+        setCatalogs([]);
+        setDecks([]);
 
         const [colRes, wishRes, catRes, setRes, deckRes] = await Promise.all([
           collectionApi.getAll(onUnauthorized),
@@ -103,7 +110,7 @@ export function useAppData({ userId, onUnauthorized, showToast, onSettingsLoaded
     return () => {
       isCurrent = false;
     };
-  }, [userId, onUnauthorized, onSettingsLoaded]);
+  }, [userId, onUnauthorized, onSettingsLoaded, game]);
 
   // Collection CRUD
   const deleteCollectionItem = useCallback(async (id: string) => {

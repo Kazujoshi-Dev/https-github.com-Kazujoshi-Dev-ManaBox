@@ -17,7 +17,7 @@ export async function listPublicDecksForSitemap(limit = 5000): Promise<SitemapDe
       const res = await p.query(
         `SELECT d.id, COALESCE(d.updated_at, d.created_at) AS updated_at
            FROM user_decks d JOIN users u ON u.id = d.user_id
-          WHERE d.is_public = TRUE
+          WHERE d.is_public = TRUE AND d.game = 'mtg'
             AND NOT COALESCE(u.ban_permanent, FALSE)
             AND (u.banned_until IS NULL OR u.banned_until < NOW())
           ORDER BY updated_at DESC
@@ -37,7 +37,7 @@ export async function listSellersForSitemap(limit = 5000): Promise<SitemapSeller
       const res = await p.query(
         `SELECT u.username, MAX(c.added_at) AS updated_at
            FROM user_collections c JOIN users u ON u.id = c.user_id
-          WHERE c.is_for_sale = TRUE
+          WHERE c.is_for_sale = TRUE AND c.game = 'mtg'
             AND NOT COALESCE(u.sale_hidden, FALSE)
             AND NOT COALESCE(u.ban_permanent, FALSE)
             AND (u.banned_until IS NULL OR u.banned_until < NOW())

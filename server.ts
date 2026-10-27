@@ -6,6 +6,7 @@ import crypto from 'crypto';
 import path from 'path';
 import fs from 'fs';
 import * as db from './src/server/db';
+import { DEFAULT_GAME, GAME_HEADER, isGameAvailable, type GameId } from './src/games';
 import type { PriceUpdate } from './src/server/db';
 import { hashPassword, verifyPassword, generateToken, verifyToken } from './src/server/auth';
 import { rateLimit, hit, clientIp } from './src/server/rateLimit';
@@ -1813,12 +1814,20 @@ app.get('/api/scryfall/prints', async (req, res) => {
   }
 });
 
+// --- AKTYWNA GRA (MTG, Pokémon, Lorcana) ---
+// Przeglądarka przesyła wybraną grę w nagłówku; kolekcja, klasery, lista życzeń, talie i foldery
+// „Sprzedam” są osobne dla każdej gry. Gra jeszcze niedostępna (lub brak nagłówka) = MTG.
+function gameOf(req: express.Request): GameId {
+  const raw = req.get(GAME_HEADER);
+  return isGameAvailable(raw) ? raw : DEFAULT_GAME;
+}
+
 // --- COLLECTION ENDPOINTS (USER-ISOLATED) ---
 
 app.get('/api/collection', authMiddleware, async (req, res) => {
   try {
     const userId = (req as any).userId;
-    const collection = await db.getCollection(userId);
+    const collection = await db.getCollection(userId, gameOf(req));
     res.json(collection);
   } catch (err: any) {
     sendServerError(res, err, '/api/collection');
@@ -1840,7 +1849,7 @@ app.post('/api/collection', authMiddleware, async (req, res) => {
       addedAt: new Date().toISOString(),
       ...req.body
     };
-    const saved = await db.addCollectionItem(userId, newItem);
+    const saved = await db.addCollectionItem(userId, newItem, gameOf(req));
     res.status(201).json(saved);
   } catch (err: any) {
     sendServerError(res, err, '/api/collection');
@@ -1854,13 +1863,13 @@ app.put('/api/collection/:id', authMiddleware, async (req, res) => {
     const body = req.body || {};
     // Wystawienie na sprzedaż (albo zmiana wydania pozycji z oferty) karty tylko z MTG Arena
     if (body.isForSale === true || (body.card && isDigitalOnly(body.card))) {
-      const current = (await db.getCollection(userId)).find((c) => c.id === id);
+      const current = (await db.getCollection(userId, gameOf(req))).find((c) => c.id === id);
       const willSell = body.isForSale !== undefined ? Boolean(body.isForSale) : Boolean(current?.isForSale);
       if (willSell && isDigitalOnly(body.card || current?.card)) {
         return res.status(400).json({ error: DIGITAL_BLOCK_MESSAGE });
       }
     }
-    const updated = await db.updateCollectionItem(userId, id, body);
+    const updated = await db.updateCollectionItem(userId, id, body, gameOf(req));
     if (!updated) {
       return res.status(404).json({ error: 'Nie znaleziono pozycji w Twojej kolekcji' });
     }
@@ -1874,7 +1883,7 @@ app.delete('/api/collection/:id', authMiddleware, async (req, res) => {
   try {
     const userId = (req as any).userId;
     const { id } = req.params;
-    const success = await db.deleteCollectionItem(userId, id);
+    const success = await db.deleteCollectionItem(userId, id, gameOf(req));
     res.json({ success, id });
   } catch (err: any) {
     sendServerError(res, err, '/api/collection/:id');
@@ -2006,7 +2015,7 @@ app.post('/api/collection/bulk-import', authMiddleware, async (req, res) => {
   try {
     const userId = (req as any).userId;
     const items = stripDigitalSale(Array.isArray(req.body) ? req.body : []);
-    await db.saveFullCollection(userId, items);
+    await db.saveFullCollection(userId, items, gameOf(req));
     res.json({ success: true, count: items.length });
   } catch (err: any) {
     sendServerError(res, err, '/api/collection/bulk-import');
@@ -2017,7 +2026,7 @@ app.post('/api/collection/bulk-add', authMiddleware, async (req, res) => {
   try {
     const userId = (req as any).userId;
     const items = stripDigitalSale(Array.isArray(req.body) ? req.body : []);
-    const added = await db.addCollectionItems(userId, items);
+    const added = await db.addCollectionItems(userId, items, gameOf(req));
     res.json({ success: true, count: added.length, items: added });
   } catch (err: any) {
     console.error('Error in /api/collection/bulk-add:', err);
@@ -2041,7 +2050,8 @@ const lastPriceApiRefresh = new Map<string, number>();
 app.post('/api/collection/refresh-prices', authMiddleware, refreshPricesLimiter, async (req, res) => {
   try {
     const userId = (req as any).userId;
-    const collection = await db.getCollection(userId);
+    const game = gameOf(req);
+    const collection = await db.getCollection(userId, game);
     let changedCount = 0;
     const now = new Date().toISOString();
     const updates: PriceUpdate[] = [];
@@ -2134,7 +2144,7 @@ app.post('/api/collection/refresh-prices', authMiddleware, refreshPricesLimiter,
     }
 
     // Tylko ceny — nie nadpisujemy reszty pozycji (np. oznaczeń „na sprzedaż”)
-    await db.updateCollectionPrices(userId, updates);
+    await db.updateCollectionPrices(userId, updates, game);
     res.json({
       success: true,
       updatedCount: updates.length,
@@ -2142,7 +2152,7 @@ app.post('/api/collection/refresh-prices', authMiddleware, refreshPricesLimiter,
       skippedCount,
       fromLocal,
       fromApi,
-      collection: await db.getCollection(userId)
+      collection: await db.getCollection(userId, game)
     });
   } catch (err: any) {
     sendServerError(res, err, '/api/collection/refresh-prices');
@@ -2154,7 +2164,7 @@ app.post('/api/collection/refresh-prices', authMiddleware, refreshPricesLimiter,
 app.get('/api/catalogs', authMiddleware, async (req, res) => {
   try {
     const userId = (req as any).userId;
-    const catalogs = await db.getCatalogs(userId);
+    const catalogs = await db.getCatalogs(userId, gameOf(req));
     res.json(catalogs);
   } catch (err: any) {
     sendServerError(res, err, '/api/catalogs');
@@ -2172,7 +2182,8 @@ app.post('/api/catalogs', authMiddleware, async (req, res) => {
       return res.status(400).json({ error: 'Nazwa katalogu może mieć najwyżej 150 znaków.' });
     }
 
-    const catalogs = await db.getCatalogs(userId);
+    const game = gameOf(req);
+    const catalogs = await db.getCatalogs(userId, game);
     if (catalogs.some(c => c.name.toLowerCase() === name.trim().toLowerCase())) {
       return res.status(400).json({ error: 'Katalog o takiej nazwie już istnieje' });
     }
@@ -2186,9 +2197,9 @@ app.post('/api/catalogs', authMiddleware, async (req, res) => {
       isDefault: Boolean(isDefault) || catalogs.length === 0
     };
 
-    const saved = await db.addCatalog(userId, newCatalog);
+    const saved = await db.addCatalog(userId, newCatalog, game);
     if (newCatalog.isDefault) {
-      await db.setDefaultCatalog(userId, saved.id);
+      await db.setDefaultCatalog(userId, saved.id, game);
     }
     res.status(201).json(saved);
   } catch (err: any) {
@@ -2205,7 +2216,7 @@ app.put('/api/catalogs/:id', authMiddleware, async (req, res) => {
       description: typeof description === 'string' ? description : undefined,
       color: typeof color === 'string' ? color.slice(0, 50) : undefined,
       isDefault: typeof isDefault === 'boolean' ? isDefault : undefined
-    });
+    }, gameOf(req));
     res.json(updated);
   } catch (err: any) {
     if (err instanceof db.CatalogError) return res.status(err.status).json({ error: err.message });
@@ -2217,7 +2228,7 @@ app.put('/api/catalogs/:id', authMiddleware, async (req, res) => {
 app.post('/api/catalogs/:id/empty', authMiddleware, async (req, res) => {
   try {
     const userId = (req as any).userId;
-    const result = await db.emptyCatalog(userId, req.params.id);
+    const result = await db.emptyCatalog(userId, req.params.id, gameOf(req));
     res.json({ success: true, ...result });
   } catch (err: any) {
     if (err instanceof db.CatalogError) return res.status(err.status).json({ error: err.message });
@@ -2229,7 +2240,7 @@ app.post('/api/catalogs/:id/set-default', authMiddleware, async (req, res) => {
   try {
     const userId = (req as any).userId;
     const { id } = req.params;
-    const catalogs = await db.setDefaultCatalog(userId, id);
+    const catalogs = await db.setDefaultCatalog(userId, id, gameOf(req));
     const target = catalogs.find(c => c.id === id);
     res.json({ success: true, defaultCatalog: target, catalogs });
   } catch (err: any) {
@@ -2243,8 +2254,9 @@ app.delete('/api/catalogs/:id', authMiddleware, async (req, res) => {
     const { id } = req.params;
     // ?withCards=1: najpierw usuwamy karty katalogu z kolekcji (poza wystawionymi na sprzedaż), potem sam katalog
     const withCards = req.query.withCards === '1' || req.query.withCards === 'true';
-    const emptied = withCards ? await db.emptyCatalog(userId, id) : null;
-    const result = await db.deleteCatalog(userId, id);
+    const game = gameOf(req);
+    const emptied = withCards ? await db.emptyCatalog(userId, id, game) : null;
+    const result = await db.deleteCatalog(userId, id, game);
     res.json({
       success: true,
       id,
@@ -2920,7 +2932,7 @@ function sendSaleFolderError(res: express.Response, err: any, route: string) {
 
 app.get('/api/sale-folders', authMiddleware, async (req, res) => {
   try {
-    res.json({ folders: await db.getSaleFolders((req as any).userId) });
+    res.json({ folders: await db.getSaleFolders((req as any).userId, gameOf(req)) });
   } catch (err: any) {
     sendSaleFolderError(res, err, '/api/sale-folders');
   }
@@ -2928,7 +2940,7 @@ app.get('/api/sale-folders', authMiddleware, async (req, res) => {
 
 app.post('/api/sale-folders', authMiddleware, saleFoldersLimiter, async (req, res) => {
   try {
-    res.status(201).json(await db.createSaleFolder((req as any).userId, req.body?.name));
+    res.status(201).json(await db.createSaleFolder((req as any).userId, req.body?.name, gameOf(req)));
   } catch (err: any) {
     sendSaleFolderError(res, err, 'POST /api/sale-folders');
   }
@@ -2939,7 +2951,7 @@ app.post('/api/sale-folders/move', authMiddleware, saleFoldersLimiter, async (re
   try {
     const itemIds = Array.isArray(req.body?.itemIds) ? req.body.itemIds : [];
     const folderId = typeof req.body?.folderId === 'string' && req.body.folderId ? req.body.folderId : null;
-    const moved = await db.moveItemsToSaleFolder((req as any).userId, itemIds, folderId);
+    const moved = await db.moveItemsToSaleFolder((req as any).userId, itemIds, folderId, gameOf(req));
     res.json({ moved, folderId });
   } catch (err: any) {
     sendSaleFolderError(res, err, '/api/sale-folders/move');
@@ -2948,7 +2960,7 @@ app.post('/api/sale-folders/move', authMiddleware, saleFoldersLimiter, async (re
 
 app.put('/api/sale-folders/:id', authMiddleware, saleFoldersLimiter, async (req, res) => {
   try {
-    const folder = await db.renameSaleFolder((req as any).userId, req.params.id, req.body?.name);
+    const folder = await db.renameSaleFolder((req as any).userId, req.params.id, req.body?.name, gameOf(req));
     if (!folder) return res.status(404).json({ error: 'Nie znaleziono folderu.' });
     res.json(folder);
   } catch (err: any) {
@@ -2958,7 +2970,7 @@ app.put('/api/sale-folders/:id', authMiddleware, saleFoldersLimiter, async (req,
 
 app.delete('/api/sale-folders/:id', authMiddleware, saleFoldersLimiter, async (req, res) => {
   try {
-    const ok = await db.deleteSaleFolder((req as any).userId, req.params.id);
+    const ok = await db.deleteSaleFolder((req as any).userId, req.params.id, gameOf(req));
     if (!ok) return res.status(404).json({ error: 'Nie znaleziono folderu.' });
     res.json({ success: true });
   } catch (err: any) {
@@ -3148,7 +3160,7 @@ app.get('/api/public/wishlist/:userRef', async (req, res) => {
 app.get('/api/wishlist', authMiddleware, async (req, res) => {
   try {
     const userId = (req as any).userId;
-    const wishlist = await db.getWishlist(userId);
+    const wishlist = await db.getWishlist(userId, gameOf(req));
     res.json(wishlist);
   } catch (err: any) {
     sendServerError(res, err, '/api/wishlist');
@@ -3165,7 +3177,7 @@ app.post('/api/wishlist', authMiddleware, async (req, res) => {
       id: `wish-${crypto.randomUUID()}`,
       addedAt: new Date().toISOString()
     };
-    const saved = await db.addWishlistItem(userId, newItem);
+    const saved = await db.addWishlistItem(userId, newItem, gameOf(req));
     res.status(201).json(saved);
   } catch (err: any) {
     sendServerError(res, err, '/api/wishlist');
@@ -3191,7 +3203,7 @@ app.put('/api/wishlist/:id', authMiddleware, async (req, res) => {
       patch.targetQuantity = q;
     }
     if (b.notes !== undefined) patch.notes = String(b.notes).slice(0, 500);
-    const updated = await db.updateWishlistItem(userId, String(req.params.id), patch);
+    const updated = await db.updateWishlistItem(userId, String(req.params.id), patch, gameOf(req));
     if (!updated) return res.status(404).json({ error: 'Nie znaleziono pozycji na liście życzeń.' });
     res.json(updated);
   } catch (err: any) {
@@ -3203,7 +3215,7 @@ app.delete('/api/wishlist/:id', authMiddleware, async (req, res) => {
   try {
     const userId = (req as any).userId;
     const { id } = req.params;
-    const success = await db.deleteWishlistItem(userId, id);
+    const success = await db.deleteWishlistItem(userId, id, gameOf(req));
     res.json({ success, id });
   } catch (err: any) {
     sendServerError(res, err, '/api/wishlist/:id');
@@ -3420,7 +3432,7 @@ app.post('/api/settings', authMiddleware, async (req, res) => {
 app.get('/api/decks', authMiddleware, async (req, res) => {
   try {
     const userId = (req as any).userId;
-    const decks = await db.getDecks(userId);
+    const decks = await db.getDecks(userId, gameOf(req));
     res.json(decks);
   } catch (err: any) {
     sendServerError(res, err, '/api/decks');
@@ -3447,7 +3459,7 @@ app.post('/api/decks', authMiddleware, async (req, res) => {
       updatedAt: new Date().toISOString()
     };
 
-    const saved = await db.saveDeck(userId, newDeck);
+    const saved = await db.saveDeck(userId, newDeck, gameOf(req));
     res.status(201).json(saved);
   } catch (err: any) {
     sendServerError(res, err, '/api/decks');
@@ -3464,7 +3476,7 @@ app.put('/api/decks/:id', authMiddleware, async (req, res) => {
       cardSource: req.body.cardSource === 'all' ? 'all' : 'collection',
       format: req.body.format || 'EDH Commander'
     };
-    const saved = await db.saveDeck(userId, deckToSave);
+    const saved = await db.saveDeck(userId, deckToSave, gameOf(req));
     if (!saved) return res.status(404).json({ error: 'Nie znaleziono talii.' });
     res.json(saved);
   } catch (err: any) {
@@ -3475,7 +3487,7 @@ app.put('/api/decks/:id', authMiddleware, async (req, res) => {
 // Publiczny link do talii: włączenie / wyłączenie
 app.put('/api/decks/:id/visibility', authMiddleware, async (req, res) => {
   try {
-    const ok = await db.setDeckPublic((req as any).userId, String(req.params.id), req.body?.isPublic === true);
+    const ok = await db.setDeckPublic((req as any).userId, String(req.params.id), req.body?.isPublic === true, gameOf(req));
     if (ok) clearSeoCache();
     if (!ok) return res.status(404).json({ error: 'Nie znaleziono talii.' });
     res.json({ success: true, isPublic: req.body?.isPublic === true });
@@ -3488,7 +3500,7 @@ app.delete('/api/decks/:id', authMiddleware, async (req, res) => {
   try {
     const userId = (req as any).userId;
     const { id } = req.params;
-    const success = await db.deleteDeck(userId, id);
+    const success = await db.deleteDeck(userId, id, gameOf(req));
     res.json({ success, id });
   } catch (err: any) {
     sendServerError(res, err, '/api/decks/:id');

@@ -1,7 +1,7 @@
-import path from 'path';
 import type { PoolClient } from 'pg';
 import { Catalog, CollectionItem } from '../../../types';
-import { withDb, readJsonFile, writeJsonAtomic, getUserDir } from '../storage';
+import { withDb, readJsonFile, writeJsonAtomic, userGameFile } from '../storage';
+import { DEFAULT_GAME, type GameId } from '../../../games';
 import { mapCatalogRow } from '../mappers';
 import { MAIN_CATALOG_NAME, newMainCatalog } from '../schema';
 
@@ -15,26 +15,26 @@ export class CatalogError extends Error {
 }
 
 const SELECT_CATALOGS = `SELECT id, name, description, color, is_default as "isDefault", is_main as "isMain", created_at as "createdAt"
-   FROM user_catalogs WHERE user_id = $1 ORDER BY is_main DESC, created_at ASC`;
+   FROM user_catalogs WHERE user_id = $1 AND game = $2 ORDER BY is_main DESC, created_at ASC`;
 
-export async function insertCatalog(client: { query: PoolClient['query'] }, userId: string, cat: Catalog) {
+export async function insertCatalog(client: { query: PoolClient['query'] }, userId: string, cat: Catalog, game: GameId = DEFAULT_GAME) {
   await client.query(
-    `INSERT INTO user_catalogs (id, user_id, name, description, color, is_default, is_main, created_at)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
-    [cat.id, userId, cat.name, cat.description || '', cat.color || 'amber', Boolean(cat.isDefault), Boolean(cat.isMain), cat.createdAt]
+    `INSERT INTO user_catalogs (id, user_id, name, description, color, is_default, is_main, created_at, game)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+    [cat.id, userId, cat.name, cat.description || '', cat.color || 'amber', Boolean(cat.isDefault), Boolean(cat.isMain), cat.createdAt, game]
   );
 }
 
 // ---------- zapis lokalny (bez bazy) ----------
-function catFileOf(userId: string) {
-  return path.join(getUserDir(userId), 'catalogs.json');
+function catFileOf(userId: string, game: GameId) {
+  return userGameFile(userId, 'catalogs', game);
 }
-function colFileOf(userId: string) {
-  return path.join(getUserDir(userId), 'collection.json');
+function colFileOf(userId: string, game: GameId) {
+  return userGameFile(userId, 'collection', game);
 }
 /** Katalogi z pliku, zawsze z głównym klaserem na początku. */
-function readLocalCatalogs(userId: string): Catalog[] {
-  let catalogs = readJsonFile<Catalog[]>(catFileOf(userId), []);
+function readLocalCatalogs(userId: string, game: GameId): Catalog[] {
+  let catalogs = readJsonFile<Catalog[]>(catFileOf(userId, game), []);
   let changed = false;
   if (!catalogs.some((c) => c.isMain)) {
     const byName = catalogs.find((c) => c.name === MAIN_CATALOG_NAME);
@@ -42,15 +42,15 @@ function readLocalCatalogs(userId: string): Catalog[] {
     else catalogs.unshift(newMainCatalog(!catalogs.some((c) => c.isDefault)));
     changed = true;
   }
-  if (changed) writeJsonAtomic(catFileOf(userId), catalogs);
+  if (changed) writeJsonAtomic(catFileOf(userId, game), catalogs);
   return [...catalogs.filter((c) => c.isMain), ...catalogs.filter((c) => !c.isMain)];
 }
 
-/** Katalogi użytkownika. Konto bez głównego klasera dostaje go automatycznie. */
-export async function getCatalogs(userId: string): Promise<Catalog[]> {
+/** Katalogi użytkownika w danej grze. Gra bez głównego klasera dostaje go automatycznie. */
+export async function getCatalogs(userId: string, game: GameId = DEFAULT_GAME): Promise<Catalog[]> {
   return withDb(
     async (p) => {
-      const res = await p.query(SELECT_CATALOGS, [userId]);
+      const res = await p.query(SELECT_CATALOGS, [userId, game]);
       if (res.rows.some((r) => r.isMain)) return res.rows.map(mapCatalogRow);
 
       // Blokada na użytkownika, żeby dwa równoległe zapytania nie utworzyły go podwójnie
@@ -58,12 +58,12 @@ export async function getCatalogs(userId: string): Promise<Catalog[]> {
       try {
         await client.query('BEGIN');
         await client.query('SELECT pg_advisory_xact_lock(hashtext($1))', [`catalogs:${userId}`]);
-        const main = await client.query('SELECT 1 FROM user_catalogs WHERE user_id = $1 AND is_main LIMIT 1', [userId]);
+        const main = await client.query('SELECT 1 FROM user_catalogs WHERE user_id = $1 AND game = $2 AND is_main LIMIT 1', [userId, game]);
         if (main.rows.length === 0) {
-          const hasDefault = await client.query('SELECT 1 FROM user_catalogs WHERE user_id = $1 AND is_default LIMIT 1', [userId]);
-          await insertCatalog(client, userId, newMainCatalog(hasDefault.rows.length === 0));
+          const hasDefault = await client.query('SELECT 1 FROM user_catalogs WHERE user_id = $1 AND game = $2 AND is_default LIMIT 1', [userId, game]);
+          await insertCatalog(client, userId, newMainCatalog(hasDefault.rows.length === 0), game);
         }
-        const rows = await client.query(SELECT_CATALOGS, [userId]);
+        const rows = await client.query(SELECT_CATALOGS, [userId, game]);
         await client.query('COMMIT');
         return rows.rows.map(mapCatalogRow);
       } catch (err) {
@@ -73,35 +73,35 @@ export async function getCatalogs(userId: string): Promise<Catalog[]> {
         client.release();
       }
     },
-    () => readLocalCatalogs(userId)
+    () => readLocalCatalogs(userId, game)
   );
 }
 
-export async function addCatalog(userId: string, catalog: Catalog): Promise<Catalog> {
+export async function addCatalog(userId: string, catalog: Catalog, game: GameId = DEFAULT_GAME): Promise<Catalog> {
   const cat = { ...catalog, isMain: false };
   return withDb(
     async (p) => {
-      await insertCatalog(p, userId, cat);
+      await insertCatalog(p, userId, cat, game);
       return cat;
     },
     () => {
-      const catalogs = readLocalCatalogs(userId);
+      const catalogs = readLocalCatalogs(userId, game);
       catalogs.push(cat);
-      writeJsonAtomic(catFileOf(userId), catalogs);
+      writeJsonAtomic(catFileOf(userId, game), catalogs);
       return cat;
     }
   );
 }
 
-export async function setDefaultCatalog(userId: string, catalogId: string): Promise<Catalog[]> {
+export async function setDefaultCatalog(userId: string, catalogId: string, game: GameId = DEFAULT_GAME): Promise<Catalog[]> {
   return withDb(
     async (p) => {
-      await p.query('UPDATE user_catalogs SET is_default = (id = $2) WHERE user_id = $1', [userId, catalogId]);
-      return getCatalogs(userId);
+      await p.query('UPDATE user_catalogs SET is_default = (id = $2) WHERE user_id = $1 AND game = $3', [userId, catalogId, game]);
+      return getCatalogs(userId, game);
     },
     () => {
-      const catalogs = readLocalCatalogs(userId).map((c) => ({ ...c, isDefault: c.id === catalogId }));
-      writeJsonAtomic(catFileOf(userId), catalogs);
+      const catalogs = readLocalCatalogs(userId, game).map((c) => ({ ...c, isDefault: c.id === catalogId }));
+      writeJsonAtomic(catFileOf(userId, game), catalogs);
       return catalogs;
     }
   );
@@ -114,9 +114,10 @@ export async function setDefaultCatalog(userId: string, catalogId: string): Prom
 export async function updateCatalog(
   userId: string,
   catalogId: string,
-  updates: { name?: string; description?: string; color?: string; isDefault?: boolean }
+  updates: { name?: string; description?: string; color?: string; isDefault?: boolean },
+  game: GameId = DEFAULT_GAME
 ): Promise<Catalog> {
-  const catalogs = await getCatalogs(userId);
+  const catalogs = await getCatalogs(userId, game);
   const target = catalogs.find((c) => c.id === catalogId);
   if (!target) throw new CatalogError('Nie znaleziono katalogu.', 404);
 
@@ -141,16 +142,16 @@ export async function updateCatalog(
       try {
         await client.query('BEGIN');
         await client.query(
-          'UPDATE user_catalogs SET name = $3, description = $4, color = $5 WHERE id = $1 AND user_id = $2',
-          [catalogId, userId, name, description, color]
+          'UPDATE user_catalogs SET name = $3, description = $4, color = $5 WHERE id = $1 AND user_id = $2 AND game = $6',
+          [catalogId, userId, name, description, color, game]
         );
         if (name !== target.name) {
-          await client.query('UPDATE user_collections SET binder = $3 WHERE user_id = $1 AND binder = $2', [userId, target.name, name]);
+          await client.query('UPDATE user_collections SET binder = $3 WHERE user_id = $1 AND binder = $2 AND game = $4', [userId, target.name, name, game]);
         }
         if (makeDefault) {
-          await client.query('UPDATE user_catalogs SET is_default = (id = $2) WHERE user_id = $1', [userId, catalogId]);
+          await client.query('UPDATE user_catalogs SET is_default = (id = $2) WHERE user_id = $1 AND game = $3', [userId, catalogId, game]);
         } else if (unsetDefault) {
-          await client.query('UPDATE user_catalogs SET is_default = is_main WHERE user_id = $1', [userId]);
+          await client.query('UPDATE user_catalogs SET is_default = is_main WHERE user_id = $1 AND game = $2', [userId, game]);
         }
         await client.query('COMMIT');
       } catch (err) {
@@ -159,20 +160,20 @@ export async function updateCatalog(
       } finally {
         client.release();
       }
-      const fresh = await getCatalogs(userId);
+      const fresh = await getCatalogs(userId, game);
       return fresh.find((c) => c.id === catalogId)!;
     },
     () => {
-      let list = readLocalCatalogs(userId).map((c) => (c.id === catalogId ? { ...c, name, description, color } : c));
+      let list = readLocalCatalogs(userId, game).map((c) => (c.id === catalogId ? { ...c, name, description, color } : c));
       if (makeDefault) list = list.map((c) => ({ ...c, isDefault: c.id === catalogId }));
       else if (unsetDefault) list = list.map((c) => ({ ...c, isDefault: Boolean(c.isMain) }));
-      writeJsonAtomic(catFileOf(userId), list);
+      writeJsonAtomic(catFileOf(userId, game), list);
       if (name !== target.name) {
-        const collection = readJsonFile<CollectionItem[]>(colFileOf(userId), []);
+        const collection = readJsonFile<CollectionItem[]>(colFileOf(userId, game), []);
         collection.forEach((i) => {
           if (i.binder === target.name) i.binder = name;
         });
-        writeJsonAtomic(colFileOf(userId), collection);
+        writeJsonAtomic(colFileOf(userId, game), collection);
       }
       return list.find((c) => c.id === catalogId)!;
     }
@@ -185,9 +186,10 @@ export async function updateCatalog(
  */
 export async function deleteCatalog(
   userId: string,
-  catalogId: string
+  catalogId: string,
+  game: GameId = DEFAULT_GAME
 ): Promise<{ catalogs: Catalog[]; reassignedTo: string; deletedItems: number }> {
-  const catalogs = await getCatalogs(userId);
+  const catalogs = await getCatalogs(userId, game);
   const target = catalogs.find((c) => c.id === catalogId);
   if (!target) throw new CatalogError('Nie znaleziono katalogu do usunięcia.', 404);
   if (target.isMain) {
@@ -200,11 +202,11 @@ export async function deleteCatalog(
       const client = await p.connect();
       try {
         await client.query('BEGIN');
-        await client.query('DELETE FROM user_catalogs WHERE id = $1 AND user_id = $2', [catalogId, userId]);
+        await client.query('DELETE FROM user_catalogs WHERE id = $1 AND user_id = $2 AND game = $3', [catalogId, userId, game]);
         if (target.isDefault) {
-          await client.query('UPDATE user_catalogs SET is_default = is_main WHERE user_id = $1', [userId]);
+          await client.query('UPDATE user_catalogs SET is_default = is_main WHERE user_id = $1 AND game = $2', [userId, game]);
         }
-        await client.query('UPDATE user_collections SET binder = $1 WHERE user_id = $2 AND binder = $3', [main.name, userId, target.name]);
+        await client.query('UPDATE user_collections SET binder = $1 WHERE user_id = $2 AND binder = $3 AND game = $4', [main.name, userId, target.name, game]);
         await client.query('COMMIT');
       } catch (err) {
         await client.query('ROLLBACK').catch(() => undefined);
@@ -212,13 +214,13 @@ export async function deleteCatalog(
       } finally {
         client.release();
       }
-      return { catalogs: await getCatalogs(userId), reassignedTo: main.name, deletedItems: 0 };
+      return { catalogs: await getCatalogs(userId, game), reassignedTo: main.name, deletedItems: 0 };
     },
     () => {
       let remaining = catalogs.filter((c) => c.id !== catalogId);
       if (target.isDefault) remaining = remaining.map((c) => ({ ...c, isDefault: Boolean(c.isMain) }));
-      writeJsonAtomic(catFileOf(userId), remaining);
-      const collection = readJsonFile<CollectionItem[]>(colFileOf(userId), []);
+      writeJsonAtomic(catFileOf(userId, game), remaining);
+      const collection = readJsonFile<CollectionItem[]>(colFileOf(userId, game), []);
       let changed = false;
       collection.forEach((item) => {
         if (item.binder === target.name) {
@@ -226,30 +228,30 @@ export async function deleteCatalog(
           changed = true;
         }
       });
-      if (changed) writeJsonAtomic(colFileOf(userId), collection);
+      if (changed) writeJsonAtomic(colFileOf(userId, game), collection);
       return { catalogs: remaining, reassignedTo: main.name, deletedItems: 0 };
     }
   );
 }
 
 /** Usuwa z kolekcji wszystkie karty katalogu poza wystawionymi na sprzedaż. Sam katalog zostaje. */
-export async function emptyCatalog(userId: string, catalogId: string): Promise<{ deletedItems: number }> {
-  const catalogs = await getCatalogs(userId);
+export async function emptyCatalog(userId: string, catalogId: string, game: GameId = DEFAULT_GAME): Promise<{ deletedItems: number }> {
+  const catalogs = await getCatalogs(userId, game);
   const target = catalogs.find((c) => c.id === catalogId);
   if (!target) throw new CatalogError('Nie znaleziono katalogu.', 404);
 
   return withDb(
     async (p) => {
       const del = await p.query(
-        'DELETE FROM user_collections WHERE user_id = $1 AND binder = $2 AND NOT COALESCE(is_for_sale, FALSE)',
-        [userId, target.name]
+        'DELETE FROM user_collections WHERE user_id = $1 AND binder = $2 AND game = $3 AND NOT COALESCE(is_for_sale, FALSE)',
+        [userId, target.name, game]
       );
       return { deletedItems: del.rowCount ?? 0 };
     },
     () => {
-      const collection = readJsonFile<CollectionItem[]>(colFileOf(userId), []);
+      const collection = readJsonFile<CollectionItem[]>(colFileOf(userId, game), []);
       const kept = collection.filter((i) => i.binder !== target.name || Boolean(i.isForSale));
-      writeJsonAtomic(colFileOf(userId), kept);
+      writeJsonAtomic(colFileOf(userId, game), kept);
       return { deletedItems: collection.length - kept.length };
     }
   );

@@ -119,6 +119,8 @@ export interface AppSettings {
   showFoilBadge?: boolean;
   /** Korekta domyślnej ceny wystawianych kart względem Cardmarket Trend, w procentach (np. -10 lub 15). */
   saleTrendAdjustPct?: number;
+  /** Ostatnio wybrana gra karciana (ekran wyboru po zalogowaniu). */
+  activeGame?: import('./games').GameId;
 }
 
 export interface Catalog {
