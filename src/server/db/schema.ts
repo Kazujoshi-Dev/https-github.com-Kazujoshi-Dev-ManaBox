@@ -215,6 +215,15 @@ export async function initDb(): Promise<void> {
             updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
             PRIMARY KEY (user_id, day)
           );
+          -- Kopie zapasowe danych gracza (kolekcja, klasery, talie, lista życzeń): dzienna i sprzed przywrócenia
+          CREATE TABLE IF NOT EXISTS user_backups (
+            user_id VARCHAR(64) NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            kind VARCHAR(20) NOT NULL,
+            created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+            summary JSONB NOT NULL,
+            data BYTEA NOT NULL,
+            PRIMARY KEY (user_id, kind)
+          );
           -- polubienia talii społeczności: jedno na osobę i talię
           CREATE TABLE IF NOT EXISTS deck_likes (
             deck_id VARCHAR(64) NOT NULL REFERENCES user_decks(id) ON DELETE CASCADE,

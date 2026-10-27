@@ -13,6 +13,7 @@ export * from './repositories/sessionRepository';
 export * from './repositories/profileRepository';
 export * from './repositories/adminRepository';
 export * from './repositories/snapshotRepository';
+export * from './repositories/backupRepository';
 export * from './repositories/seoRepository';
 export * from './repositories/changelogRepository';
 export * from './repositories/bugReportRepository';

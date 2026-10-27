@@ -3,11 +3,11 @@ import { publicUrl } from '../utils/publicLinks';
 import React, { useEffect, useRef, useState } from 'react';
 import {
   Settings, User, Coins, ShieldCheck, Share2, Database, Check, RefreshCw, Euro, DollarSign, LogOut, Loader2,
-  KeyRound, Eye, EyeOff, LayoutGrid, Folder, Trophy, Tag, Sparkles, Copy, ExternalLink, Download, Upload, AlertCircle, CheckCircle2, Trash2
+  KeyRound, Eye, EyeOff, LayoutGrid, Folder, Trophy, Tag, Sparkles, Copy, ExternalLink, Download, Upload, AlertCircle, CheckCircle2, Trash2, History, RotateCcw
 } from 'lucide-react';
 import { AppSettings, AuthUser, CurrencyCode, PricingSource } from '../types';
 import { DEFAULT_SETTINGS, formatCurrency, getSaleAdjustPct, formatSaleAdjustPct, SALE_ADJUST_MIN, SALE_ADJUST_MAX } from '../utils/formatters';
-import { authApi, messagesApi } from '../services/api';
+import { authApi, messagesApi, backupsApi, type BackupSummary } from '../services/api';
 import { CityPicker } from './CityPicker';
 import { useT, useLang, locale, tk, type Lang } from '../i18n';
 import { LANGUAGE_OPTIONS } from './ui/LanguageSwitcher';
@@ -20,7 +20,7 @@ const SECTIONS: Array<{ id: Section; label: string; hint: string; icon: React.El
   { id: 'display', label: tk('Wygląd kart'), hint: tk('Oznaczenia na kartach kolekcji'), icon: LayoutGrid },
   { id: 'security', label: tk('Bezpieczeństwo'), hint: tk('Hasło, sesje'), icon: ShieldCheck },
   { id: 'sharing', label: tk('Udostępnianie'), hint: tk('Publiczne linki'), icon: Share2 },
-  { id: 'data', label: tk('Dane kolekcji'), hint: tk('Import i eksport'), icon: Database }
+  { id: 'data', label: tk('Dane kolekcji'), hint: tk('Import, eksport i kopie zapasowe'), icon: Database }
 ];
 
 interface SettingsPageProps {
@@ -102,7 +102,12 @@ export const SettingsPage: React.FC<SettingsPageProps> = (props) => {
             <SecuritySection onLogoutAll={props.onLogoutAll} onPasswordChanged={props.onPasswordChanged} showToast={props.showToast} />
           )}
           {section === 'sharing' && <SharingSection user={props.user} showToast={props.showToast} />}
-          {section === 'data' && <DataSection onOpenImportExport={props.onOpenImportExport} />}
+          {section === 'data' && (
+            <div className="space-y-4">
+              <DataSection onOpenImportExport={props.onOpenImportExport} />
+              <BackupSection />
+            </div>
+          )}
         </div>
       </div>
     </div>
@@ -998,6 +1003,193 @@ const DataSection: React.FC<{ onOpenImportExport: (tab: 'export' | 'import') => 
     </div>
   </div>
 );
+};
+
+/* ---------- Kopie zapasowe ---------- */
+
+const BackupSection: React.FC = () => {
+  const t = useT();
+  const [backups, setBackups] = useState<BackupSummary[] | null>(null);
+  const [error, setError] = useState('');
+  const [busy, setBusy] = useState<string | null>(null);
+  const [confirm, setConfirm] = useState<BackupSummary['kind'] | null>(null);
+  const [restored, setRestored] = useState(false);
+
+  useEffect(() => {
+    let alive = true;
+    backupsApi
+      .list()
+      .then((list) => alive && setBackups(list))
+      .catch((e) => {
+        if (!alive) return;
+        setBackups([]);
+        setError(e?.message || t('Nie udało się pobrać kopii zapasowych.'));
+      });
+    return () => {
+      alive = false;
+    };
+  }, [t]);
+
+  const daily = backups?.find((b) => b.kind === 'daily');
+  const undo = backups?.find((b) => b.kind === 'before_restore');
+  const when = (iso: string) =>
+    new Date(iso).toLocaleString(locale(), { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' });
+
+  const download = async (kind: BackupSummary['kind']) => {
+    setBusy(`download-${kind}`);
+    setError('');
+    try {
+      await backupsApi.download(kind);
+    } catch (e: any) {
+      setError(e?.message || t('Nie udało się pobrać kopii zapasowej.'));
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const restore = async (kind: BackupSummary['kind']) => {
+    setBusy(`restore-${kind}`);
+    setError('');
+    try {
+      setBackups(await backupsApi.restore(kind));
+      setConfirm(null);
+      setRestored(true);
+      // Pełne odświeżenie: kolekcja, klasery, talie i lista życzeń wczytają się na nowo
+      setTimeout(() => window.location.reload(), 1500);
+    } catch (e: any) {
+      setError(e?.message || t('Nie udało się przywrócić kopii zapasowej.'));
+      setBusy(null);
+    }
+  };
+
+  const Stats: React.FC<{ b: BackupSummary }> = ({ b }) => (
+    <span className="block text-xs text-stone-400 tabular-nums">
+      {t('Karty: {n}', { n: b.cards })} · {t('Klasery: {n}', { n: b.catalogs })} · {t('Talie: {n}', { n: b.decks })} ·{' '}
+      {t('Lista życzeń: {n}', { n: b.wishlist })}
+    </span>
+  );
+
+  const ConfirmBox: React.FC<{ b: BackupSummary; text: string; action: string }> = ({ b, text, action }) => (
+    <div className="mt-3 p-3 rounded-xl border border-rose-900/60 bg-rose-950/20 space-y-3">
+      <p className="text-xs text-rose-200 flex items-start gap-2">
+        <AlertCircle className="w-4 h-4 shrink-0 mt-px" /> {text}
+      </p>
+      <div className="flex flex-wrap gap-2">
+        <button
+          type="button"
+          onClick={() => restore(b.kind)}
+          disabled={busy !== null}
+          className="h-9 px-3.5 rounded-lg text-xs font-bold text-rose-100 bg-rose-900/60 hover:bg-rose-800/70 border border-rose-700/60 flex items-center gap-1.5 cursor-pointer disabled:opacity-60"
+        >
+          {busy === `restore-${b.kind}` ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RotateCcw className="w-3.5 h-3.5" />}
+          {action}
+        </button>
+        <button type="button" onClick={() => setConfirm(null)} disabled={busy !== null} className="btn btn-ghost h-9 text-xs">
+          {t('Anuluj')}
+        </button>
+      </div>
+    </div>
+  );
+
+  return (
+    <div className={card}>
+      <SectionHeader
+        title={t('Kopia zapasowa')}
+        description={t('Raz na dobę, tuż po północy, zapisujemy stan Twojej kolekcji, klaserów, talii i listy życzeń. Możesz do niego wrócić, jeśli coś pójdzie nie tak.')}
+      />
+
+      {backups === null ? (
+        <p className="text-xs text-stone-400 flex items-center gap-2">
+          <Loader2 className="w-3.5 h-3.5 animate-spin" /> {t('Wczytywanie…')}
+        </p>
+      ) : (
+        <div className="space-y-3">
+          {daily ? (
+            <div className="p-4 rounded-xl bg-stone-950 border border-stone-800">
+              <div className="flex flex-wrap items-center gap-3">
+                <span className="min-w-0 flex-[1_1_16rem] space-y-1">
+                  <span className="flex items-center gap-2 text-sm font-bold text-stone-100">
+                    <History className="w-4 h-4 text-amber-400 shrink-0" /> {t('Kopia z {date}', { date: when(daily.createdAt) })}
+                  </span>
+                  <Stats b={daily} />
+                </span>
+                <div className="flex gap-2 shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => download('daily')}
+                    disabled={busy !== null}
+                    className="btn btn-secondary h-9 text-xs"
+                    aria-label={t('Pobierz kopię jako plik .json')}
+                  >
+                    {busy === 'download-daily' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}
+                    {t('Pobierz')}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setConfirm('daily')}
+                    disabled={busy !== null || restored}
+                    className="h-9 px-3.5 rounded-lg text-xs font-bold text-rose-200 bg-rose-950/50 hover:bg-rose-900/50 border border-rose-800/60 flex items-center gap-1.5 cursor-pointer disabled:opacity-60"
+                  >
+                    <RotateCcw className="w-3.5 h-3.5" /> {t('Przywróć')}
+                  </button>
+                </div>
+              </div>
+              {confirm === 'daily' && (
+                <ConfirmBox
+                  b={daily}
+                  text={t('Obecna kolekcja, klasery, talie i lista życzeń zostaną zastąpione stanem z {date}. Zmiany zrobione później znikną, ale przywrócenie możesz cofnąć.', { date: when(daily.createdAt) })}
+                  action={t('Tak, przywróć')}
+                />
+              )}
+            </div>
+          ) : (
+            <p className="p-4 rounded-xl bg-stone-950 border border-stone-800 text-xs text-stone-400">
+              {t('Nie ma jeszcze kopii. Pierwsza powstanie automatycznie w ciągu kilkunastu minut, jeśli masz karty, talie lub listę życzeń.')}
+            </p>
+          )}
+
+          {undo && (
+            <div className="p-4 rounded-xl bg-stone-950 border border-stone-800">
+              <div className="flex flex-wrap items-center gap-3">
+                <span className="min-w-0 flex-[1_1_16rem] space-y-1">
+                  <span className="block text-sm font-bold text-stone-100">
+                    {t('Stan sprzed przywrócenia ({date})', { date: when(undo.createdAt) })}
+                  </span>
+                  <Stats b={undo} />
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setConfirm('before_restore')}
+                  disabled={busy !== null || restored}
+                  className="btn btn-secondary h-9 text-xs shrink-0"
+                >
+                  <RotateCcw className="w-3.5 h-3.5" /> {t('Cofnij przywrócenie')}
+                </button>
+              </div>
+              {confirm === 'before_restore' && (
+                <ConfirmBox
+                  b={undo}
+                  text={t('Wrócisz do stanu sprzed ostatniego przywrócenia. Obecny stan zostanie zapisany, więc możesz to też cofnąć.')}
+                  action={t('Tak, cofnij')}
+                />
+              )}
+            </div>
+          )}
+
+          {restored && (
+            <p className="p-2.5 rounded-lg text-xs flex items-start gap-2 border bg-emerald-500/10 border-emerald-500/30 text-emerald-300">
+              <CheckCircle2 className="w-4 h-4 shrink-0" /> {t('Przywrócono. Odświeżam aplikację…')}
+            </p>
+          )}
+          {error && (
+            <p className="p-2.5 rounded-lg text-xs flex items-start gap-2 border bg-rose-500/10 border-rose-500/30 text-rose-300">
+              <AlertCircle className="w-4 h-4 shrink-0" /> {error}
+            </p>
+          )}
+        </div>
+      )}
+    </div>
+  );
 };
 
 export default SettingsPage;

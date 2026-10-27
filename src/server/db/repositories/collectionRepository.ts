@@ -169,9 +169,9 @@ export async function saveFullCollection(userId: string, collection: CollectionI
             const params: any[] = [userId];
 
             chunk.forEach((item, idx) => {
-              const baseIndex = 2 + idx * 16;
+              const baseIndex = 2 + idx * 17;
               valueClauses.push(
-                `($${baseIndex}, $1, ${Array.from({ length: 15 }, (_, k) => `$${baseIndex + 1 + k}`).join(', ')})`
+                `($${baseIndex}, $1, ${Array.from({ length: 16 }, (_, k) => `$${baseIndex + 1 + k}`).join(', ')})`
               );
               params.push(
                 item.id,
@@ -189,7 +189,8 @@ export async function saveFullCollection(userId: string, collection: CollectionI
                 Boolean(item.isForSale),
                 item.salePrice ?? null,
                 item.previousPrices ? JSON.stringify(item.previousPrices) : null,
-                item.pricesChangedAt || null
+                item.pricesChangedAt || null,
+                normalizeSourceDeckId(item.sourceDeckId)
               );
             });
 
@@ -198,7 +199,7 @@ export async function saveFullCollection(userId: string, collection: CollectionI
                 id, user_id, card_id, card, quantity, quantity_foil,
                 condition, language, purchase_price, notes, binder,
                 added_at, last_updated_price_at, is_for_sale, sale_price,
-                previous_prices, prices_changed_at
+                previous_prices, prices_changed_at, source_deck_id
               ) VALUES ${valueClauses.join(', ')}`,
               params
             );

@@ -160,6 +160,46 @@ export const collectionApi = {
     }, onUnauthorized)
 };
 
+export interface BackupSummary {
+  kind: 'daily' | 'before_restore';
+  createdAt: string;
+  cards: number;
+  entries: number;
+  catalogs: number;
+  decks: number;
+  wishlist: number;
+}
+
+/** Kopie zapasowe konta: kolekcja, klasery, talie i lista życzeń. */
+export const backupsApi = {
+  list: async (): Promise<BackupSummary[]> => {
+    const res = await fetchWithAuth('/api/backups');
+    const data = await jsonOrThrow<{ backups: BackupSummary[] }>(res, tk('Nie udało się pobrać kopii zapasowych.'));
+    return data.backups || [];
+  },
+  restore: async (kind: BackupSummary['kind']): Promise<BackupSummary[]> => {
+    const res = await fetchWithAuth(`/api/backups/${kind}/restore`, { method: 'POST' });
+    const data = await jsonOrThrow<{ backups: BackupSummary[] }>(res, tk('Nie udało się przywrócić kopii zapasowej.'));
+    return data.backups || [];
+  },
+  download: async (kind: BackupSummary['kind']): Promise<void> => {
+    const res = await fetchWithAuth(`/api/backups/${kind}/download`);
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(tServer(err.error) || t('Nie udało się pobrać kopii zapasowej.'));
+    }
+    const name = /filename="([^"]+)"/.exec(res.headers.get('Content-Disposition') || '')?.[1] || 'manascrew-kopia.json';
+    const url = URL.createObjectURL(await res.blob());
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = name;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 10_000);
+  }
+};
+
 export const wishlistApi = {
   getAll: (onUnauthorized?: () => void) =>
     fetchWithAuth('/api/wishlist', {}, onUnauthorized),

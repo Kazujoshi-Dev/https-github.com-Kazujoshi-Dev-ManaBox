@@ -1,4 +1,8 @@
 export const en_server: Record<string, string> = {
+  "Kopie zapasowe działają tylko z bazą danych.": "Backups only work with a database.",
+  "Nie ma takiej kopii zapasowej.": "There is no such backup.",
+  "Kopia zapasowa jest uszkodzona.": "The backup is damaged.",
+  "Zbyt wiele przywróceń w krótkim czasie. Spróbuj ponownie za kilka minut.": "Too many restores in a short time. Please try again in a few minutes.",
   "Brak autoryzacji lub sesja wygasła. Zaloguj się ponownie.": "Not authorised or your session has expired. Please log in again.",
   "Brak obrazu karty, odczytanej nazwy ani kodu setu i numeru.": "No card image, read name, or set code and number.",
   "Brak uprawnień administratora.": "Administrator permissions required.",

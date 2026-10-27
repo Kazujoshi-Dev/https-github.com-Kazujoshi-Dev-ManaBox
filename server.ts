@@ -1901,6 +1901,93 @@ async function snapshotMissingUsers() {
 setTimeout(snapshotMissingUsers, 60_000).unref?.();
 setInterval(snapshotMissingUsers, 60 * 60_000).unref?.();
 
+// --- KOPIE ZAPASOWE (kolekcja, klasery, talie, lista życzeń) ---
+// Jedna kopia dzienna na gracza, robiona tuż po północy (stan z poprzedniego dnia),
+// oraz kopia sprzed ostatniego przywrócenia, żeby dało się je cofnąć.
+let dailyBackupRunning = false;
+async function runDailyBackups() {
+  if (dailyBackupRunning) return;
+  dailyBackupRunning = true;
+  let done = 0;
+  try {
+    const startedAt = Date.now();
+    // Porcjami, aż wszyscy będą mieli dzisiejszą kopię (najwyżej ~50 min na jedno uruchomienie)
+    while (Date.now() - startedAt < 50 * 60_000) {
+      const ids = await db.usersNeedingDailyBackup(100);
+      if (!ids.length) break;
+      let failed = 0;
+      for (const id of ids) {
+        try {
+          await db.createBackup(id, 'daily');
+          done++;
+        } catch (err: any) {
+          failed++;
+          console.warn(`[Kopie] Nie udało się zrobić kopii dla ${id}:`, err?.message || err);
+        }
+      }
+      if (failed === ids.length) break; // same błędy: spróbujemy za godzinę
+    }
+    if (done) console.log(`[Kopie] Zapisano kopię dzienną ${done} użytkowników.`);
+  } catch (err: any) {
+    console.warn('[Kopie] Błąd dziennego zapisu:', err?.message || err);
+  } finally {
+    dailyBackupRunning = false;
+  }
+}
+// Co 15 minut sprawdzamy, czy minęła północ: kopia powstaje wtedy w pierwszym kwadransie nowej doby.
+setTimeout(runDailyBackups, 2 * 60_000).unref?.();
+setInterval(runDailyBackups, 15 * 60_000).unref?.();
+
+const parseBackupKind = (v: unknown): db.BackupKind | null =>
+  db.BACKUP_KINDS.includes(v as db.BackupKind) ? (v as db.BackupKind) : null;
+
+const restoreBackupLimiter = rateLimit({
+  name: 'backup-restore', windowMs: 10 * 60_000, max: 5, key: userKey,
+  message: 'Zbyt wiele przywróceń w krótkim czasie. Spróbuj ponownie za kilka minut.'
+});
+const downloadBackupLimiter = rateLimit({ name: 'backup-download', windowMs: 10 * 60_000, max: 20, key: userKey });
+
+function sendBackupError(res: express.Response, err: unknown, where: string) {
+  if (err instanceof db.BackupError) return res.status(err.status).json({ error: err.message });
+  sendServerError(res, err, where);
+}
+
+app.get('/api/backups', authMiddleware, async (req, res) => {
+  try {
+    res.json({ backups: await db.listBackups((req as any).userId) });
+  } catch (err: any) {
+    sendBackupError(res, err, '/api/backups');
+  }
+});
+
+app.get('/api/backups/:kind/download', authMiddleware, downloadBackupLimiter, async (req, res) => {
+  try {
+    const kind = parseBackupKind(req.params.kind);
+    if (!kind) return res.status(404).json({ error: 'Nie ma takiej kopii zapasowej.' });
+    const { json, createdAt } = await db.getBackupJson((req as any).userId, kind);
+    const day = createdAt.slice(0, 10);
+    res.setHeader('Content-Type', 'application/json; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="manascrew-kopia-${day}.json"`);
+    res.send(json);
+  } catch (err: any) {
+    sendBackupError(res, err, '/api/backups/:kind/download');
+  }
+});
+
+app.post('/api/backups/:kind/restore', authMiddleware, restoreBackupLimiter, async (req, res) => {
+  try {
+    const userId = (req as any).userId;
+    const kind = parseBackupKind(req.params.kind);
+    if (!kind) return res.status(404).json({ error: 'Nie ma takiej kopii zapasowej.' });
+    const restored = await db.restoreBackup(userId, kind);
+    // Wykres historii kolekcji: dzisiejszy punkt po przywróceniu
+    await snapshotCollection(userId).catch(() => undefined);
+    res.json({ success: true, restored, backups: await db.listBackups(userId) });
+  } catch (err: any) {
+    sendBackupError(res, err, '/api/backups/:kind/restore');
+  }
+});
+
 app.post('/api/collection/bulk-import', authMiddleware, async (req, res) => {
   try {
     const userId = (req as any).userId;
