@@ -3,9 +3,9 @@ import { SUPPORT_URL } from './ui/SupportButton';
 import { DISCORD_URL } from './ui/DiscordButton';
 import { TermsLink } from './AppFooter';
 import { versionLabel } from '../utils/appVersion';
-import { BinderShowcase } from './auth/BinderShowcase';
 import { FeatureBento } from './auth/FeatureBento';
 import { GamesSection } from './auth/GamesSection';
+import { RotatingBinder } from './auth/RotatingBinder';
 import { useShowcaseCards } from './auth/useShowcaseCards';
 import { AuthUser } from '../types';
 import { emailAuthApi } from '../services/api';
@@ -422,10 +422,10 @@ export const AuthView: React.FC<AuthViewProps> = ({ onAuthSuccess, initialMode =
         {hasCards && (
         <div className="lg:col-span-7 auth-rise auth-rise-late">
           <div className="hidden sm:block lg:pl-6 w-full max-w-[min(36rem,calc((100dvh-6rem)/1.45))] mx-auto">
-            <BinderShowcase cards={cards} />
+            <RotatingBinder mtgCards={cards} />
           </div>
           <div className="sm:hidden">
-            <BinderShowcase cards={cards} compact />
+            <RotatingBinder mtgCards={cards} compact />
           </div>
         </div>
         )}

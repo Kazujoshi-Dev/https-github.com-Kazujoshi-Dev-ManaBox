@@ -390,3 +390,30 @@ export function pickLorcanaShowcase(): { image: string; name: string; artist: st
   const c = list[Math.floor(Date.now() / 86_400_000) % list.length];
   return { image: c.image_uris!.large!, name: c.name, artist: c.artist || null };
 }
+
+/** Karty na stronę klasera na stronie głównej: rzadsze wydania z grafiką, inne każdego dnia. */
+export function lorcanaBinderCards(limit = 12): Array<{ name: string; image: string; artCrop: null; artist: string | null; legendary: boolean }> {
+  if (!index) return [];
+  const pool = index.cards.filter(
+    (c) => c.image_uris?.normal && ['rare', 'super_rare', 'legendary', 'enchanted'].includes(c.rarity)
+  );
+  return dailyPick(pool, limit).map((c) => ({ name: c.name, image: c.image_uris!.normal!, artCrop: null, artist: c.artist || null, legendary: false }));
+}
+
+/** Deterministyczny wybór `n` elementów na dany dzień (każdy dzień inny zestaw, bez powtórzeń nazw). */
+function dailyPick<T extends { name: string }>(list: T[], n: number): T[] {
+  let seed = ((Math.floor(Date.now() / 86_400_000) + 104729) * 2654435761) >>> 0;
+  const rand = () => {
+    seed = (seed * 1664525 + 1013904223) >>> 0;
+    return seed / 4294967296;
+  };
+  const out: T[] = [];
+  const seen = new Set<string>();
+  for (let tries = 0; tries < n * 20 && out.length < n && list.length; tries++) {
+    const c = list[Math.floor(rand() * list.length)];
+    if (seen.has(c.name)) continue;
+    seen.add(c.name);
+    out.push(c);
+  }
+  return out;
+}

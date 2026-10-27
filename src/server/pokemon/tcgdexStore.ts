@@ -531,3 +531,33 @@ export async function pickPokemonShowcase(): Promise<{ image: string; name: stri
   }
   return null;
 }
+
+/**
+ * Karty na stronę klasera na stronie głównej: z kilku najnowszych dodatków, z grafiką, inne każdego dnia.
+ * Lista dodatków nie podaje rzadkości, więc bierzemy karty z obu krańców numeracji (karty z końca to
+ * zwykle ilustracje na całą kartę).
+ */
+export function pokemonBinderCards(limit = 12): Array<{ name: string; image: string; artCrop: null; artist: string | null; legendary: boolean }> {
+  if (!index) return [];
+  const sets = index.sets.filter((s) => index!.cards.some((c) => c.set === s.id.toLowerCase() && c.image_uris?.normal)).slice(0, 4);
+  const num = (s: string) => parseInt(s, 10) || 0;
+  const pool: ScryfallCard[] = [];
+  for (const s of sets) {
+    const cards = index.cards.filter((c) => c.set === s.id.toLowerCase() && c.image_uris?.normal).sort((a, b) => num(b.collector_number) - num(a.collector_number));
+    pool.push(...cards.slice(0, 40));
+  }
+  let seed = ((Math.floor(Date.now() / 86_400_000) + 7907) * 2654435761) >>> 0;
+  const rand = () => {
+    seed = (seed * 1664525 + 1013904223) >>> 0;
+    return seed / 4294967296;
+  };
+  const out: ScryfallCard[] = [];
+  const seen = new Set<string>();
+  for (let tries = 0; tries < limit * 20 && out.length < limit && pool.length; tries++) {
+    const c = pool[Math.floor(rand() * pool.length)];
+    if (seen.has(c.name)) continue;
+    seen.add(c.name);
+    out.push(c);
+  }
+  return out.map((c) => ({ name: c.name, image: c.image_uris!.normal!, artCrop: null, artist: null, legendary: false }));
+}

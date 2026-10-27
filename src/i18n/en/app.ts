@@ -154,4 +154,6 @@ export const en_app: Record<string, string> = {
   "Wystarczy e-mail i hasło. Jedno konto obejmuje wszystkie trzy gry, a kolekcję MTG możesz zaimportować z pliku tekstowego lub z ManaBox.": "All you need is an email and a password. One account covers all three games, and you can import your MTG collection from a text file or from ManaBox.",
   "Pokémon i nazwy postaci są znakami towarowymi Nintendo, Creatures Inc. i GAME FREAK inc. Disney Lorcana i jej ilustracje są własnością Disney, a grę wydaje Ravensburger. Mana Screw nie jest powiązany z tymi firmami ani przez nie zatwierdzony.": "Pokémon and character names are trademarks of Nintendo, Creatures Inc. and GAME FREAK inc. Disney Lorcana and its artwork are the property of Disney, and the game is published by Ravensburger. Mana Screw is not affiliated with or endorsed by these companies.",
   "Skaner kart MTG w telefonie": "MTG card scanner on your phone",
+  "Przykładowa strona klasera z kartami {game}": "Sample binder page with {game} cards",
+  "Gra na stronie klasera": "Game shown in the binder",
 };

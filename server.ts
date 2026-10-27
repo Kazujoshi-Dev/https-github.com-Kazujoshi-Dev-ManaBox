@@ -1962,6 +1962,15 @@ async function gameShowcases(): Promise<Record<GameId, GameShowcase | null>> {
   return data;
 }
 
+// Strona główna: strona klasera z kartami Pokémon albo Lorcany (karty MTG: /api/public/showcase)
+app.get('/api/public/showcase/:game', (req, res) => {
+  const game = String(req.params.game);
+  const list = game === 'lorcana' ? lorcana.lorcanaBinderCards(12) : game === 'pokemon' ? pokemon.pokemonBinderCards(12) : null;
+  if (!list) return res.status(404).json({ error: 'Nie znaleziono.' });
+  res.setHeader('Cache-Control', list.length ? 'public, max-age=1800' : 'no-store');
+  res.json({ cards: list });
+});
+
 // Strona główna (bez logowania): ilustracja dnia i liczba kart w bazie każdej gry
 app.get('/api/public/games', async (_req, res) => {
   try {
