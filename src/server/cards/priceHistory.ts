@@ -155,6 +155,32 @@ async function setMeta(p: pg.Pool, key: string, value: string): Promise<void> {
   );
 }
 
+/**
+ * Pula połączeń ma krótki limit czasu zapytania (kilka sekund), a tabele kart mają ~100 tys. wierszy.
+ * Duże odczyty robimy więc porcjami po kluczu głównym, każdą z własnym, dłuższym limitem.
+ */
+const SCAN_BATCH = 5000;
+const SCAN_TIMEOUT_MS = 60_000;
+const ZERO_UUID = '00000000-0000-0000-0000-000000000000';
+
+async function* scanRows(p: pg.Pool, table: string, key: string, columns: string, where = 'TRUE'): AsyncGenerator<any[]> {
+  let last = ZERO_UUID;
+  while (true) {
+    const res = await p.query({
+      text: `SELECT ${key}::text AS id, ${columns} FROM ${table} WHERE ${where} AND ${key} > $1::uuid ORDER BY ${key} LIMIT ${SCAN_BATCH}`,
+      values: [last],
+      query_timeout: SCAN_TIMEOUT_MS
+    } as any);
+    if (!res.rows.length) return;
+    yield res.rows;
+    if (res.rows.length < SCAN_BATCH) return;
+    last = res.rows[res.rows.length - 1].id;
+  }
+}
+
+/** Wydania angielskie, papierowe z lokalnej bazy Scryfall (porcjami). */
+const scanCards = (p: pg.Pool, columns: string) => scanRows(p, 'scryfall_cards', 'id', columns, `lang = 'en' AND NOT digital`);
+
 async function ensureSchema(p: pg.Pool): Promise<void> {
   await p.query(`
     CREATE TABLE IF NOT EXISTS card_price_history (
@@ -168,16 +194,15 @@ async function ensureSchema(p: pg.Pool): Promise<void> {
 }
 
 async function loadStore(p: pg.Pool): Promise<void> {
-  const res = await p.query(
-    `SELECT card_id::text AS id, (start_day - DATE '1970-01-01') AS start, eur, eur_foil FROM card_price_history`
-  );
   store.clear();
-  for (const r of res.rows) {
-    store.set(r.id, {
-      start: Number(r.start),
-      eur: (r.eur || []).map((v: any) => (v == null ? null : round2(Number(v)))),
-      foil: (r.eur_foil || []).map((v: any) => (v == null ? null : round2(Number(v))))
-    });
+  for await (const rows of scanRows(p, 'card_price_history', 'card_id', `(start_day - DATE '1970-01-01') AS start, eur, eur_foil`)) {
+    for (const r of rows) {
+      store.set(r.id, {
+        start: Number(r.start),
+        eur: (r.eur || []).map((v: any) => (v == null ? null : round2(Number(v)))),
+        foil: (r.eur_foil || []).map((v: any) => (v == null ? null : round2(Number(v))))
+      });
+    }
   }
   const saved = await getMeta(p, 'price_history_last_day');
   lastDay = saved ? dayFromYmd(saved) : -1;
@@ -204,14 +229,15 @@ async function flush(p: pg.Pool): Promise<void> {
       cols[3].push(pgArray(s.foil));
     }
     if (cols[0].length) {
-      await p.query(
-        `INSERT INTO card_price_history (card_id, start_day, eur, eur_foil, updated_at)
+      await p.query({
+        text: `INSERT INTO card_price_history (card_id, start_day, eur, eur_foil, updated_at)
          SELECT u.id::uuid, u.sd::date, u.e::real[], u.f::real[], NOW()
          FROM UNNEST($1::text[], $2::text[], $3::text[], $4::text[]) AS u(id, sd, e, f)
          ON CONFLICT (card_id) DO UPDATE SET
            start_day = EXCLUDED.start_day, eur = EXCLUDED.eur, eur_foil = EXCLUDED.eur_foil, updated_at = NOW()`,
-        cols
-      );
+        values: cols,
+        query_timeout: SCAN_TIMEOUT_MS
+      } as any);
     }
     if (removed.length) {
       await p.query('DELETE FROM card_price_history WHERE card_id = ANY($1::uuid[])', [removed]);
@@ -222,19 +248,17 @@ async function flush(p: pg.Pool): Promise<void> {
 
 /** Formaty i oracle_id kart z historią (z lokalnej bazy Scryfall). */
 async function loadCardInfo(p: pg.Pool): Promise<void> {
-  const res = await p.query(
-    `SELECT id::text AS id, COALESCE(oracle_id::text, id::text) AS oracle, data->'legalities' AS leg
-     FROM scryfall_cards WHERE lang = 'en' AND NOT digital`
-  );
   const next = new Map<string, CardInfo>();
-  for (const r of res.rows) {
-    if (!store.has(r.id)) continue;
-    let mask = 0;
-    const leg = r.leg || {};
-    PRICE_ALERT_FORMATS.forEach((f, i) => {
-      if (leg[f] === 'legal' || leg[f] === 'restricted') mask |= 1 << i;
-    });
-    if (mask) next.set(r.id, { oracle: r.oracle, formats: mask });
+  for await (const rows of scanCards(p, `COALESCE(oracle_id::text, id::text) AS oracle, data->'legalities' AS leg`)) {
+    for (const r of rows) {
+      if (!store.has(r.id)) continue;
+      let mask = 0;
+      const leg = r.leg || {};
+      PRICE_ALERT_FORMATS.forEach((f, i) => {
+        if (leg[f] === 'legal' || leg[f] === 'restricted') mask |= 1 << i;
+      });
+      if (mask) next.set(r.id, { oracle: r.oracle, formats: mask });
+    }
   }
   info = next;
   storeVersion++;
@@ -242,12 +266,10 @@ async function loadCardInfo(p: pg.Pool): Promise<void> {
 
 /** Migawka bieżących cen z lokalnej bazy Scryfall dla dnia `day`. */
 async function snapshot(p: pg.Pool, day: number): Promise<number> {
-  const res = await p.query(
-    `SELECT id::text AS id, data->'prices'->>'eur' AS eur, data->'prices'->>'eur_foil' AS foil
-     FROM scryfall_cards WHERE lang = 'en' AND NOT digital`
-  );
+  const rowsAll: any[] = [];
+  for await (const rows of scanCards(p, `data->'prices'->>'eur' AS eur, data->'prices'->>'eur_foil' AS foil`)) rowsAll.push(...rows);
   let changed = 0;
-  for (const r of res.rows) {
+  for (const r of rowsAll) {
     const eur = parsePrice(r.eur);
     const foil = parsePrice(r.foil);
     if (eur === null && foil === null) continue;
@@ -292,9 +314,8 @@ async function fetchStream(url: string): Promise<AsyncGenerator<string>> {
 export async function bootstrapFromMtgjson(p: pg.Pool, base = MTGJSON_BASE): Promise<{ cards: number; days: number }> {
   const started = Date.now();
   // Wydania, które mamy w lokalnej bazie (angielskie, papierowe)
-  const ours = new Set<string>(
-    (await p.query(`SELECT id::text AS id FROM scryfall_cards WHERE lang = 'en' AND NOT digital`)).rows.map((r) => r.id)
-  );
+  const ours = new Set<string>();
+  for await (const rows of scanCards(p, '1 AS x')) for (const r of rows) ours.add(r.id);
   if (ours.size < 1000) throw new Error('lokalna baza kart jest jeszcze pusta');
 
   // 1) uuid MTGJSON → id Scryfall
@@ -358,6 +379,11 @@ export async function bootstrapFromMtgjson(p: pg.Pool, base = MTGJSON_BASE): Pro
 async function maybeBootstrap(p: pg.Pool): Promise<void> {
   if (!BOOTSTRAP_ENABLED || bootstrapping) return;
   if (await getMeta(p, 'price_history_bootstrap')) return;
+  // historia jest już w bazie (np. import się udał, a nie zapisał się tylko znacznik): nie pobieramy jej drugi raz
+  if (store.size > 1000 && coverageDays() >= 60) {
+    await setMeta(p, 'price_history_bootstrap', JSON.stringify({ at: new Date().toISOString(), cards: store.size, days: coverageDays(), reused: true }));
+    return;
+  }
   const lastAttempt = await getMeta(p, 'price_history_bootstrap_attempt');
   if (lastAttempt && Date.now() - new Date(lastAttempt).getTime() < BOOTSTRAP_RETRY_MS) return;
   bootstrapping = true;
