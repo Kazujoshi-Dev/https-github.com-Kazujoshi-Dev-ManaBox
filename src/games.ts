@@ -37,7 +37,7 @@ export interface GameInfo {
 export const GAMES: Record<GameId, GameInfo> = {
   mtg: { id: 'mtg', name: 'Magic: The Gathering', shortName: 'Magic', available: true },
   pokemon: { id: 'pokemon', name: 'Pokémon TCG', shortName: 'Pokémon', available: false },
-  lorcana: { id: 'lorcana', name: 'Disney Lorcana', shortName: 'Lorcana', available: false }
+  lorcana: { id: 'lorcana', name: 'Disney Lorcana', shortName: 'Lorcana', available: true }
 };
 
 export const GAME_LIST: GameInfo[] = GAME_IDS.map((id) => GAMES[id]);
@@ -49,9 +49,10 @@ export function isGameAvailable(value: unknown): value is GameId {
 
 /**
  * Zakładki, które działają tylko dla Magic: The Gathering (dane Scryfall, EDHREC, Commander Spellbook,
- * skaner rozpoznający karty MTG). W innych grach są ukryte.
+ * skaner rozpoznający karty MTG). W innych grach są ukryte. „Gracze” (oferty i mapa sprzedawców)
+ * pokazują na razie tylko karty MTG.
  */
-export const MTG_ONLY_TABS = ['decks', 'community-decks', 'set-top', 'price-alerts', 'spoilers'] as const;
+export const MTG_ONLY_TABS = ['decks', 'community-decks', 'set-top', 'price-alerts', 'spoilers', 'users'] as const;
 
 export function isTabAvailable(tab: string, game: GameId): boolean {
   if (game === 'mtg') return true;

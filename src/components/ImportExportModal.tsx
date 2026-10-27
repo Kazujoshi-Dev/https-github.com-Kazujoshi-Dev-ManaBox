@@ -12,6 +12,7 @@ import {
 import { looksLikeCollectionCsv, parseCollectionCsv } from '../utils/manaboxCsv';
 import { langFromCard } from '../utils/formatters';
 import { useT, locale, MAIN_BINDER, binderName } from '../i18n';
+import { getActiveGame } from '../utils/activeGame';
 
 interface ImportExportModalProps {
   isOpen: boolean;
@@ -37,6 +38,8 @@ export const ImportExportModal: React.FC<ImportExportModalProps> = ({
 }) => {
   const t = useT();
   const [activeTab, setActiveTab] = useState<'export' | 'import'>(initialTab);
+  // Import list i plików CSV dopasowuje karty w Scryfall, więc na razie działa tylko dla MTG
+  const canImport = getActiveGame() === 'mtg';
   const [copied, setCopied] = useState<boolean>(false);
 
   // Sync active tab with initialTab when opening
@@ -296,6 +299,7 @@ export const ImportExportModal: React.FC<ImportExportModalProps> = ({
             <span>{t('Eksportuj kolekcję (.txt / .json)')}</span>
           </button>
 
+          {canImport && (
           <button
             type="button"
             onClick={() => setActiveTab('import')}
@@ -308,6 +312,7 @@ export const ImportExportModal: React.FC<ImportExportModalProps> = ({
             <Upload className="w-4 h-4" />
             <span>{t('Importuj z Pliku .txt / Listy')}</span>
           </button>
+          )}
         </div>
 
         {/* Pasek postępu dużego importu */}
@@ -315,7 +320,7 @@ export const ImportExportModal: React.FC<ImportExportModalProps> = ({
 
         {/* Modal Body */}
         <div className="p-6 overflow-y-auto space-y-5 text-xs text-stone-300">
-          {activeTab === 'export' ? (
+          {activeTab === 'export' || !canImport ? (
             <div className="space-y-4">
               <div className="p-3.5 bg-stone-950/70 border border-stone-800 rounded-xl space-y-1">
                 <div className="flex items-center justify-between text-xs">

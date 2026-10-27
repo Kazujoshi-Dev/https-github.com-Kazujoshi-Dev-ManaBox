@@ -258,7 +258,7 @@ export const MobileNav: React.FC<MobileNavProps> = ({
               )}
               {[
                 { label: tk('Odśwież ceny'), icon: RefreshCw, onClick: onRefreshPrices, spin: isRefreshing },
-                { label: tk('Import kolekcji'), icon: Upload, onClick: () => onOpenImportExport('import') },
+                ...(game === 'mtg' ? [{ label: tk('Import kolekcji'), icon: Upload, onClick: () => onOpenImportExport('import') }] : []),
                 { label: tk('Eksport kolekcji'), icon: Download, onClick: () => onOpenImportExport('export') },
                 { label: tk('Ustawienia'), icon: Settings, onClick: onOpenSettings },
                 ...(onOpenBugReport ? [{ label: tk('Zgłoś błąd'), icon: Bug, onClick: onOpenBugReport }] : [])

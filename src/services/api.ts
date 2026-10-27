@@ -372,14 +372,14 @@ export const spellbookApi = {
 };
 
 export const publicSaleApi = {
-  getOffers: async (userRef: string, folderSlug?: string): Promise<{
+  getOffers: async (userRef: string, folderSlug?: string, game?: string): Promise<{
     seller: { id: string; username: string; email?: string; createdAt?: string };
     folder?: { name: string; slug: string } | null;
     folders?: Array<{ id: string; name: string; slug: string }>;
     cards: CollectionItem[];
     settings: AppSettings;
   }> => {
-    const res = await fetch(`/api/public/sale/${encodeURIComponent(userRef)}${folderSlug ? `/${encodeURIComponent(folderSlug)}` : ''}`);
+    const res = await fetch(`/api/public/sale/${encodeURIComponent(userRef)}${folderSlug ? `/${encodeURIComponent(folderSlug)}` : ''}${game && game !== 'mtg' ? `?gra=${encodeURIComponent(game)}` : ''}`);
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
       throw new Error(tServer(err.error) || t('Błąd pobierania oferty ({status})', { status: res.status }));
@@ -398,12 +398,12 @@ export const usersApi = {
     return res.json();
   },
 
-  getWishlist: async (userRef: string): Promise<{
+  getWishlist: async (userRef: string, game?: string): Promise<{
     user: { id: string; username: string; email?: string; createdAt?: string };
     wishlist: WishlistItem[];
     settings: AppSettings;
   }> => {
-    const res = await fetch(`/api/public/wishlist/${encodeURIComponent(userRef)}`);
+    const res = await fetch(`/api/public/wishlist/${encodeURIComponent(userRef)}${game && game !== 'mtg' ? `?gra=${encodeURIComponent(game)}` : ''}`);
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
       throw new Error(tServer(err.error) || t('Błąd pobierania listy życzeń ({status})', { status: res.status }));

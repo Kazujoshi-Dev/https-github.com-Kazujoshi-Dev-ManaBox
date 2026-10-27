@@ -1,4 +1,5 @@
 import { PageHeader } from './ui/PageHeader';
+import { getActiveGame } from '../utils/activeGame';
 import { publicUrl } from '../utils/publicLinks';
 import React, { useEffect, useRef, useState } from 'react';
 import {
@@ -916,8 +917,8 @@ const SharingSection: React.FC<{ user: AuthUser; showToast: (msg: string) => voi
   const [copied, setCopied] = useState<string | null>(null);
   const slug = encodeURIComponent(user.username);
   const links = [
-    { id: 'sale', title: t('Oferta sprzedaży'), desc: t('Karty oznaczone „na sprzedaż”, z cenami.'), url: publicUrl('sale', slug) },
-    { id: 'wish', title: t('Lista życzeń'), desc: t('Karty, których szukasz.'), url: publicUrl('wishlist', slug) }
+    { id: 'sale', title: t('Oferta sprzedaży'), desc: t('Karty oznaczone „na sprzedaż”, z cenami.'), url: publicUrl('sale', slug, getActiveGame()) },
+    { id: 'wish', title: t('Lista życzeń'), desc: t('Karty, których szukasz.'), url: publicUrl('wishlist', slug, getActiveGame()) }
   ];
   const copy = async (id: string, url: string) => {
     try {

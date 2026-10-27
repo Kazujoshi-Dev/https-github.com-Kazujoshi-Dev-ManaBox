@@ -50,6 +50,37 @@ export const CARD_RARITIES = [
   { value: 'common', label: 'Common' }
 ];
 
+/** Disney Lorcana: filtry kolekcji (atramenty, typy kart, rzadkości). */
+export const LORCANA_INK_PILLS = [
+  { id: 'ALL', label: tk('Wszystkie') },
+  { id: 'Amber', label: 'Amber', bg: 'bg-amber-400 text-stone-950 font-bold' },
+  { id: 'Amethyst', label: 'Amethyst', bg: 'bg-purple-600 text-white font-bold' },
+  { id: 'Emerald', label: 'Emerald', bg: 'bg-emerald-600 text-white font-bold' },
+  { id: 'Ruby', label: 'Ruby', bg: 'bg-red-600 text-white font-bold' },
+  { id: 'Sapphire', label: 'Sapphire', bg: 'bg-blue-600 text-white font-bold' },
+  { id: 'Steel', label: 'Steel', bg: 'bg-stone-400 text-stone-950 font-bold' }
+];
+
+export const LORCANA_CARD_TYPES = [
+  { value: 'ALL', label: tk('Wszystkie typy') },
+  { value: 'Character', label: 'Character' },
+  { value: 'Action', label: 'Action' },
+  { value: 'Song', label: 'Song' },
+  { value: 'Item', label: 'Item' },
+  { value: 'Location', label: 'Location' }
+];
+
+export const LORCANA_RARITIES = [
+  { value: 'ALL', label: tk('Wszystkie rzadkości') },
+  { value: 'enchanted', label: 'Enchanted' },
+  { value: 'legendary', label: 'Legendary' },
+  { value: 'super_rare', label: 'Super Rare' },
+  { value: 'rare', label: 'Rare' },
+  { value: 'uncommon', label: 'Uncommon' },
+  { value: 'common', label: 'Common' },
+  { value: 'promo', label: 'Promo' }
+];
+
 export const SORT_OPTIONS: { value: FilterOptions['sortBy']; label: string }[] = [
   { value: 'price_desc', label: tk('Cena: Najwyższa') },
   { value: 'price_asc', label: tk('Cena: Najniższa') },

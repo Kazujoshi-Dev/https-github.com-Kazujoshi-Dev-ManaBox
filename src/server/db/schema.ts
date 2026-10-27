@@ -239,6 +239,18 @@ export async function initDb(): Promise<void> {
             updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
             PRIMARY KEY (user_id, day)
           );
+          -- historia wartości osobno dla każdej gry
+          ALTER TABLE collection_snapshots ADD COLUMN IF NOT EXISTS game VARCHAR(16) NOT NULL DEFAULT 'mtg';
+          DO $$
+          BEGIN
+            IF EXISTS (
+              SELECT 1 FROM pg_constraint
+               WHERE conrelid = 'collection_snapshots'::regclass AND contype = 'p' AND array_length(conkey, 1) = 2
+            ) THEN
+              ALTER TABLE collection_snapshots DROP CONSTRAINT collection_snapshots_pkey;
+              ALTER TABLE collection_snapshots ADD PRIMARY KEY (user_id, game, day);
+            END IF;
+          END $$;
           -- Kopie zapasowe danych gracza (kolekcja, klasery, talie, lista życzeń): dzienna i sprzed przywrócenia
           CREATE TABLE IF NOT EXISTS user_backups (
             user_id VARCHAR(64) NOT NULL REFERENCES users(id) ON DELETE CASCADE,

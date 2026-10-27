@@ -5,6 +5,8 @@ import { AddCardVersionPicker } from '../deck-builder/AddCardVersionPicker';
 import { formatCurrency, getCardImageUri, getCardPrice, getSaleMarketPrice, getSaleAdjustPct, formatSaleAdjustPct, handleCardImageError, langFromCard } from '../../utils/formatters';
 import { useBackToClose } from '../../hooks/useBackButton';
 import { useT, tk } from '../../i18n';
+import { getActiveGame } from '../../utils/activeGame';
+import { searchUrl } from '../../utils/cardSource';
 
 export interface ForSaleAddData {
   card: ScryfallCard;
@@ -87,7 +89,7 @@ export const ForSaleAddModal: React.FC<ForSaleAddModalProps> = ({ collection, se
     setSearching(true);
     const timer = window.setTimeout(async () => {
       try {
-        const res = await fetch(`/api/scryfall/search?q=${encodeURIComponent(q)}`);
+        const res = await fetch(searchUrl(getActiveGame(), q));
         const data = res.ok ? await res.json() : { data: [] };
         if (id !== searchId.current) return;
         const seen = new Set<string>();

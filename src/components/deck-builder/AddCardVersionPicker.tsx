@@ -4,6 +4,7 @@ import type { AppSettings, CollectionItem, DeckCardEntry, ScryfallCard } from '.
 import { formatCurrency, getCardImageUri, getCardPrice, handleCardImageError, langFromCard } from '../../utils/formatters';
 import { useT } from '../../i18n';
 import { filterPrints } from '../../utils/printMatch';
+import { isMtgCard, printsUrl } from '../../utils/cardSource';
 
 interface AddCardVersionPickerProps {
   card: ScryfallCard;
@@ -69,7 +70,8 @@ export const AddCardVersionPicker: React.FC<AddCardVersionPickerProps> = ({
     if (card.oracle_id) q.set('oracle_id', card.oracle_id);
     q.set('name', card.name);
     if (game !== 'paper') q.set('game', game);
-    fetch(`/api/scryfall/prints?${q.toString()}`)
+    // Karty innych gier (np. Lorcana): wydania z naszej bazy tej gry
+    fetch(isMtgCard(card) ? `/api/scryfall/prints?${q.toString()}` : printsUrl(card))
       .then((r) => (r.ok ? r.json() : { data: [] }))
       .then((d) => !cancelled && setPrints(Array.isArray(d?.data) && d.data.length ? d.data : [card]))
       .catch(() => !cancelled && setPrints([card]));

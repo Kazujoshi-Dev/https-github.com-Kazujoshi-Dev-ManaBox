@@ -6,7 +6,7 @@ import crypto from 'crypto';
 import path from 'path';
 import fs from 'fs';
 import * as db from './src/server/db';
-import { DEFAULT_GAME, GAME_HEADER, isGameAvailable, type GameId } from './src/games';
+import { DEFAULT_GAME, GAME_HEADER, isGameAvailable, isGameId, type GameId } from './src/games';
 import type { PriceUpdate } from './src/server/db';
 import { hashPassword, verifyPassword, generateToken, verifyToken } from './src/server/auth';
 import { rateLimit, hit, clientIp } from './src/server/rateLimit';
@@ -18,6 +18,7 @@ import { getCommanderRecommendations } from './src/server/edhrec';
 import * as cards from './src/server/cards/cardStore';
 import * as hashes from './src/server/cards/hashIndex';
 import * as priceHistory from './src/server/cards/priceHistory';
+import * as lorcana from './src/server/lorcana/lorcastStore';
 import { getPool } from './src/server/db/storage';
 import { computeQueryHashes, decodeJpegToGray } from './src/server/cards/imageHash';
 import { normalizeName, nameSimilarity } from './src/server/cards/nameMatch';
@@ -70,7 +71,7 @@ const CSP = [
   "script-src 'self' 'wasm-unsafe-eval' https://cdn.jsdelivr.net blob:",
   "worker-src 'self' blob: https://cdn.jsdelivr.net",
   "connect-src 'self' https://api.nbp.pl https://cdn.jsdelivr.net blob: data:",
-  "img-src 'self' data: blob: https://*.scryfall.io https://api.scryfall.com https://tile.openstreetmap.org",
+  "img-src 'self' data: blob: https://*.scryfall.io https://api.scryfall.com https://*.lorcast.io https://tile.openstreetmap.org",
   "style-src 'self' 'unsafe-inline'",
   "font-src 'self' data:",
   "media-src 'self' blob:",
@@ -1214,7 +1215,8 @@ app.get('/api/scanner/status', authMiddleware, (_req, res) => {
 });
 
 // Proxy obrazków przyjmuje wyłącznie HTTPS do domen Scryfall (ochrona przed SSRF).
-const ALLOWED_IMAGE_DOMAINS = ['scryfall.io', 'scryfall.com'];
+// lorcast.io: grafiki kart Disney Lorcana (np. do generowania grafik „Sprzedam”)
+const ALLOWED_IMAGE_DOMAINS = ['scryfall.io', 'scryfall.com', 'lorcast.io'];
 function isAllowedScryfallImageUrl(raw: string): boolean {
   if (!raw || raw.length > 2048) return false;
   let u: URL;
@@ -1244,7 +1246,7 @@ app.get('/api/scryfall/image-proxy', async (req, res) => {
       imgRes = await fetchScryfallThrottled(target, {
         redirect: 'manual',
         headers: {
-          'Accept': 'image/jpeg,image/webp,image/png,image/svg+xml,image/*'
+          'Accept': 'image/avif,image/jpeg,image/webp,image/png,image/svg+xml,image/*'
         }
       });
       if (imgRes.status < 300 || imgRes.status >= 400) break;
@@ -1814,11 +1816,55 @@ app.get('/api/scryfall/prints', async (req, res) => {
   }
 });
 
+// --- DISNEY LORCANA: karty z lokalnej bazy Lorcast ---
+const lorcanaLimiter = rateLimit({ name: 'lorcana', windowMs: 60_000, max: 120, key: (req) => clientIp(req) });
+const LORCANA_NOT_READY = 'Baza kart Lorcany jeszcze się wczytuje. Spróbuj za kilka minut.';
+
+app.get('/api/lorcana/search', lorcanaLimiter, (req, res) => {
+  if (!lorcana.isLorcanaReady()) return res.status(503).json({ error: LORCANA_NOT_READY });
+  const q = String(req.query.q || '').slice(0, 300);
+  const unique = req.query.unique === 'prints' ? 'prints' : 'cards';
+  const data = lorcana.searchLorcana(q, unique);
+  if (!data.length) return res.status(404).json({ error: 'Nie znaleziono kart dla podanego zapytania' });
+  res.json({ data, total_cards: data.length });
+});
+
+app.get('/api/lorcana/autocomplete', lorcanaLimiter, (req, res) => {
+  res.json({ data: lorcana.autocompleteLorcana(String(req.query.q || '').slice(0, 100)) });
+});
+
+app.get('/api/lorcana/card/:id', lorcanaLimiter, (req, res) => {
+  const card = lorcana.getLorcanaCard(String(req.params.id));
+  if (!card) return res.status(lorcana.isLorcanaReady() ? 404 : 503).json({ error: lorcana.isLorcanaReady() ? 'Nie znaleziono karty.' : LORCANA_NOT_READY });
+  res.json(card);
+});
+
+app.get('/api/lorcana/prints', lorcanaLimiter, (req, res) => {
+  const data = lorcana.getLorcanaPrints({
+    name: typeof req.query.name === 'string' ? req.query.name.slice(0, 200) : undefined,
+    id: typeof req.query.cardId === 'string' ? req.query.cardId.slice(0, 64) : undefined
+  });
+  res.json({ data });
+});
+
+app.get('/api/lorcana/sets', lorcanaLimiter, (_req, res) => {
+  res.json({ data: lorcana.getLorcanaSets() });
+});
+
+app.get('/api/lorcana/status', (_req, res) => {
+  res.json(lorcana.lorcanaStatus());
+});
+
 // --- AKTYWNA GRA (MTG, Pokémon, Lorcana) ---
 // Przeglądarka przesyła wybraną grę w nagłówku; kolekcja, klasery, lista życzeń, talie i foldery
 // „Sprzedam” są osobne dla każdej gry. Gra jeszcze niedostępna (lub brak nagłówka) = MTG.
 function gameOf(req: express.Request): GameId {
   const raw = req.get(GAME_HEADER);
+  return isGameAvailable(raw) ? raw : DEFAULT_GAME;
+}
+/** Gra publicznej oferty lub listy życzeń: parametr ?gra= w linku (brak = MTG). */
+function publicGameOf(req: express.Request): GameId {
+  const raw = typeof req.query.gra === 'string' ? req.query.gra : '';
   return isGameAvailable(raw) ? raw : DEFAULT_GAME;
 }
 
@@ -1891,10 +1937,10 @@ app.delete('/api/collection/:id', authMiddleware, async (req, res) => {
 });
 
 // --- HISTORIA KOLEKCJI (wartość i liczba kart dzień po dniu) ---
-async function snapshotCollection(userId: string): Promise<{ value: number; cards: number; currency: string }> {
-  const [collection, settings] = await Promise.all([db.getCollection(userId), db.getSettings(userId)]);
+async function snapshotCollection(userId: string, game: GameId = DEFAULT_GAME): Promise<{ value: number; cards: number; currency: string }> {
+  const [collection, settings] = await Promise.all([db.getCollection(userId, game), db.getSettings(userId)]);
   const { value, cards } = collectionTotals(collection as any, settings as any);
-  await db.upsertCollectionSnapshot(userId, value, cards, (settings as any).currency || 'PLN');
+  await db.upsertCollectionSnapshot(userId, value, cards, (settings as any).currency || 'PLN', game);
   return { value, cards, currency: (settings as any).currency || 'PLN' };
 }
 
@@ -1903,8 +1949,9 @@ app.get('/api/collection/history', authMiddleware, async (req, res) => {
     const userId = (req as any).userId;
     const days = Math.max(2, Math.min(400, Number(req.query.days) || 30));
     // Dzisiejszy punkt zawsze aktualny (po zmianach w kolekcji lub cenach)
-    const now = await snapshotCollection(userId);
-    const points = await db.getCollectionSnapshots(userId, days);
+    const game = gameOf(req);
+    const now = await snapshotCollection(userId, game);
+    const points = await db.getCollectionSnapshots(userId, days, game);
     res.json({ currency: now.currency, points });
   } catch (err: any) {
     sendServerError(res, err, '/api/collection/history');
@@ -1915,7 +1962,9 @@ app.get('/api/collection/history', authMiddleware, async (req, res) => {
 async function snapshotMissingUsers() {
   try {
     const ids = await db.usersMissingTodaySnapshot();
-    for (const id of ids) await snapshotCollection(id).catch(() => undefined);
+    for (const { userId, game } of ids) {
+      if (isGameId(game)) await snapshotCollection(userId, game).catch(() => undefined);
+    }
     if (ids.length) console.log(`[Historia] Zapisano stan kolekcji ${ids.length} użytkowników.`);
   } catch (err: any) {
     console.warn('[Historia] Błąd dziennego zapisu:', err?.message || err);
@@ -2004,7 +2053,7 @@ app.post('/api/backups/:kind/restore', authMiddleware, restoreBackupLimiter, asy
     if (!kind) return res.status(404).json({ error: 'Nie ma takiej kopii zapasowej.' });
     const restored = await db.restoreBackup(userId, kind);
     // Wykres historii kolekcji: dzisiejszy punkt po przywróceniu
-    await snapshotCollection(userId).catch(() => undefined);
+    await snapshotCollection(userId, gameOf(req)).catch(() => undefined);
     res.json({ success: true, restored, backups: await db.listBackups(userId) });
   } catch (err: any) {
     sendBackupError(res, err, '/api/backups/:kind/restore');
@@ -2061,8 +2110,17 @@ app.post('/api/collection/refresh-prices', authMiddleware, refreshPricesLimiter,
     const hasAnyPrice = (pr: any) => PRICE_KEYS.some(k => pr?.[k] != null && pr[k] !== '');
 
     const items = collection.filter(item => item.card && item.card.id);
-    const ids = [...new Set(items.map(item => String(item.card.id)))].filter(id => UUID_RE.test(id));
+    // Karty Scryfall (MTG) mają identyfikatory UUID; innych gier tu nie szukamy
+    const ids = game === 'mtg' ? [...new Set(items.map(item => String(item.card.id)))].filter(id => UUID_RE.test(id)) : [];
     const fresh = new Map<string, any>();
+
+    // Disney Lorcana: ceny z lokalnej bazy Lorcast (synchronizowanej raz na dobę)
+    if (game === 'lorcana') {
+      for (const item of items) {
+        const c = lorcana.getLorcanaCard(String(item.card.id));
+        if (c) fresh.set(c.id, c);
+      }
+    }
 
     // 1. Lokalna baza kart (bez zapytań do Scryfall)
     const LOCAL_CHUNK = 1000;
@@ -2071,6 +2129,9 @@ app.post('/api/collection/refresh-prices', authMiddleware, refreshPricesLimiter,
       for (const c of found) if (c?.id) fresh.set(c.id, c);
     }
     const fromLocal = fresh.size;
+    if (game === 'lorcana' && !lorcana.isLorcanaReady()) {
+      return res.status(503).json({ error: 'Baza kart Lorcany jeszcze się wczytuje. Spróbuj za kilka minut.' });
+    }
 
     // 2. Brakujące karty z API — z limitem na użytkownika
     let missing = ids.filter(id => !fresh.has(id));
@@ -2112,7 +2173,7 @@ app.post('/api/collection/refresh-prices', authMiddleware, refreshPricesLimiter,
     }
     if (missing.length > 0 && fromApi === 0) lastPriceApiRefresh.delete(userId); // nic nie pobrano — pozwól spróbować ponownie
     // Karty w innych językach: brakujące ceny z aktualnej wersji angielskiej (także karty z lokalnej bazy)
-    await cards.fillPricesFromEnglish([...fresh.values()]).catch(() => undefined);
+    if (game === 'mtg') await cards.fillPricesFromEnglish([...fresh.values()]).catch(() => undefined);
 
     for (const item of items) {
       const updatedCard = fresh.get(String(item.card.id));
@@ -2993,13 +3054,14 @@ app.get(['/api/public/sale/:userRef', '/api/public/sale/:userRef/:folderSlug'], 
       return res.status(404).json({ error: 'Nie znaleziono oferty dla tego użytkownika' });
     }
 
-    const folders = await db.getSaleFolders(user.id);
+    const game = publicGameOf(req);
+    const folders = await db.getSaleFolders(user.id, game);
     const folder = folderSlug ? folders.find((f) => f.slug === folderSlug.trim().toLowerCase()) : null;
     if (folderSlug && !folder) {
       return res.status(404).json({ error: 'Nie znaleziono tego folderu oferty. Mógł zostać usunięty.' });
     }
 
-    const collection = await db.getCollection(user.id);
+    const collection = await db.getCollection(user.id, game);
     const forSaleItems = collection.filter((item) => Boolean(item.isForSale) && (!folder || item.saleFolderId === folder.id));
     const settings = await db.getSettings(user.id);
 
@@ -3131,7 +3193,7 @@ app.get('/api/public/wishlist/:userRef', async (req, res) => {
       return res.status(404).json({ error: 'Nie znaleziono profilu dla tego użytkownika' });
     }
 
-    const wishlist = await db.getWishlist(user.id);
+    const wishlist = await db.getWishlist(user.id, publicGameOf(req));
     const settings = await db.getSettings(user.id);
 
     res.json({
@@ -3727,6 +3789,8 @@ async function startServer() {
   cards.startCardDb().catch((err) => console.warn('[Karty] Start nieudany:', err?.message || err));
   // Historia cen kart (alerty cenowe): migawki po synchronizacji i jednorazowy import z MTGJSON.
   priceHistory.startPriceHistory().catch((err) => console.warn('[Ceny] Start nieudany:', err?.message || err));
+  // Disney Lorcana: lokalna baza kart z API Lorcast (synchronizacja raz na dobę)
+  lorcana.startLorcanaDb().catch((err) => console.warn('[Lorcana] Start nieudany:', err?.message || err));
   // Porządki w tabeli sesji: przy starcie i raz na dobę.
   const purge = () => db.purgeOldSessions().catch((err) => console.warn('[Sesje] Czyszczenie nieudane:', err?.message || err));
   purge();

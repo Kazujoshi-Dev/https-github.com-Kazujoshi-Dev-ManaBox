@@ -23,7 +23,7 @@ import {
   Folder as FolderIcon,
   ArrowLeft
 } from 'lucide-react';
-import { publicPath } from '../utils/publicLinks';
+import { publicPath, parsePublicLink } from '../utils/publicLinks';
 import { LanguageSwitcher } from './ui/LanguageSwitcher';
 import { useT } from '../i18n';
 
@@ -257,7 +257,7 @@ export const PublicSaleView: React.FC<PublicSaleViewProps> = ({
                 </h2>
                 <p className="text-xs text-stone-400">
                   {t('Część oferty gracza @{name}.', { name: seller.username })}{' '}
-                  <a href={publicPath('sale', seller.username)} className="text-amber-300 hover:text-amber-200 underline inline-flex items-center gap-1">
+                  <a href={publicPath('sale', seller.username, parsePublicLink()?.game)} className="text-amber-300 hover:text-amber-200 underline inline-flex items-center gap-1">
                     <ArrowLeft className="w-3 h-3" />
                     {t('Zobacz całą ofertę')}
                   </a>

@@ -2,7 +2,14 @@ import { FOR_SALE_BINDER } from './constants';
 import React, { useState } from 'react';
 import { Search, X, Sparkles, LayoutGrid, List, SlidersHorizontal, Library } from 'lucide-react';
 import { CollectionFiltersBarProps } from './types';
-import { COLOR_PILLS, CARD_TYPES, CARD_RARITIES, SORT_OPTIONS, ROWS_PER_PAGE_OPTIONS } from './constants';
+import { COLOR_PILLS as MTG_COLOR_PILLS, CARD_TYPES as MTG_CARD_TYPES, CARD_RARITIES as MTG_CARD_RARITIES, LORCANA_INK_PILLS, LORCANA_CARD_TYPES, LORCANA_RARITIES, SORT_OPTIONS, ROWS_PER_PAGE_OPTIONS } from './constants';
+import { getActiveGame } from '../../utils/activeGame';
+
+// Filtry kolorów, typów i rzadkości zależą od gry (MTG albo Disney Lorcana)
+const isLorcana = () => getActiveGame() === 'lorcana';
+const colorPills = () => (isLorcana() ? LORCANA_INK_PILLS : MTG_COLOR_PILLS);
+const cardTypes = () => (isLorcana() ? LORCANA_CARD_TYPES : MTG_CARD_TYPES);
+const cardRarities = () => (isLorcana() ? LORCANA_RARITIES : MTG_CARD_RARITIES);
 import { useT, plural, binderName } from '../../i18n';
 
 /** Rozwijany wybór liczby wierszy na stronie. */
@@ -71,7 +78,7 @@ export const CollectionFiltersBar: React.FC<CollectionFiltersBarProps> = ({
 
         {/* Color Filter Pills */}
         <div className="flex items-center gap-1 bg-stone-900 p-1 rounded-lg border border-stone-800 max-w-full overflow-x-auto no-scrollbar md:shrink-0">
-          {COLOR_PILLS.map(col => (
+          {colorPills().map(col => (
             <button
               key={col.id}
               onClick={() => onFilterChange({ color: col.id })}
@@ -141,7 +148,7 @@ export const CollectionFiltersBar: React.FC<CollectionFiltersBarProps> = ({
             onChange={(e) => onFilterChange({ type: e.target.value })}
             className="w-full h-9 bg-stone-900 border border-stone-800 rounded-lg px-2.5 text-stone-200 focus:outline-none focus:border-amber-500 cursor-pointer"
           >
-            {CARD_TYPES.map(ct => (
+            {cardTypes().map(ct => (
               <option key={ct.value} value={ct.value}>{t(ct.label)}</option>
             ))}
           </select>
@@ -155,7 +162,7 @@ export const CollectionFiltersBar: React.FC<CollectionFiltersBarProps> = ({
             onChange={(e) => onFilterChange({ rarity: e.target.value })}
             className="w-full h-9 bg-stone-900 border border-stone-800 rounded-lg px-2.5 text-stone-200 focus:outline-none focus:border-amber-500 cursor-pointer"
           >
-            {CARD_RARITIES.map(r => (
+            {cardRarities().map(r => (
               <option key={r.value} value={r.value}>{t(r.label)}</option>
             ))}
           </select>

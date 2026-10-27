@@ -36,6 +36,8 @@ export function matchesFilters(item: CollectionItem, filters: FilterOptions): bo
     if (filters.color === 'MULTI' && colors.length < 2) return false;
     if (filters.color === 'C' && colors.length > 0) return false;
     if (['W', 'U', 'B', 'R', 'G'].includes(filters.color) && !colors.includes(filters.color)) return false;
+    // Disney Lorcana: filtr atramentu (np. „Amethyst”)
+    if (!['MULTI', 'C', 'W', 'U', 'B', 'R', 'G'].includes(filters.color) && !colors.includes(filters.color)) return false;
   }
 
   // Type filter

@@ -18,6 +18,7 @@ import { CardCombosTab } from './card-modal/CardCombosTab';
 
 import { useBackToClose } from '../hooks/useBackButton';
 import { useT, locale, binderName } from '../i18n';
+import { isMtgCard } from '../utils/cardSource';
 export const CardModal: React.FC<CardModalProps> = ({
   card,
   existingItem,
@@ -147,6 +148,7 @@ export const CardModal: React.FC<CardModalProps> = ({
           isLoadingPrints={isLoadingPrints}
           onSelectTab={setActiveTab}
           onClose={onClose}
+          showCombos={isMtgCard(activeCard)}
         />
 
         {/* Change / Confirmation Notice Banner */}
@@ -155,7 +157,7 @@ export const CardModal: React.FC<CardModalProps> = ({
         {/* Modal Scrollable Body */}
         <div className="p-6 overflow-y-auto space-y-6 flex-1">
           {/* Spellbook Combos Tab */}
-          {activeTab === 'combos' && (
+          {activeTab === 'combos' && isMtgCard(activeCard) && (
             <CardCombosTab cardName={activeCard.name} />
           )}
 

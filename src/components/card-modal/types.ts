@@ -44,6 +44,8 @@ export interface CardModalHeaderProps {
   isLoadingPrints: boolean;
   onSelectTab: (tab: CardModalTab) => void;
   onClose: () => void;
+  /** Przycisk kombinacji Commander Spellbook (tylko karty MTG). */
+  showCombos?: boolean;
 }
 
 export interface CardNoticeBannerProps {

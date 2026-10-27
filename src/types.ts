@@ -68,6 +68,21 @@ export interface ScryfallCard {
   purchase_uris?: { cardmarket?: string; tcgplayer?: string; cardhoarder?: string };
   edhrec_rank?: number;
   artist?: string;
+  /** Gra karciana tej karty; brak pola = Magic: The Gathering (dane Scryfall). */
+  game?: import('./games').GameId;
+  /** Disney Lorcana: kolor atramentu (Amber, Amethyst, Emerald, Ruby, Sapphire, Steel). */
+  ink?: string | null;
+  /** Disney Lorcana: czy kartę można włożyć do inkwell. */
+  inkwell?: boolean;
+  /** Disney Lorcana: klasyfikacje postaci (np. Hero, Princess). */
+  classifications?: string[];
+  /** Disney Lorcana: siła, wytrzymałość, punkty lore, koszt ruchu. */
+  strength?: number | null;
+  willpower?: number | null;
+  lore?: number | null;
+  move_cost?: number | null;
+  /** Identyfikator produktu TCGplayer (link do sklepu). */
+  tcgplayer_id?: number | null;
 }
 
 export interface MTGSet {

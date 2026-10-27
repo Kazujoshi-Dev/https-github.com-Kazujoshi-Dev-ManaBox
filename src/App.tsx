@@ -187,7 +187,7 @@ export default function App() {
           .finally(() => setIsLoadingPublicSale(false));
       } else if (wishlistParam && !saleParam) {
         setIsLoadingPublicSale(true);
-        usersApi.getWishlist(wishlistParam)
+        usersApi.getWishlist(wishlistParam, publicLink?.game)
           .then(data => {
             setPublicWishlistData({ owner: data.user, wishlist: data.wishlist, settings: data.settings });
             setPublicSaleError(null);
@@ -198,7 +198,7 @@ export default function App() {
           .finally(() => setIsLoadingPublicSale(false));
       } else if (saleParam) {
         setIsLoadingPublicSale(true);
-        publicSaleApi.getOffers(saleParam, publicLink?.folder)
+        publicSaleApi.getOffers(saleParam, publicLink?.folder, publicLink?.game)
           .then(data => {
             setPublicSaleData(data);
             setPublicSaleError(null);

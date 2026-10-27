@@ -1,4 +1,5 @@
 import { PageHeader } from './ui/PageHeader';
+import { getActiveGame } from '../utils/activeGame';
 import { publicUrl } from '../utils/publicLinks';
 import React, { Suspense, useState } from 'react';
 import { lazyWithReload } from '../utils/lazyWithReload';
@@ -60,7 +61,7 @@ export const Wishlist: React.FC<WishlistProps> = ({
 
   // Publiczny link do listy życzeń (działa bez logowania, jak oferta w „Sprzedam”)
   const publicShareSlug = currentUser?.username || currentUser?.id || '';
-  const publicShareUrl = publicUrl('wishlist', publicShareSlug);
+  const publicShareUrl = publicUrl('wishlist', publicShareSlug, getActiveGame());
 
   const handleCopyLink = async () => {
     try {

@@ -201,6 +201,15 @@ export function getRarityColor(rarity: string): string {
       return 'text-slate-300 bg-slate-300/10 border-slate-300/30';
     case 'common':
       return 'text-stone-400 bg-stone-400/10 border-stone-400/30';
+    // Disney Lorcana
+    case 'super_rare':
+      return 'text-amber-300 bg-amber-300/10 border-amber-300/30';
+    case 'legendary':
+      return 'text-amber-500 bg-amber-500/10 border-amber-500/30';
+    case 'enchanted':
+    case 'iconic':
+    case 'epic':
+      return 'text-purple-300 bg-purple-400/10 border-purple-400/30';
     default:
       return 'text-purple-400 bg-purple-400/10 border-purple-400/30';
   }
@@ -214,6 +223,7 @@ export function getRarityLabel(rarity: string): string {
     case 'common': return 'Common';
     case 'special': return 'Special';
     case 'bonus': return 'Bonus';
+    case 'super_rare': return 'Super Rare';
     default: return rarity ? (rarity.charAt(0).toUpperCase() + rarity.slice(1)) : rarity;
   }
 }
@@ -302,7 +312,8 @@ const KNOWN_EDHREC_RANKS: Record<string, number> = {
 };
 
 export function getCardEdhrecRank(card?: ScryfallCard | null): number | null {
-  if (!card) return null;
+  // Ranking EDHREC dotyczy tylko Magic: The Gathering (format Commander)
+  if (!card || (card.game && card.game !== 'mtg')) return null;
   if (card.edhrec_rank !== undefined && card.edhrec_rank !== null) {
     const num = typeof card.edhrec_rank === 'number' ? card.edhrec_rank : parseInt(String(card.edhrec_rank), 10);
     if (!isNaN(num) && num > 0) return num;
@@ -321,8 +332,12 @@ export function getCardEdhrecRank(card?: ScryfallCard | null): number | null {
  * bez niego (np. stara karta zapisana w kolekcji) szukamy karty po nazwie.
  * Karty istniejące tylko w grach cyfrowych nie mają strony na Cardmarket (null).
  */
-export function getCardmarketUrl(card: Pick<ScryfallCard, 'name' | 'purchase_uris' | 'digital' | 'games'> | null | undefined): string | null {
+export function getCardmarketUrl(card: Pick<ScryfallCard, 'name' | 'purchase_uris' | 'digital' | 'games' | 'game'> | null | undefined): string | null {
   if (!card?.name) return null;
+  // Disney Lorcana: wyszukiwarka Cardmarket w kategorii Lorcana (Lorcast nie podaje linków do Cardmarket)
+  if (card.game === 'lorcana') {
+    return `https://www.cardmarket.com/en/Lorcana/Products/Search?searchString=${encodeURIComponent(card.name.split(' - ')[0])}`;
+  }
   const direct = card.purchase_uris?.cardmarket;
   if (direct) {
     try {

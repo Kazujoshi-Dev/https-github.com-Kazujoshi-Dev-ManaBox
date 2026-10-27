@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { ScryfallCard } from '../../types';
+import { printsUrl } from '../../utils/cardSource';
 
 interface UseCardPrintsProps {
   card: ScryfallCard | null;
@@ -22,12 +23,7 @@ export function useCardPrints({ card }: UseCardPrintsProps) {
 
       setIsLoadingPrints(true);
       try {
-        const queryParams = new URLSearchParams();
-        if (card.id) queryParams.set('cardId', card.id);
-        if (card.oracle_id) queryParams.set('oracle_id', card.oracle_id);
-        if (card.name) queryParams.set('name', card.name);
-
-        const res = await fetch(`/api/scryfall/prints?${queryParams.toString()}`);
+        const res = await fetch(printsUrl(card));
         if (res.ok) {
           const json = await res.json();
           if (isMounted && Array.isArray(json.data)) {
@@ -47,7 +43,7 @@ export function useCardPrints({ card }: UseCardPrintsProps) {
     return () => {
       isMounted = false;
     };
-  }, [card?.id, card?.oracle_id, card?.name]);
+  }, [card?.id, card?.oracle_id, card?.name, card?.game]);
 
   // Memoized filtered prints list
   const filteredPrints = useMemo(() => {

@@ -13,6 +13,7 @@ export const CardModalHeader: React.FC<CardModalHeaderProps> = ({
   isLoadingPrints,
   onSelectTab,
   onClose,
+  showCombos = true,
 }) => {
   const t = useT();
   return (
@@ -31,6 +32,7 @@ export const CardModalHeader: React.FC<CardModalHeaderProps> = ({
 
       <div className="flex items-center gap-2 order-2 ml-auto">
         {/* Combos Switcher Pill */}
+        {showCombos && (
         <button
           onClick={() => onSelectTab(activeTab === 'combos' ? 'details' : 'combos')}
           className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 border transition-all cursor-pointer ${
@@ -43,6 +45,7 @@ export const CardModalHeader: React.FC<CardModalHeaderProps> = ({
           <Sparkles className="w-3.5 h-3.5" />
           <span>{t('Combo Spellbook')}</span>
         </button>
+        )}
 
         {/* Prints Switcher Pill */}
         <button

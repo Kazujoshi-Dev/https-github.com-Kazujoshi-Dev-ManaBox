@@ -82,7 +82,9 @@ const AccountMenu: React.FC<{
   onExportCollection?: () => void;
   onLogout?: () => void;
   onOpenBugReport?: () => void;
-}> = ({ user, settingsActive, onOpenSettings, onOpenImportExport, onExportCollection, onLogout, onOpenBugReport }) => {
+  /** Import list kart i skaner w osobnym oknie działają tylko dla MTG. */
+  isMtg?: boolean;
+}> = ({ user, settingsActive, onOpenSettings, onOpenImportExport, onExportCollection, onLogout, onOpenBugReport, isMtg = true }) => {
   const t = useT();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -138,6 +140,7 @@ const AccountMenu: React.FC<{
           <button type="button" role="menuitem" onClick={run(onOpenSettings)} className={item}>
             <Settings className="w-4 h-4 text-stone-400" /> {t('Ustawienia')}
           </button>
+          {isMtg && (
           <button
             type="button"
             role="menuitem"
@@ -146,6 +149,7 @@ const AccountMenu: React.FC<{
           >
             <Upload className="w-4 h-4 text-stone-400" /> {t('Import kolekcji')}
           </button>
+          )}
           <button
             type="button"
             role="menuitem"
@@ -154,9 +158,11 @@ const AccountMenu: React.FC<{
           >
             <Download className="w-4 h-4 text-stone-400" /> {t('Eksport kolekcji')}
           </button>
+          {isMtg && (
           <a href={obsHref} target="_blank" rel="noopener noreferrer" role="menuitem" onClick={() => setOpen(false)} className={item}>
             <ExternalLink className="w-4 h-4 text-stone-400" /> {t('Skaner w osobnym oknie (OBS)')}
           </a>
+          )}
           {onOpenBugReport && (
             <button type="button" role="menuitem" onClick={run(onOpenBugReport)} className={item}>
               <Bug className="w-4 h-4 text-stone-400" /> {t('Zgłoś błąd')}
@@ -220,7 +226,8 @@ export const Header: React.FC<HeaderProps> = ({
         ? ' ' + t('(ceny zmienione {date})', { date: new Date(lastPriceChangeAt).toLocaleDateString(locale()) })
         : '')
     : t('Kliknij „Odśwież ceny”, aby zobaczyć zmianę wartości kolekcji');
-  const sourceLabel = settings.pricingSource === 'CARDMARKET' ? 'Cardmarket Trend' : 'TCGPlayer Market';
+  // Disney Lorcana: ceny tylko z TCGplayer (przez Lorcast), niezależnie od wybranego źródła
+  const sourceLabel = game === 'lorcana' ? 'TCGplayer (Lorcast)' : settings.pricingSource === 'CARDMARKET' ? 'Cardmarket Trend' : 'TCGPlayer Market';
 
   type TabDef = { id: Tab; label: string; icon: React.ElementType; count?: number; dot?: boolean };
   const allTabs: TabDef[] = [
@@ -397,6 +404,7 @@ export const Header: React.FC<HeaderProps> = ({
                 onExportCollection={onExportCollection}
                 onLogout={onLogout}
                 onOpenBugReport={onOpenBugReport}
+                isMtg={game === 'mtg'}
               />
             )}
           </div>

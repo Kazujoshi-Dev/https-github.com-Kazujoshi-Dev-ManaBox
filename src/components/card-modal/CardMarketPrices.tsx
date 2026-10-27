@@ -5,6 +5,7 @@ import { formatCurrency, getCardmarketUrl } from '../../utils/formatters';
 import { CardMarketPricesProps } from './types';
 import { isDigitalOnly } from '../../utils/mtgFormats';
 import { useT } from '../../i18n';
+import { isMtgCard, priceSourceLabel } from '../../utils/cardSource';
 
 export const CardMarketPrices: React.FC<CardMarketPricesProps> = ({
   activeCard,
@@ -17,6 +18,8 @@ export const CardMarketPrices: React.FC<CardMarketPricesProps> = ({
 }) => {
   const t = useT();
   const cardmarketUrl = getCardmarketUrl(activeCard);
+  const isMtg = isMtgCard(activeCard);
+  const tcgplayerUrl = !isMtg ? activeCard.purchase_uris?.tcgplayer : undefined;
   return (
     <>
       {/* Price Table from Scryfall (Interactive Foil / Standard selector) */}
@@ -24,7 +27,7 @@ export const CardMarketPrices: React.FC<CardMarketPricesProps> = ({
         <div className="flex items-center justify-between">
           <p className="text-xs font-semibold text-stone-400 flex items-center gap-1.5 tabular-nums">
             <Coins className="w-3.5 h-3.5 text-amber-400" />
-            <span>{t('Aktualne Ceny Rynkowe (Scryfall)')}</span>
+            <span>{t('Aktualne ceny rynkowe ({source})', { source: priceSourceLabel(activeCard) })}</span>
           </p>
           <span className="text-[11px] text-amber-400/80 tabular-nums">
             {t('Kliknij, aby wybrać')}
@@ -93,13 +96,22 @@ export const CardMarketPrices: React.FC<CardMarketPricesProps> = ({
             </span>
           </button>
 
-          {/* EUR Standard */}
-          <div className="bg-stone-900 p-2 rounded-lg border border-stone-800 text-left">
-            <p className="text-[11px] text-stone-400">{t('EUR Standard')}</p>
-            <p className="tabular-nums font-bold text-amber-300 text-sm mt-0.5">
-              {formatCurrency(activeCard.prices?.eur, 'EUR')}
-            </p>
-          </div>
+          {/* EUR Standard (MTG) albo USD Foil (Lorcana: ceny tylko z TCGplayer) */}
+          {isMtg ? (
+            <div className="bg-stone-900 p-2 rounded-lg border border-stone-800 text-left">
+              <p className="text-[11px] text-stone-400">{t('EUR Standard')}</p>
+              <p className="tabular-nums font-bold text-amber-300 text-sm mt-0.5">
+                {formatCurrency(activeCard.prices?.eur, 'EUR')}
+              </p>
+            </div>
+          ) : (
+            <div className="bg-stone-900 p-2 rounded-lg border border-stone-800 text-left">
+              <p className="text-[11px] text-stone-400">{t('USD Foil')}</p>
+              <p className="tabular-nums font-bold text-amber-300 text-sm mt-0.5">
+                {formatCurrency(activeCard.prices?.usd_foil, 'USD')}
+              </p>
+            </div>
+          )}
 
           {/* USD Standard */}
           <div className="bg-stone-900 p-2 rounded-lg border border-stone-800 text-left">
@@ -117,7 +129,18 @@ export const CardMarketPrices: React.FC<CardMarketPricesProps> = ({
             rel="noopener noreferrer"
             className="w-full mt-2 py-2 px-3 bg-stone-900 hover:bg-stone-800 text-stone-300 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 border border-stone-800 transition-colors"
           >
-            <span>{t('Pokaż na MagicCardMarket (MCM)')}</span>
+            <span>{isMtg ? t('Pokaż na MagicCardMarket (MCM)') : t('Szukaj na Cardmarket')}</span>
+            <ExternalLink className="w-3.5 h-3.5" />
+          </a>
+        )}
+        {tcgplayerUrl && (
+          <a
+            href={tcgplayerUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="w-full mt-2 py-2 px-3 bg-stone-900 hover:bg-stone-800 text-stone-300 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 border border-stone-800 transition-colors"
+          >
+            <span>{t('Pokaż na TCGplayer')}</span>
             <ExternalLink className="w-3.5 h-3.5" />
           </a>
         )}

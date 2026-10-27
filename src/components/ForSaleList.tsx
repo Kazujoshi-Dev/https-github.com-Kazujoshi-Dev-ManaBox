@@ -1,4 +1,5 @@
 import { PageHeader } from './ui/PageHeader';
+import { getActiveGame } from '../utils/activeGame';
 import { publicUrl, saleFolderUrl } from '../utils/publicLinks';
 import { saleFoldersApi } from '../services/api';
 import React, { useState, useMemo, useEffect, useCallback, Suspense } from 'react';
@@ -104,7 +105,7 @@ export const ForSaleList: React.FC<ForSaleListProps> = ({
 
   // Public link generation
   const publicShareSlug = currentUser?.username || currentUser?.id || 'oferta';
-  const publicShareUrl = publicUrl('sale', publicShareSlug);
+  const publicShareUrl = publicUrl('sale', publicShareSlug, getActiveGame());
 
   const handleCopyLink = () => {
     navigator.clipboard.writeText(publicShareUrl);
@@ -322,7 +323,7 @@ export const ForSaleList: React.FC<ForSaleListProps> = ({
   };
 
   const copyFolderLink = (folder: SaleFolder) => {
-    navigator.clipboard.writeText(saleFolderUrl(publicShareSlug, folder.slug));
+    navigator.clipboard.writeText(saleFolderUrl(publicShareSlug, folder.slug, getActiveGame()));
     setCopiedFolderId(folder.id);
     showToast?.(t('Skopiowano link do folderu „{name}”.', { name: folder.name }));
     setTimeout(() => setCopiedFolderId((id) => (id === folder.id ? null : id)), 2500);
@@ -454,11 +455,11 @@ export const ForSaleList: React.FC<ForSaleListProps> = ({
             <div className="flex items-center gap-1 flex-wrap">
               {folder ? (
                 <>
-                  <button type="button" onClick={() => copyFolderLink(folder)} className="btn btn-secondary" title={saleFolderUrl(publicShareSlug, folder.slug)}>
+                  <button type="button" onClick={() => copyFolderLink(folder)} className="btn btn-secondary" title={saleFolderUrl(publicShareSlug, folder.slug, getActiveGame())}>
                     {copiedFolderId === folder.id ? <Check className="w-4 h-4" /> : <Link className="w-4 h-4" />}
                     {copiedFolderId === folder.id ? t('Skopiowano') : t('Kopiuj link')}
                   </button>
-                  <a href={saleFolderUrl(publicShareSlug, folder.slug)} target="_blank" rel="noreferrer" className="btn btn-ghost" title={t('Zobacz, jak widzą folder kupujący')}>
+                  <a href={saleFolderUrl(publicShareSlug, folder.slug, getActiveGame())} target="_blank" rel="noreferrer" className="btn btn-ghost" title={t('Zobacz, jak widzą folder kupujący')}>
                     <ExternalLink className="w-4 h-4" />
                     <span className="hidden lg:inline">{t('Podgląd')}</span>
                   </a>

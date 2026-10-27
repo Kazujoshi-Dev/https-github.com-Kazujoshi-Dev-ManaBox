@@ -19,6 +19,8 @@ import {
 import { digitalLabel, isDigitalOnly } from '../utils/mtgFormats';
 import { useT, locale, tServer } from '../i18n';
 import { useShowEdhrecRank } from '../utils/displayPrefs';
+import { getActiveGame } from '../utils/activeGame';
+import { autocompleteUrl, searchUrl } from '../utils/cardSource';
 
 const ARENA_PREF_KEY = 'ms-search-arena';
 
@@ -29,7 +31,10 @@ interface CardSearchProps {
 
 export const CardSearch: React.FC<CardSearchProps> = ({ onSelectCard, settings }) => {
   const t = useT();
-  const showEdhrec = useShowEdhrecRank();
+  // Gra wybrana przy wejściu na zakładkę (zmiana gry przechodzi przez ekran wyboru, więc komponent montuje się od nowa)
+  const [game] = useState(getActiveGame);
+  const isMtg = game === 'mtg';
+  const showEdhrec = useShowEdhrecRank() && isMtg;
   const [query, setQuery] = useState('');
   const [autocomplete, setAutocomplete] = useState<string[]>([]);
   const [searchResults, setSearchResults] = useState<ScryfallCard[]>([]);
@@ -61,7 +66,7 @@ export const CardSearch: React.FC<CardSearchProps> = ({ onSelectCard, settings }
 
     debounceRef.current = setTimeout(async () => {
       try {
-        const res = await fetch(`/api/scryfall/autocomplete?q=${encodeURIComponent(query)}`);
+        const res = await fetch(autocompleteUrl(game, query));
         if (res.ok) {
           const data = await res.json();
           if (data.data && Array.isArray(data.data)) {
@@ -77,7 +82,7 @@ export const CardSearch: React.FC<CardSearchProps> = ({ onSelectCard, settings }
     return () => {
       if (debounceRef.current) clearTimeout(debounceRef.current);
     };
-  }, [query]);
+  }, [query, game]);
 
   const executeSearch = async (searchQuery: string, arena: boolean = includeArena) => {
     if (!searchQuery.trim()) return;
@@ -87,7 +92,7 @@ export const CardSearch: React.FC<CardSearchProps> = ({ onSelectCard, settings }
     setShowAutocomplete(false);
 
     try {
-      const res = await fetch(`/api/scryfall/search?q=${encodeURIComponent(searchQuery)}&game=${arena ? 'all' : 'paper'}`);
+      const res = await fetch(searchUrl(game, searchQuery, isMtg ? { includeArena: arena } : {}));
       const data = await res.json();
 
       if (!res.ok) {
@@ -100,7 +105,7 @@ export const CardSearch: React.FC<CardSearchProps> = ({ onSelectCard, settings }
         setSearchResults([]);
       }
     } catch (err: any) {
-      setError(err.message || t('Wystąpił błąd podczas wyszukiwania kart w Scryfall API'));
+      setError(err.message || (isMtg ? t('Wystąpił błąd podczas wyszukiwania kart w Scryfall API') : t('Wystąpił błąd podczas wyszukiwania kart')));
       setSearchResults([]);
     } finally {
       setIsLoading(false);
@@ -115,9 +120,15 @@ export const CardSearch: React.FC<CardSearchProps> = ({ onSelectCard, settings }
         <PageHeader
           title={t('Szukaj kart')}
           description={
-            <>
-              {t('Nazwa karty, dodatek albo zapytanie Scryfall, np.')} <code className="text-stone-200">c:blue t:instant</code> {t('lub')} <code className="text-stone-200">rarity:mythic cmc&lt;3</code>.
-            </>
+            isMtg ? (
+              <>
+                {t('Nazwa karty, dodatek albo zapytanie Scryfall, np.')} <code className="text-stone-200">c:blue t:instant</code> {t('lub')} <code className="text-stone-200">rarity:mythic cmc&lt;3</code>.
+              </>
+            ) : (
+              <>
+                {t('Nazwa karty albo filtry, np.')} <code className="text-stone-200">ink:amethyst cost&lt;=3</code> {t('lub')} <code className="text-stone-200">set:1 rarity:enchanted</code>.
+              </>
+            )
           }
         />
 
@@ -134,7 +145,7 @@ export const CardSearch: React.FC<CardSearchProps> = ({ onSelectCard, settings }
               <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-5 h-5 text-amber-400" />
               <input
                 type="text"
-                placeholder={t('Wpisz nazwę karty (np. Black Lotus, Counterspell, Ragavan)...')}
+                placeholder={isMtg ? t('Wpisz nazwę karty (np. Black Lotus, Counterspell, Ragavan)...') : t('Wpisz nazwę karty (np. Elsa, Stitch, Mickey Mouse)...')}
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 onFocus={() => {
@@ -178,13 +189,14 @@ export const CardSearch: React.FC<CardSearchProps> = ({ onSelectCard, settings }
                   className="w-full px-4 py-2.5 text-left text-xs text-stone-200 hover:bg-stone-800/80 hover:text-amber-300 flex items-center justify-between transition-colors cursor-pointer"
                 >
                   <span className="font-semibold">{cardName}</span>
-                  <span className="text-[11px] tabular-nums text-stone-500 ">{t('Scryfall')}</span>
+                  <span className="text-[11px] tabular-nums text-stone-500 ">{isMtg ? t('Scryfall') : 'Lorcast'}</span>
                 </button>
               ))}
             </div>
           )}
         </div>
 
+        {isMtg && (
         <label className="inline-flex items-center gap-2 text-sm text-stone-300 cursor-pointer select-none">
           <input
             type="checkbox"
@@ -205,6 +217,7 @@ export const CardSearch: React.FC<CardSearchProps> = ({ onSelectCard, settings }
           <span>{t('Karty MTG Arena')}</span>
           <span className="text-xs text-stone-500">{t('(uwzględnij karty cyfrowe)')}</span>
         </label>
+        )}
 
       </div>
 

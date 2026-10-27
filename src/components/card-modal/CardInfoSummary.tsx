@@ -5,8 +5,11 @@ import { getRarityColor, getRarityLabel, getCardEdhrecRank } from '../../utils/f
 import { EdhrecBadge } from '../EdhrecBadge';
 import { CardInfoSummaryProps } from './types';
 import { useT } from '../../i18n';
+import { isMtgCard } from '../../utils/cardSource';
 
 const RECOGNIZED_FORMATS = ['commander', 'modern', 'standard', 'pioneer', 'legacy', 'pauper', 'vintage'];
+/** Disney Lorcana: format Core Constructed. */
+const LORCANA_FORMATS = ['core'];
 
 export const CardInfoSummary: React.FC<CardInfoSummaryProps> = ({
   activeCard,
@@ -16,6 +19,18 @@ export const CardInfoSummary: React.FC<CardInfoSummaryProps> = ({
   onOpenPrintsTab,
 }) => {
   const t = useT();
+  const isMtg = isMtgCard(activeCard);
+  // Disney Lorcana: koszt, atrament i statystyki postaci
+  const lorcanaStats = isMtg
+    ? []
+    : [
+        { label: t('Koszt'), value: activeCard.cmc },
+        { label: t('Atrament'), value: activeCard.ink || null },
+        { label: t('Siła'), value: activeCard.strength },
+        { label: t('Wytrzymałość'), value: activeCard.willpower },
+        { label: 'Lore', value: activeCard.lore },
+        { label: t('Ruch'), value: activeCard.move_cost }
+      ].filter((s) => s.value !== null && s.value !== undefined && s.value !== '');
   return (
     <div>
       {/* Active Set, Rarity & Artist */}
@@ -39,6 +54,19 @@ export const CardInfoSummary: React.FC<CardInfoSummaryProps> = ({
 
       {typeLine && (
         <p className="text-xs text-stone-400 mt-2">{typeLine}</p>
+      )}
+
+      {lorcanaStats.length > 0 && (
+        <div className="mt-2 flex flex-wrap gap-1.5">
+          {lorcanaStats.map((s) => (
+            <span key={s.label} className="text-[11px] px-2 py-0.5 rounded border border-stone-800 bg-stone-950 text-stone-300 tabular-nums">
+              <span className="text-stone-500">{s.label}:</span> <span className="font-semibold text-stone-100">{s.value}</span>
+            </span>
+          ))}
+          {activeCard.inkwell && (
+            <span className="text-[11px] px-2 py-0.5 rounded border border-amber-500/30 bg-amber-500/10 text-amber-300">{t('Można włożyć do inkwell')}</span>
+          )}
+        </div>
       )}
 
       {/* Oracle Text */}
@@ -79,7 +107,7 @@ export const CardInfoSummary: React.FC<CardInfoSummaryProps> = ({
             <span>{t('Formaty i Legalność')}</span>
           </p>
           <div className="flex flex-wrap gap-1.5">
-            {RECOGNIZED_FORMATS.map((format) => {
+            {(isMtg ? RECOGNIZED_FORMATS : LORCANA_FORMATS).map((format) => {
               const legality = activeCard.legalities?.[format];
               if (!legality) return null;
               const isLegal = legality === 'legal';

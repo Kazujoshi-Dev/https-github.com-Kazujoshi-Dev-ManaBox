@@ -29,11 +29,30 @@ import {
   PieChart as PieIcon 
 } from 'lucide-react';
 import { useT, locale } from '../i18n';
+import { getActiveGame } from '../utils/activeGame';
 
 const MOVERS_LIMIT = 20;
 
 /** Lądy (wszystkie, nie tylko podstawowe) nie wliczają się do kolorów ani krzywej many. Przy kartach dwustronnych liczy się przednia strona. */
 const isLand = (typeLine?: string) => /\bland\b/i.test((typeLine || '').split('//')[0]);
+
+/** Disney Lorcana: kolory atramentu i rzadkości (kolejność jak w grze). */
+const LORCANA_INKS: Array<{ key: string; color: string }> = [
+  { key: 'Amber', color: '#f59e0b' },
+  { key: 'Amethyst', color: '#9333ea' },
+  { key: 'Emerald', color: '#16a34a' },
+  { key: 'Ruby', color: '#dc2626' },
+  { key: 'Sapphire', color: '#2563eb' },
+  { key: 'Steel', color: '#a8a29e' }
+];
+const LORCANA_RARITIES: Array<{ key: string; label: string; color: string }> = [
+  { key: 'enchanted', label: 'Enchanted', color: '#c084fc' },
+  { key: 'legendary', label: 'Legendary', color: '#f59e0b' },
+  { key: 'super_rare', label: 'Super Rare', color: '#fcd34d' },
+  { key: 'rare', label: 'Rare', color: '#eab308' },
+  { key: 'uncommon', label: 'Uncommon', color: '#cbd5e1' },
+  { key: 'common', label: 'Common', color: '#78716c' }
+];
 
 type Mover = { item: CollectionItem; now: number; before: number; delta: number; pct: number | null };
 
@@ -45,6 +64,7 @@ interface AnalyticsProps {
 
 export const Analytics: React.FC<AnalyticsProps> = ({ collection, settings, onViewCardDetails }) => {
   const t = useT();
+  const isLorcana = getActiveGame() === 'lorcana';
   
   // Overall metrics
   const stats = useMemo(() => {
@@ -53,6 +73,9 @@ export const Analytics: React.FC<AnalyticsProps> = ({ collection, settings, onVi
     const colorCounts: Record<string, number> = { W: 0, U: 0, B: 0, R: 0, G: 0, C: 0, Multi: 0 };
     const cmcCounts: Record<string, number> = { '0': 0, '1': 0, '2': 0, '3': 0, '4': 0, '5': 0, '6+': 0 };
     const rarityCounts: Record<string, number> = { Mythic: 0, Rare: 0, Uncommon: 0, Common: 0, Inne: 0 };
+    // Disney Lorcana: atramenty i rzadkości tej gry
+    const inkCounts: Record<string, number> = {};
+    const lorcanaRarityCounts: Record<string, number> = {};
 
     collection.forEach(item => {
       const card = item.card;
@@ -68,6 +91,15 @@ export const Analytics: React.FC<AnalyticsProps> = ({ collection, settings, onVi
 
       // Rzadkość liczymy dla wszystkich kart; kolory i krzywą many bez lądów
       const rarity = card.rarity ? card.rarity.toLowerCase() : 'common';
+      if (isLorcana) {
+        lorcanaRarityCounts[rarity] = (lorcanaRarityCounts[rarity] || 0) + qty;
+        const ink = card.ink || (card.colors && card.colors[0]) || '';
+        inkCounts[ink] = (inkCounts[ink] || 0) + qty;
+        const cost = Math.floor(card.cmc || 0);
+        if (cost >= 6) cmcCounts['6+'] += qty;
+        else cmcCounts[String(cost)] = (cmcCounts[String(cost)] || 0) + qty;
+        return;
+      }
       if (rarity === 'mythic') rarityCounts['Mythic'] += qty;
       else if (rarity === 'rare') rarityCounts['Rare'] += qty;
       else if (rarity === 'uncommon') rarityCounts['Uncommon'] += qty;
@@ -102,9 +134,11 @@ export const Analytics: React.FC<AnalyticsProps> = ({ collection, settings, onVi
       totalValue,
       colorCounts,
       cmcCounts,
-      rarityCounts
+      rarityCounts,
+      inkCounts,
+      lorcanaRarityCounts
     };
-  }, [collection, settings]);
+  }, [collection, settings, isLorcana]);
 
   // Najcenniejsze karty (top 10): ranking po cenie jednej sztuki (liczba egzemplarzy nie ma znaczenia).
   // Wersja zwykła i foil to osobne pozycje, bo mają różne ceny.
@@ -123,17 +157,21 @@ export const Analytics: React.FC<AnalyticsProps> = ({ collection, settings, onVi
   }, [collection, settings]);
 
   // Recharts Data Formats
-  const cmcChartData = [
-    { cmc: 'CMC 0', ilosc: stats.cmcCounts['0'] },
-    { cmc: 'CMC 1', ilosc: stats.cmcCounts['1'] },
-    { cmc: 'CMC 2', ilosc: stats.cmcCounts['2'] },
-    { cmc: 'CMC 3', ilosc: stats.cmcCounts['3'] },
-    { cmc: 'CMC 4', ilosc: stats.cmcCounts['4'] },
-    { cmc: 'CMC 5', ilosc: stats.cmcCounts['5'] },
-    { cmc: 'CMC 6+', ilosc: stats.cmcCounts['6+'] },
-  ];
+  const costLabel = isLorcana ? t('Koszt') : 'CMC';
+  const cmcChartData = ['0', '1', '2', '3', '4', '5', '6+'].map((k) => ({ cmc: `${costLabel} ${k}`, ilosc: stats.cmcCounts[k] }));
 
-  const colorChartData = [
+  const colorChartData = isLorcana
+    ? [
+        ...LORCANA_INKS.map((ink) => ({ name: ink.key, value: stats.inkCounts[ink.key] || 0, color: ink.color })),
+        {
+          name: t('Inne'),
+          value: Object.entries(stats.inkCounts)
+            .filter(([k]) => !LORCANA_INKS.some((i) => i.key === k))
+            .reduce((sum, [, v]) => sum + Number(v), 0),
+          color: '#57534e'
+        }
+      ].filter(d => d.value > 0)
+    : [
     { name: t('Biały (W)'), value: stats.colorCounts.W, color: '#fef3c7' },
     { name: t('Niebieski (U)'), value: stats.colorCounts.U, color: '#2563eb' },
     { name: t('Czarny (B)'), value: stats.colorCounts.B, color: '#44403c' },
@@ -143,7 +181,9 @@ export const Analytics: React.FC<AnalyticsProps> = ({ collection, settings, onVi
     { name: t('Wielobarwne'), value: stats.colorCounts.Multi, color: '#d97706' },
   ].filter(d => d.value > 0);
 
-  const rarityChartData = [
+  const rarityChartData = isLorcana
+    ? LORCANA_RARITIES.map((r) => ({ name: r.label, value: stats.lorcanaRarityCounts[r.key] || 0, color: r.color })).filter(d => d.value > 0)
+    : [
     { name: 'Mythic', value: stats.rarityCounts.Mythic, color: '#f59e0b' },
     { name: 'Rare', value: stats.rarityCounts.Rare, color: '#eab308' },
     { name: 'Uncommon', value: stats.rarityCounts.Uncommon, color: '#cbd5e1' },
@@ -175,7 +215,7 @@ export const Analytics: React.FC<AnalyticsProps> = ({ collection, settings, onVi
   return (
     <div className="space-y-6">
       
-      <PageHeader title={t('Statystyki')} description={t('Wartość kolekcji, kolory, krzywa many i rzadkość kart.')} />
+      <PageHeader title={t('Statystyki')} description={isLorcana ? t('Wartość kolekcji, atramenty, koszty i rzadkość kart.') : t('Wartość kolekcji, kolory, krzywa many i rzadkość kart.')} />
 
       <div className="grid grid-cols-2 lg:grid-cols-3 rounded-xl border border-stone-800 bg-stone-900 [&>*]:p-4">
         <div className="space-y-1 border-stone-800">
@@ -186,7 +226,7 @@ export const Analytics: React.FC<AnalyticsProps> = ({ collection, settings, onVi
         <div className="space-y-1 border-l border-stone-800">
           <p className="text-sm text-stone-400">{t('Wartość')}</p>
           <p className="text-2xl font-semibold text-stone-50 tabular-nums">{formatCurrency(stats.totalValue, settings.currency)}</p>
-          <p className="text-xs text-stone-500">{settings.pricingSource === 'CARDMARKET' ? t('Cardmarket Trend') : 'TCGPlayer Market'}</p>
+          <p className="text-xs text-stone-500">{isLorcana ? 'TCGplayer (Lorcast)' : settings.pricingSource === 'CARDMARKET' ? t('Cardmarket Trend') : 'TCGPlayer Market'}</p>
         </div>
         <div className="space-y-1 col-span-2 lg:col-span-1 border-t lg:border-t-0 lg:border-l border-stone-800">
           <p className="text-sm text-stone-400 flex items-center gap-1.5">
@@ -217,9 +257,9 @@ export const Analytics: React.FC<AnalyticsProps> = ({ collection, settings, onVi
           <div className="flex items-center justify-between">
             <h3 className="text-sm font-bold text-stone-200 flex items-center gap-1.5">
               <Flame className="w-4 h-4 text-amber-400" />
-              <span>{t('Krzywa many')}</span>
+              <span>{isLorcana ? t('Koszt kart') : t('Krzywa many')}</span>
             </h3>
-            <span className="text-[11px] text-stone-500">{t('Bez lądów')}</span>
+            {!isLorcana && <span className="text-[11px] text-stone-500">{t('Bez lądów')}</span>}
           </div>
 
           <div className="h-64 w-full pt-4">
@@ -242,7 +282,7 @@ export const Analytics: React.FC<AnalyticsProps> = ({ collection, settings, onVi
           <div className="flex items-center justify-between">
             <h3 className="text-sm font-bold text-stone-200 flex items-center gap-1.5">
               <PieIcon className="w-4 h-4 text-amber-400" />
-              <span>{t('Kolory kart')}</span>
+              <span>{isLorcana ? t('Atramenty') : t('Kolory kart')}</span>
             </h3>
           </div>
 
@@ -270,7 +310,7 @@ export const Analytics: React.FC<AnalyticsProps> = ({ collection, settings, onVi
               </PieChart>
             </ResponsiveContainer>
           </div>
-          <p className="text-[11px] text-stone-500 text-center">{t('Lądy nie są wliczane do statystyki kolorów.')}</p>
+          {!isLorcana && <p className="text-[11px] text-stone-500 text-center">{t('Lądy nie są wliczane do statystyki kolorów.')}</p>}
         </div>
 
       </div>
