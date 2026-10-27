@@ -4,7 +4,7 @@ import type { AppSettings, CollectionItem, DeckCardEntry, ScryfallCard } from '.
 import { formatCurrency, getCardImageUri, getCardPrice, handleCardImageError, langFromCard } from '../../utils/formatters';
 import { useT } from '../../i18n';
 import { filterPrints } from '../../utils/printMatch';
-import { isMtgCard, printsUrl } from '../../utils/cardSource';
+import { fillPartialCards, isMtgCard, mergeFullCards, printsUrl } from '../../utils/cardSource';
 
 interface AddCardVersionPickerProps {
   card: ScryfallCard;
@@ -73,7 +73,13 @@ export const AddCardVersionPicker: React.FC<AddCardVersionPickerProps> = ({
     // Karty innych gier (np. Lorcana): wydania z naszej bazy tej gry
     fetch(isMtgCard(card) ? `/api/scryfall/prints?${q.toString()}` : printsUrl(card))
       .then((r) => (r.ok ? r.json() : { data: [] }))
-      .then((d) => !cancelled && setPrints(Array.isArray(d?.data) && d.data.length ? d.data : [card]))
+      .then((d) => {
+        if (cancelled) return;
+        const list: ScryfallCard[] = Array.isArray(d?.data) && d.data.length ? d.data : [card];
+        setPrints(list);
+        // Pokémon: ceny wersji dociągamy w tle
+        fillPartialCards(list, (full) => setPrints((prev) => (prev ? mergeFullCards(prev, full) : prev)), () => cancelled, 24);
+      })
       .catch(() => !cancelled && setPrints([card]));
     return () => {
       cancelled = true;

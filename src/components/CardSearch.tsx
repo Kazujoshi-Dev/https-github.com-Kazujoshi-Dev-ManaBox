@@ -20,7 +20,7 @@ import { digitalLabel, isDigitalOnly } from '../utils/mtgFormats';
 import { useT, locale, tServer } from '../i18n';
 import { useShowEdhrecRank } from '../utils/displayPrefs';
 import { getActiveGame } from '../utils/activeGame';
-import { autocompleteUrl, searchUrl } from '../utils/cardSource';
+import { autocompleteUrl, fillPartialCards, mergeFullCards, searchUrl } from '../utils/cardSource';
 
 const ARENA_PREF_KEY = 'ms-search-arena';
 
@@ -101,6 +101,13 @@ export const CardSearch: React.FC<CardSearchProps> = ({ onSelectCard, settings }
 
       if (data.data && Array.isArray(data.data)) {
         setSearchResults(data.data);
+        // Pokémon: ceny i rzadkość pierwszych wyników dociągamy w tle
+        const thisQuery = searchQuery;
+        fillPartialCards(
+          data.data,
+          (full) => setSearchResults((prev) => mergeFullCards(prev, full)),
+          () => lastQueryRef.current !== thisQuery
+        );
       } else {
         setSearchResults([]);
       }

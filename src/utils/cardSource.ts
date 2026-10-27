@@ -56,3 +56,39 @@ export async function fetchFullCard(card: ScryfallCard): Promise<ScryfallCard> {
     return card;
   }
 }
+
+/**
+ * Pokémon: uzupełnia w tle szczegóły i ceny kart z listy (np. wyników wyszukiwania), paczkami
+ * po kilkanaście, żeby ceny pojawiały się stopniowo. `onChunk` dostaje pełne karty z każdej paczki;
+ * `isCancelled` przerywa pracę, gdy lista na ekranie się zmieniła.
+ */
+export async function fillPartialCards(
+  cards: ScryfallCard[],
+  onChunk: (full: ScryfallCard[]) => void,
+  isCancelled: () => boolean = () => false,
+  max = 48
+): Promise<void> {
+  const ids = cards.filter((c) => c.partial && gameOfCard(c) === 'pokemon').map((c) => c.id).slice(0, max);
+  const CHUNK = 12;
+  for (let i = 0; i < ids.length; i += CHUNK) {
+    if (isCancelled()) return;
+    try {
+      const res = await fetch('/api/pokemon/cards', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ids: ids.slice(i, i + CHUNK) })
+      });
+      if (!res.ok) return; // limit zapytań lub chwilowy błąd: resztę uzupełni otwarcie karty
+      const json = await res.json();
+      if (!isCancelled() && Array.isArray(json?.data) && json.data.length) onChunk(json.data as ScryfallCard[]);
+    } catch {
+      return;
+    }
+  }
+}
+
+/** Podmienia na liście karty, dla których przyszły pełne dane. */
+export function mergeFullCards(list: ScryfallCard[], full: ScryfallCard[]): ScryfallCard[] {
+  const byId = new Map(full.map((c) => [c.id, c]));
+  return list.map((c) => byId.get(c.id) || c);
+}

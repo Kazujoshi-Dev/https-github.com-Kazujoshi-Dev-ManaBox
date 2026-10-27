@@ -240,6 +240,24 @@ export function getConditionLabel(condition: CardCondition): string {
   }
 }
 
+/**
+ * Zastępnik grafiki dla kart Lorcany i Pokémon bez obrazu (np. nowe promki, których TCGdex jeszcze nie ma).
+ * Neutralna karta w kolorach aplikacji; rewers MTG byłby tu mylący.
+ */
+export const CARD_IMAGE_PLACEHOLDER =
+  'data:image/svg+xml;charset=utf-8,' +
+  encodeURIComponent(
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 488 680">' +
+      '<rect x="4" y="4" width="480" height="672" rx="26" fill="#1c1917" stroke="#44403c" stroke-width="8"/>' +
+      '<rect x="164" y="250" width="160" height="180" rx="14" fill="none" stroke="#57534e" stroke-width="10"/>' +
+      '<circle cx="214" cy="305" r="16" fill="#57534e"/>' +
+      '<path d="M176 415 L230 350 L262 385 L284 362 L312 415 Z" fill="#57534e"/>' +
+    '</svg>'
+  );
+
+/** Grafika z innego źródła niż Scryfall (Lorcast, TCGdex): nie przechodzi przez nasze proxy Scryfall. */
+const isScryfallImage = (uri: string) => /^https:\/\/([a-z0-9-]+\.)*scryfall\.(io|com)\//i.test(uri);
+
 export function getCardImageUri(card: ScryfallCard, size: 'small' | 'normal' | 'large' | 'art_crop' = 'normal'): string {
   if (!card) return 'https://svgs.scryfall.io/card-back.svg';
 
@@ -256,6 +274,7 @@ export function getCardImageUri(card: ScryfallCard, size: 'small' | 'normal' | '
     }
   }
 
+  if (card.game && card.game !== 'mtg') return CARD_IMAGE_PLACEHOLDER;
   return 'https://svgs.scryfall.io/card-back.svg';
 }
 
@@ -281,6 +300,11 @@ export function getCardArtist(card: ScryfallCard | null | undefined): string | u
 
 export function handleCardImageError(e: React.SyntheticEvent<HTMLImageElement, Event>, originalUri: string) {
   const target = e.currentTarget;
+  // Lorcast, TCGdex: brak pliku po ich stronie, proxy Scryfall nic tu nie pomoże
+  if (originalUri && originalUri.startsWith('http') && !isScryfallImage(originalUri)) {
+    if (target.src !== CARD_IMAGE_PLACEHOLDER) target.src = CARD_IMAGE_PLACEHOLDER;
+    return;
+  }
   if (!target.dataset.proxied && originalUri && originalUri.startsWith('http')) {
     target.dataset.proxied = 'true';
     target.src = `/api/scryfall/image-proxy?url=${encodeURIComponent(originalUri)}`;

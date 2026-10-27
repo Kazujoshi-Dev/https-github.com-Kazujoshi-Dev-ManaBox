@@ -17,7 +17,7 @@ import { briefToAppCard, tcgdexToAppCard, type TcgdexCard, type TcgdexSet, type 
 import type { ScryfallCard } from '../../types';
 
 const API_BASE = (process.env.TCGDEX_API_URL || 'https://api.tcgdex.net/v2/en').replace(/\/+$/, '');
-const REQUEST_GAP_MS = 250; // najwyżej 4 zapytania na sekundę
+const REQUEST_GAP_MS = 120; // najwyżej ~8 zapytań na sekundę
 const MAX_QUEUE = 600;
 const INDEX_MAX_AGE_MS = 20 * 60 * 60 * 1000;
 const DETAILS_MAX_AGE_MS = 20 * 60 * 60 * 1000; // ceny TCGdex zmieniają się raz na dobę

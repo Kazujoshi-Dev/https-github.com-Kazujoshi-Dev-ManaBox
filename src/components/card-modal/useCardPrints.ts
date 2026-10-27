@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { ScryfallCard } from '../../types';
-import { printsUrl } from '../../utils/cardSource';
+import { fillPartialCards, mergeFullCards, printsUrl } from '../../utils/cardSource';
 
 interface UseCardPrintsProps {
   card: ScryfallCard | null;
@@ -28,6 +28,8 @@ export function useCardPrints({ card }: UseCardPrintsProps) {
           const json = await res.json();
           if (isMounted && Array.isArray(json.data)) {
             setPrints(json.data);
+            // Pokémon: ceny pierwszych wersji dociągamy w tle
+            fillPartialCards(json.data, (full) => setPrints((prev) => mergeFullCards(prev, full)), () => !isMounted, 24);
           }
         }
       } catch (err) {

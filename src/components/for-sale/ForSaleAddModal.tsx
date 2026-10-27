@@ -6,7 +6,7 @@ import { formatCurrency, getCardImageUri, getCardPrice, getSaleMarketPrice, getS
 import { useBackToClose } from '../../hooks/useBackButton';
 import { useT, tk } from '../../i18n';
 import { getActiveGame } from '../../utils/activeGame';
-import { fetchFullCard, searchUrl } from '../../utils/cardSource';
+import { fetchFullCard, fillPartialCards, mergeFullCards, searchUrl } from '../../utils/cardSource';
 
 export interface ForSaleAddData {
   card: ScryfallCard;
@@ -101,6 +101,7 @@ export const ForSaleAddModal: React.FC<ForSaleAddModalProps> = ({ collection, se
           list.push(c);
         }
         setResults(list.slice(0, 30));
+        fillPartialCards(list.slice(0, 30), (full) => setResults((prev) => mergeFullCards(prev, full)), () => id !== searchId.current, 24);
       } catch {
         if (id === searchId.current) setResults([]);
       } finally {

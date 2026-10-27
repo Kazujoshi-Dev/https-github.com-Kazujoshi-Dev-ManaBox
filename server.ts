@@ -1859,7 +1859,7 @@ app.get('/api/lorcana/status', (_req, res) => {
 // --- POKÉMON TCG: karty z TCGdex (lista lokalnie, szczegóły i ceny na żądanie) ---
 const pokemonLimiter = rateLimit({ name: 'pokemon', windowMs: 60_000, max: 120 });
 // Pełna karta może wymagać zapytania do TCGdex: osobny, mniejszy limit
-const pokemonCardLimiter = rateLimit({ name: 'pokemon-card', windowMs: 60_000, max: 60 });
+const pokemonCardLimiter = rateLimit({ name: 'pokemon-card', windowMs: 60_000, max: 90 });
 const POKEMON_NOT_READY = 'Baza kart Pokémon jeszcze się wczytuje. Spróbuj za kilka minut.';
 
 app.get('/api/pokemon/search', pokemonLimiter, async (req, res) => {
@@ -1885,6 +1885,21 @@ app.get('/api/pokemon/card/:id', pokemonCardLimiter, async (req, res) => {
   } catch (err: any) {
     if (err instanceof pokemon.TcgdexBusyError) return res.status(503).json({ error: err.message });
     sendServerError(res, err, '/api/pokemon/card/:id');
+  }
+});
+
+// Szczegóły i ceny kilku kart naraz (wyniki wyszukiwania uzupełniane w tle po stronie przeglądarki)
+const POKEMON_BATCH_MAX = 12;
+app.post('/api/pokemon/cards', pokemonCardLimiter, async (req, res) => {
+  try {
+    const ids = (Array.isArray(req.body?.ids) ? req.body.ids : [])
+      .filter((x: unknown): x is string => typeof x === 'string' && x.length > 0 && x.length <= 64)
+      .slice(0, POKEMON_BATCH_MAX);
+    const found = await pokemon.getPokemonCards(ids, POKEMON_BATCH_MAX);
+    res.json({ data: ids.map((id: string) => found.get(id)).filter((c: any) => c && !c.partial) });
+  } catch (err: any) {
+    if (err instanceof pokemon.TcgdexBusyError) return res.status(503).json({ error: err.message });
+    sendServerError(res, err, '/api/pokemon/cards');
   }
 });
 
