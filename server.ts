@@ -980,6 +980,8 @@ async function fetchScryfall(endpoint: string) {
   }
 
   const data = await response.json();
+  // Wydania nieangielskie zwykle nie mają cen w Scryfall: uzupełniamy je cenami wersji angielskiej
+  await cards.fillPricesFromEnglish(data).catch(() => undefined);
   cacheScryfall(endpoint, data);
   return data;
 }
@@ -1464,6 +1466,8 @@ app.post('/api/scryfall/collection', scryfallCollectionLimiter, async (req, res)
       }
     }
 
+    // Importy (np. z ManaBox) wskazują konkretne wydanie językowe, zwykle bez cen w Scryfall
+    await cards.fillPricesFromEnglish(allFound).catch(() => undefined);
     res.json({ object: 'list', data: allFound, not_found: notFound });
   } catch (err: any) {
     if (err instanceof ScryfallBusyError) return res.status(503).json({ error: err.message });
@@ -2034,6 +2038,7 @@ app.post('/api/collection/refresh-prices', authMiddleware, refreshPricesLimiter,
     const PRICE_KEYS = ['eur', 'eur_foil', 'usd', 'usd_foil', 'usd_etched'];
     const pricesDiffer = (a: any, b: any) =>
       PRICE_KEYS.some(k => String(a?.[k] ?? '') !== String(b?.[k] ?? ''));
+    const hasAnyPrice = (pr: any) => PRICE_KEYS.some(k => pr?.[k] != null && pr[k] !== '');
 
     const items = collection.filter(item => item.card && item.card.id);
     const ids = [...new Set(items.map(item => String(item.card.id)))].filter(id => UUID_RE.test(id));
@@ -2086,10 +2091,15 @@ app.post('/api/collection/refresh-prices', authMiddleware, refreshPricesLimiter,
       }
     }
     if (missing.length > 0 && fromApi === 0) lastPriceApiRefresh.delete(userId); // nic nie pobrano — pozwól spróbować ponownie
+    // Karty w innych językach: brakujące ceny z aktualnej wersji angielskiej (także karty z lokalnej bazy)
+    await cards.fillPricesFromEnglish([...fresh.values()]).catch(() => undefined);
 
     for (const item of items) {
       const updatedCard = fresh.get(String(item.card.id));
       if (!updatedCard) continue;
+      // Wersja nieangielska bez żadnej ceny (brak wersji angielskiej do porównania):
+      // zostawiamy dotychczasowe ceny zamiast zerować wartość karty
+      if (!hasAnyPrice(updatedCard.prices) && hasAnyPrice(item.card.prices) && String(updatedCard.lang || 'en') !== 'en') continue;
       const oldPrices = item.card.prices;
       let previousPrices = item.previousPrices ?? null;
       let pricesChangedAt = item.pricesChangedAt ?? null;
@@ -2101,6 +2111,13 @@ app.post('/api/collection/refresh-prices', authMiddleware, refreshPricesLimiter,
       }
       const card = { ...item.card };
       if (updatedCard.prices) card.prices = updatedCard.prices;
+      if (updatedCard.prices_from_en) {
+        card.prices_from_en = true;
+        card.prices_en_fields = updatedCard.prices_en_fields;
+      } else {
+        delete card.prices_from_en;
+        delete card.prices_en_fields;
+      }
       if (updatedCard.image_uris) card.image_uris = updatedCard.image_uris;
       if (updatedCard.edhrec_rank !== undefined) card.edhrec_rank = updatedCard.edhrec_rank;
       updates.push({ id: item.id, card, previousPrices, pricesChangedAt, lastUpdatedPriceAt: now });

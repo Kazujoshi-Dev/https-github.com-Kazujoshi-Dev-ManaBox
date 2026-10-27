@@ -260,6 +260,125 @@ async function resolveDownloadUri(meta: any, allowRefetch = true): Promise<strin
  * Pobiera dane zbiorcze Scryfall i aktualizuje tabelę scryfall_cards.
  * Pomija pobieranie, jeśli Scryfall nie opublikował nowej wersji od ostatniego importu.
  */
+// ---------- Ceny wydań nieangielskich ----------
+//
+// Scryfall zwykle nie podaje cen wydań nieangielskich (niemieckich, japońskich itd.): pola
+// prices są puste. Cardmarket i TCGplayer i tak wyceniają produkt wspólnie dla wszystkich języków,
+// więc brakujące pola uzupełniamy cenami angielskiej karty z tego samego dodatku i numeru.
+// Własne ceny wydania (gdy Scryfall je poda) mają pierwszeństwo. Uzupełnione pola zapisujemy
+// w prices_en_fields, żeby przy kolejnym odświeżeniu wziąć dla nich aktualną cenę angielską,
+// a nie traktować starej kopii jak własnej ceny wydania.
+
+const PRICE_FIELDS = ['usd', 'usd_foil', 'usd_etched', 'eur', 'eur_foil', 'eur_etched', 'tix'];
+
+const hasPrice = (v: unknown) => typeof v === 'string' && v !== '';
+
+/** Pola cen, które karta ma od Scryfall (bez tych skopiowanych wcześniej z wersji angielskiej). */
+function ownPriceFields(card: any): Set<string> {
+  const copied = new Set<string>(Array.isArray(card?.prices_en_fields) ? card.prices_en_fields : []);
+  return new Set(PRICE_FIELDS.filter((k) => !copied.has(k) && hasPrice(card?.prices?.[k])));
+}
+
+function needsEnglishPrices(card: any): boolean {
+  if (!card || typeof card !== 'object' || card.object === 'list') return false;
+  const lang = String(card.lang || 'en').toLowerCase();
+  if (lang === 'en' || !card.set || card.collector_number == null) return false;
+  if (Array.isArray(card.prices_en_fields) && card.prices_en_fields.length) return true;
+  return PRICE_FIELDS.some((k) => !hasPrice(card.prices?.[k]));
+}
+
+/** Uzupełnia brakujące ceny jednej karty cenami wersji angielskiej (modyfikuje obiekt). */
+export function mergeEnglishPrices(card: any, enPrices: Record<string, unknown> | null | undefined): void {
+  if (!card || !enPrices || typeof enPrices !== 'object') return;
+  const own = ownPriceFields(card);
+  const prices: Record<string, unknown> = { ...(card.prices || {}) };
+  const filled: string[] = [];
+  for (const k of PRICE_FIELDS) {
+    if (own.has(k)) continue;
+    if (hasPrice(enPrices[k])) {
+      prices[k] = enPrices[k];
+      filled.push(k);
+    } else if (Array.isArray(card.prices_en_fields) && card.prices_en_fields.includes(k)) {
+      prices[k] = null; // wersja angielska straciła cenę: nie trzymamy starej kopii
+    }
+  }
+  card.prices = prices;
+  if (filled.length) {
+    card.prices_from_en = true;
+    card.prices_en_fields = filled;
+  } else {
+    delete card.prices_from_en;
+    delete card.prices_en_fields;
+  }
+}
+
+/**
+ * Dla kart nieangielskich (np. z API Scryfall albo z lokalnej bazy) uzupełnia brakujące ceny
+ * cenami angielskiej karty z lokalnej bazy. Przyjmuje kartę, listę kart albo odpowiedź listy
+ * Scryfall ({ data: [...] }) i modyfikuje obiekty w miejscu. Bez bazy kart nic nie robi.
+ */
+export async function fillPricesFromEnglish(input: any): Promise<void> {
+  const p = pool();
+  if (!p || !input) return;
+  const list: any[] = Array.isArray(input) ? input : Array.isArray(input?.data) ? input.data : [input];
+  const todo = list.filter(needsEnglishPrices);
+  if (!todo.length) return;
+  const keyOf = (set: string, cn: string) => `${set.toLowerCase()}/${cn}`;
+  const pairs = new Map<string, [string, string]>();
+  for (const c of todo) pairs.set(keyOf(String(c.set), String(c.collector_number)), [String(c.set).toLowerCase(), String(c.collector_number)]);
+  const enPrices = new Map<string, any>();
+  const all = [...pairs.values()];
+  for (let i = 0; i < all.length; i += 1000) {
+    const chunk = all.slice(i, i + 1000);
+    const res = await p.query(
+      `SELECT c.set_code, c.collector_number, c.data->'prices' AS prices
+         FROM scryfall_cards c
+         JOIN unnest($1::text[], $2::text[]) AS k(set_code, cn) ON c.set_code = k.set_code AND c.collector_number = k.cn
+        WHERE c.lang = 'en'`,
+      [chunk.map((x) => x[0]), chunk.map((x) => x[1])]
+    );
+    for (const r of res.rows) enPrices.set(keyOf(r.set_code, r.collector_number), r.prices);
+  }
+  for (const c of todo) {
+    const en = enPrices.get(keyOf(String(c.set), String(c.collector_number)));
+    if (en) mergeEnglishPrices(c, en);
+  }
+}
+
+/** To samo co fillPricesFromEnglish, ale w bazie: dla wszystkich wersji językowych z EXTRA_LANGS. */
+export async function copyEnglishPricesToExtraLangs(p: pg.Pool): Promise<void> {
+  if (!EXTRA_LANGS.length) return;
+  const res = await p.query(
+    `WITH src AS (
+       SELECT j.id, f.patch, f.filled
+         FROM scryfall_cards j
+         JOIN scryfall_cards e
+           ON e.lang = 'en' AND e.set_code = j.set_code AND e.collector_number = j.collector_number
+          AND jsonb_typeof(e.data->'prices') = 'object'
+        CROSS JOIN LATERAL (
+          SELECT COALESCE(jsonb_object_agg(k, CASE WHEN jsonb_typeof(e.data->'prices'->k) = 'string' THEN e.data->'prices'->k ELSE 'null'::jsonb END), '{}'::jsonb) AS patch,
+                 COALESCE(jsonb_agg(k) FILTER (WHERE jsonb_typeof(e.data->'prices'->k) = 'string'), '[]'::jsonb) AS filled
+            FROM unnest($2::text[]) AS k
+           WHERE COALESCE(j.data->'prices_en_fields', '[]'::jsonb) ? k
+              OR COALESCE(j.data->'prices'->>k, '') = ''
+        ) f
+        WHERE j.lang = ANY($1)
+     )
+     UPDATE scryfall_cards c
+        SET data = (c.data - 'prices_from_en' - 'prices_en_fields')
+                   || jsonb_build_object('prices', COALESCE(c.data->'prices', '{}'::jsonb) || src.patch)
+                   || CASE WHEN jsonb_array_length(src.filled) > 0
+                        THEN jsonb_build_object('prices_from_en', true, 'prices_en_fields', src.filled)
+                        ELSE '{}'::jsonb END
+       FROM src
+      WHERE c.id = src.id
+        AND ((COALESCE(c.data->'prices', '{}'::jsonb) || src.patch) IS DISTINCT FROM c.data->'prices'
+             OR COALESCE(c.data->'prices_en_fields', '[]'::jsonb) IS DISTINCT FROM src.filled)`,
+    [EXTRA_LANGS, PRICE_FIELDS]
+  );
+  console.log(`[Karty] Ceny wersji językowych uzupełnione z wydań angielskich: ${res.rowCount || 0} kart.`);
+}
+
 /**
  * Wersje językowe z EXTRA_LANGS (np. japońskie) z pliku all_cards. Plik jest duży (kilka GB
  * po rozpakowaniu), ale czytamy go strumieniowo i zapisujemy tylko karty w wybranych językach.
@@ -300,17 +419,7 @@ async function syncExtraLanguages(p: pg.Pool, force: boolean): Promise<boolean> 
   }
   if (total < 500) throw new Error(`podejrzanie mało kart w wybranych językach (${total}), nie usuwam starych`);
   const removed = await p.query('DELETE FROM scryfall_cards WHERE synced_at < $1 AND lang = ANY($2)', [syncStart, EXTRA_LANGS]);
-  // Scryfall zwykle nie podaje cen wydań nieangielskich: bierzemy ceny angielskiej karty
-  // z tego samego dodatku i numeru (przybliżenie; oznaczone polem prices_from_en).
-  await p.query(
-    `UPDATE scryfall_cards j
-        SET data = jsonb_set(j.data, '{prices}', e.data->'prices') || '{"prices_from_en": true}'::jsonb
-       FROM scryfall_cards e
-      WHERE j.lang = ANY($1) AND e.lang = 'en' AND jsonb_typeof(e.data->'prices') = 'object'
-        AND e.set_code = j.set_code AND e.collector_number = j.collector_number
-        AND COALESCE(j.data->'prices'->>'eur', j.data->'prices'->>'usd', j.data->'prices'->>'eur_foil', j.data->'prices'->>'usd_foil') IS NULL`,
-    [EXTRA_LANGS]
-  );
+  await copyEnglishPricesToExtraLangs(p);
   await setMeta(p, 'extra_langs_version', remoteVersion);
   console.log(
     `[Karty] Wersje językowe: zaimportowano ${total} kart (usunięto ${removed.rowCount || 0}) w ${Math.round((Date.now() - started) / 1000)} s.`
@@ -381,7 +490,14 @@ export async function syncCardsFromScryfall(force = false): Promise<void> {
     lastSyncAt = new Date().toISOString();
     await setMeta(p, 'last_check', lastSyncAt);
     console.log(`[Karty] Zaimportowano ${total} kart, w tym ${digital} tylko z MTG Arena (usunięto ${removed.rowCount || 0}) w ${Math.round((Date.now() - started) / 1000)} s.`);
-    await syncExtraLanguages(p, force).catch((err) => console.warn('[Karty] Wersje językowe: błąd synchronizacji:', err?.message || err));
+    const extraChanged = await syncExtraLanguages(p, force).catch((err) => {
+      console.warn('[Karty] Wersje językowe: błąd synchronizacji:', err?.message || err);
+      return false;
+    });
+    // Nowe ceny angielskie trafiają też do wersji językowych, nawet gdy same wersje się nie zmieniły
+    if (!extraChanged) {
+      await copyEnglishPricesToExtraLangs(p).catch((err) => console.warn('[Karty] Ceny wersji językowych:', err?.message || err));
+    }
     await loadCardIndex();
     await loadHashIndex();
     buildMissingHashes().catch(() => {});

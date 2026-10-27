@@ -53,6 +53,10 @@ export interface ScryfallCard {
     eur_foil?: string | null;
     tix?: string | null;
   };
+  /** Część cen pochodzi z angielskiej wersji tej samej karty (wydania w innych językach). */
+  prices_from_en?: boolean;
+  /** Pola cen skopiowane z wersji angielskiej. */
+  prices_en_fields?: string[];
   legalities?: Record<string, string>;
   /** Wydanie istnieje tylko w grze cyfrowej (MTG Arena / MTGO). */
   digital?: boolean;
