@@ -59,5 +59,5 @@ export function isTabAvailable(tab: string, game: GameId): boolean {
   return !(MTG_ONLY_TABS as readonly string[]).includes(tab);
 }
 
-/** Skaner kamerą rozpoznaje na razie tylko karty MTG. */
-export const hasScanner = (game: GameId): boolean => game === 'mtg';
+/** Skaner kamerą rozpoznaje karty MTG i Disney Lorcana (Pokémon jeszcze nie). */
+export const hasScanner = (game: GameId): boolean => game === 'mtg' || game === 'lorcana';

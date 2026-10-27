@@ -38,6 +38,9 @@ import { Quad, quadMovement } from './cardDetector';
 import { EdhrecBadge } from '../EdhrecBadge';
 
 import { useBackToClose } from '../../hooks/useBackButton';
+import { getActiveGame } from '../../utils/activeGame';
+import { GAMES } from '../../games';
+import { printsUrl, searchUrl } from '../../utils/cardSource';
 import { useT, MAIN_BINDER, binderName } from '../../i18n';
 /** Pewność serwera, przy której karta ze skanu automatycznego jest pokazywana od razu. */
 const AUTO_ACCEPT_CONFIDENCE = 80;
@@ -112,6 +115,8 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
 
   // Detection & Confirmation State
   const [scanResult, setScanResult] = useState<ScanResult | null>(null);
+  // Gra wybrana przy otwarciu skanera (MTG albo Lorcana): od niej zależy baza do rozpoznawania
+  const [game] = useState(getActiveGame);
   const [activeCard, setActiveCard] = useState<ScryfallCard | null>(null);
   const [isFoil, setIsFoil] = useState<boolean>(false);
   const [selectedBinder, setSelectedBinder] = useState<string>(() => {
@@ -418,7 +423,8 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
       const result = await recognizeCard(video, {
         quad: quad || null,
         guide: getSensorGuide() || undefined,
-        onStatus: setScanStatus
+        onStatus: setScanStatus,
+        game
       });
       if (!auto) {
         applyScanResult(result);
@@ -539,7 +545,7 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
       const img = new Image();
       img.onload = async () => {
         try {
-          const result = await recognizeCard(img, { onStatus: setScanStatus });
+          const result = await recognizeCard(img, { onStatus: setScanStatus, game });
           applyScanResult(result);
         } catch (err: any) {
           console.error('Błąd przetwarzania zdjęcia:', err);
@@ -593,7 +599,8 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
       if (card.id) q.set('cardId', card.id);
       if (card.oracle_id) q.set('oracle_id', card.oracle_id);
       q.set('name', card.name);
-      const res = await fetch(`/api/scryfall/prints?${q.toString()}`);
+      // Lorcana: wydania z naszej bazy kart tej gry
+      const res = await fetch(card.game && card.game !== 'mtg' ? printsUrl(card) : `/api/scryfall/prints?${q.toString()}`);
       if (res.ok) {
         const data = await res.json();
         const list: ScryfallCard[] = Array.isArray(data.data) ? data.data : [];
@@ -638,8 +645,15 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
     if (!typedSetNumber) return;
     setIsLookingUpPrint(true);
     try {
-      const res = await fetch(`/api/scryfall/card-print/${encodeURIComponent(typedSetNumber.set)}/${encodeURIComponent(typedSetNumber.number)}`);
-      const card = res.ok ? await res.json() : null;
+      let card: any = null;
+      if (game === 'mtg') {
+        const res = await fetch(`/api/scryfall/card-print/${encodeURIComponent(typedSetNumber.set)}/${encodeURIComponent(typedSetNumber.number)}`);
+        card = res.ok ? await res.json() : null;
+      } else {
+        // Lorcana: karta po dodatku i numerze w naszej bazie
+        const res = await fetch(searchUrl(game, `set:${typedSetNumber.set} number:${typedSetNumber.number}`) + '&unique=prints');
+        card = res.ok ? (await res.json())?.data?.[0] || null : null;
+      }
       if (card && card.id && card.name) handleSelectAlternatePrint(card as ScryfallCard);
       else showToast(t('Nie znaleziono karty {set} #{number}. Sprawdź kod dodatku i numer z dołu karty.', { set: typedSetNumber.set.toUpperCase(), number: typedSetNumber.number }));
     } catch (err) {
@@ -655,7 +669,13 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
     if (!manualQuery.trim()) return;
     setIsSearchingManual(true);
     try {
-      const { matchedCard, possibleCards } = await searchCardInScryfall(manualQuery.trim());
+      const { matchedCard, possibleCards } =
+        game === 'mtg'
+          ? await searchCardInScryfall(manualQuery.trim())
+          : await fetch(searchUrl(game, manualQuery.trim()))
+              .then((r) => (r.ok ? r.json() : { data: [] }))
+              .then((d) => ({ matchedCard: d?.data?.[0] || null, possibleCards: d?.data || [] }))
+              .catch(() => ({ matchedCard: null, possibleCards: [] }));
       if (matchedCard) {
         setActiveCard(matchedCard);
         setScanStatus(t('Znaleziono: "{name}"', { name: matchedCard.name }));
@@ -811,7 +831,7 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
             <div>
               <div className="flex items-center gap-2">
                 <h2 className="text-sm sm:text-base font-bold text-stone-100">
-                  {t('Skaner Kart MTG')}
+                  {t('Skaner kart {game}', { game: GAMES[game].shortName })}
                 </h2>
               </div>
               <p className="text-xs text-stone-400 hidden sm:block">
@@ -1697,7 +1717,7 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
                 {scanResult?.possibleCards && scanResult.possibleCards.length > 0 && !activeCard && (
                   <div className="pt-3 border-t border-stone-800 text-left space-y-2">
                     <p className="text-[11px] font-bold text-amber-300">
-                      {t('Podpowiedzi z bazy Scryfall (kliknij, aby wybrać):')}
+                      {game === 'mtg' ? t('Podpowiedzi z bazy Scryfall (kliknij, aby wybrać):') : t('Podpowiedzi z bazy kart (kliknij, aby wybrać):')}
                     </p>
                     <div className="max-h-40 overflow-y-auto space-y-1.5 pr-1">
                       {scanResult.possibleCards.map((c) => (

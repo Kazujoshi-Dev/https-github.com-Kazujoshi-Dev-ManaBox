@@ -13,7 +13,7 @@ interface PublicGame {
 const GAME_POINTS: Record<GameId, string[]> = {
   mtg: ['Skaner kart telefonem', 'Talie we wszystkich formatach, także MTG Arena', 'Alerty cenowe i spoilery nowych dodatków'],
   pokemon: ['Wersje zwykłe i reverse holo', 'Ceny z Cardmarket, zapasowo z TCGplayer', 'Wyszukiwanie po nazwie, dodatku i numerze'],
-  lorcana: ['Wydania zwykłe i Enchanted', 'Filtry atramentu, kosztu i rzadkości', 'Ceny z TCGplayer przeliczone na złotówki']
+  lorcana: ['Skaner kart telefonem', 'Wydania zwykłe i Enchanted', 'Ceny z TCGplayer przeliczone na złotówki']
 };
 
 /** Liczba kart w bazie gry (MTG liczy wszystkie wydania i wersje językowe). */

@@ -14,6 +14,7 @@ import { getPool, isPostgresActive } from '../db/storage';
 import { APP_USER_AGENT } from '../userAgent';
 import { normalizeText } from '../cardText';
 import { lorcastToAppCard, type LorcastCard, type LorcastSet } from './adapter';
+import { buildLorcanaHashes, lorcanaHashStatus, startLorcanaHashes } from './lorcanaHashes';
 import type { ScryfallCard } from '../../types';
 
 const API_BASE = (process.env.LORCAST_API_URL || 'https://api.lorcast.com/v0').replace(/\/+$/, '');
@@ -177,6 +178,8 @@ export async function syncLorcana(): Promise<void> {
     lastSyncAt = new Date().toISOString();
     lastSyncError = null;
     console.log(`[Lorcana] Zsynchronizowano ${all.length} kart z ${sets.length} dodatków w ${Math.round((Date.now() - started) / 1000)} s`);
+    // skaner: odciski obrazów nowych lub zmienionych kart (w tle)
+    buildLorcanaHashes(hashEntries()).catch(() => undefined);
   } catch (err: any) {
     lastSyncError = err?.message || String(err);
     console.warn('[Lorcana] Synchronizacja nieudana:', lastSyncError);
@@ -193,6 +196,9 @@ export async function startLorcanaDb(): Promise<void> {
     return { loaded: false, syncedAt: null as Date | null };
   });
   if (loaded) console.log(`[Lorcana] Wczytano ${index?.cards.length || 0} kart z bazy`);
+  // skaner: odciski z bazy od razu, brakujące liczymy w tle
+  await startLorcanaHashes().catch((err) => console.warn('[Lorcana] Odciski obrazów niedostępne:', err?.message || err));
+  if (loaded) buildLorcanaHashes(hashEntries()).catch(() => undefined);
   const isStale = () => !lastSyncAt || Date.now() - new Date(lastSyncAt).getTime() > SYNC_INTERVAL_MS;
   if (!loaded || !syncedAt || isStale()) syncLorcana().catch(() => undefined);
   setInterval(() => {
@@ -200,8 +206,16 @@ export async function startLorcanaDb(): Promise<void> {
   }, CHECK_INTERVAL_MS).unref?.();
 }
 
+/** Karty z grafiką do indeksu skanera (mała grafika wystarcza do odcisku). */
+function hashEntries(): Array<{ id: string; image: string }> {
+  return (index?.cards || [])
+    .map((c) => ({ id: c.id, image: c.image_uris?.small || c.image_uris?.normal || '' }))
+    .filter((e) => e.image);
+}
+
 export function lorcanaStatus() {
   return {
+    scanner: lorcanaHashStatus(),
     ready: Boolean(index?.cards.length),
     cards: index?.cards.length || 0,
     sets: index?.sets.length || 0,

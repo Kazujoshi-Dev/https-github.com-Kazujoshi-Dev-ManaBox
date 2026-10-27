@@ -45,6 +45,15 @@ export function decodeJpegToGray(buf: Uint8Array): GrayImage {
   return { width, height, data: gray };
 }
 
+/** Surowe piksele RGB/RGBA (np. z dekodera AVIF) → skala szarości tym samym wzorem co przy JPEG. */
+export function rawToGray(data: Uint8Array, width: number, height: number, channels: number): GrayImage {
+  const gray = new Float32Array(width * height);
+  for (let i = 0, p = 0; i < gray.length; i++, p += channels) {
+    gray[i] = 0.299 * data[p] + 0.587 * data[p + 1] + 0.114 * data[p + 2];
+  }
+  return { width, height, data: gray };
+}
+
 /** Uśrednia region obrazu do siatki outW × outH (filtr pudełkowy z wagami częściowych pikseli). */
 function areaResize(img: GrayImage, r: Region, outW: number, outH: number): Float32Array {
   const out = new Float32Array(outW * outH);

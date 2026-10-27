@@ -19,6 +19,7 @@ import * as cards from './src/server/cards/cardStore';
 import * as hashes from './src/server/cards/hashIndex';
 import * as priceHistory from './src/server/cards/priceHistory';
 import * as lorcana from './src/server/lorcana/lorcastStore';
+import * as lorcanaHashes from './src/server/lorcana/lorcanaHashes';
 import * as pokemon from './src/server/pokemon/tcgdexStore';
 import { getPool } from './src/server/db/storage';
 import { computeQueryHashes, decodeJpegToGray } from './src/server/cards/imageHash';
@@ -1055,6 +1056,93 @@ app.post('/api/scanner/delver-identify', authMiddleware, scannerLimiter, async (
     res.status(500).json({ error: 'DELVER_SCAN_FAILED', message: 'Nie udało się rozpoznać karty. Spróbuj ponownie.' });
   }
 });
+
+// --- SKANER DISNEY LORCANA: rozpoznanie po obrazie (odciski grafik z Lorcast) ---
+app.post('/api/scanner/lorcana-identify', authMiddleware, scannerLimiter, async (req, res) => {
+  try {
+    const str = (v: unknown, max: number) => (typeof v === 'string' ? v.trim().slice(0, max) : '');
+    const hintSet = str(req.body?.hintSet, 8).toLowerCase();
+    const hintCollector = str(req.body?.hintCollector, 12).toLowerCase().replace(/^0+(?=\d)/, '');
+    const queryHash = hashCardImage(req.body?.cardImageBase64);
+    if (!queryHash) return res.status(400).json({ error: 'Brak obrazu karty.' });
+    if (!lorcanaHashes.hasLorcanaHashes()) {
+      return res.status(503).json({ error: 'Skaner Lorcany jeszcze przygotowuje bazę obrazów kart. Spróbuj za kilka minut.' });
+    }
+
+    let result = identifyLorcana(queryHash, hintSet, hintCollector);
+    // karta położona do góry nogami
+    if (!result.matchedCard) {
+      const rotated = hashCardImage(req.body?.cardImageBase64, true);
+      if (rotated) {
+        const flipped = identifyLorcana(rotated, hintSet, hintCollector);
+        if (flipped.matchedCard) result = flipped;
+      }
+    }
+    const m = result.matchedCard;
+    console.log(
+      `[Skan Lorcana] pewność=${result.confidence} obraz=${result.imageDistance ?? '-'} numer=${hintSet || '-'}/${hintCollector || '-'} ` +
+        `wynik=${m ? `${m.name} [${m.set}/${m.collector_number}]` : 'brak'}`
+    );
+    res.json({
+      success: true,
+      source: 'local',
+      cardName: m?.name || '',
+      setCode: m?.set || null,
+      collectorNumber: m?.collector_number || null,
+      confidence: result.confidence,
+      isFoil: false,
+      detectedRarity: m?.rarity || null,
+      method: result.method,
+      imageDistance: result.imageDistance ?? null,
+      matchedCard: m,
+      possibleCards: result.possibleCards
+    });
+  } catch (err: any) {
+    console.error('Błąd w /api/scanner/lorcana-identify:', err);
+    res.status(500).json({ error: 'LORCANA_SCAN_FAILED', message: 'Nie udało się rozpoznać karty. Spróbuj ponownie.' });
+  }
+});
+
+/**
+ * Lorcana: najbliższa grafika w całym indeksie, jeśli wyraźnie lepsza od innych kart (inna nazwa).
+ * Wydanie (np. dodruk w nowszym dodatku z tą samą ilustracją) wybiera obraz, a numer ze stopki
+ * rozstrzyga, gdy jego obraz jest niewiele gorszy.
+ */
+function identifyLorcana(queryHash: Uint8Array[], hintSet: string, hintCollector: string): IdentifyResult {
+  const top = lorcanaHashes.searchLorcanaByHash(queryHash, 30);
+  const best = top[0];
+  const bestCard = best ? lorcana.getLorcanaCard(best.id) : null;
+  if (!best || !bestCard) return { matchedCard: null, possibleCards: [], confidence: 0, method: 'none' };
+  const rival = top.find((x) => lorcana.getLorcanaCard(x.id)?.name !== bestCard.name);
+  const margin = rival ? rival.distance - best.distance : Infinity;
+
+  // numer ze stopki wskazuje kartę z czołówki: wystarczy luźniejszy próg obrazu
+  const byNumber = hintCollector
+    ? top.find((x) => {
+        const c = lorcana.getLorcanaCard(x.id);
+        return c && c.collector_number.toLowerCase() === hintCollector && (!hintSet || c.set === hintSet);
+      })
+    : undefined;
+  const imageSure = best.distance <= IMAGE_ACCEPT_DISTANCE && margin >= IMAGE_MIN_MARGIN;
+  const numberSure = Boolean(byNumber && byNumber.distance <= IMAGE_ACCEPT_DISTANCE + IMAGE_TITLE_BONUS);
+  if (!imageSure && !numberSure) return { matchedCard: null, possibleCards: [], confidence: 0, method: 'none', imageDistance: best.distance };
+
+  const anchor = numberSure && byNumber ? lorcana.getLorcanaCard(byNumber.id)! : bestCard;
+  // wszystkie wydania tej karty, od najbardziej podobnego obrazu
+  const prints = lorcana.getLorcanaPrints({ name: anchor.name });
+  const ranked = lorcanaHashes.searchLorcanaByHash(queryHash, prints.length || 1, new Set(prints.map((c) => c.id)));
+  const distances = new Map(ranked.map((r) => [r.id, r.distance]));
+  let matchedId = numberSure && byNumber ? byNumber.id : ranked[0]?.id || anchor.id;
+  const bestD = distances.get(ranked[0]?.id || '') ?? best.distance;
+  const hinted = hintCollector ? prints.find((c) => c.collector_number.toLowerCase() === hintCollector && (!hintSet || c.set === hintSet)) : undefined;
+  if (hinted && (distances.get(hinted.id) ?? Infinity) <= bestD + IMAGE_SET_TOLERANCE) matchedId = hinted.id;
+
+  const ordered = [matchedId, ...ranked.map((r) => r.id).filter((id) => id !== matchedId), ...prints.map((c) => c.id).filter((id) => id !== matchedId && !distances.has(id))];
+  const possibleCards = ordered.map((id) => lorcana.getLorcanaCard(id)).filter(Boolean).slice(0, MAX_PRINTINGS);
+  let confidence = Math.round(Math.min(95, 60 + (Number.isFinite(margin) ? margin : 70) / 2));
+  if (numberSure || hinted) confidence = Math.max(confidence, 90);
+  return { matchedCard: possibleCards[0] || null, possibleCards, confidence, method: 'image', imageDistance: distances.get(matchedId) ?? best.distance };
+}
 
 interface IdentifyResult {
   matchedCard: any | null;

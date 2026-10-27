@@ -27,7 +27,8 @@ export function matchesPrint(p: ScryfallCard, query: string): boolean {
 /** Kod dodatku i numer z filtra, gdy wpisano oba (np. „dsc 114”); inaczej null. */
 export function parseSetAndNumber(query: string): { set: string; number: string } | null {
   const [a, b] = printFilterTokens(query);
-  if (!a || !b || !/^[a-z0-9]{2,6}$/.test(a)) return null;
+  // kod dodatku: 2–6 znaków (MTG), w Lorcanie także sama cyfra, np. „1 207”
+  if (!a || !b || !/^[a-z0-9]{1,6}$/.test(a)) return null;
   return { set: a, number: b };
 }
 

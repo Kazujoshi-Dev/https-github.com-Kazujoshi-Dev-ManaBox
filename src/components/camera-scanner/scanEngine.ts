@@ -20,7 +20,8 @@ import {
   warpCardRegion
 } from './cardDetector';
 import { cleanCardTitle, getTesseractWorker } from './ocrProcessor';
-import { t } from '../../i18n';
+import { t, tServer } from '../../i18n';
+import type { GameId } from '../../games';
 
 /** Pasek tytułu (nazwa karty, bez kosztu many po prawej). Marginesy z zapasem na niedokładne rogi. */
 const TITLE_REGION: CardRegion = { u0: 0.06, v0: 0.03, u1: 0.74, v1: 0.105 };
@@ -180,6 +181,20 @@ export function parseFooter(raw: string): { set?: string; collectorNumber?: stri
   return { set: set?.toLowerCase(), collectorNumber };
 }
 
+/**
+ * Disney Lorcana: stopka w lewym dolnym rogu, np. „207/204 • EN • 1” (numer / liczba kart • język • dodatek).
+ * Kod dodatku Lorcast to liczba albo krótki kod (np. P1, D23).
+ */
+export function parseLorcanaFooter(raw: string): { set?: string; collectorNumber?: string } {
+  const text = (raw || '').toUpperCase().replace(/[|]/g, 'I').replace(/[•·*]/g, ' • ');
+  const num = text.match(/\b(\d{1,3})\s*[/\\]\s*\d{1,3}\b/);
+  const set = text.match(/\b(?:EN|DE|FR|IT|JA|JP|ZH)\b\s*•?\s*([A-Z]?\d{1,2})\b/);
+  return {
+    collectorNumber: num ? num[1].replace(/^0+(?=\d)/, '') : undefined,
+    set: set ? set[1].toLowerCase() : undefined
+  };
+}
+
 let ocrQueue: Promise<unknown> = Promise.resolve();
 /** Tesseract ma jeden wątek roboczy — zadania OCR wykonujemy po kolei. */
 function withWorker<T>(fn: (w: Worker) => Promise<T>): Promise<T> {
@@ -213,13 +228,19 @@ async function ocrFooter(canvas: HTMLCanvasElement): Promise<string> {
 /** Pewność, od której wynik samego obrazu uznajemy bez czekania na OCR. */
 export const QUICK_IMAGE_CONFIDENCE = 85;
 
-async function identify(body: Record<string, unknown>, onStatus?: (text: string) => void): Promise<any> {
-  const res = await fetchWithAuth('/api/scanner/delver-identify', {
+async function identify(body: Record<string, unknown>, onStatus?: (text: string) => void, game: GameId = 'mtg'): Promise<any> {
+  // Lorcana: rozpoznanie po obrazie w bazie kart Lorcany (bez nazwy z OCR)
+  const url = game === 'lorcana' ? '/api/scanner/lorcana-identify' : '/api/scanner/delver-identify';
+  const res = await fetchWithAuth(url, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body)
   });
   if (res.status === 429) onStatus?.(t('Skanujesz zbyt szybko, chwila przerwy.'));
+  if (res.status === 503) {
+    const err = await res.json().catch(() => ({}));
+    if (err?.error) onStatus?.(tServer(err.error));
+  }
   return res.ok ? res.json() : {};
 }
 
@@ -231,6 +252,8 @@ export interface RecognizeOptions {
   guide?: Rect;
   /** Najpierw samo rozpoznanie po obrazie (domyślnie tak); OCR tylko, gdy obraz nie wystarczy. */
   imageFirst?: boolean;
+  /** Gra karciana (domyślnie MTG); w Lorcanie OCR czyta tylko numer ze stopki. */
+  game?: GameId;
 }
 
 /** Pełne rozpoznanie karty z klatki kamery lub zdjęcia. */
@@ -273,10 +296,11 @@ export async function recognizeCard(
     quad: detected ? quad : undefined
   };
 
+  const game = opts.game || 'mtg';
   // 1. Szybka ścieżka: tylko obraz. Bez OCR odpowiedź przychodzi w ułamku sekundy.
-  if (detected && opts.imageFirst !== false) {
+  if ((detected || game === 'lorcana') && opts.imageFirst !== false) {
     opts.onStatus?.(t('Dopasowywanie w bazie kart...'));
-    const quick = await identify({ cardImageBase64: cardDataUrl }, opts.onStatus).catch(() => ({}));
+    const quick = await identify({ cardImageBase64: cardDataUrl }, opts.onStatus, game).catch(() => ({}));
     if (quick.matchedCard && (quick.confidence || 0) >= QUICK_IMAGE_CONFIDENCE) {
       return {
         ...base,
@@ -286,6 +310,30 @@ export async function recognizeCard(
         method: quick.method
       };
     }
+  }
+
+  // 2L. Lorcana: obraz niejednoznaczny (np. dodruk z tą samą ilustracją) — numer i dodatek ze stopki
+  if (game === 'lorcana') {
+    const footerRgba = warpCardRegion(pixels, w, h, quad, 600, 150, FOOTER_REGION);
+    const footerCanvas = prepareForOcr(footerRgba, 600, 150);
+    opts.onStatus?.(t('Odczyt numeru karty...'));
+    const footer = parseLorcanaFooter(await ocrFooter(footerCanvas).catch(() => ''));
+    opts.onStatus?.(t('Dopasowywanie w bazie kart...'));
+    const data: any = await identify(
+      { cardImageBase64: cardDataUrl, hintSet: footer.set, hintCollector: footer.collectorNumber },
+      opts.onStatus,
+      game
+    ).catch(() => ({}));
+    return {
+      ...base,
+      detectedSet: footer.set,
+      detectedCollectorNumber: footer.collectorNumber,
+      confidence: data.confidence || 0,
+      matchedCard: data.matchedCard || null,
+      possibleCards: data.possibleCards || [],
+      debugBottomUrl: footerCanvas.toDataURL('image/png'),
+      method: data.method
+    };
   }
 
   // 2. Obraz niejednoznaczny: OCR nazwy i stopki, potem pełne dopasowanie.

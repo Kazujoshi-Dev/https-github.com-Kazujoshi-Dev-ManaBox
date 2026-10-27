@@ -156,4 +156,12 @@ export const en_app: Record<string, string> = {
   "Skaner kart MTG w telefonie": "MTG card scanner on your phone",
   "Przykładowa strona klasera z kartami {game}": "Sample binder page with {game} cards",
   "Gra na stronie klasera": "Game shown in the binder",
+  "Skaner, wydania zwykłe i Enchanted, ceny z TCGplayer": "Scanner, regular and Enchanted printings, TCGplayer prices",
+  "Magic: The Gathering, Pokémon TCG i Disney Lorcana w jednym miejscu. Śledź wartość kolekcji w złotówkach, skanuj karty Magic i Lorcany telefonem, buduj talie i sprzedawaj graczom z okolicy.": "Magic: The Gathering, Pokémon TCG and Disney Lorcana in one place. Track your collection's value in złoty, scan Magic and Lorcana cards with your phone, build decks and sell to players nearby.",
+  "Nakieruj aparat na kartę Magic albo Lorcany. Aplikacja rozpozna kartę, wydanie i cenę, w Magic także wersje japońskie. Bez limitu skanów.": "Point your camera at a Magic or Lorcana card. The app recognises the card, printing and price, including Japanese versions for Magic. No scan limit.",
+  "Skaner kart {game}": "{game} card scanner",
+  "Podpowiedzi z bazy kart (kliknij, aby wybrać):": "Suggestions from the card database (click to choose):",
+  "Odczyt numeru karty...": "Reading the card number...",
+  "Skaner Lorcany jeszcze przygotowuje bazę obrazów kart. Spróbuj za kilka minut.": "The Lorcana scanner is still preparing its card image database. Try again in a few minutes.",
+  "Brak obrazu karty.": "No card image.",
 };

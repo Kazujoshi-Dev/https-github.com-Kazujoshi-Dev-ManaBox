@@ -19,7 +19,7 @@ export const GAME_LOOK: Record<GameId, { tagline: string; light: string; rights:
     rights: '© Pokémon / Nintendo / Creatures / GAME FREAK'
   },
   lorcana: {
-    tagline: 'Wydania zwykłe i Enchanted, ceny z TCGplayer',
+    tagline: 'Skaner, wydania zwykłe i Enchanted, ceny z TCGplayer',
     light: '139, 92, 246',
     rights: '© Disney'
   }

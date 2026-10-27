@@ -263,7 +263,7 @@ export const AuthView: React.FC<AuthViewProps> = ({ onAuthSuccess, initialMode =
               {t('Twoja kolekcja kart, zawsze pod ręką')}
             </h1>
             <p className="text-base text-stone-400 leading-relaxed max-w-[46ch]">
-              {t('Magic: The Gathering, Pokémon TCG i Disney Lorcana w jednym miejscu. Śledź wartość kolekcji w złotówkach, skanuj karty MTG telefonem, buduj talie i sprzedawaj graczom z okolicy.')}
+              {t('Magic: The Gathering, Pokémon TCG i Disney Lorcana w jednym miejscu. Śledź wartość kolekcji w złotówkach, skanuj karty Magic i Lorcany telefonem, buduj talie i sprzedawaj graczom z okolicy.')}
             </p>
           </div>
 
