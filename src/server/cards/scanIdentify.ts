@@ -15,6 +15,8 @@ export interface IdentifyResult {
   confidence: number;
   method?: 'set_number' | 'name' | 'name_image' | 'image' | 'none';
   imageDistance?: number;
+  /** Do logu: odległość obrazu najbliższej wersji angielskiej, gdy wynik jest w innym języku (strojenie LANG_TIE_DISTANCE). */
+  englishDistance?: number;
 }
 
 export const MAX_PRINTINGS = 40;
@@ -27,6 +29,9 @@ export const IMAGE_TITLE_BONUS = 40; // luźniejszy próg obrazu, gdy częściow
 
 /** Ile gorszy może być obraz zwykłego wydania, żeby wygrało z promką o tej samej ilustracji. */
 export const PROMO_TIE_DISTANCE = 15;
+
+/** Ile gorszy może być obraz wersji angielskiej, żeby wygrała z inną wersją językową bez potwierdzenia nazwą. */
+export const LANG_TIE_DISTANCE = 20;
 
 /** Wydanie promocyjne (prerelease, promo pack, Game Day itp.). */
 export function isPromo(card: any): boolean {
@@ -91,6 +96,8 @@ export async function identifyWithLocalDb(title: string, set: string, collector:
   let method: IdentifyResult['method'] = 'none';
   let distances = new Map<string, number>();
   let pickedBySet = false;
+  // Nazwa odczytana przez OCR alfabetem łacińskim zgadza się z kartą, więc karta nie jest japońska ani fyrexiańska.
+  let latinTitle = false;
 
   // 1. Kod setu + numer (najdokładniejsze), o ile zgadza się z odczytaną nazwą.
   if (exactId) {
@@ -115,6 +122,7 @@ export async function identifyWithLocalDb(title: string, set: string, collector:
     distances = ranked.distances;
     matchedId = printings[0];
     method = distances.size ? 'name_image' : 'name';
+    latinTitle = true;
     confidence = Math.round(best.score * 85);
     if (set) {
       const inSet = (await cards.getCardsByIds(best.ids)).find((c) => c.set === set);
@@ -147,6 +155,7 @@ export async function identifyWithLocalDb(title: string, set: string, collector:
       distances = ranked.distances;
       matchedId = printings[0];
       method = 'image';
+      latinTitle = titleAgrees;
       confidence = Math.round(Math.min(95, 60 + margin / 2));
       if (titleAgrees) confidence = Math.max(confidence, 90);
     }
@@ -163,19 +172,46 @@ export async function identifyWithLocalDb(title: string, set: string, collector:
   // wydanie, a różni się drobiazgiem, którego odcisk nie widzi. Gdy obraz nie rozstrzyga, podajemy
   // zwykłe wydanie (częstsze w kolekcjach); promka zostaje na liście wydań do wyboru.
   // Nie dotyczy wyboru po kodzie setu i numerze odczytanych ze stopki.
-  const top = possibleCards[0];
-  if (top && isPromo(top) && method !== 'set_number' && !pickedBySet) {
-    const d0 = distances.get(top.id);
-    const regular = possibleCards.find((c) => {
-      const d = distances.get(c.id);
-      return !isPromo(c) && d0 !== undefined && d !== undefined && d <= d0 + PROMO_TIE_DISTANCE;
-    });
-    if (regular) {
-      possibleCards = [regular, ...possibleCards.filter((c) => c.id !== regular.id)];
-      matchedId = regular.id;
-    }
+  const pick = (c: any) => {
+    possibleCards = [c, ...possibleCards.filter((x) => x.id !== c.id)];
+    matchedId = c.id;
+  };
+  const within = (c: any, ref: any, tol: number) => {
+    const d0 = distances.get(ref.id);
+    const d = distances.get(c.id);
+    return d0 !== undefined && d !== undefined && d <= d0 + tol;
+  };
+
+  // Wersja japońska (lub inna językowa) ma tę samą ilustrację co angielska, a tekst różni się zbyt
+  // drobno, żeby odcisk to zawsze rozstrzygnął. Angielską wybieramy, gdy nazwa odczytana alfabetem
+  // łacińskim potwierdza kartę, albo gdy jej obraz jest prawie tak samo podobny. Przy wyborze po
+  // kodzie setu z OCR szukamy angielskiej w tym samym secie i pod tym samym numerem.
+  let top = possibleCards[0];
+  if (top && top.lang && top.lang !== 'en' && method !== 'set_number') {
+    const english = possibleCards.find(
+      (c) =>
+        c.lang === 'en' &&
+        (!pickedBySet || (c.set === top.set && c.collector_number === top.collector_number)) &&
+        (latinTitle || pickedBySet || within(c, top, LANG_TIE_DISTANCE))
+    );
+    if (english) pick(english);
   }
-  return { matchedCard: possibleCards[0] || null, possibleCards, confidence, method, imageDistance: distances.get(matchedId) };
+
+  top = possibleCards[0];
+  if (top && isPromo(top) && method !== 'set_number' && !pickedBySet) {
+    const regular = possibleCards.find((c) => !isPromo(c) && c.lang === top.lang && within(c, top, PROMO_TIE_DISTANCE));
+    if (regular) pick(regular);
+  }
+  const final = possibleCards[0];
+  const englishAlt = final && final.lang !== 'en' ? possibleCards.find((c) => c.lang === 'en' && distances.has(c.id)) : undefined;
+  return {
+    matchedCard: final || null,
+    possibleCards,
+    confidence,
+    method,
+    imageDistance: distances.get(matchedId),
+    englishDistance: englishAlt ? distances.get(englishAlt.id) : undefined
+  };
 }
 
 /** Pewność, od której klient przyjmuje wynik samego obrazu bez OCR (QUICK_IMAGE_CONFIDENCE w scanEngine.ts). */

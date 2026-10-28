@@ -1054,7 +1054,8 @@ app.post('/api/scanner/delver-identify', authMiddleware, scannerLimiter, async (
     // Jedna linia na skan — do strojenia progów na prawdziwych zdjęciach (bez danych użytkownika).
     console.log(
       `[Skan] klatki=${queryHash?.length ?? 0} metoda=${result.method || 'scryfall'} pewność=${result.confidence} obraz=${result.imageDistance ?? '-'} ` +
-        `ocr="${hintTitle}" set=${hintSet || '-'}/${hintCollector || '-'} wynik=${matched ? `${matched.name} [${matched.set}/${matched.collector_number}]` : 'brak'}`
+        `ocr="${hintTitle}" set=${hintSet || '-'}/${hintCollector || '-'} wynik=${matched ? `${matched.name} [${matched.set}/${matched.collector_number}${matched.lang && matched.lang !== 'en' ? ` ${matched.lang}` : ''}]` : 'brak'}` +
+        (result.englishDistance !== undefined ? ` en=${result.englishDistance}` : '')
     );
     res.json({
       success: true,
