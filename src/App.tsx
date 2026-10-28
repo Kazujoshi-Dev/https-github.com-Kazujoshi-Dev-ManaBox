@@ -619,6 +619,7 @@ export default function App() {
     description: string;
     cardSource?: 'all' | 'collection';
     commander?: ScryfallCard | null;
+    buildAssistant?: boolean;
   }) => {
     const newDeck = await createDeck(data);
     if (newDeck) {

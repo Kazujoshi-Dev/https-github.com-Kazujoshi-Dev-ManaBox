@@ -23,6 +23,7 @@ import { checkDeckLegality } from './deck-builder/legality';
 import { DeckBracketPanel, useDeckBracket } from './deck-builder/DeckBracket';
 import { DECK_SORT_OPTIONS, loadDeckSort, saveDeckSort, type DeckCardSort } from './deck-builder/cardSort';
 import { DeckSuggestions } from './deck-builder/DeckSuggestions';
+import { DeckBuildAssistant } from './deck-builder/DeckBuildAssistant';
 import { DeckShareModal } from './deck-builder/DeckShareModal';
 import { DeckArenaExportModal } from './deck-builder/DeckArenaExportModal';
 import { DIGITAL_BLOCK_MESSAGE, computeWildcardCost, getDeckFormat, isDigitalOnly } from '../utils/mtgFormats';
@@ -482,6 +483,18 @@ export const DeckBuilder: React.FC<DeckBuilderProps> = ({
         )}
       </div>
 
+      {/* Asystent budowy (Commander): kolejne karty i postęp ról */}
+      {deckFormat.id === 'commander' && deck.buildAssistant && (
+        <DeckBuildAssistant
+          deck={deck}
+          collection={collection}
+          decks={decks}
+          onAddCard={handleAddRecommended}
+          onViewCardDetails={onViewCardDetails}
+          onDisable={() => onUpdateDeck({ ...deck, buildAssistant: false })}
+        />
+      )}
+
       {/* 2. Mana Curve & Color Identity Bar */}
       <DeckStatsBar
         manaCurve={manaCurve}
@@ -609,6 +622,10 @@ export const DeckBuilder: React.FC<DeckBuilderProps> = ({
         onReplaceCard={handleReplaceWithRecommended}
         wishlistNames={wishlistNames}
         onAddToWishlist={onAddToWishlist ? handleWishlistRecommended : undefined}
+        onEnableAssistant={deck.buildAssistant ? undefined : () => {
+          onUpdateDeck({ ...deck, buildAssistant: true });
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        }}
       />
       )}
 

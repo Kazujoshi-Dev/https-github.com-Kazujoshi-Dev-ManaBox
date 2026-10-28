@@ -155,6 +155,7 @@ export function mapDeckRow(r: any): DeckItem {
     commander: r.commander ? (typeof r.commander === 'string' ? JSON.parse(r.commander) : r.commander) : null,
     commanderIsFoil: Boolean(r.commanderIsFoil ?? r.commander_is_foil),
     isPublic: Boolean(r.isPublic ?? r.is_public),
+    buildAssistant: Boolean(r.buildAssistant ?? r.build_assistant),
     cards: Array.isArray(r.cards)
       ? r.cards
       : (typeof r.cards === 'string' ? JSON.parse(r.cards) : []),

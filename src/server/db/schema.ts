@@ -196,6 +196,8 @@ export async function initDb(): Promise<void> {
           ALTER TABLE user_settings ADD COLUMN IF NOT EXISTS sale_trend_adjust_pct NUMERIC(6, 2);
           -- publiczny link do talii (domyślnie wyłączony)
           ALTER TABLE user_decks ADD COLUMN IF NOT EXISTS is_public BOOLEAN NOT NULL DEFAULT FALSE;
+          -- asystent budowy talii Commander (podpowiedzi kolejnych kart)
+          ALTER TABLE user_decks ADD COLUMN IF NOT EXISTS build_assistant BOOLEAN NOT NULL DEFAULT FALSE;
           -- panel administratora: blokady kont, wymuszona zmiana hasła, ukrycie oferty
           ALTER TABLE users ADD COLUMN IF NOT EXISTS banned_until TIMESTAMPTZ;
           ALTER TABLE users ADD COLUMN IF NOT EXISTS ban_permanent BOOLEAN NOT NULL DEFAULT FALSE;

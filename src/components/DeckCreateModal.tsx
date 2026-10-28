@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { getCardImageUri, getCardArtist } from '../utils/formatters';
 import { ArtistCredit } from './ui/ArtistCredit';
 import { ScryfallCard, DeckItem, CollectionItem } from '../types';
-import { Crown, Swords, X, Check, Search, Layers, Globe, Gamepad2 } from 'lucide-react';
+import { Crown, Swords, X, Check, Search, Layers, Globe, Gamepad2, Wand2 } from 'lucide-react';
 import { DECK_FORMATS, DEFAULT_FORMAT, getDeckFormat } from '../utils/mtgFormats';
 
 import { useBackToClose } from '../hooks/useBackButton';
@@ -18,6 +18,7 @@ interface DeckCreateModalProps {
     description: string;
     cardSource?: 'all' | 'collection';
     commander?: ScryfallCard | null;
+    buildAssistant?: boolean;
   }) => Promise<void>;
   onUpdateDeck?: (updated: DeckItem) => Promise<void> | void;
 }
@@ -39,6 +40,7 @@ export const DeckCreateModal: React.FC<DeckCreateModalProps> = ({
   const [format, setFormat] = useState(DEFAULT_FORMAT.label); // Domyślnie EDH Commander
   const [cardSource, setCardSource] = useState<'collection' | 'all'>('all');
   const [selectedCommander, setSelectedCommander] = useState<ScryfallCard | null>(null);
+  const [buildAssistant, setBuildAssistant] = useState(false);
   const [commanderSearch, setCommanderSearch] = useState('');
   const [scryfallCommanders, setScryfallCommanders] = useState<ScryfallCard[]>([]);
   const [isSearchingScryfall, setIsSearchingScryfall] = useState(false);
@@ -54,6 +56,7 @@ export const DeckCreateModal: React.FC<DeckCreateModalProps> = ({
         setFormat(getDeckFormat(deckToEdit.format).label);
         setCardSource(deckToEdit.cardSource || 'collection');
         setSelectedCommander(deckToEdit.commander || null);
+        setBuildAssistant(Boolean(deckToEdit.buildAssistant));
         setCommanderSearch('');
       } else {
         setName('');
@@ -61,6 +64,7 @@ export const DeckCreateModal: React.FC<DeckCreateModalProps> = ({
         setFormat(DEFAULT_FORMAT.label);
         setCardSource('all');
         setSelectedCommander(null);
+        setBuildAssistant(false);
         setCommanderSearch('');
       }
       setError(null);
@@ -137,6 +141,7 @@ export const DeckCreateModal: React.FC<DeckCreateModalProps> = ({
           description: description.trim(),
           cardSource: effectiveSource,
           commander: fmt.commander ? selectedCommander : null,
+          buildAssistant: fmt.id === 'commander' && buildAssistant,
         });
       } else {
         await onCreateDeck({
@@ -145,6 +150,7 @@ export const DeckCreateModal: React.FC<DeckCreateModalProps> = ({
           description: description.trim(),
           cardSource: effectiveSource,
           commander: fmt.commander ? selectedCommander : null,
+          buildAssistant: fmt.id === 'commander' && buildAssistant,
         });
       }
       onClose();
@@ -272,6 +278,25 @@ export const DeckCreateModal: React.FC<DeckCreateModalProps> = ({
               </p>
             )}
           </div>
+
+          {fmt.id === 'commander' && (
+            <label className="flex items-start gap-3 p-3 bg-stone-950 border border-stone-800 rounded-xl cursor-pointer hover:border-stone-700 has-[:checked]:border-amber-500/60 has-[:checked]:bg-amber-500/5">
+              <input
+                type="checkbox"
+                checked={buildAssistant}
+                onChange={(e) => setBuildAssistant(e.target.checked)}
+                className="w-4 h-4 mt-0.5 accent-amber-500 shrink-0"
+              />
+              <span className="min-w-0">
+                <span className="text-xs font-bold text-stone-100 flex items-center gap-1.5">
+                  <Wand2 className="w-3.5 h-3.5 text-amber-400" /> {t('Asystent budowy')}
+                </span>
+                <span className="text-[11px] text-stone-400 block mt-0.5">
+                  {t('Podpowiada kolejne karty do talii: te, które najczęściej grają inni gracze z tym dowódcą, i wolne karty z Twojej kolekcji. Pilnuje też liczby Lands, rampy, dobierania i usuwania.')}
+                </span>
+              </span>
+            </label>
+          )}
 
           {isArena ? (
             <p className="flex items-start gap-2 text-[11px] text-stone-400 p-2.5 bg-stone-950 border border-stone-800 rounded-xl">

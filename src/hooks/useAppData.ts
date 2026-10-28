@@ -617,6 +617,7 @@ export function useAppData({ userId, onUnauthorized, showToast, onSettingsLoaded
     description: string;
     cardSource?: 'all' | 'collection';
     commander?: ScryfallCard | null;
+    buildAssistant?: boolean;
   }): Promise<DeckItem> => {
     try {
       const res = await decksApi.create(data, onUnauthorized);

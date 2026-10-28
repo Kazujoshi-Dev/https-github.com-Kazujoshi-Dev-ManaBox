@@ -1,9 +1,10 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Sparkles, Loader2, ExternalLink, Plus, ArrowRight, Repeat, Library, AlertCircle, TrendingUp, Heart } from 'lucide-react';
+import { Sparkles, Wand2, Loader2, ExternalLink, Plus, ArrowRight, Repeat, Library, AlertCircle, TrendingUp, Heart } from 'lucide-react';
 import type { CollectionItem, DeckItem, ScryfallCard } from '../../types';
 import { getCardImageUri, handleCardImageError, scryfallNamedImageUrl } from '../../utils/formatters';
-import { edhrecApi, type EdhrecCommanderData, type EdhrecRecommendation } from '../../services/api';
+import type { EdhrecRecommendation } from '../../services/api';
+import { useEdhrecCommander } from './useEdhrecCommander';
 import { getCardCategory } from './constants';
 import { ReplaceCardModal } from './ReplaceCardModal';
 import { useT, locale, binderName } from '../../i18n';
@@ -22,6 +23,8 @@ interface DeckSuggestionsProps {
   /** Nazwy kart z listy życzeń (małe litery, przednia strona). */
   wishlistNames?: Set<string>;
   onAddToWishlist?: (rec: EdhrecRecommendation) => Promise<void>;
+  /** Włącza asystenta budowy (gdy jest wyłączony). */
+  onEnableAssistant?: () => void;
 }
 
 const LIST_TO_CATEGORY: Record<string, string> = {
@@ -67,13 +70,11 @@ function previewPosition(el: HTMLElement): { x: number; y: number } {
 const isBasicLand = (card: ScryfallCard) => /\bbasic\b/i.test(card.type_line || '') && /\bland\b/i.test(card.type_line || '');
 
 /** Sugestie z EDHREC: popularne karty dla dowódcy, których brak w talii, i lepsze odpowiedniki. */
-export const DeckSuggestions: React.FC<DeckSuggestionsProps> = ({ deck, collection, decks, onViewCardDetails, onAddCard, onReplaceCard, wishlistNames, onAddToWishlist }) => {
+export const DeckSuggestions: React.FC<DeckSuggestionsProps> = ({ deck, collection, decks, onViewCardDetails, onAddCard, onReplaceCard, wishlistNames, onAddToWishlist, onEnableAssistant }) => {
   const t = useT();
   const [wishBusy, setWishBusy] = useState<string | null>(null);
   const commanderName = deck.commander?.name || '';
-  const [data, setData] = useState<EdhrecCommanderData | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
+  const { data, error, loading } = useEdhrecCommander(commanderName);
   const [tab, setTab] = useState('Wszystkie');
   const [ownedOnly, setOwnedOnly] = useState(false);
   const [limit, setLimit] = useState(18);
@@ -99,21 +100,6 @@ export const DeckSuggestions: React.FC<DeckSuggestionsProps> = ({ deck, collecti
       onClickCapture: () => setPreview(null),
     };
   };
-
-  useEffect(() => {
-    if (!commanderName) return;
-    let cancelled = false;
-    setLoading(true);
-    setError(null);
-    edhrecApi
-      .commander(commanderName)
-      .then((d) => !cancelled && setData(d))
-      .catch((e) => !cancelled && (setError(e.message), setData(null)))
-      .finally(() => !cancelled && setLoading(false));
-    return () => {
-      cancelled = true;
-    };
-  }, [commanderName]);
 
   const deckNames = useMemo(() => {
     const s = new Set<string>();
@@ -184,6 +170,11 @@ export const DeckSuggestions: React.FC<DeckSuggestionsProps> = ({ deck, collecti
           <Sparkles className="w-4 h-4 text-amber-400" /> {t('Sugestie kart (EDHREC)')}
         </h3>
         <p className="text-sm text-stone-400 mt-2">{t('Wybierz dowódcę, aby zobaczyć karty najczęściej grane z nim przez innych graczy.')}</p>
+        {onEnableAssistant && (
+          <button type="button" onClick={onEnableAssistant} className="btn btn-secondary mt-3">
+            <Wand2 className="w-4 h-4" /> {t('Włącz asystenta budowy')}
+          </button>
+        )}
       </section>
     );
   }
@@ -226,11 +217,18 @@ export const DeckSuggestions: React.FC<DeckSuggestionsProps> = ({ deck, collecti
               : t('Na podstawie talii z EDHREC: co grają inni gracze z tym dowódcą.')}
           </p>
         </div>
+        <div className="flex flex-wrap items-center gap-3">
+        {onEnableAssistant && (
+          <button type="button" onClick={onEnableAssistant} className="btn btn-secondary">
+            <Wand2 className="w-4 h-4" /> {t('Włącz asystenta budowy')}
+          </button>
+        )}
         {data && (
           <a href={data.url} target="_blank" rel="noopener noreferrer" className="text-xs font-semibold text-amber-300 hover:text-amber-200 flex items-center gap-1">
             {t('Zobacz na EDHREC')} <ExternalLink className="w-3.5 h-3.5" />
           </a>
         )}
+        </div>
       </div>
 
       {loading && (

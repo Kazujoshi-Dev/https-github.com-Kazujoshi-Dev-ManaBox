@@ -213,6 +213,8 @@ export interface DeckItem {
   commanderIsFoil?: boolean;
   /** Talia dostępna pod publicznym linkiem (?talia=id). */
   isPublic?: boolean;
+  /** Asystent budowy (Commander): podpowiada kolejne karty według EDHREC, ról w talii i wolnych kart z kolekcji. */
+  buildAssistant?: boolean;
   cards: DeckCardEntry[];
   createdAt: string;
   updatedAt?: string;
