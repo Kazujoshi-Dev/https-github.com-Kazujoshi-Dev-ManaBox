@@ -55,6 +55,28 @@ export interface NameMatch {
   score: number; // 0..1
 }
 
+/** Ilu kandydatów (wg wspólnych trigramów) oceniamy dokładnie. */
+const SHORTLIST = 120;
+/** Kara za dopasowanie po odcięciu słowa z brzegu odczytu. */
+const TRIM_PENALTY = 0.03;
+
+/** Zapytanie oraz jego wersje bez krótkiego (1–2 znaki) pierwszego lub ostatniego słowa. */
+export function queryVariants(q: string): { text: string; penalty: number }[] {
+  const out = [{ text: q, penalty: 0 }];
+  const words = q.split(' ');
+  if (words.length < 2) return out;
+  const dropFirst = words[0].length <= 2;
+  const dropLast = words[words.length - 1].length <= 2;
+  const add = (w: string[]) => {
+    const text = w.join(' ');
+    if (text.length >= 3 && !out.some((o) => o.text === text)) out.push({ text, penalty: TRIM_PENALTY });
+  };
+  if (dropFirst) add(words.slice(1));
+  if (dropLast) add(words.slice(0, -1));
+  if (dropFirst && dropLast && words.length > 2) add(words.slice(1, -1));
+  return out;
+}
+
 export class NameIndex {
   private names: string[] = [];
   private byTrigram = new Map<string, number[]>();
@@ -78,10 +100,36 @@ export class NameIndex {
     return this.names.length;
   }
 
-  /** Zwraca najlepsze dopasowania nazwy (posortowane malejąco wg podobieństwa). */
+  /**
+   * Zwraca najlepsze dopasowania nazwy (posortowane malejąco wg podobieństwa).
+   *
+   * OCR paska tytułu często dokleja na brzegach 1–2 przypadkowe znaki (krawędź ramki,
+   * symbol many), np. „EK Sefessan Champion”. Dlatego porównujemy też wersje zapytania
+   * bez krótkiego pierwszego i/lub ostatniego słowa, z niewielką karą, żeby pełny odczyt
+   * wygrywał, gdy pasuje równie dobrze (np. prawdziwe „Ob Nixilis”).
+   */
   search(query: string, limit = 5, minScore = 0.6): NameMatch[] {
     const q = normalizeName(query);
     if (q.length < 2) return [];
+    const exactIdx = this.exact.get(q);
+    if (exactIdx !== undefined) return [{ name: this.names[exactIdx], score: 1 }];
+
+    const best = new Map<string, number>();
+    for (const { text, penalty } of queryVariants(q)) {
+      for (const m of this.scoreAll(text)) {
+        const score = m.score - penalty;
+        if (score > (best.get(m.name) ?? -Infinity)) best.set(m.name, score);
+      }
+    }
+    return [...best.entries()]
+      .map(([name, score]) => ({ name, score }))
+      .filter((m) => m.score >= minScore)
+      .sort((a, b) => b.score - a.score)
+      .slice(0, limit);
+  }
+
+  /** Ocena kandydatów dla jednej postaci zapytania (już znormalizowanej). */
+  private scoreAll(q: string): NameMatch[] {
     const exactIdx = this.exact.get(q);
     if (exactIdx !== undefined) return [{ name: this.names[exactIdx], score: 1 }];
 
@@ -102,20 +150,16 @@ export class NameIndex {
         return { idx, dice };
       })
       .sort((a, b) => b.dice - a.dice)
-      .slice(0, 60);
+      .slice(0, SHORTLIST);
 
-    return shortlist
-      .map(({ idx }) => {
-        const n = this.names[idx];
-        let score = nameSimilarity(q, n);
-        // OCR często ucina koniec długich nazw — porównaj też z prefiksem tej samej długości.
-        if (n.length > q.length + 2 && q.length >= 6) {
-          score = Math.max(score, nameSimilarity(q, n.slice(0, q.length)) - 0.05);
-        }
-        return { name: n, score };
-      })
-      .filter((m) => m.score >= minScore)
-      .sort((a, b) => b.score - a.score)
-      .slice(0, limit);
+    return shortlist.map(({ idx }) => {
+      const n = this.names[idx];
+      let score = nameSimilarity(q, n);
+      // OCR często ucina koniec długich nazw — porównaj też z prefiksem tej samej długości.
+      if (n.length > q.length + 2 && q.length >= 6) {
+        score = Math.max(score, nameSimilarity(q, n.slice(0, q.length)) - 0.05);
+      }
+      return { name: n, score };
+    });
   }
 }

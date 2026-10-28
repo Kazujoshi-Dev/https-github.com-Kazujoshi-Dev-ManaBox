@@ -34,6 +34,7 @@ import {
   type IdentifyResult
 } from './src/server/cards/scanIdentify';
 import * as scanSamples from './src/server/cards/scanSamples';
+import { normalizeName, queryVariants } from './src/server/cards/nameMatch';
 import { searchCities, resolveSuggestion } from './src/server/geo';
 import { APP_USER_AGENT } from './src/server/userAgent';
 import { isDigitalOnly, DIGITAL_BLOCK_MESSAGE, type SearchGame } from './src/utils/mtgFormats';
@@ -1182,15 +1183,20 @@ async function identifyWithScryfallApi(title: string, set: string, collector: st
     } catch (_) {}
   }
   if (!matchedCard?.name && title) {
-    try {
-      const setParam = set ? `&set=${encodeURIComponent(set)}` : '';
-      matchedCard = await fetchScryfall(`/cards/named?fuzzy=${encodeURIComponent(title)}${setParam}`);
-    } catch (_) {
+    // pełny odczyt, a potem bez przypadkowych 1–2 znaków na brzegach (np. „EK Sefessan Champion”)
+    const variants = [title, ...queryVariants(normalizeName(title)).slice(1).map((v) => v.text)];
+    for (const name of variants) {
       try {
-        matchedCard = await fetchScryfall(`/cards/named?fuzzy=${encodeURIComponent(title)}`);
+        const setParam = set ? `&set=${encodeURIComponent(set)}` : '';
+        matchedCard = await fetchScryfall(`/cards/named?fuzzy=${encodeURIComponent(name)}${setParam}`);
       } catch (_) {
-        matchedCard = null;
+        try {
+          matchedCard = await fetchScryfall(`/cards/named?fuzzy=${encodeURIComponent(name)}`);
+        } catch (_) {
+          matchedCard = null;
+        }
       }
+      if (matchedCard?.name) break;
     }
     if (matchedCard?.name) confidence = 80;
   }
