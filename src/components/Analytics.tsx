@@ -70,7 +70,7 @@ const POKEMON_TYPES: Array<{ key: string; color: string }> = [
 ];
 const POKEMON_RARITY_COLORS = ['#78716c', '#cbd5e1', '#eab308', '#f59e0b', '#c084fc', '#38bdf8', '#f472b6', '#a3e635'];
 
-type Mover = { item: CollectionItem; now: number; before: number; delta: number; pct: number | null };
+type Mover = { item: CollectionItem; qty: number; qtyFoil: number; now: number; before: number; delta: number; pct: number | null };
 
 interface AnalyticsProps {
   collection: CollectionItem[];
@@ -228,13 +228,28 @@ export const Analytics: React.FC<AnalyticsProps> = ({ collection, settings, onVi
   // Zmiana wartości względem cen sprzed ostatniej aktualizacji
   const change = useMemo(() => computeValueChange(collection, settings), [collection, settings]);
   const movers = useMemo(() => {
-    const list = collection
-      .filter(item => item.card && item.previousPrices)
-      .map(item => {
-        const now = itemValue(item, settings);
-        const before = itemValue(item, settings, item.previousPrices!);
-        return { item, now, before, delta: now - before, pct: before > 0 ? ((now - before) / before) * 100 : null };
-      })
+    // Pozycje tej samej karty (edycja i wersja) w różnych miejscach (wolne, talie) sumujemy w jeden wiersz
+    const groups = new Map<string, { item: CollectionItem; qty: number; qtyFoil: number; now: number; before: number }>();
+    for (const item of collection) {
+      if (!item.card || !item.previousPrices) continue;
+      const key = item.cardId || item.card.id;
+      const g = groups.get(key) || { item, qty: 0, qtyFoil: 0, now: 0, before: 0 };
+      g.qty += item.quantity || 0;
+      g.qtyFoil += item.quantityFoil || 0;
+      g.now += itemValue(item, settings);
+      g.before += itemValue(item, settings, item.previousPrices);
+      groups.set(key, g);
+    }
+    const list: Mover[] = [...groups.values()]
+      .map(({ item, qty, qtyFoil, now, before }) => ({
+        item,
+        qty,
+        qtyFoil,
+        now,
+        before,
+        delta: now - before,
+        pct: before > 0 ? ((now - before) / before) * 100 : null
+      }))
       .filter(m => Math.abs(m.delta) >= 0.005);
     const up = list.filter(m => m.delta > 0).sort((a, b) => b.delta - a.delta).slice(0, MOVERS_LIMIT);
     const down = list.filter(m => m.delta < 0).sort((a, b) => a.delta - b.delta).slice(0, MOVERS_LIMIT);
@@ -463,7 +478,7 @@ export const Analytics: React.FC<AnalyticsProps> = ({ collection, settings, onVi
                 ) : (
                   <ol className="divide-y divide-stone-800/80">
                     {(list as Mover[]).map((m, i) => (
-                      <MoverRow key={m.item.id} mover={m} rank={i + 1} currency={settings.currency} fmtDelta={fmtDelta} onOpen={() => onViewCardDetails(m.item)} />
+                      <MoverRow key={m.item.cardId || m.item.id} mover={m} rank={i + 1} currency={settings.currency} fmtDelta={fmtDelta} onOpen={() => onViewCardDetails(m.item)} />
                     ))}
                   </ol>
                 )}
@@ -497,9 +512,9 @@ const MoverRow: React.FC<{
   onOpen: () => void;
 }> = ({ mover, rank, currency, fmtDelta, onOpen }) => {
   const t = useT();
-  const { item, now, before, delta, pct } = mover;
+  const { item, qtyFoil, now, before, delta, pct } = mover;
   const img = getCardImageUri(item.card, 'small') || getCardImageUri(item.card, 'normal');
-  const qty = item.quantity + item.quantityFoil;
+  const qty = mover.qty + qtyFoil;
   const up = delta > 0;
   return (
     <li>
@@ -514,7 +529,7 @@ const MoverRow: React.FC<{
             <span className="max-sm:hidden">
               {item.card.set.toUpperCase()}
               {qty > 1 && <> · {qty} {t('szt.')}</>}
-              {item.quantityFoil > 0 && <> {t('· foil')}</>}
+              {qtyFoil > 0 && <> {t('· foil')}</>}
               {' · '}
             </span>
             {qty > 1 && <span className="sm:hidden">{qty} {t('szt.')} · </span>}
