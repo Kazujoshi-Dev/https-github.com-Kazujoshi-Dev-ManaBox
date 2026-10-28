@@ -10,7 +10,7 @@
  * Bez PostgreSQL moduł jest nieaktywny, a skaner korzysta z API Scryfall jak dotąd.
  */
 import type pg from 'pg';
-import { getPool, isPostgresActive } from '../db/storage';
+import { getPool, isPostgresActive, slowQuery } from '../db/storage';
 import { iterateJsonArrayObjects } from './bulkParser';
 import { APP_USER_AGENT } from '../userAgent';
 import { NameIndex, normalizeName } from './nameMatch';
@@ -80,7 +80,7 @@ export function cardDbStatus() {
 export async function ensureCardSchema(): Promise<void> {
   const p = pool();
   if (!p) return;
-  await p.query(`
+  await slowQuery(p, `
     CREATE TABLE IF NOT EXISTS scryfall_cards (
       id UUID PRIMARY KEY,
       oracle_id UUID,
@@ -175,7 +175,7 @@ async function upsertBatch(p: pg.Pool, cards: any[], syncStart: string): Promise
       Boolean(c.digital)
     );
   });
-  await p.query(
+  await slowQuery(p, 
     `INSERT INTO scryfall_cards
        (id, oracle_id, name, face_names, lang, set_code, collector_number, released_at, layout, image_small, data, synced_at, digital)
      VALUES ${rows.join(',')}
@@ -348,7 +348,7 @@ export async function fillPricesFromEnglish(input: any): Promise<void> {
 /** To samo co fillPricesFromEnglish, ale w bazie: dla wszystkich wersji językowych z EXTRA_LANGS. */
 export async function copyEnglishPricesToExtraLangs(p: pg.Pool): Promise<void> {
   if (!EXTRA_LANGS.length) return;
-  const res = await p.query(
+  const res = await slowQuery(p, 
     `WITH src AS (
        SELECT j.id, f.patch, f.filled
          FROM scryfall_cards j
@@ -418,7 +418,7 @@ async function syncExtraLanguages(p: pg.Pool, force: boolean): Promise<boolean> 
     total += batch.length;
   }
   if (total < 500) throw new Error(`podejrzanie mało kart w wybranych językach (${total}), nie usuwam starych`);
-  const removed = await p.query('DELETE FROM scryfall_cards WHERE synced_at < $1 AND lang = ANY($2)', [syncStart, EXTRA_LANGS]);
+  const removed = await slowQuery(p, 'DELETE FROM scryfall_cards WHERE synced_at < $1 AND lang = ANY($2)', [syncStart, EXTRA_LANGS]);
   await copyEnglishPricesToExtraLangs(p);
   await setMeta(p, 'extra_langs_version', remoteVersion);
   console.log(
@@ -484,7 +484,7 @@ export async function syncCardsFromScryfall(force = false): Promise<void> {
     if (total < 10000) throw new Error(`podejrzanie mało kart w imporcie (${total}) — nie usuwam starych`);
 
     // Usuwamy karty, których nie ma już w danych Scryfall.
-    const removed = await p.query('DELETE FROM scryfall_cards WHERE synced_at < $1 AND NOT (lang = ANY($2))', [syncStart, EXTRA_LANGS]);
+    const removed = await slowQuery(p, 'DELETE FROM scryfall_cards WHERE synced_at < $1 AND NOT (lang = ANY($2))', [syncStart, EXTRA_LANGS]);
     await setMeta(p, 'default_cards_version', remoteVersion);
     await setMeta(p, 'import_rules_version', IMPORT_RULES_VERSION);
     lastSyncAt = new Date().toISOString();
@@ -515,7 +515,7 @@ export async function syncCardsFromScryfall(force = false): Promise<void> {
 export async function loadCardIndex(): Promise<void> {
   const p = pool();
   if (!p) return;
-  const res = await p.query(
+  const res = await slowQuery(p, 
     `SELECT id, face_names, set_code, collector_number, COALESCE(to_char(released_at, 'YYYY-MM-DD'), '') AS released
      FROM scryfall_cards
      WHERE NOT digital
@@ -555,8 +555,19 @@ export async function startCardDb(): Promise<void> {
   }
   await ensureCardSchema();
   await ensureHashSchema();
-  await loadCardIndex();
-  await loadHashIndex();
+  // Bez indeksu w pamięci skaner nie porównuje obrazów (zostaje mu tylko API Scryfall),
+  // więc po nieudanym wczytaniu (np. zimna baza tuż po restarcie) próbujemy ponownie.
+  for (let attempt = 1; ; attempt++) {
+    try {
+      await loadCardIndex();
+      await loadHashIndex();
+      break;
+    } catch (err: any) {
+      console.warn(`[Karty] Wczytanie indeksu nieudane (próba ${attempt}):`, err?.message || err);
+      if (attempt >= 10) throw err;
+      await new Promise((r) => setTimeout(r, 30_000));
+    }
+  }
   buildMissingHashes().catch(() => {});
   lastSyncAt = await getMeta(p, 'last_check');
 

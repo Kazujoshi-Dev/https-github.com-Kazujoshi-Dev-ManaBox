@@ -120,3 +120,12 @@ export function userGameFile(userId: string, baseName: string, game: string): st
   const name = !game || game === 'mtg' ? `${baseName}.json` : `${baseName}.${game.replace(/[^a-z0-9]/g, '')}.json`;
   return path.join(getUserDir(userId), name);
 }
+
+/**
+ * Zapytanie z dłuższym limitem czasu niż domyślne 4 s puli (import kart, wczytanie indeksów,
+ * przeliczenia na całej tabeli kart). Domyślny limit chroni zwykłe żądania użytkowników,
+ * ale ciężkie zadania w tle po restarcie (zimny cache bazy) potrafią go przekroczyć.
+ */
+export function slowQuery(p: pg.Pool, text: string, values: any[] = [], timeoutMs = 120_000) {
+  return p.query({ text, values, query_timeout: timeoutMs } as any);
+}

@@ -8,7 +8,7 @@
  * - Karty dwustronne mają osobny odcisk tylnej strony.
  */
 import type pg from 'pg';
-import { getPool, isPostgresActive } from '../db/storage';
+import { getPool, isPostgresActive, slowQuery } from '../db/storage';
 import { APP_USER_AGENT } from '../userAgent';
 import { HASH_BYTES, HASH_VERSION, HASH_WORDS, asWords, combinedDistance32, computeCardHash, decodeJpegToGray } from './imageHash';
 
@@ -51,14 +51,14 @@ export function hashIndexStatus() {
 export async function ensureHashSchema(): Promise<void> {
   const p = pool();
   if (!p) return;
-  await p.query('ALTER TABLE scryfall_cards ADD COLUMN IF NOT EXISTS back_hash BYTEA');
+  await slowQuery(p, 'ALTER TABLE scryfall_cards ADD COLUMN IF NOT EXISTS back_hash BYTEA');
 }
 
 /** Wczytuje do pamięci odciski policzone bieżącą wersją algorytmu. */
 export async function loadHashIndex(): Promise<void> {
   const p = pool();
   if (!p) return;
-  const res = await p.query('SELECT id, card_hash, back_hash FROM scryfall_cards WHERE hash_version = $1', [HASH_VERSION]);
+  const res = await slowQuery(p, 'SELECT id, card_hash, back_hash FROM scryfall_cards WHERE hash_version = $1', [HASH_VERSION]);
   ids = [];
   store = new Uint8Array(0);
   store32 = new Uint32Array(0);
@@ -98,7 +98,7 @@ export async function buildMissingHashes(): Promise<void> {
   // karty tylko z MTG Arena nie trafiają do skanera
   const pendingWhere = 'image_small IS NOT NULL AND NOT digital AND hash_version IS DISTINCT FROM $1 AND hash_version IS DISTINCT FROM $2';
   try {
-    const countRes = await p.query(`SELECT COUNT(*)::int AS n FROM scryfall_cards WHERE ${pendingWhere}`, [HASH_VERSION, FAILED_VERSION]);
+    const countRes = await slowQuery(p, `SELECT COUNT(*)::int AS n FROM scryfall_cards WHERE ${pendingWhere}`, [HASH_VERSION, FAILED_VERSION]);
     buildProgress.remaining = countRes.rows[0].n;
     if (buildProgress.remaining === 0) return;
     console.log(`[Obrazy] Liczę odciski dla ${buildProgress.remaining} wydań (ok. ${Math.ceil(buildProgress.remaining / 600)} min)...`);
@@ -106,7 +106,7 @@ export async function buildMissingHashes(): Promise<void> {
     let batches = 0;
 
     while (true) {
-      const batch = await p.query(
+      const batch = await slowQuery(p, 
         `SELECT id, image_small, data->'card_faces'->1->'image_uris'->>'small' AS back_small
          FROM scryfall_cards WHERE ${pendingWhere} LIMIT 200`,
         [HASH_VERSION, FAILED_VERSION]
@@ -154,7 +154,7 @@ export async function buildMissingHashes(): Promise<void> {
 export async function retryFailedHashes(): Promise<void> {
   const p = pool();
   if (!p) return;
-  await p.query('UPDATE scryfall_cards SET hash_version = NULL WHERE hash_version = $1', [FAILED_VERSION]);
+  await slowQuery(p, 'UPDATE scryfall_cards SET hash_version = NULL WHERE hash_version = $1', [FAILED_VERSION]);
 }
 
 export interface HashMatch {
