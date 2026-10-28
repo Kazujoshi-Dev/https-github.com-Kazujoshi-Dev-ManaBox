@@ -428,7 +428,8 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
         quad: quad || null,
         guide: getSensorGuide() || undefined,
         onStatus: setScanStatus,
-        game
+        game,
+        extraFrames: 2
       });
       if (!auto) {
         applyScanResult(result);

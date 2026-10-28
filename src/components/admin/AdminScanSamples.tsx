@@ -90,6 +90,7 @@ const SUMMARY_ROWS: Array<{ key: keyof ScanEvalSummary; label: string; of: 'card
   { key: 'wrongUnsure', label: tk('Niepewna pomyłka'), of: 'cards', better: 'down' },
   { key: 'none', label: tk('Brak wyniku'), of: 'cards', better: 'down' },
   { key: 'quickPath', label: tk('Rozpoznane bez OCR'), of: 'cards', better: 'up' },
+  { key: 'fusedQuick', label: tk('W tym dzięki kilku klatkom'), of: 'cards', better: 'up' },
   { key: 'falseAlarm', label: tk('Wynik dla nie-karty'), of: 'notCards', better: 'down' }
 ];
 
@@ -113,8 +114,8 @@ const EvalReport: React.FC<{ summary: ScanEvalSummary; previous: ScanEvalSummary
         </thead>
         <tbody>
           {SUMMARY_ROWS.map((r) => {
-            const now = summary[r.key];
-            const before = previous ? previous[r.key] : null;
+            const now = summary[r.key] ?? 0;
+            const before = previous ? previous[r.key] ?? 0 : null;
             const ratioNow = summary[r.of] ? now / summary[r.of] : 0;
             const ratioBefore = previous && previous[r.of] ? (before as number) / previous[r.of] : null;
             const diff = ratioBefore === null ? 0 : ratioNow - ratioBefore;
@@ -318,6 +319,12 @@ export const AdminScanSamples: React.FC<{ showToast?: (m: string) => void }> = (
                       {s.hintTitle || '–'}
                       {s.hintSet || s.hintCollector ? ` · ${s.hintSet.toUpperCase() || '?'} #${s.hintCollector || '?'}` : ''}
                     </dd>
+                    {s.frames > 1 && (
+                      <>
+                        <dt className="text-stone-500">{t('Klatki')}</dt>
+                        <dd className="text-stone-300 tabular-nums">{s.frames}</dd>
+                      </>
+                    )}
                     {s.glare !== null && (
                       <>
                         <dt className="text-stone-500">{t('Odblask')}</dt>

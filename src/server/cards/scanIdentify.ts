@@ -41,16 +41,39 @@ export function hashCardImage(dataUrl: unknown, rotate180 = false): Uint8Array[]
   }
 }
 
+/**
+ * Odciski kilku klatek tej samej karty: [0] to klatka główna, kolejne (opcjonalnie) to następne
+ * klatki z kamery. Każda klatka to lista wariantów kadru z `hashCardImage`.
+ */
+export type FrameHashes = Uint8Array[][];
+
+/** Do 2 dodatkowych klatek (więcej nic nie wnosi, a wydłuża przesyłanie). */
+export const MAX_EXTRA_FRAMES = 2;
+
+/** Odciski klatki głównej i poprawnych klatek dodatkowych; null, gdy klatka główna jest niepoprawna. */
+export function hashCardFrames(dataUrl: unknown, extra: unknown, rotate180 = false): FrameHashes | null {
+  const main = hashCardImage(dataUrl, rotate180);
+  if (!main) return null;
+  const frames: FrameHashes = [main];
+  if (Array.isArray(extra)) {
+    for (const e of extra.slice(0, MAX_EXTRA_FRAMES)) {
+      const h = hashCardImage(e, rotate180);
+      if (h) frames.push(h);
+    }
+  }
+  return frames;
+}
+
 /** Sortuje wydania wg podobieństwa obrazu (gdy jest odcisk), zachowując resztę na końcu. */
-export function rankByImage(ids: string[], queryHash: Uint8Array[] | null) {
+export function rankByImage(ids: string[], queryHash: FrameHashes | null) {
   if (!queryHash || !hashes.hasHashes()) return { ordered: ids, distances: new Map<string, number>() };
-  const ranked = hashes.searchByHash(queryHash, ids.length, ids);
+  const ranked = hashes.searchByFrames(queryHash, ids.length, ids);
   const distances = new Map(ranked.map((r) => [r.id, r.distance]));
   const withHash = ranked.map((r) => r.id);
   return { ordered: [...withHash, ...ids.filter((id) => !distances.has(id))], distances };
 }
 
-export async function identifyWithLocalDb(title: string, set: string, collector: string, queryHash: Uint8Array[] | null): Promise<IdentifyResult> {
+export async function identifyWithLocalDb(title: string, set: string, collector: string, queryHash: FrameHashes | null): Promise<IdentifyResult> {
   const nameHits = title ? cards.findByName(title, 3) : [];
   const exactId = set && collector ? cards.findIdBySetNumber(set, collector) : null;
 
@@ -99,7 +122,7 @@ export async function identifyWithLocalDb(title: string, set: string, collector:
 
   // 3. Sam obraz (OCR nic nie dał): najbliższy odcisk w całej bazie, jeśli wyraźnie lepszy od innych kart.
   if (!matchedId && queryHash && hashes.hasHashes()) {
-    const top = hashes.searchByHash(queryHash, 30);
+    const top = hashes.searchByFrames(queryHash, 30);
     const best = top[0];
     const bestName = best ? cards.nameOfId(best.id) : null;
     const rival = top.find((m) => cards.nameOfId(m.id) !== bestName);
@@ -139,12 +162,13 @@ export async function identifyMtgLocal(
   dataUrl: unknown,
   title: string,
   set: string,
-  collector: string
+  collector: string,
+  extraDataUrls?: unknown
 ): Promise<IdentifyResult> {
-  const queryHash = hashCardImage(dataUrl);
+  const queryHash = hashCardFrames(dataUrl, extraDataUrls);
   let result = await identifyWithLocalDb(title, set, collector, queryHash);
   if (!result.matchedCard && queryHash) {
-    const rotated = hashCardImage(dataUrl, true);
+    const rotated = hashCardFrames(dataUrl, extraDataUrls, true);
     if (rotated) {
       const flipped = await identifyWithLocalDb('', '', '', rotated);
       if (flipped.matchedCard) result = flipped;

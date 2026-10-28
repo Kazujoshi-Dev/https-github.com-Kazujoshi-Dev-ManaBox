@@ -216,3 +216,29 @@ export function searchByHash(query: Uint8Array | Uint8Array[], limit = 10, candi
 export function hasHashes(): boolean {
   return count > 0;
 }
+
+/** Ile najlepszych kart z każdej klatki trafia do wspólnej puli przy łączeniu kilku klatek. */
+const FUSION_POOL = 60;
+
+/**
+ * Najbliższe odciski dla kilku klatek tej samej karty (np. 2–3 kolejne klatki z kamery).
+ * Odległość karty to średnia jej odległości we wszystkich klatkach: przypadkowy odblask
+ * albo szum psuje zwykle tylko jedną klatkę, więc właściwa karta zyskuje przewagę nad resztą.
+ * Dla jednej klatki wynik jest dokładnie taki jak z `searchByHash`.
+ */
+export function searchByFrames(frames: Uint8Array[][], limit = 10, candidateIds?: string[]): HashMatch[] {
+  if (frames.length === 0) return [];
+  if (frames.length === 1) return searchByHash(frames[0], limit, candidateIds);
+  let ids = candidateIds;
+  if (!ids) {
+    const pool = new Set<string>();
+    for (const f of frames) for (const m of searchByHash(f, Math.max(limit, FUSION_POOL))) pool.add(m.id);
+    ids = [...pool];
+  }
+  const sum = new Map<string, number>();
+  for (const f of frames) for (const m of searchByHash(f, ids.length, ids)) sum.set(m.id, (sum.get(m.id) || 0) + m.distance);
+  return [...sum.entries()]
+    .map(([id, total]) => ({ id, distance: total / frames.length }))
+    .sort((a, b) => a.distance - b.distance)
+    .slice(0, limit);
+}

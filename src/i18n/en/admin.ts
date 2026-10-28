@@ -191,4 +191,6 @@ export const en_admin: Record<string, string> = {
   "Nie udało się usunąć próbki.": "Could not delete the sample.",
   "Nie udało się ocenić skanera.": "Could not evaluate the scanner.",
   "Nie udało się wczytać kadru.": "Could not load the crop.",
+  "W tym dzięki kilku klatkom": "Of which thanks to multiple frames",
+  "Klatki": "Frames",
 };

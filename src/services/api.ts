@@ -695,6 +695,8 @@ export interface ScanSample {
   candidates: ScanSampleCard[];
   labelStatus: ScanSampleLabel;
   label: ScanSampleCard | null;
+  /** Liczba klatek kamery wysłanych przy tym skanie. */
+  frames: number;
 }
 
 export interface ScanEvalSummary {
@@ -709,6 +711,8 @@ export interface ScanEvalSummary {
   rejected: number;
   falseAlarm: number;
   quickPath: number;
+  fusedQuick?: number;
+  multiFrame?: number;
   ms: number;
 }
 

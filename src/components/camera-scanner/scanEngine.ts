@@ -15,6 +15,7 @@ import {
   Quad,
   Rect,
   detectCardQuad,
+  quadMovement,
   rgbaToGray,
   scaleQuad,
   warpCardRegion
@@ -284,6 +285,58 @@ export interface RecognizeOptions {
   imageFirst?: boolean;
   /** Gra karciana (domyślnie MTG); w Lorcanie OCR czyta tylko numer ze stopki. */
   game?: GameId;
+  /**
+   * Ile dodatkowych klatek z kamery dobrać, gdy pierwsza nie wystarczy (MTG, tylko źródło wideo).
+   * Serwer łączy podobieństwo ze wszystkich klatek, więc odblask czy szum w jednej klatce mniej szkodzi.
+   * Pewny wynik z pierwszej klatki nie czeka na dodatkowe klatki.
+   */
+  extraFrames?: number;
+}
+
+/** Odstęp między dodatkowymi klatkami: ruch ręki i migotanie odblasku zmieniają się, a karta zostaje. */
+const EXTRA_FRAME_GAP_MS = 110;
+
+/** Czeka `minMs`, a potem (gdy przeglądarka to umie) na świeżą klatkę wideo, ale najwyżej 100 ms. */
+const nextVideoFrame = (video: HTMLVideoElement, minMs: number) =>
+  new Promise<void>((resolve) => {
+    setTimeout(() => {
+      const v = video as HTMLVideoElement & { requestVideoFrameCallback?: (cb: () => void) => number };
+      if (!v.requestVideoFrameCallback) return resolve();
+      const fallback = setTimeout(resolve, 100);
+      v.requestVideoFrameCallback(() => {
+        clearTimeout(fallback);
+        resolve();
+      });
+    }, minMs);
+  });
+
+/**
+ * Kolejne klatki tej samej karty: każda wyprostowana według świeżo wykrytych rogów.
+ * Przerywa, gdy karta zniknęła albo wyraźnie się przesunęła (np. użytkownik kładzie następną).
+ */
+async function captureExtraFrames(
+  video: HTMLVideoElement,
+  guide: Rect,
+  firstQuad: Quad,
+  count: number
+): Promise<{ urls: string[]; glare: number[] }> {
+  const urls: string[] = [];
+  const glare: number[] = [];
+  const { w, h } = sourceSize(video);
+  for (let i = 0; i < count; i++) {
+    await nextVideoFrame(video, EXTRA_FRAME_GAP_MS);
+    if (video.readyState < 2 || video.videoWidth !== w || video.videoHeight !== h) break;
+    const det = detectCardInSource(video, guide);
+    if (!det || quadMovement(firstQuad, det.quad) > guide.width * 0.05) break;
+    const { canvas, ctx } = canvas2d(w, h);
+    ctx.drawImage(video, 0, 0, w, h);
+    const pixels = ctx.getImageData(0, 0, w, h).data;
+    canvas.width = canvas.height = 0;
+    const rgba = warpCardRegion(pixels, w, h, det.quad, 300, 420);
+    urls.push(toCanvas(rgba, 300, 420).toDataURL('image/jpeg', 0.85));
+    glare.push(measureGlare(rgba, 300, 420));
+  }
+  return { urls, glare };
 }
 
 /** Pełne rozpoznanie karty z klatki kamery lub zdjęcia. */
@@ -344,6 +397,25 @@ export async function recognizeCard(
     }
   }
 
+  // 1b. Obraz niepewny: dobieramy kolejne klatki tej samej karty i porównujemy je razem (nadal bez OCR).
+  let extraUrls: string[] = [];
+  if (game === 'mtg' && detected && opts.imageFirst !== false && (opts.extraFrames || 0) > 0 && src instanceof HTMLVideoElement) {
+    const extra = await captureExtraFrames(src, guide, quad, opts.extraFrames!).catch(() => ({ urls: [] as string[], glare: [] as number[] }));
+    extraUrls = extra.urls;
+    // odblask, który był tylko w jednej klatce, nie jest przyczyną braku rozpoznania
+    if (extra.glare.length) base.glare = Math.min(glare, ...extra.glare);
+    if (extraUrls.length) {
+      const fused = await identify(
+        { cardImageBase64: cardDataUrl, extraCardImagesBase64: extraUrls, sampleStage: 'quick', glare },
+        opts.onStatus,
+        game
+      ).catch(() => ({}));
+      if (fused.matchedCard && (fused.confidence || 0) >= QUICK_IMAGE_CONFIDENCE) {
+        return { ...base, confidence: fused.confidence, matchedCard: fused.matchedCard, possibleCards: fused.possibleCards || [], method: fused.method };
+      }
+    }
+  }
+
   // 2L. Lorcana: obraz niejednoznaczny (np. dodruk z tą samą ilustracją) — numer i dodatek ze stopki
   if (game === 'lorcana') {
     const footerRgba = warpCardRegion(pixels, w, h, quad, 600, 150, FOOTER_REGION);
@@ -385,6 +457,7 @@ export async function recognizeCard(
   const data: any = await identify(
     {
       cardImageBase64: cardDataUrl,
+      ...(extraUrls.length ? { extraCardImagesBase64: extraUrls } : {}),
       hintTitle: title,
       hintSet: footer.set,
       hintCollector: footer.collectorNumber,

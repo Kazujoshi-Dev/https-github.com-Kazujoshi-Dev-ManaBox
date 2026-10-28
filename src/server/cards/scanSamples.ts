@@ -12,7 +12,7 @@ import type pg from 'pg';
 import { getPool, isPostgresActive } from '../db/storage';
 import * as cards from './cardStore';
 import * as hashes from './hashIndex';
-import { QUICK_IMAGE_CONFIDENCE, hashCardImage, identifyMtgLocal, type IdentifyResult } from './scanIdentify';
+import { MAX_EXTRA_FRAMES, QUICK_IMAGE_CONFIDENCE, hashCardFrames, identifyMtgLocal, type IdentifyResult } from './scanIdentify';
 
 /** Wynik poniżej tej pewności zapisujemy jako „niepewny”. */
 const UNCERTAIN_BELOW = 90;
@@ -49,6 +49,7 @@ export async function startScanSamples(): Promise<void> {
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
       user_id VARCHAR(64) REFERENCES users(id) ON DELETE SET NULL,
       image BYTEA NOT NULL,
+      extra_images BYTEA[],
       stage VARCHAR(8) NOT NULL,
       reason VARCHAR(12) NOT NULL,
       hint_title VARCHAR(200) NOT NULL DEFAULT '',
@@ -64,6 +65,7 @@ export async function startScanSamples(): Promise<void> {
       label_id VARCHAR(64),
       labeled_at TIMESTAMPTZ
     );
+    ALTER TABLE scan_samples ADD COLUMN IF NOT EXISTS extra_images BYTEA[];
     CREATE INDEX IF NOT EXISTS idx_scan_samples_label ON scan_samples(label_status, created_at DESC);
     CREATE INDEX IF NOT EXISTS idx_scan_samples_user_day ON scan_samples(user_id, created_at DESC);
     CREATE TABLE IF NOT EXISTS scan_eval_runs (
@@ -95,6 +97,8 @@ async function purgeSamples(): Promise<void> {
 export interface RecordInput {
   userId: string | undefined;
   dataUrl: unknown;
+  /** Kolejne klatki tej samej karty (opcjonalnie, do 2). */
+  extraDataUrls?: unknown;
   stage: unknown;
   glare: unknown;
   hintTitle: string;
@@ -126,6 +130,10 @@ export async function recordScanSample(input: RecordInput): Promise<void> {
   if (!reason) return;
   if (typeof input.dataUrl !== 'string' || !input.dataUrl.startsWith('data:image/jpeg;base64,')) return;
   const image = Buffer.from(input.dataUrl.slice(23), 'base64');
+  const extras = (Array.isArray(input.extraDataUrls) ? input.extraDataUrls.slice(0, MAX_EXTRA_FRAMES) : [])
+    .filter((u): u is string => typeof u === 'string' && u.startsWith('data:image/jpeg;base64,'))
+    .map((u) => Buffer.from(u.slice(23), 'base64'))
+    .filter((b) => b.length > 0 && b.length <= MAX_IMAGE_BYTES);
   if (!image.length || image.length > MAX_IMAGE_BYTES) return;
 
   const recent = await p.query(
@@ -135,13 +143,13 @@ export async function recordScanSample(input: RecordInput): Promise<void> {
   if (recent.rows[0].n >= PER_USER_DAILY) return;
 
   // Najbliższe obrazy w całej bazie (niezależnie od OCR) — podpowiedzi przy oznaczaniu
-  const queryHash = hashCardImage(input.dataUrl);
-  const top = queryHash && hashes.hasHashes() ? hashes.searchByHash(queryHash, 6) : [];
+  const queryHash = hashCardFrames(input.dataUrl, input.extraDataUrls);
+  const top = queryHash && hashes.hasHashes() ? hashes.searchByFrames(queryHash, 6) : [];
   const glare = typeof input.glare === 'number' && Number.isFinite(input.glare) ? Math.min(1, Math.max(0, input.glare)) : null;
   const r = input.result;
   await p.query(
-    `INSERT INTO scan_samples (user_id, image, stage, reason, hint_title, hint_set, hint_collector, glare, method, confidence, image_distance, matched_id, candidates)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)`,
+    `INSERT INTO scan_samples (user_id, image, stage, reason, hint_title, hint_set, hint_collector, glare, method, confidence, image_distance, matched_id, candidates, extra_images)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)`,
     [
       input.userId,
       image,
@@ -155,7 +163,8 @@ export async function recordScanSample(input: RecordInput): Promise<void> {
       Math.round(r.matchedCard ? r.confidence || 0 : 0),
       r.imageDistance ?? null,
       r.matchedCard?.id || null,
-      JSON.stringify(top.map((m) => ({ id: m.id, d: Math.round(m.distance) })))
+      JSON.stringify(top.map((m) => ({ id: m.id, d: Math.round(m.distance) }))),
+      extras.length ? extras : null
     ]
   );
 }
@@ -188,7 +197,8 @@ export async function listSamples(status: LabelStatus | 'labeled' | 'all', limit
   const rows = (
     await p.query(
       `SELECT s.id, s.created_at, s.stage, s.reason, s.hint_title, s.hint_set, s.hint_collector, s.glare, s.method,
-              s.confidence, s.image_distance, s.matched_id, s.candidates, s.label_status, s.label_id, u.username
+              s.confidence, s.image_distance, s.matched_id, s.candidates, s.label_status, s.label_id, u.username,
+              COALESCE(array_length(s.extra_images, 1), 0) + 1 AS frames
          FROM scan_samples s LEFT JOIN users u ON u.id = s.user_id
          ${where}
         ORDER BY s.created_at DESC LIMIT $1 OFFSET $2`,
@@ -224,7 +234,8 @@ export async function listSamples(status: LabelStatus | 'labeled' | 'all', limit
       matched: r.matched_id ? byId.get(r.matched_id) || null : null,
       candidates: (r.candidates || []).map((c: any) => (byId.has(c.id) ? { ...byId.get(c.id)!, distance: c.d } : null)).filter(Boolean),
       labelStatus: r.label_status,
-      label: r.label_id ? byId.get(r.label_id) || null : null
+      label: r.label_id ? byId.get(r.label_id) || null : null,
+      frames: r.frames
     }))
   };
 }
@@ -301,6 +312,10 @@ export interface EvalSummary {
   falseAlarm: number;
   /** Ile wyników przyszło już z szybkiej ścieżki (sam obraz, bez OCR). */
   quickPath: number;
+  /** Z tego: rozpoznane dopiero po połączeniu kilku klatek (bez OCR). */
+  fusedQuick?: number;
+  /** Próbki z więcej niż jedną klatką. */
+  multiFrame?: number;
   ms: number;
 }
 
@@ -346,25 +361,41 @@ export async function evaluateSamples(): Promise<{ error: string } | { summary: 
   try {
     const rows = (
       await p.query(
-        `SELECT id, image, hint_title, hint_set, hint_collector, label_status, label_id
+        `SELECT id, image, extra_images, hint_title, hint_set, hint_collector, label_status, label_id
            FROM scan_samples WHERE label_status IN ('card', 'not_card') ORDER BY created_at DESC LIMIT $1`,
         [EVAL_LIMIT]
       )
     ).rows;
     const s: EvalSummary = {
       total: rows.length, cards: 0, notCards: 0, correct: 0, sameName: 0, wrong: 0, wrongUnsure: 0,
-      none: 0, rejected: 0, falseAlarm: 0, quickPath: 0, ms: 0
+      none: 0, rejected: 0, falseAlarm: 0, quickPath: 0, fusedQuick: 0, multiFrame: 0, ms: 0
     };
     const failures: { id: number; outcome: EvalOutcome; expectedId: string | null; gotId: string | null; confidence: number; method: string | null }[] = [];
 
     for (const r of rows) {
       await new Promise((resolve) => setImmediate(resolve)); // nie blokujemy serwera
-      const dataUrl = 'data:image/jpeg;base64,' + Buffer.from(r.image).toString('base64');
+      const toUrl = (b: Buffer) => 'data:image/jpeg;base64,' + Buffer.from(b).toString('base64');
+      const dataUrl = toUrl(r.image);
+      const extras = ((r.extra_images as Buffer[] | null) || []).map(toUrl);
+      if (extras.length) s.multiFrame!++;
+      const sure = (x: IdentifyResult) => Boolean(x.matchedCard) && x.confidence >= QUICK_IMAGE_CONFIDENCE;
+      // 1. sam obraz, jedna klatka
       let result = await identifyMtgLocal(dataUrl, '', '', '');
-      if (result.matchedCard && result.confidence >= QUICK_IMAGE_CONFIDENCE) {
-        s.quickPath++;
-      } else if (r.hint_title || (r.hint_set && r.hint_collector)) {
-        result = await identifyMtgLocal(dataUrl, r.hint_title, r.hint_set, r.hint_collector);
+      let done = sure(result);
+      if (done) s.quickPath++;
+      // 2. sam obraz, kilka klatek
+      if (!done && extras.length) {
+        const fused = await identifyMtgLocal(dataUrl, '', '', '', extras);
+        if (sure(fused)) {
+          result = fused;
+          done = true;
+          s.quickPath++;
+          s.fusedQuick!++;
+        }
+      }
+      // 3. z nazwą i stopką z OCR (i wszystkimi klatkami)
+      if (!done && (r.hint_title || (r.hint_set && r.hint_collector) || extras.length)) {
+        result = await identifyMtgLocal(dataUrl, r.hint_title, r.hint_set, r.hint_collector, extras);
       }
       const expectedId = r.label_status === 'card' ? r.label_id : null;
       const gotId = result.matchedCard?.id || null;

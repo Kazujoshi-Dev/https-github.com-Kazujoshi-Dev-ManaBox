@@ -28,6 +28,7 @@ import {
   IMAGE_SET_TOLERANCE,
   IMAGE_TITLE_BONUS,
   MAX_PRINTINGS,
+  hashCardFrames,
   hashCardImage,
   identifyWithLocalDb,
   type IdentifyResult
@@ -1021,7 +1022,9 @@ app.post('/api/scanner/delver-identify', authMiddleware, scannerLimiter, async (
     const hintSet = str(req.body?.hintSet, 12).toLowerCase();
     const hintCollector = str(req.body?.hintCollector, 24).replace(/^0+(?=\d)/, '');
 
-    const queryHash = hashCardImage(req.body?.cardImageBase64);
+    // Klatka główna i do 2 kolejnych klatek tej samej karty (łączone przy porównaniu obrazów).
+    const extraImages = req.body?.extraCardImagesBase64;
+    const queryHash = hashCardFrames(req.body?.cardImageBase64, extraImages);
 
     if (!hintTitle && !(hintSet && hintCollector) && !queryHash) {
       return res.status(400).json({ error: 'Brak obrazu karty, odczytanej nazwy ani kodu setu i numeru.' });
@@ -1033,7 +1036,7 @@ app.post('/api/scanner/delver-identify', authMiddleware, scannerLimiter, async (
 
     // Karta położona do góry nogami: obraz obrócony o 180° (OCR takiej karty i tak nic nie da).
     if (!result.matchedCard && cards.isCardDbReady() && queryHash) {
-      const rotated = hashCardImage(req.body?.cardImageBase64, true);
+      const rotated = hashCardFrames(req.body?.cardImageBase64, extraImages, true);
       if (rotated) {
         const flipped = await identifyWithLocalDb('', '', '', rotated);
         if (flipped.matchedCard) result = flipped;
@@ -1043,7 +1046,7 @@ app.post('/api/scanner/delver-identify', authMiddleware, scannerLimiter, async (
     const matched = result.matchedCard;
     // Jedna linia na skan — do strojenia progów na prawdziwych zdjęciach (bez danych użytkownika).
     console.log(
-      `[Skan] metoda=${result.method || 'scryfall'} pewność=${result.confidence} obraz=${result.imageDistance ?? '-'} ` +
+      `[Skan] klatki=${queryHash?.length ?? 0} metoda=${result.method || 'scryfall'} pewność=${result.confidence} obraz=${result.imageDistance ?? '-'} ` +
         `ocr="${hintTitle}" set=${hintSet || '-'}/${hintCollector || '-'} wynik=${matched ? `${matched.name} [${matched.set}/${matched.collector_number}]` : 'brak'}`
     );
     res.json({
@@ -1066,6 +1069,7 @@ app.post('/api/scanner/delver-identify', authMiddleware, scannerLimiter, async (
         .recordScanSample({
           userId: userKey(req),
           dataUrl: req.body?.cardImageBase64,
+          extraDataUrls: extraImages,
           stage: req.body?.sampleStage,
           glare: req.body?.glare,
           hintTitle,
