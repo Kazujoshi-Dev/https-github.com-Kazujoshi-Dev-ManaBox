@@ -1,10 +1,10 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { createPortal } from 'react-dom';
+import React, { useMemo, useState } from 'react';
 import { Sparkles, Wand2, Loader2, ExternalLink, Plus, ArrowRight, Repeat, Library, AlertCircle, TrendingUp, Heart } from 'lucide-react';
 import type { CollectionItem, DeckItem, ScryfallCard } from '../../types';
 import { getCardImageUri, handleCardImageError, scryfallNamedImageUrl } from '../../utils/formatters';
 import type { EdhrecRecommendation } from '../../services/api';
 import { useEdhrecCommander } from './useEdhrecCommander';
+import { useCardHoverPreview } from './useCardHoverPreview';
 import { getCardCategory } from './constants';
 import { ReplaceCardModal } from './ReplaceCardModal';
 import { useT, locale, binderName } from '../../i18n';
@@ -50,23 +50,6 @@ function categoryOf(rec: EdhrecRecommendation): string {
   return rec.card ? getCardCategory(rec.card) : LIST_TO_CATEGORY[rec.list] || 'Other';
 }
 
-const PREVIEW_W = 240;
-const PREVIEW_H = Math.round((PREVIEW_W * 680) / 488);
-
-type HoverPreview = { name: string; img: string; x: number; y: number };
-
-/** Pozycja podglądu obok elementu: po prawej, a gdy brak miejsca, po lewej; zawsze w granicach okna. */
-function previewPosition(el: HTMLElement): { x: number; y: number } {
-  const r = el.getBoundingClientRect();
-  const gap = 12;
-  const vw = window.innerWidth;
-  const vh = window.innerHeight;
-  let x = r.right + gap;
-  if (x + PREVIEW_W > vw - 8) x = Math.max(8, r.left - gap - PREVIEW_W);
-  const y = Math.min(Math.max(8, r.top + r.height / 2 - PREVIEW_H / 2), vh - PREVIEW_H - 8);
-  return { x, y };
-}
-
 const isBasicLand = (card: ScryfallCard) => /\bbasic\b/i.test(card.type_line || '') && /\bland\b/i.test(card.type_line || '');
 
 /** Sugestie z EDHREC: popularne karty dla dowódcy, których brak w talii, i lepsze odpowiedniki. */
@@ -80,26 +63,7 @@ export const DeckSuggestions: React.FC<DeckSuggestionsProps> = ({ deck, collecti
   const [limit, setLimit] = useState(18);
   const [replaceRec, setReplaceRec] = useState<EdhrecRecommendation | null>(null);
   // Podgląd grafiki karty po najechaniu myszą w sekcji „Lepsze odpowiedniki”
-  const [preview, setPreview] = useState<HoverPreview | null>(null);
-  useEffect(() => {
-    if (!preview) return;
-    const hide = () => setPreview(null);
-    window.addEventListener('scroll', hide, true);
-    return () => window.removeEventListener('scroll', hide, true);
-  }, [preview]);
-
-  const previewProps = (name: string, card?: ScryfallCard) => {
-    const img = card ? getCardImageUri(card, 'normal') : scryfallNamedImageUrl(name.split('//')[0].trim(), 'normal');
-    const show = (el: HTMLElement) => img && setPreview({ name, img, ...previewPosition(el) });
-    return {
-      onPointerEnter: (e: React.PointerEvent<HTMLElement>) => e.pointerType === 'mouse' && show(e.currentTarget),
-      onPointerLeave: () => setPreview(null),
-      onFocus: (e: React.FocusEvent<HTMLElement>) => e.currentTarget.matches(':focus-visible') && show(e.currentTarget),
-      onBlur: () => setPreview(null),
-      // Kliknięcie otwiera szczegóły karty, więc chowamy podgląd
-      onClickCapture: () => setPreview(null),
-    };
-  };
+  const { previewProps, previewPortal } = useCardHoverPreview();
 
   const deckNames = useMemo(() => {
     const s = new Set<string>();
@@ -439,17 +403,7 @@ export const DeckSuggestions: React.FC<DeckSuggestionsProps> = ({ deck, collecti
         </>
       )}
 
-      {preview &&
-        createPortal(
-          <div
-            className="fixed z-[70] pointer-events-none hidden sm:block rounded-xl overflow-hidden ring-1 ring-stone-700 shadow-2xl bg-stone-950"
-            style={{ left: preview.x, top: preview.y, width: PREVIEW_W, height: PREVIEW_H }}
-            aria-hidden="true"
-          >
-            <img src={preview.img} alt="" referrerPolicy="no-referrer" onError={(e) => handleCardImageError(e, preview.img)} className="w-full h-full object-contain" />
-          </div>,
-          document.body
-        )}
+      {previewPortal}
 
       {replaceRec && (
         <ReplaceCardModal

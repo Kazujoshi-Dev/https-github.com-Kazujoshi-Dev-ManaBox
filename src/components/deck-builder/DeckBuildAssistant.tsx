@@ -6,6 +6,7 @@ import { computeCardAvailability, type CardAvailability } from '../../utils/card
 import { useT, locale, binderName } from '../../i18n';
 import { ManaSymbol } from '../ManaSymbol';
 import { useEdhrecCommander } from './useEdhrecCommander';
+import { useCardHoverPreview } from './useCardHoverPreview';
 import {
   COMMANDER_DECK_SIZE,
   ROLE_HINTS,
@@ -48,6 +49,7 @@ export const DeckBuildAssistant: React.FC<DeckBuildAssistantProps> = ({ deck, co
   const [limit, setLimit] = useState(PAGE);
   const [ownLimit, setOwnLimit] = useState(PAGE);
   const [busy, setBusy] = useState<string | null>(null);
+  const { previewProps, previewPortal } = useCardHoverPreview();
 
   const progress = useMemo(() => deckProgress(deck), [deck]);
   const availability = useMemo(() => computeCardAvailability(collection, decks || [], deck.id), [collection, decks, deck.id]);
@@ -100,6 +102,7 @@ export const DeckBuildAssistant: React.FC<DeckBuildAssistantProps> = ({ deck, co
             <button
               type="button"
               onClick={() => pick.card && onViewCardDetails(pick.card)}
+              {...previewProps(pick.name, pick.card)}
               className="text-sm font-semibold text-stone-100 hover:text-amber-300 truncate cursor-pointer text-left"
             >
               {pick.name}
@@ -249,6 +252,7 @@ export const DeckBuildAssistant: React.FC<DeckBuildAssistantProps> = ({ deck, co
           )}
         </>
       )}
+      {previewPortal}
     </section>
   );
 };
