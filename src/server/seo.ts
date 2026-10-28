@@ -8,14 +8,16 @@ import { getDeckFormat } from '../utils/mtgFormats';
 import type express from 'express';
 import * as db from './db';
 import type { CollectionItem, DeckItem, ScryfallCard, WishlistItem } from '../types';
+import { GUIDES, getGuide, guidesNavHtml, renderGuide } from './seoGuides';
 
 export const SITE_URL = (process.env.PUBLIC_SITE_URL || 'https://manascrew.eu').replace(/\/+$/, '');
-const SITE_NAME = 'Mana Screw';
+export const SITE_NAME = 'Mana Screw';
 const DEFAULT_IMAGE = `${SITE_URL}/og-image.png`;
 
-const HOME_TITLE = 'Mana Screw | Kolekcja kart MTG, Pokémon i Lorcana, ceny w PLN';
+// Marka na końcu: „Mana Screw” to też nazwa karty MTG, więc o widoczność walczymy opisem, nie marką.
+const HOME_TITLE = 'Kolekcja kart MTG, Pokémon i Lorcana z cenami w PLN | Mana Screw';
 const HOME_DESCRIPTION =
-  'Bezpłatna aplikacja do kolekcji kart Magic: The Gathering, Pokémon TCG i Disney Lorcana. Śledź ceny z Cardmarket w złotówkach, skanuj karty MTG aparatem, buduj talie i sprzedawaj karty.';
+  'Bezpłatna aplikacja do kolekcji kart Magic: The Gathering, Pokémon TCG i Disney Lorcana. Ceny z Cardmarket w złotówkach, skaner kart MTG i Lorcana, talie Commander i sprzedaż kart.';
 
 export interface PageMeta {
   title: string;
@@ -100,7 +102,7 @@ function readTemplate(file: string): string {
   return templateCache.html;
 }
 
-function headTags(meta: PageMeta): string {
+export function headTags(meta: PageMeta): string {
   const url = `${SITE_URL}${meta.path}`;
   const image = meta.image || DEFAULT_IMAGE;
   const tags = [
@@ -154,22 +156,30 @@ export function renderTemplate(template: string, meta: PageMeta, body: string): 
 const breadcrumbNav = (label: string) =>
   `<nav><a href="/">Mana Screw</a> / ${esc(label)}</nav>`;
 
-const appFooter = `<p style="margin-top:2rem"><a href="/">Mana Screw</a>: kolekcja kart Magic: The Gathering, skaner kart, ceny w PLN, budowanie talii Commander i giełda kart między graczami.</p>`;
+const appFooter = `<p style="margin-top:2rem"><a href="/">Mana Screw</a>: kolekcja kart Magic: The Gathering, Pokémon TCG i Disney Lorcana, skaner kart, ceny w PLN, budowanie talii Commander i giełda kart między graczami.</p>
+<nav aria-label="Poradniki"><h2>Poradniki</h2>${guidesNavHtml()}</nav>`;
 
 function homePage(): RenderedPage {
   const body = `
-<h1>Mana Screw: kolekcja kart Magic: The Gathering</h1>
+<h1>Darmowa aplikacja do kolekcji kart MTG, Pokémon i Lorcana</h1>
 <p>${esc(HOME_DESCRIPTION)}</p>
+<h2>Obsługiwane gry</h2>
+<ul>
+<li><strong>Magic: The Gathering</strong>: skaner kart, talie Commander i formaty MTG Arena, wzrosty i spadki cen, spoilery nowych dodatków.</li>
+<li><strong>Pokémon TCG</strong>: wyszukiwarka kart, wersje zwykłe i reverse holo, ceny z Cardmarket w PLN.</li>
+<li><strong>Disney Lorcana</strong>: skaner kart, wydania zwykłe i Enchanted, ceny z TCGplayer w PLN.</li>
+</ul>
 <h2>Co możesz zrobić</h2>
 <ul>
-<li><strong>Skaner kart</strong>: dodawaj karty do kolekcji aparatem telefonu, także całe stosy.</li>
-<li><strong>Ceny w złotówkach</strong>: wyceny z Cardmarket i TCGplayer przeliczane po kursie NBP, wykres wartości kolekcji.</li>
-<li><strong>Talie Commander (EDH)</strong>: analiza many i krzywej, rekomendacje EDHREC, Game Changers, szacowany bracket, sprawdzanie legalności.</li>
+<li><strong><a href="/skaner-kart-mtg">Skaner kart</a></strong>: dodawaj karty Magic i Lorcany do kolekcji aparatem telefonu.</li>
+<li><strong><a href="/ceny-kart-mtg">Ceny w złotówkach</a></strong>: wyceny z Cardmarket i TCGplayer przeliczane po kursie NBP, wykres wartości kolekcji.</li>
+<li><strong><a href="/talie-commander">Talie Commander (EDH)</a></strong>: analiza many i krzywej, rekomendacje EDHREC, Game Changers, szacowany bracket, sprawdzanie legalności.</li>
 <li><strong>Sprzedaż i wymiana</strong>: publiczna oferta kart na sprzedaż, mapa sprzedawców, wiadomości między graczami.</li>
 <li><strong>Lista życzeń</strong>: karty, których szukasz, z mapą graczy, którzy je sprzedają.</li>
-<li><strong>Import i eksport</strong>: ManaBox, Moxfield, Archidekt i zwykłe listy tekstowe.</li>
+<li><strong><a href="/import-z-manabox">Import i eksport</a></strong>: ManaBox, Moxfield, Archidekt i zwykłe listy tekstowe.</li>
 </ul>
-<p><a href="/">Załóż konto lub zaloguj się</a></p>`;
+<p><a href="/">Załóż konto lub zaloguj się</a></p>
+<nav aria-label="Poradniki"><h2>Poradniki</h2>${guidesNavHtml()}</nav>`;
   return {
     status: 200,
     meta: {
@@ -392,6 +402,8 @@ async function cachedPage(key: string, build: () => Promise<RenderedPage>): Prom
   const hit = pageCache.get(key);
   if (hit && Date.now() - hit.at < PAGE_TTL_MS) return hit.page;
   const page = await build();
+  // 404 nie cache'ujemy: talia, którą ktoś właśnie upublicznił, ma być widoczna od razu
+  if (page.status !== 200) return page;
   if (pageCache.size > 500) pageCache.delete(pageCache.keys().next().value as string);
   pageCache.set(key, { at: Date.now(), page });
   return page;
@@ -419,14 +431,16 @@ async function sitemapXml(): Promise<string> {
     db.listPublicDecksForSitemap().catch(() => []),
     db.listSellersForSitemap().catch(() => [])
   ]);
-  const url = (loc: string, lastmod: string | null, priority: string) =>
-    `  <url><loc>${esc(`${SITE_URL}${loc}`)}</loc>${lastmod ? `<lastmod>${lastmod.slice(0, 10)}</lastmod>` : ''}<priority>${priority}</priority></url>`;
+  // Google ignoruje <priority> i <changefreq>, liczy się tylko <lastmod>
+  const url = (loc: string, lastmod: string | null) =>
+    `  <url><loc>${esc(`${SITE_URL}${loc}`)}</loc>${lastmod ? `<lastmod>${String(lastmod).slice(0, 10)}</lastmod>` : ''}</url>`;
   const xml = [
     '<?xml version="1.0" encoding="UTF-8"?>',
     '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">',
-    url('/', null, '1.0'),
-    ...decks.map((d) => url(`/talia/${encodeURIComponent(d.id)}`, d.updatedAt, '0.7')),
-    ...sellers.map((s) => url(`/sprzedam/${encodeURIComponent(s.username)}`, s.updatedAt, '0.6')),
+    url('/', null),
+    ...GUIDES.map((g) => url(`/${g.slug}`, g.updated)),
+    ...decks.map((d) => url(`/talia/${encodeURIComponent(d.id)}`, d.updatedAt)),
+    ...sellers.map((s) => url(`/sprzedam/${encodeURIComponent(s.username)}`, s.updatedAt)),
     '</urlset>',
     ''
   ].join('\n');
@@ -472,6 +486,14 @@ export function registerSeoRoutes(app: express.Express, getTemplate: (req: expre
         }
       }
 
+      // Poradniki: samodzielne strony HTML, bez aplikacji React
+      const guide = getGuide(req.path.replace(/^\/+|\/+$/g, ''));
+      if (guide) {
+        if (req.path !== `/${guide.slug}`) return res.redirect(301, `/${guide.slug}`);
+        res.setHeader('Cache-Control', 'public, max-age=600');
+        return res.type('html').send(renderGuide(guide));
+      }
+
       let page: RenderedPage;
       const m = req.path.match(/^\/(talia|sprzedam|szukam)\/([^/]+)\/?$/) || req.path.match(/^\/(sprzedam)\/([^/]+)\/([a-z0-9]{6,24})\/?$/i);
       if (req.path === '/' || req.path === '/index.html') {
@@ -499,7 +521,16 @@ export function registerSeoRoutes(app: express.Express, getTemplate: (req: expre
       res.type('html').send(renderTemplate(template, page.meta, page.body));
     } catch (err: any) {
       console.warn('[SEO] render:', err?.message || err);
-      next();
+      // Bez tego trafiłby tu zwykły index.html ze statusem 200 i bez metadanych.
+      // 503 mówi wyszukiwarce „wróć później”, a przeglądarka i tak uruchomi aplikację.
+      try {
+        const template = await getTemplate(req);
+        res.status(503).setHeader('Retry-After', '120');
+        res.setHeader('Cache-Control', 'no-store');
+        res.type('html').send(template);
+      } catch {
+        next();
+      }
     }
   });
 }

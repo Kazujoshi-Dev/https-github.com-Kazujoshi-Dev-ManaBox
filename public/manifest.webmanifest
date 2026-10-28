@@ -1,7 +1,7 @@
 {
-  "name": "Mana Screw — kolekcja kart MTG",
+  "name": "Mana Screw: kolekcja kart MTG, Pokémon i Lorcana",
   "short_name": "Mana Screw",
-  "description": "Zarządzanie kolekcją kart Magic: The Gathering, skaner kart i wyceny w PLN.",
+  "description": "Kolekcja kart Magic: The Gathering, Pokémon TCG i Disney Lorcana, skaner kart i wyceny w PLN.",
   "lang": "pl",
   "start_url": "/",
   "scope": "/",

@@ -199,9 +199,9 @@ export const PublicSaleView: React.FC<PublicSaleViewProps> = ({
             </div>
             <div className="min-w-0">
               <div className="flex items-center gap-2">
-                <h1 className="text-base sm:text-lg font-bold tracking-tight text-emerald-200 truncate">
+                <p className="text-base sm:text-lg font-bold tracking-tight text-emerald-200 truncate">
                   <span className="hidden sm:inline">Mana Screw • </span>{t('Oferta na sprzedaż')}
-                </h1>
+                </p>
                 <span className="hidden md:inline text-[11px] tabular-nums px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-bold">
                   {t('Publiczny Klaser')}
                 </span>
@@ -251,10 +251,10 @@ export const PublicSaleView: React.FC<PublicSaleViewProps> = ({
             </span>
             {folder ? (
               <>
-                <h2 className="text-2xl sm:text-3xl font-bold text-white tracking-tight flex items-center gap-2 min-w-0">
+                <h1 className="text-2xl sm:text-3xl font-bold text-white tracking-tight flex items-center gap-2 min-w-0">
                   <FolderIcon className="w-6 h-6 text-amber-400 shrink-0" />
                   <span className="truncate">{folder.name}</span>
-                </h2>
+                </h1>
                 <p className="text-xs text-stone-400">
                   {t('Część oferty gracza @{name}.', { name: seller.username })}{' '}
                   <a href={publicPath('sale', seller.username, parsePublicLink()?.game)} className="text-amber-300 hover:text-amber-200 underline inline-flex items-center gap-1">
@@ -264,9 +264,9 @@ export const PublicSaleView: React.FC<PublicSaleViewProps> = ({
                 </p>
               </>
             ) : (
-              <h2 className="text-2xl sm:text-3xl font-bold text-white tracking-tight">
+              <h1 className="text-2xl sm:text-3xl font-bold text-white tracking-tight">
                 {t('Karty gracza @{name}', { name: seller.username })}
-              </h2>
+              </h1>
             )}
             <p className="text-xs text-stone-400 max-w-xl">
               {t('Przeglądaj karty wystawione na sprzedaż. Ceny podane są w walucie')} <strong>{settings.currency}</strong> {t('(wycena rynkowa Cardmarket / TCGPlayer lub cena ustalona przez sprzedawcę).')}

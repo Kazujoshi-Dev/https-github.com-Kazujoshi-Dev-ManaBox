@@ -1,4 +1,4 @@
-manascrew.eu, www.manascrew.eu {
+manascrew.eu {
 	encode zstd gzip
 	reverse_proxy app:3000 {
 		# Podczas `docker compose up -d --build` kontener aplikacji startuje kilka sekund.
@@ -6,4 +6,9 @@ manascrew.eu, www.manascrew.eu {
 		lb_try_duration 30s
 		lb_try_interval 250ms
 	}
+}
+
+# Jeden adres dla wyszukiwarek: www przekierowujemy na domenę główną (308 zachowuje metodę i treść zapytania).
+www.manascrew.eu {
+	redir https://manascrew.eu{uri} 308
 }

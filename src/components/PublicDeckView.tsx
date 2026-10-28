@@ -70,9 +70,9 @@ export const PublicDeckView: React.FC<PublicDeckViewProps> = ({ deck, owner, set
               <Swords className="w-5 h-5 text-white" />
             </div>
             <div className="min-w-0">
-              <h1 className="text-base sm:text-lg font-bold tracking-tight truncate">
+              <p className="text-base sm:text-lg font-bold tracking-tight truncate">
                 <span className="hidden sm:inline text-stone-400 font-bold">Mana Screw • </span>{t('Talia')}
-              </h1>
+              </p>
               <p className="text-xs text-stone-400 truncate">
                 {t('Autor:')} <strong className="text-amber-300">@{owner.username}</strong>
               </p>
@@ -124,7 +124,7 @@ export const PublicDeckView: React.FC<PublicDeckViewProps> = ({ deck, owner, set
                 {deck.format || 'EDH Commander'}
               </span>
             </div>
-            <h2 className="text-2xl sm:text-3xl font-bold text-white tracking-tight break-words">{deck.name}</h2>
+            <h1 className="text-2xl sm:text-3xl font-bold text-white tracking-tight break-words">{deck.name}</h1>
             {deck.commander && (
               <p className="text-sm text-stone-300 flex items-center gap-1.5">
                 <Crown className="w-4 h-4 text-amber-400" /> {t('Dowódca:')} <strong className="text-stone-100">{deck.commander.name}</strong>

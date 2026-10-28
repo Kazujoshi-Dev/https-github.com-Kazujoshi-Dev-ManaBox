@@ -25,6 +25,16 @@ type AuthMode = 'login' | 'register' | 'forgot';
 /** Odstęp między kolejnymi prośbami o link z ekranu „Sprawdź skrzynkę”. */
 const RESEND_COOLDOWN_S = 60;
 
+/** Statyczne strony poradników (serwowane przez serwer, src/server/seoGuides.ts). */
+const GUIDE_LINKS: { href: string; label: string }[] = [
+  { href: '/skaner-kart-mtg', label: 'Skaner kart' },
+  { href: '/ceny-kart-mtg', label: 'Ceny kart w PLN' },
+  { href: '/talie-commander', label: 'Talie Commander' },
+  { href: '/import-z-manabox', label: 'Import z ManaBox' },
+  { href: '/kolekcja-pokemon', label: 'Kolekcja Pokémon TCG' },
+  { href: '/kolekcja-lorcana', label: 'Kolekcja Disney Lorcana' }
+];
+
 export const AuthView: React.FC<AuthViewProps> = ({ onAuthSuccess, initialMode = 'login' }) => {
   const t = useT();
   const [mode, setMode] = useState<AuthMode>(initialMode);
@@ -464,6 +474,17 @@ export const AuthView: React.FC<AuthViewProps> = ({ onAuthSuccess, initialMode =
       {/* 5. Stopka: informacje prawne (Fan Content Policy WotC, prawa Pokémon i Disney) */}
       <footer className="relative border-t border-stone-900">
         <div className="max-w-[1320px] mx-auto px-4 sm:px-6 lg:px-10 py-8 pb-[calc(2rem+env(safe-area-inset-bottom))] space-y-2 text-xs text-stone-500 leading-relaxed">
+          {/* Poradniki: zwykłe linki, żeby wyszukiwarki znalazły te strony także po starcie aplikacji */}
+          <nav aria-label={t('Poradniki')} className="pb-3 mb-3 border-b border-stone-900">
+            <p className="text-stone-400 font-semibold mb-1.5">{t('Poradniki')}</p>
+            <ul className="flex flex-wrap gap-x-4 gap-y-1.5">
+              {GUIDE_LINKS.map((g) => (
+                <li key={g.href}>
+                  <a href={g.href} className="text-stone-400 hover:text-stone-200 underline-offset-2 hover:underline">{t(g.label)}</a>
+                </li>
+              ))}
+            </ul>
+          </nav>
           <FanContentNotice />
           <p>
             {t('Pokémon i nazwy postaci są znakami towarowymi Nintendo, Creatures Inc. i GAME FREAK inc. Disney Lorcana i jej ilustracje są własnością Disney, a grę wydaje Ravensburger. Mana Screw nie jest powiązany z tymi firmami ani przez nie zatwierdzony.')}

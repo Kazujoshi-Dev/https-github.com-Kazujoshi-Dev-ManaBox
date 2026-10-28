@@ -96,9 +96,9 @@ export const PublicWishlistView: React.FC<PublicWishlistViewProps> = ({
               <FolderHeart className="w-5 h-5 text-white" />
             </div>
             <div className="min-w-0">
-              <h1 className="text-base sm:text-lg font-bold tracking-tight text-rose-200 truncate">
+              <p className="text-base sm:text-lg font-bold tracking-tight text-rose-200 truncate">
                 <span className="hidden sm:inline">Mana Screw • </span>{t('Lista życzeń')}
-              </h1>
+              </p>
               <p className="text-xs text-stone-400 truncate">
                 {t('Szuka:')} <strong className="text-rose-300">@{owner.username}</strong>
               </p>
@@ -138,7 +138,7 @@ export const PublicWishlistView: React.FC<PublicWishlistViewProps> = ({
             <span className="px-2.5 py-0.5 rounded-full text-xs tabular-nums font-bold bg-rose-500/20 text-rose-300 border border-rose-500/40 ">
               {t('Szukam kart')}
             </span>
-            <h2 className="text-2xl sm:text-3xl font-bold text-white tracking-tight">{t('Lista życzeń gracza @{name}', { name: owner.username })}</h2>
+            <h1 className="text-2xl sm:text-3xl font-bold text-white tracking-tight">{t('Lista życzeń gracza @{name}', { name: owner.username })}</h1>
             <p className="text-xs text-stone-400 max-w-xl">
               {t('Masz którąś z tych kart?')} {isLoggedIn ? t('Napisz do gracza w zakładce Wiadomości.') : t('Załóż darmowe konto lub zaloguj się, aby napisać do gracza i wystawić swoje karty.')}{' '}
               {t('Wycena orientacyjna w')} <strong>{settings.currency}</strong> ({settings.pricingSource === 'CARDMARKET' ? t('Cardmarket trend') : t('TCGPlayer market')}).
