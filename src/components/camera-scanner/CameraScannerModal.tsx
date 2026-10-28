@@ -767,12 +767,22 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
   // Globalne skróty klawiszowe w oknie skanera:
   // - SPACJA: blokuje przewijanie strony i uruchamia skanowanie ponownie
   // - ENTER: natychmiast dodaje rozpoznaną kartę do domyślnego klasera / kolekcji
+  // - STRZAŁKI ← / →: wersja zwykła / foil rozpoznanej karty
   useEffect(() => {
     if (!isOpen) return;
 
     const handleKeyDown = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement | null;
       const isTextInput = target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement;
+
+      // 0. STRZAŁKI: przełączenie zwykła / foil (poza polami tekstowymi i listami, gdzie strzałki mają własne znaczenie)
+      if ((e.key === 'ArrowLeft' || e.key === 'ArrowRight') && activeCard && !isTextInput && !(target instanceof HTMLSelectElement)) {
+        if (e.altKey || e.ctrlKey || e.metaKey || e.shiftKey) return;
+        e.preventDefault();
+        e.stopPropagation();
+        setIsFoil(e.key === 'ArrowRight');
+        return;
+      }
 
       // 1. KLAWISZ SPACJI: Zapobieganie przewijaniu strony + ponowne / nowe skanowanie
       if (e.code === 'Space' || e.key === ' ') {
@@ -1472,14 +1482,16 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
                         <button
                           type="button"
                           onClick={() => setIsFoil(false)}
+                          aria-keyshortcuts="ArrowLeft"
                           className={`p-1.5 rounded-lg border text-left transition-all cursor-pointer flex flex-col justify-between ${
                             !isFoil
                               ? 'bg-amber-500/15 border-amber-500 ring-1 ring-amber-500/40'
                               : 'bg-stone-900 hover:bg-stone-850 border-stone-800 text-stone-400'
                           }`}
                         >
-                          <span className={`text-[11px] font-bold ${!isFoil ? 'text-amber-300' : 'text-stone-400'}`}>
+                          <span className={`text-[11px] font-bold flex items-center justify-between gap-1 ${!isFoil ? 'text-amber-300' : 'text-stone-400'}`}>
                             {t('Standard')}
+                            <kbd className="hidden sm:inline px-1 rounded border border-stone-700 text-[11px] font-normal text-stone-400" aria-hidden="true">←</kbd>
                           </span>
                           <span className="tabular-nums font-bold text-emerald-400 text-xs mt-0.5">
                             {formatCurrency(normPln, 'PLN')}
@@ -1489,6 +1501,7 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
                         <button
                           type="button"
                           onClick={() => setIsFoil(true)}
+                          aria-keyshortcuts="ArrowRight"
                           className={`p-1.5 rounded-lg border text-left transition-all cursor-pointer flex flex-col justify-between ${
                             isFoil
                               ? 'bg-amber-500/20 border-amber-400 ring-1 ring-amber-500/50'
@@ -1498,6 +1511,7 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
                           <span className="text-[11px] font-bold text-amber-400 flex items-center gap-1">
                             <Sparkles className="w-2.5 h-2.5" />
                             <span>{t('Foil')}</span>
+                            <kbd className="hidden sm:inline ml-auto px-1 rounded border border-stone-700 text-[11px] font-normal text-stone-400" aria-hidden="true">→</kbd>
                           </span>
                           <span className="tabular-nums font-bold text-amber-300 text-xs mt-0.5">
                             {formatCurrency(foilPln, 'PLN')}
