@@ -77,6 +77,52 @@ function blur(src: Float32Array, w: number, h: number): Float32Array {
   return a;
 }
 
+/**
+ * Czarne pasy dodane cyfrowo do obrazu (np. kamera wirtualna OBS wypełnia klatkę 16:9 obrazem 4:3).
+ * Ich brzeg to najostrzejsza krawędź w kadrze, a nie ma nic wspólnego z kartą, więc zastępujemy
+ * pas pikselami z pierwszej kolumny (wiersza) obrazu za nim. Kolumna należy do pasa, gdy na całej
+ * wysokości jest prawie idealnie czarna — w takiej kolumnie nie ma fragmentu karty, więc zamiana
+ * niczego nie psuje także przy ciemnym blacie.
+ */
+export const BAR_MAX = 12;
+export function fillDigitalBars(gray: Float32Array, w: number, h: number): Float32Array {
+  const colMax = (x: number) => {
+    let m = 0;
+    for (let y = 0; y < h; y++) if (gray[y * w + x] > m) m = gray[y * w + x];
+    return m;
+  };
+  const rowMax = (y: number) => {
+    let m = 0;
+    for (let x = 0; x < w; x++) if (gray[y * w + x] > m) m = gray[y * w + x];
+    return m;
+  };
+  let left = 0;
+  while (left < w && colMax(left) <= BAR_MAX) left++;
+  let right = w - 1;
+  while (right >= 0 && colMax(right) <= BAR_MAX) right--;
+  let top = 0;
+  while (top < h && rowMax(top) <= BAR_MAX) top++;
+  let bottom = h - 1;
+  while (bottom >= 0 && rowMax(bottom) <= BAR_MAX) bottom--;
+  if (left === 0 && right === w - 1 && top === 0 && bottom === h - 1) return gray;
+  // cały obraz czarny albo pasy zajmują prawie wszystko: zostawiamy bez zmian
+  if (right - left < w * 0.2 || bottom - top < h * 0.2) return gray;
+  const out = Float32Array.from(gray);
+  // +2: pomijamy kolumnę/wiersz rozmyty przy skalowaniu na styku pasa z obrazem
+  const x0 = left ? Math.min(w - 1, left + 2) : 0;
+  const x1 = right < w - 1 ? Math.max(0, right - 2) : w - 1;
+  const y0 = top ? Math.min(h - 1, top + 2) : 0;
+  const y1 = bottom < h - 1 ? Math.max(0, bottom - 2) : h - 1;
+  for (let y = 0; y < h; y++) {
+    const sy = Math.min(Math.max(y, y0), y1);
+    for (let x = 0; x < w; x++) {
+      const sx = Math.min(Math.max(x, x0), x1);
+      if (sx !== x || sy !== y) out[y * w + x] = gray[sy * w + sx];
+    }
+  }
+  return out;
+}
+
 type Side = 'top' | 'bottom' | 'left' | 'right';
 
 /**
@@ -205,11 +251,20 @@ export function isPlausibleCard(q: Quad, guide: Rect): boolean {
 }
 
 /**
+ * Kara za nierównoległe przeciwległe boki. Musi być łagodna: kamera nad kartą pod lekkim kątem
+ * daje prawdziwy trapez (górny bok krótszy o kilka–kilkanaście procent), a zbyt ostra kara wybierała
+ * wtedy prostokąt złożony z wewnętrznej ramki karty albo krawędzi tła.
+ */
+/** Kara za proporcje odbiegające od 63:88 (na względne odchylenie). */
+const ASPECT_WEIGHT = 6;
+const TRAPEZOID_WEIGHT = 0.5;
+
+/**
  * Szuka karty w okolicy celownika. `gray` to obraz w skali szarości (najlepiej
  * pomniejszony do ~250–400 px szerokości celownika), `guide` — celownik w tych samych współrzędnych.
  */
 export function detectCardQuad(gray: Float32Array, w: number, h: number, guide: Rect): DetectedCard | null {
-  const img = blur(gray, w, h);
+  const img = blur(fillDigitalBars(gray, w, h), w, h);
   const bandOut = 0.25; // jak daleko poza celownik szukamy krawędzi
   const bandIn = 0.3; // jak głęboko do środka celownika
   const collect = (side: Side): RayPoint[] => {
@@ -268,9 +323,9 @@ export function detectCardQuad(gray: Float32Array, w: number, h: number, guide: 
     // dlatego mocno premiujemy prostokąt zewnętrzny — karta wypełnia celownik.
     const score =
       support * 0.5 -
-      (Math.abs(aspect - CARD_ASPECT) / CARD_ASPECT) * 6 -
-      Math.abs(Math.log(wTop / wBot)) * 2 -
-      Math.abs(Math.log(hL / hR)) * 2 +
+      (Math.abs(aspect - CARD_ASPECT) / CARD_ASPECT) * ASPECT_WEIGHT -
+      Math.abs(Math.log(wTop / wBot)) * TRAPEZOID_WEIGHT -
+      Math.abs(Math.log(hL / hR)) * TRAPEZOID_WEIGHT +
       areaRatio * 1.2;
     if (!best || score > best.score) best = { quad, score, support };
   }
