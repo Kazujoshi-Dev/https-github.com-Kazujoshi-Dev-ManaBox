@@ -129,4 +129,9 @@ export const en_server: Record<string, string> = {
   "Możesz mieć najwyżej 50 folderów.": "You can have at most 50 folders.",
   "Nie znaleziono folderu.": "Folder not found.",
   "Nie znaleziono tego folderu oferty. Mógł zostać usunięty.": "This offer folder was not found. It may have been deleted.",
+  "Nie znaleziono próbki.": "Sample not found.",
+  "Nie znaleziono karty o takim kodzie setu i numerze.": "No card found with that set code and number.",
+  "Brak bazy danych.": "No database.",
+  "Lokalna baza kart lub indeks obrazów nie jest jeszcze gotowy.": "The local card database or image index is not ready yet.",
+  "Ocena już trwa.": "An evaluation is already running.",
 };

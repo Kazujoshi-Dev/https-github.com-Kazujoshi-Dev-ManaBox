@@ -33,7 +33,7 @@ import { filterPrints, isExactPrint, parseSetAndNumber } from '../../utils/print
 import { CameraScannerModalProps, CameraDeviceOption, ScanResult } from './types';
 import { searchCardInScryfall, playScannerChime, getTesseractWorker } from './ocrProcessor';
 import { calculateVideoSensorCrop } from './cvCardPipeline';
-import { detectCardInSource, recognizeCard } from './scanEngine';
+import { GLARE_WARN, detectCardInSource, recognizeCard } from './scanEngine';
 import { Quad, quadMovement } from './cardDetector';
 import { EdhrecBadge } from '../EdhrecBadge';
 
@@ -41,9 +41,10 @@ import { useBackToClose } from '../../hooks/useBackButton';
 import { getActiveGame } from '../../utils/activeGame';
 import { GAMES } from '../../games';
 import { printsUrl, searchUrl } from '../../utils/cardSource';
-import { useT, MAIN_BINDER, binderName } from '../../i18n';
+import { useT, tk, MAIN_BINDER, binderName } from '../../i18n';
 /** Pewność serwera, przy której karta ze skanu automatycznego jest pokazywana od razu. */
 const AUTO_ACCEPT_CONFIDENCE = 80;
+const GLARE_MESSAGE = tk('Odblask zasłania ilustrację. Przechyl lekko kartę albo odsuń lampę.');
 /** Odstęp między kolejnymi próbami rozpoznania tej samej karty. */
 const RETRY_DELAY_MS = 500;
 /** Po tylu nieudanych próbach przestajemy, dopóki karta nie zniknie z kadru (oszczędza serwer i baterię). */
@@ -399,7 +400,10 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
       if (soundEnabled) playScannerChime('success');
       return true;
     }
-    if (result.cleanedTitle) {
+    if ((result.glare || 0) >= GLARE_WARN) {
+      if (result.cleanedTitle) setManualQuery(result.cleanedTitle);
+      setScanStatus(t(GLARE_MESSAGE));
+    } else if (result.cleanedTitle) {
       setManualQuery(result.cleanedTitle);
       setScanStatus(t('Odczytano: "{title}". Nie znaleziono pewnego dopasowania', { title: result.cleanedTitle }));
     } else {
@@ -447,7 +451,9 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
       nextAttemptAtRef.current = Date.now() + RETRY_DELAY_MS;
       setScanResult(result);
       setScanStatus(
-        key
+        !key && (result.glare || 0) >= GLARE_WARN
+          ? t(GLARE_MESSAGE)
+          : key
           ? t('Sprawdzam: "{title}"...', { title: key })
           : attemptsRef.current >= 4
           ? t('Nie rozpoznano karty. Popraw oświetlenie (bez odblasków) i przytrzymaj nieruchomo.')

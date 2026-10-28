@@ -664,3 +664,83 @@ export const bugReportsApi = {
     return URL.createObjectURL(await res.blob());
   }
 };
+
+// ---------- Próbki skanera (panel admina) ----------
+
+export interface ScanSampleCard {
+  id: string;
+  name: string;
+  set: string;
+  collectorNumber: string;
+  image: string | null;
+  distance?: number;
+}
+
+export type ScanSampleLabel = 'pending' | 'card' | 'not_card';
+
+export interface ScanSample {
+  id: number;
+  createdAt: string;
+  username: string | null;
+  stage: 'quick' | 'full';
+  reason: 'none' | 'uncertain' | 'random';
+  hintTitle: string;
+  hintSet: string;
+  hintCollector: string;
+  glare: number | null;
+  method: string | null;
+  confidence: number;
+  imageDistance: number | null;
+  matched: ScanSampleCard | null;
+  candidates: ScanSampleCard[];
+  labelStatus: ScanSampleLabel;
+  label: ScanSampleCard | null;
+}
+
+export interface ScanEvalSummary {
+  total: number;
+  cards: number;
+  notCards: number;
+  correct: number;
+  sameName: number;
+  wrong: number;
+  wrongUnsure: number;
+  none: number;
+  rejected: number;
+  falseAlarm: number;
+  quickPath: number;
+  ms: number;
+}
+
+export interface ScanEvalFailure {
+  id: number;
+  outcome: 'same_name' | 'wrong' | 'wrong_unsure' | 'none' | 'false_alarm';
+  expected: ScanSampleCard | null;
+  got: ScanSampleCard | null;
+  confidence: number;
+  method: string | null;
+}
+
+export const scanSamplesApi = {
+  list: async (
+    status: ScanSampleLabel | 'labeled' | 'all',
+    offset = 0
+  ): Promise<{ samples: ScanSample[]; counts: Record<ScanSampleLabel, number>; lastEval: { summary: ScanEvalSummary; createdAt: string } | null }> =>
+    jsonOrThrow(await fetchWithAuth(`/api/admin/scan-samples?status=${status}&offset=${offset}`), tk('Nie udało się pobrać próbek skanera.')),
+  label: async (id: number, body: { status: ScanSampleLabel; cardId?: string; setNumber?: string }): Promise<{ label: ScanSampleCard | null }> =>
+    jsonOrThrow(
+      await fetchWithAuth(`/api/admin/scan-samples/${id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }),
+      tk('Nie udało się oznaczyć próbki.')
+    ),
+  remove: async (id: number): Promise<void> => {
+    await jsonOrThrow(await fetchWithAuth(`/api/admin/scan-samples/${id}`, { method: 'DELETE' }), tk('Nie udało się usunąć próbki.'));
+  },
+  evaluate: async (): Promise<{ summary: ScanEvalSummary; previous: ScanEvalSummary | null; failures: ScanEvalFailure[] }> =>
+    jsonOrThrow(await fetchWithAuth('/api/admin/scan-samples/evaluate', { method: 'POST' }), tk('Nie udało się ocenić skanera.')),
+  /** Kadr próbki jako adres blob: (wymaga nagłówka autoryzacji). */
+  imageUrl: async (id: number): Promise<string> => {
+    const res = await fetchWithAuth(`/api/admin/scan-samples/${id}/image`);
+    if (!res.ok) throw new Error(t('Nie udało się wczytać kadru.'));
+    return URL.createObjectURL(await res.blob());
+  }
+};

@@ -1,11 +1,12 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { AdminBugReports } from './admin/AdminBugReports';
+import { AdminScanSamples } from './admin/AdminScanSamples';
 import { bugReportsApi } from '../services/api';
 import { AdminChangelog } from './admin/AdminChangelog';
 import { AdminActivity } from './admin/AdminActivity';
 import {
   ShieldCheck, Users, UserPlus, Activity, Ban, Layers, CircleDollarSign, Database, Search, Loader2, X,
-  KeyRound, LogOut, EyeOff, Eye, Trash2, Pencil, Copy, Check, ScrollText, Newspaper, Bug, LineChart, AlertTriangle, RefreshCw, ChevronRight
+  KeyRound, LogOut, EyeOff, Eye, Trash2, Pencil, Copy, Check, ScrollText, Newspaper, Bug, LineChart, AlertTriangle, RefreshCw, ChevronRight, ScanLine
 } from 'lucide-react';
 import { adminApi } from '../services/api';
 import { useBackToClose } from '../hooks/useBackButton';
@@ -61,7 +62,7 @@ function auditDetails(e: AdminAuditEntry): string {
 
 export const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, showToast }) => {
   const t = useT();
-  const [view, setView] = useState<'users' | 'activity' | 'audit' | 'changelog' | 'bugs'>('users');
+  const [view, setView] = useState<'users' | 'activity' | 'audit' | 'changelog' | 'bugs' | 'scans'>('users');
   const [bugCount, setBugCount] = useState(0);
   useEffect(() => {
     bugReportsApi.list('new').then((d) => setBugCount(d.newCount)).catch(() => {});
@@ -187,6 +188,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, showToast }
           { id: 'activity' as const, label: t('Aktywność'), icon: LineChart },
           { id: 'audit' as const, label: t('Dziennik działań'), icon: ScrollText },
           { id: 'bugs' as const, label: bugCount ? `${t('Zgłoszenia')} (${bugCount})` : t('Zgłoszenia'), icon: Bug },
+          { id: 'scans' as const, label: t('Próbki skanera'), icon: ScanLine },
           { id: 'changelog' as const, label: t('Dziennik zmian'), icon: Newspaper }
         ].map(({ id, label, icon: Icon }) => (
           <button
@@ -209,6 +211,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, showToast }
         <AdminActivity />
       ) : view === 'bugs' ? (
         <AdminBugReports showToast={showToast} onCountChange={setBugCount} />
+      ) : view === 'scans' ? (
+        <AdminScanSamples showToast={showToast} />
       ) : view === 'changelog' ? (
         <AdminChangelog showToast={showToast} />
       ) : view === 'users' ? (

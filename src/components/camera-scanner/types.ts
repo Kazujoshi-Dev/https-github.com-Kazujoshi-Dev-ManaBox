@@ -26,6 +26,8 @@ export interface ScanResult {
   isBlackBorderDetected?: boolean;
   /** Jak serwer rozpoznał kartę: set_number | name_image | name | image | none. */
   method?: string;
+  /** Odsetek ilustracji zajęty przez odblask (0..1). */
+  glare?: number;
   /** Wykryte rogi karty we współrzędnych klatki. */
   quad?: import('./cardDetector').Quad;
 }

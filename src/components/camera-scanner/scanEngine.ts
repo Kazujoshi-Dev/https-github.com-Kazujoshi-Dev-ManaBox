@@ -28,6 +28,36 @@ const TITLE_REGION: CardRegion = { u0: 0.06, v0: 0.03, u1: 0.74, v1: 0.105 };
 /** Lewy dolny róg: numer kolekcjonerski, rzadkość, kod setu i język (karty od 2015 r.). */
 const FOOTER_REGION: CardRegion = { u0: 0.03, v0: 0.915, u1: 0.46, v1: 0.985 };
 
+/** Ilustracja (jak ART_REGION w src/server/cards/imageHash.ts, z lekkim zapasem). */
+const ART_REGION: CardRegion = { u0: 0.08, v0: 0.11, u1: 0.92, v1: 0.55 };
+
+/**
+ * Odsetek ilustracji zajęty przez odblask, od którego podpowiadamy użytkownikowi, żeby przechylił kartę.
+ * Odblask (np. lampy na folii albo koszulce) zmienia odcisk obrazu i to najczęstsza przyczyna braku rozpoznania.
+ */
+export const GLARE_WARN = 0.03;
+
+/**
+ * Odsetek pikseli ilustracji prześwietlonych do bieli (wszystkie kanały prawie na maksimum).
+ * Jasne, ale kolorowe fragmenty grafiki (żółte niebo, biały płaszcz w cieniu) zwykle nie dochodzą do 245 we wszystkich kanałach.
+ */
+export function measureGlare(rgba: Uint8ClampedArray | Uint8Array, w: number, h: number, region: CardRegion = ART_REGION): number {
+  const x0 = Math.max(0, Math.floor(region.u0 * w));
+  const x1 = Math.min(w, Math.ceil(region.u1 * w));
+  const y0 = Math.max(0, Math.floor(region.v0 * h));
+  const y1 = Math.min(h, Math.ceil(region.v1 * h));
+  let clipped = 0;
+  let total = 0;
+  for (let y = y0; y < y1; y++) {
+    for (let x = x0; x < x1; x++) {
+      const p = (y * w + x) * 4;
+      total++;
+      if (rgba[p] >= 245 && rgba[p + 1] >= 245 && rgba[p + 2] >= 245) clipped++;
+    }
+  }
+  return total ? clipped / total : 0;
+}
+
 /** Szerokość celownika w obrazie do wykrywania — kompromis szybkość/dokładność. */
 const DETECT_GUIDE_WIDTH = 240;
 
@@ -282,6 +312,7 @@ export async function recognizeCard(
   const cardRgba = warpCardRegion(pixels, w, h, quad, 300, 420);
   const cardCanvas = toCanvas(cardRgba, 300, 420);
   const cardDataUrl = cardCanvas.toDataURL('image/jpeg', 0.85);
+  const glare = measureGlare(cardRgba, 300, 420);
   frame.width = frame.height = 0; // zwolnienie pamięci (piksele zostają w `pixels`)
 
   const base: ScanResult = {
@@ -293,14 +324,15 @@ export async function recognizeCard(
     debugCropUrl: cardDataUrl,
     engineUsed: 'delver_lens',
     isAutoCropped: detected,
-    quad: detected ? quad : undefined
+    quad: detected ? quad : undefined,
+    glare
   };
 
   const game = opts.game || 'mtg';
   // 1. Szybka ścieżka: tylko obraz. Bez OCR odpowiedź przychodzi w ułamku sekundy.
   if ((detected || game === 'lorcana') && opts.imageFirst !== false) {
     opts.onStatus?.(t('Dopasowywanie w bazie kart...'));
-    const quick = await identify({ cardImageBase64: cardDataUrl }, opts.onStatus, game).catch(() => ({}));
+    const quick = await identify({ cardImageBase64: cardDataUrl, sampleStage: 'quick', glare }, opts.onStatus, game).catch(() => ({}));
     if (quick.matchedCard && (quick.confidence || 0) >= QUICK_IMAGE_CONFIDENCE) {
       return {
         ...base,
@@ -355,7 +387,9 @@ export async function recognizeCard(
       cardImageBase64: cardDataUrl,
       hintTitle: title,
       hintSet: footer.set,
-      hintCollector: footer.collectorNumber
+      hintCollector: footer.collectorNumber,
+      sampleStage: 'full',
+      glare
     },
     opts.onStatus
   );

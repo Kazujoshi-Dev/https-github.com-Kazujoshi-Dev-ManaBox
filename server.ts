@@ -22,8 +22,17 @@ import * as lorcana from './src/server/lorcana/lorcastStore';
 import * as lorcanaHashes from './src/server/lorcana/lorcanaHashes';
 import * as pokemon from './src/server/pokemon/tcgdexStore';
 import { getPool } from './src/server/db/storage';
-import { computeQueryHashes, decodeJpegToGray } from './src/server/cards/imageHash';
-import { normalizeName, nameSimilarity } from './src/server/cards/nameMatch';
+import {
+  IMAGE_ACCEPT_DISTANCE,
+  IMAGE_MIN_MARGIN,
+  IMAGE_SET_TOLERANCE,
+  IMAGE_TITLE_BONUS,
+  MAX_PRINTINGS,
+  hashCardImage,
+  identifyWithLocalDb,
+  type IdentifyResult
+} from './src/server/cards/scanIdentify';
+import * as scanSamples from './src/server/cards/scanSamples';
 import { searchCities, resolveSuggestion } from './src/server/geo';
 import { APP_USER_AGENT } from './src/server/userAgent';
 import { isDigitalOnly, DIGITAL_BLOCK_MESSAGE, type SearchGame } from './src/utils/mtgFormats';
@@ -1037,7 +1046,7 @@ app.post('/api/scanner/delver-identify', authMiddleware, scannerLimiter, async (
       `[Skan] metoda=${result.method || 'scryfall'} pewność=${result.confidence} obraz=${result.imageDistance ?? '-'} ` +
         `ocr="${hintTitle}" set=${hintSet || '-'}/${hintCollector || '-'} wynik=${matched ? `${matched.name} [${matched.set}/${matched.collector_number}]` : 'brak'}`
     );
-    return res.json({
+    res.json({
       success: true,
       source: cards.isCardDbReady() ? 'local' : 'scryfall',
       cardName: matched?.name || hintTitle,
@@ -1051,6 +1060,21 @@ app.post('/api/scanner/delver-identify', authMiddleware, scannerLimiter, async (
       matchedCard: matched,
       possibleCards: result.possibleCards
     });
+    // Niepewne i nieudane skany (oraz mała losowa część pewnych) trafiają do próbek do oceny skanera.
+    if (cards.isCardDbReady()) {
+      scanSamples
+        .recordScanSample({
+          userId: userKey(req),
+          dataUrl: req.body?.cardImageBase64,
+          stage: req.body?.sampleStage,
+          glare: req.body?.glare,
+          hintTitle,
+          hintSet,
+          hintCollector,
+          result
+        })
+        .catch((err) => console.warn('[Próbki skanera] Zapis nieudany:', err?.message || err));
+    }
   } catch (err: any) {
     console.error('Błąd w /api/scanner/delver-identify:', err);
     res.status(500).json({ error: 'DELVER_SCAN_FAILED', message: 'Nie udało się rozpoznać karty. Spróbuj ponownie.' });
@@ -1142,125 +1166,6 @@ function identifyLorcana(queryHash: Uint8Array[], hintSet: string, hintCollector
   let confidence = Math.round(Math.min(95, 60 + (Number.isFinite(margin) ? margin : 70) / 2));
   if (numberSure || hinted) confidence = Math.max(confidence, 90);
   return { matchedCard: possibleCards[0] || null, possibleCards, confidence, method: 'image', imageDistance: distances.get(matchedId) ?? best.distance };
-}
-
-interface IdentifyResult {
-  matchedCard: any | null;
-  possibleCards: any[];
-  confidence: number;
-  method?: 'set_number' | 'name' | 'name_image' | 'image' | 'none';
-  imageDistance?: number;
-}
-
-const MAX_PRINTINGS = 40;
-// Progi dla odległości odcisków (0..1024). Dobrane na danych testowych:
-// ta sama karta zwykle < 270, różne karty zwykle > 330.
-const IMAGE_ACCEPT_DISTANCE = 300; // rozpoznanie wyłącznie po obrazie
-const IMAGE_MIN_MARGIN = 25; // wymagana przewaga nad najlepszą inną kartą
-const IMAGE_SET_TOLERANCE = 40; // set z OCR wygrywa, jeśli jego obraz jest niewiele gorszy
-const IMAGE_TITLE_BONUS = 40; // luźniejszy próg obrazu, gdy częściowo odczytana nazwa się zgadza
-
-/**
- * Odciski przesłanego zdjęcia karty (JPEG jako data URL); null, gdy brak lub niepoprawny.
- * Kilka wariantów kadru, bo rogi wykryte na zdjęciu bywają przesunięte o parę procent.
- */
-function hashCardImage(dataUrl: unknown, rotate180 = false): Uint8Array[] | null {
-  if (typeof dataUrl !== 'string' || !dataUrl.startsWith('data:image/jpeg;base64,')) return null;
-  if (dataUrl.length > 2_000_000) return null;
-  try {
-    const img = decodeJpegToGray(Buffer.from(dataUrl.slice(23), 'base64'));
-    if (rotate180) img.data.reverse();
-    return computeQueryHashes(img);
-  } catch {
-    return null;
-  }
-}
-
-/** Sortuje wydania wg podobieństwa obrazu (gdy jest odcisk), zachowując resztę na końcu. */
-function rankByImage(ids: string[], queryHash: Uint8Array[] | null) {
-  if (!queryHash || !hashes.hasHashes()) return { ordered: ids, distances: new Map<string, number>() };
-  const ranked = hashes.searchByHash(queryHash, ids.length, ids);
-  const distances = new Map(ranked.map((r) => [r.id, r.distance]));
-  const withHash = ranked.map((r) => r.id);
-  return { ordered: [...withHash, ...ids.filter((id) => !distances.has(id))], distances };
-}
-
-async function identifyWithLocalDb(title: string, set: string, collector: string, queryHash: Uint8Array[] | null): Promise<IdentifyResult> {
-  const nameHits = title ? cards.findByName(title, 3) : [];
-  const exactId = set && collector ? cards.findIdBySetNumber(set, collector) : null;
-
-  let matchedId: string | null = null;
-  let printings: string[] = [];
-  let confidence = 0;
-  let method: IdentifyResult['method'] = 'none';
-  let distances = new Map<string, number>();
-
-  // 1. Kod setu + numer (najdokładniejsze), o ile zgadza się z odczytaną nazwą.
-  if (exactId) {
-    const [exactCard] = await cards.getCardsByIds([exactId]);
-    const exactNames = exactCard ? [exactCard.name, ...(exactCard.card_faces || []).map((f: any) => f.name)] : [];
-    const titleAgrees = !title || exactNames.some((n: string) => nameSimilarity(normalizeName(n), normalizeName(title)) >= 0.6);
-    if (exactCard && titleAgrees) {
-      matchedId = exactId;
-      const ranked = rankByImage(cards.printingsOfName(normalizeName(exactCard.name)), queryHash);
-      printings = ranked.ordered;
-      distances = ranked.distances;
-      confidence = title ? 99 : 92;
-      method = 'set_number';
-    }
-  }
-
-  // 2. Nazwa z OCR; wydanie wybiera obraz (a set z OCR, jeśli obraz go nie wyklucza).
-  if (!matchedId && nameHits.length > 0 && nameHits[0].score >= 0.7) {
-    const best = nameHits[0];
-    const ranked = rankByImage(best.ids, queryHash);
-    printings = ranked.ordered;
-    distances = ranked.distances;
-    matchedId = printings[0];
-    method = distances.size ? 'name_image' : 'name';
-    confidence = Math.round(best.score * 85);
-    if (set) {
-      const inSet = (await cards.getCardsByIds(best.ids)).find((c) => c.set === set);
-      const bestD = distances.get(matchedId);
-      const setD = inSet ? distances.get(inSet.id) : undefined;
-      if (inSet && (bestD === undefined || setD === undefined || setD <= bestD + IMAGE_SET_TOLERANCE)) {
-        matchedId = inSet.id;
-        confidence = Math.round(best.score * 95);
-      }
-    }
-    const d = distances.get(matchedId);
-    if (d !== undefined && d < IMAGE_ACCEPT_DISTANCE) confidence = Math.max(confidence, 90);
-  }
-
-  // 3. Sam obraz (OCR nic nie dał): najbliższy odcisk w całej bazie, jeśli wyraźnie lepszy od innych kart.
-  if (!matchedId && queryHash && hashes.hasHashes()) {
-    const top = hashes.searchByHash(queryHash, 30);
-    const best = top[0];
-    const bestName = best ? cards.nameOfId(best.id) : null;
-    const rival = top.find((m) => cards.nameOfId(m.id) !== bestName);
-    const margin = rival ? rival.distance - best.distance : Infinity;
-    // Częściowo odczytana nazwa (np. 2 błędne litery) potwierdza kartę wskazaną przez obraz.
-    const titleAgrees = Boolean(title.length >= 4 && bestName && nameSimilarity(normalizeName(bestName), normalizeName(title)) >= 0.5);
-    const imageSure = best && best.distance <= IMAGE_ACCEPT_DISTANCE && margin >= IMAGE_MIN_MARGIN;
-    const imageWithTitle = best && titleAgrees && best.distance <= IMAGE_ACCEPT_DISTANCE + IMAGE_TITLE_BONUS;
-    if (best && bestName && (imageSure || imageWithTitle)) {
-      const ranked = rankByImage(cards.printingsOfName(bestName), queryHash);
-      printings = ranked.ordered;
-      distances = ranked.distances;
-      matchedId = printings[0];
-      method = 'image';
-      confidence = Math.round(Math.min(95, 60 + margin / 2));
-      if (titleAgrees) confidence = Math.max(confidence, 90);
-    }
-  }
-
-  if (!matchedId) {
-    return { matchedCard: null, possibleCards: [], confidence: 0, method: 'none' };
-  }
-
-  const ids = [matchedId, ...printings.filter((id) => id !== matchedId)].slice(0, MAX_PRINTINGS);
-  const possibleCards = await cards.getCardsByIds(ids);
-  return { matchedCard: possibleCards[0] || null, possibleCards, confidence, method, imageDistance: distances.get(matchedId) };
 }
 
 async function identifyWithScryfallApi(title: string, set: string, collector: string): Promise<IdentifyResult> {
@@ -3188,6 +3093,65 @@ admin.delete('/bug-reports/:id', async (req, res) => {
   }
 });
 
+// Próbki skanera: oznaczanie prawdziwych kadrów i ocena rozpoznawania na nich
+admin.get('/scan-samples', async (req, res) => {
+  try {
+    const status = String(req.query.status || 'pending');
+    const limit = Math.min(Math.max(parseInt(String(req.query.limit || '30'), 10) || 30, 1), 100);
+    const offset = Math.max(parseInt(String(req.query.offset || '0'), 10) || 0, 0);
+    const list = await scanSamples.listSamples(
+      (['pending', 'card', 'not_card', 'labeled', 'all'].includes(status) ? status : 'pending') as any,
+      limit,
+      offset
+    );
+    res.json({ ...list, lastEval: await scanSamples.lastEvaluation() });
+  } catch (err) {
+    sendServerError(res, err, '/api/admin/scan-samples');
+  }
+});
+
+admin.get('/scan-samples/:id/image', async (req, res) => {
+  try {
+    const img = await scanSamples.sampleImage(Number(req.params.id));
+    if (!img) return res.status(404).json({ error: 'Nie znaleziono próbki.' });
+    res.setHeader('Content-Type', 'image/jpeg');
+    res.setHeader('Cache-Control', 'private, max-age=86400');
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.send(img);
+  } catch (err) {
+    sendServerError(res, err, '/api/admin/scan-samples/:id/image');
+  }
+});
+
+admin.patch('/scan-samples/:id', async (req, res) => {
+  try {
+    const r = await scanSamples.labelSample(Number(req.params.id), req.body || {});
+    if ('error' in r) return res.status(400).json({ error: r.error });
+    res.json({ success: true, label: r.label });
+  } catch (err) {
+    sendServerError(res, err, '/api/admin/scan-samples/:id');
+  }
+});
+
+admin.delete('/scan-samples/:id', async (req, res) => {
+  try {
+    if (!(await scanSamples.deleteSample(Number(req.params.id)))) return res.status(404).json({ error: 'Nie znaleziono próbki.' });
+    res.json({ success: true });
+  } catch (err) {
+    sendServerError(res, err, '/api/admin/scan-samples/:id');
+  }
+});
+
+admin.post('/scan-samples/evaluate', async (_req, res) => {
+  try {
+    const r = await scanSamples.evaluateSamples();
+    if ('error' in r) return res.status(409).json({ error: r.error });
+    res.json(r);
+  } catch (err) {
+    sendServerError(res, err, '/api/admin/scan-samples/evaluate');
+  }
+});
+
 // Dziennik zmian (publiczny odczyt + zarządzanie w panelu admina)
 registerChangelogRoutes(app, admin, sendServerError);
 
@@ -4035,6 +3999,8 @@ async function startServer() {
     });
   }
   startChangelog().catch(() => {});
+  // Próbki skanera do oceny rozpoznawania (panel admina).
+  scanSamples.startScanSamples().catch((err) => console.warn('[Próbki skanera] Start nieudany:', err?.message || err));
   // Lokalna baza kart dla skanera (import w tle, nie blokuje startu).
   cards.startCardDb().catch((err) => console.warn('[Karty] Start nieudany:', err?.message || err));
   // Historia cen kart (alerty cenowe): migawki po synchronizacji i jednorazowy import z MTGJSON.
