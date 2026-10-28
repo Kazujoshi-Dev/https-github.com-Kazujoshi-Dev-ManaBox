@@ -1,4 +1,5 @@
 export const en_decks: Record<string, string> = {
+  "Najczęściej grane z tym dowódcą według EDHREC.": "Most played with this commander according to EDHREC.",
   "Asystent budowy": "Build assistant",
   "Podpowiada kolejne karty do talii: te, które najczęściej grają inni gracze z tym dowódcą, i wolne karty z Twojej kolekcji. Pilnuje też liczby Lands, rampy, dobierania i usuwania.": "Suggests the next cards for your deck: the ones other players run most often with this commander, and free cards from your collection. It also keeps track of your Lands, ramp, card draw and removal.",
   "Rampa": "Ramp",

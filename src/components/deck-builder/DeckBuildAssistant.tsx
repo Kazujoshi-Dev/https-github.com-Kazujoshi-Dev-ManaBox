@@ -202,11 +202,14 @@ export const DeckBuildAssistant: React.FC<DeckBuildAssistantProps> = ({ deck, co
           ) : (
             <>
               {/* Następne karty z EDHREC */}
-              <div>
-                <div className="flex flex-wrap items-center justify-between gap-2 mb-1">
-                  <h3 className="text-sm font-semibold text-stone-100 flex items-center gap-2">
-                    <TrendingUp className="w-4 h-4 text-stone-400" /> {t('Następne do dodania')}
-                  </h3>
+              <div className="rounded-xl bg-stone-950 border border-stone-800 p-3 sm:p-4">
+                <div className="flex flex-wrap items-start justify-between gap-2 pb-2 border-b border-stone-800">
+                  <div className="min-w-0">
+                    <h3 className="text-sm font-semibold text-stone-100 flex items-center gap-2">
+                      <TrendingUp className="w-4 h-4 text-amber-400" /> {t('Następne do dodania')}
+                    </h3>
+                    <p className="text-[11px] text-stone-500 mt-0.5">{t('Najczęściej grane z tym dowódcą według EDHREC.')}</p>
+                  </div>
                   {!collectionOnly && (
                     <label className="flex items-center gap-2 text-xs text-stone-300 cursor-pointer">
                       <input type="checkbox" checked={preferFree} onChange={(e) => setPreferFree(e.target.checked)} className="w-4 h-4 accent-amber-500" />
@@ -244,11 +247,13 @@ export const DeckBuildAssistant: React.FC<DeckBuildAssistantProps> = ({ deck, co
 
               {/* Wolne karty z kolekcji spoza rekomendacji */}
               {ownPicks.length > 0 && (
-                <div>
-                  <h3 className="text-sm font-semibold text-stone-100 flex items-center gap-2 mb-1">
-                    <Library className="w-4 h-4 text-stone-400" /> {t('Wolne z Twojej kolekcji')}
-                  </h3>
-                  <p className="text-[11px] text-stone-500">{t('Karty w kolorach dowódcy, które uzupełniają brakujące role, choć nie ma ich wśród najczęściej granych.')}</p>
+                <div className="rounded-xl bg-stone-950 border border-stone-800 p-3 sm:p-4">
+                  <div className="pb-2 border-b border-stone-800">
+                    <h3 className="text-sm font-semibold text-stone-100 flex items-center gap-2">
+                      <Library className="w-4 h-4 text-amber-400" /> {t('Wolne z Twojej kolekcji')}
+                    </h3>
+                    <p className="text-[11px] text-stone-500 mt-0.5">{t('Karty w kolorach dowódcy, które uzupełniają brakujące role, choć nie ma ich wśród najczęściej granych.')}</p>
+                  </div>
                   <ul className="divide-y divide-stone-800">
                     {ownPicks.slice(0, ownLimit).map((p) => (
                       renderPick(p, t('Uzupełnia: {roles}', { roles: p.roles.filter((r) => progress.need[r] > 0).map((r) => t(ROLE_LABELS[r])).join(', ') }))
