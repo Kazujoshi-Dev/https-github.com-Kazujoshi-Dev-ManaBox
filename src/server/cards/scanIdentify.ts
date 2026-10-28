@@ -25,6 +25,14 @@ export const IMAGE_MIN_MARGIN = 25; // wymagana przewaga nad najlepszą inną ka
 export const IMAGE_SET_TOLERANCE = 40; // set z OCR wygrywa, jeśli jego obraz jest niewiele gorszy
 export const IMAGE_TITLE_BONUS = 40; // luźniejszy próg obrazu, gdy częściowo odczytana nazwa się zgadza
 
+/** Ile gorszy może być obraz zwykłego wydania, żeby wygrało z promką o tej samej ilustracji. */
+export const PROMO_TIE_DISTANCE = 15;
+
+/** Wydanie promocyjne (prerelease, promo pack, Game Day itp.). */
+export function isPromo(card: any): boolean {
+  return Boolean(card?.promo) || card?.set_type === 'promo';
+}
+
 /**
  * Odciski przesłanego zdjęcia karty (JPEG jako data URL); null, gdy brak lub niepoprawny.
  * Kilka wariantów kadru, bo rogi wykryte na zdjęciu bywają przesunięte o parę procent.
@@ -82,6 +90,7 @@ export async function identifyWithLocalDb(title: string, set: string, collector:
   let confidence = 0;
   let method: IdentifyResult['method'] = 'none';
   let distances = new Map<string, number>();
+  let pickedBySet = false;
 
   // 1. Kod setu + numer (najdokładniejsze), o ile zgadza się z odczytaną nazwą.
   if (exactId) {
@@ -113,6 +122,7 @@ export async function identifyWithLocalDb(title: string, set: string, collector:
       const setD = inSet ? distances.get(inSet.id) : undefined;
       if (inSet && (bestD === undefined || setD === undefined || setD <= bestD + IMAGE_SET_TOLERANCE)) {
         matchedId = inSet.id;
+        pickedBySet = true;
         confidence = Math.round(best.score * 95);
       }
     }
@@ -147,7 +157,24 @@ export async function identifyWithLocalDb(title: string, set: string, collector:
   }
 
   const ids = [matchedId, ...printings.filter((id) => id !== matchedId)].slice(0, MAX_PRINTINGS);
-  const possibleCards = await cards.getCardsByIds(ids);
+  let possibleCards = await cards.getCardsByIds(ids);
+
+  // Promka z tą samą ilustracją (np. prerelease z datownikiem) ma prawie taki sam odcisk jak zwykłe
+  // wydanie, a różni się drobiazgiem, którego odcisk nie widzi. Gdy obraz nie rozstrzyga, podajemy
+  // zwykłe wydanie (częstsze w kolekcjach); promka zostaje na liście wydań do wyboru.
+  // Nie dotyczy wyboru po kodzie setu i numerze odczytanych ze stopki.
+  const top = possibleCards[0];
+  if (top && isPromo(top) && method !== 'set_number' && !pickedBySet) {
+    const d0 = distances.get(top.id);
+    const regular = possibleCards.find((c) => {
+      const d = distances.get(c.id);
+      return !isPromo(c) && d0 !== undefined && d !== undefined && d <= d0 + PROMO_TIE_DISTANCE;
+    });
+    if (regular) {
+      possibleCards = [regular, ...possibleCards.filter((c) => c.id !== regular.id)];
+      matchedId = regular.id;
+    }
+  }
   return { matchedCard: possibleCards[0] || null, possibleCards, confidence, method, imageDistance: distances.get(matchedId) };
 }
 
