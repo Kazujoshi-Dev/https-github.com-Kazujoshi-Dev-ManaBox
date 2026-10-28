@@ -1055,7 +1055,8 @@ app.post('/api/scanner/delver-identify', authMiddleware, scannerLimiter, async (
     console.log(
       `[Skan] klatki=${queryHash?.length ?? 0} metoda=${result.method || 'scryfall'} pewność=${result.confidence} obraz=${result.imageDistance ?? '-'} ` +
         `ocr="${hintTitle}" set=${hintSet || '-'}/${hintCollector || '-'} wynik=${matched ? `${matched.name} [${matched.set}/${matched.collector_number}${matched.lang && matched.lang !== 'en' ? ` ${matched.lang}` : ''}]` : 'brak'}` +
-        (result.englishDistance !== undefined ? ` en=${result.englishDistance}` : '')
+        (result.englishDistance !== undefined ? ` en=${result.englishDistance}` : '') +
+        (result.editionTies ? ` remis_wydań=${result.editionTies}` : '')
     );
     res.json({
       success: true,
@@ -1068,6 +1069,7 @@ app.post('/api/scanner/delver-identify', authMiddleware, scannerLimiter, async (
       detectedRarity: matched?.rarity || null,
       method: result.method,
       imageDistance: result.imageDistance ?? null,
+      editionTies: result.editionTies ?? 0,
       matchedCard: matched,
       possibleCards: result.possibleCards
     });

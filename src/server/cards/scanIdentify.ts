@@ -17,6 +17,12 @@ export interface IdentifyResult {
   imageDistance?: number;
   /** Do logu: odległość obrazu najbliższej wersji angielskiej, gdy wynik jest w innym języku (strojenie LANG_TIE_DISTANCE). */
   englishDistance?: number;
+  /**
+   * Ile innych wydań (inny set lub numer) ma obraz prawie tak samo podobny jak wybrane.
+   * Większe od zera = edycji nie da się pewnie ustalić z samego obrazu (np. dodruk z tą samą
+   * ilustracją); klient odczytuje wtedy stopkę karty i wybiera wydanie z listy.
+   */
+  editionTies?: number;
 }
 
 export const MAX_PRINTINGS = 40;
@@ -32,6 +38,9 @@ export const PROMO_TIE_DISTANCE = 15;
 
 /** Ile gorszy może być obraz wersji angielskiej, żeby wygrała z inną wersją językową bez potwierdzenia nazwą. */
 export const LANG_TIE_DISTANCE = 20;
+
+/** Wydania z obrazem gorszym najwyżej o tyle traktujemy jako nierozróżnialne po obrazie. */
+export const EDITION_TIE_DISTANCE = 30;
 
 /** Wydanie promocyjne (prerelease, promo pack, Game Day itp.). */
 export function isPromo(card: any): boolean {
@@ -203,6 +212,11 @@ export async function identifyWithLocalDb(title: string, set: string, collector:
     if (regular) pick(regular);
   }
   const final = possibleCards[0];
+  const editionTies = final
+    ? possibleCards.filter(
+        (c) => c.id !== final.id && (c.set !== final.set || c.collector_number !== final.collector_number) && within(c, final, EDITION_TIE_DISTANCE)
+      ).length
+    : 0;
   const englishAlt = final && final.lang !== 'en' ? possibleCards.find((c) => c.lang === 'en' && distances.has(c.id)) : undefined;
   return {
     matchedCard: final || null,
@@ -210,7 +224,8 @@ export async function identifyWithLocalDb(title: string, set: string, collector:
     confidence,
     method,
     imageDistance: distances.get(matchedId),
-    englishDistance: englishAlt ? distances.get(englishAlt.id) : undefined
+    englishDistance: englishAlt ? distances.get(englishAlt.id) : undefined,
+    editionTies: method === 'set_number' || pickedBySet ? 0 : editionTies
   };
 }
 

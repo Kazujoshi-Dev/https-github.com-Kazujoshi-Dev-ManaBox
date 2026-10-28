@@ -22,6 +22,7 @@ import {
 } from './cardDetector';
 import { cleanCardTitle, getTesseractWorker } from './ocrProcessor';
 import { t, tServer } from '../../i18n';
+import { pickPrintingByFooterText } from './editionPick';
 import type { GameId } from '../../games';
 
 /** Pasek tytułu (nazwa karty, bez kosztu many po prawej). Marginesy z zapasem na niedokładne rogi. */
@@ -188,10 +189,39 @@ function prepareForOcr(rgba: Uint8ClampedArray, w: number, h: number): HTMLCanva
   return canvas;
 }
 
+/**
+ * Stopka MTG do OCR: skala szarości z rozciągniętym kontrastem, bez progowania (biały tekst na
+ * czarnej ramce odwracamy na ciemny na jasnym). Drobny tekst stopki z kamery po binaryzacji Otsu
+ * rozpadał się na kawałki; na prawdziwych klatkach odcień szarości dał poprawne kody setów 4 z 4
+ * (binaryzacja 1 z 4).
+ */
+function prepareGrayForOcr(rgba: Uint8ClampedArray, w: number, h: number): HTMLCanvasElement {
+  const gray = rgbaToGray(rgba, w, h);
+  const sorted = Float32Array.from(gray).sort();
+  const lo = sorted[Math.floor(sorted.length * 0.02)];
+  const hi = sorted[Math.floor(sorted.length * 0.98)];
+  const range = Math.max(1, hi - lo);
+  const invert = sorted[Math.floor(sorted.length / 2)] < (lo + hi) / 2; // przewaga ciemnego tła
+  const out = new Uint8ClampedArray(w * h * 4);
+  for (let i = 0; i < gray.length; i++) {
+    const v = Math.max(0, Math.min(255, ((gray[i] - lo) / range) * 255));
+    out[i * 4] = out[i * 4 + 1] = out[i * 4 + 2] = invert ? 255 - v : v;
+    out[i * 4 + 3] = 255;
+  }
+  const pad = 12;
+  const { canvas, ctx } = canvas2d(w + pad * 2, h + pad * 2);
+  ctx.fillStyle = '#fff';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.drawImage(toCanvas(out, w, h), pad, pad);
+  return canvas;
+}
+
 const LANG_CODES = 'EN|DE|FR|IT|ES|PT|JA|JP|KO|RU|ZHS|ZHT|PH|CS|CT';
 
 /** Kod setu i numer kolekcjonerski ze stopki (np. "0123/0280 R / DMU • EN" albo "R 0123 / DMU • EN"). */
-export function parseFooter(raw: string): { set?: string; collectorNumber?: string } {
+const FOOTER_LANG: Record<string, string> = { EN: 'en', JA: 'ja', JP: 'ja', PH: 'ph', DE: 'de', FR: 'fr', IT: 'it', ES: 'es', PT: 'pt', KO: 'ko', RU: 'ru', ZHS: 'zhs', ZHT: 'zht', CS: 'zhs', CT: 'zht' };
+
+export function parseFooter(raw: string): { set?: string; collectorNumber?: string; lang?: string } {
   const text = (raw || '').toUpperCase().replace(/[|]/g, 'I');
   let collectorNumber: string | undefined;
   const slash = text.match(/\b(\d{1,4})\s*[/\\]\s*\d{1,4}\b/);
@@ -201,15 +231,16 @@ export function parseFooter(raw: string): { set?: string; collectorNumber?: stri
   if (num) collectorNumber = num.replace(/^0+(?=\d)/, '');
 
   let set: string | undefined;
-  const withLang = text.match(new RegExp(`\\b([A-Z0-9]{3,5})\\s*[•·*.,:-]?\\s*(?:${LANG_CODES})\\b`));
+  const withLang = text.match(new RegExp(`\\b([A-Z0-9]{3,5})\\s*[•·*.,:-]?\\s*(${LANG_CODES})\\b`));
   if (withLang) set = withLang[1];
+  const langCode = withLang?.[2] || text.match(new RegExp(`[•·*.,:-]\\s*(${LANG_CODES})\\b`))?.[1];
   if (!set) {
     // druga linia stopki zaczyna się od kodu setu
     const lines = text.split('\n').map((l) => l.trim()).filter(Boolean);
     const cand = lines[1]?.match(/^([A-Z][A-Z0-9]{2,4})\b/);
     if (cand) set = cand[1];
   }
-  return { set: set?.toLowerCase(), collectorNumber };
+  return { set: set?.toLowerCase(), collectorNumber, lang: langCode ? FOOTER_LANG[langCode] : undefined };
 }
 
 /**
@@ -339,6 +370,38 @@ async function captureExtraFrames(
   return { urls, glare };
 }
 
+/**
+ * Karta rozpoznana pewnie po obrazie, ale kilka wydań wygląda prawie tak samo (dodruki z tą samą
+ * ilustracją): odczytujemy stopkę (kod setu, numer, język) i wybieramy wydanie z listy zwróconej
+ * przez serwer. Gdy stopka nic nie rozstrzyga, zostaje wybór obrazu.
+ */
+async function refineEdition(
+  result: ScanResult,
+  ties: number,
+  pixels: Uint8ClampedArray,
+  w: number,
+  h: number,
+  quad: Quad,
+  onStatus?: (text: string) => void
+): Promise<ScanResult> {
+  if (!ties || !result.matchedCard || result.possibleCards.length < 2) return result;
+  onStatus?.(t('Odczyt wydania karty...'));
+  const footerRgba = warpCardRegion(pixels, w, h, quad, 600, 150, FOOTER_REGION);
+  const footerCanvas = prepareGrayForOcr(footerRgba, 600, 150);
+  const text = await ocrFooter(footerCanvas).catch(() => '');
+  const footer = parseFooter(text);
+  const i = pickPrintingByFooterText(result.possibleCards as any[], text, footer.lang);
+  const refined: ScanResult = {
+    ...result,
+    detectedSet: footer.set,
+    detectedCollectorNumber: footer.collectorNumber,
+    debugBottomUrl: footerCanvas.toDataURL('image/png')
+  };
+  if (i <= 0) return refined;
+  const chosen = result.possibleCards[i];
+  return { ...refined, matchedCard: chosen, possibleCards: [chosen, ...result.possibleCards.filter((_, k) => k !== i)] };
+}
+
 /** Pełne rozpoznanie karty z klatki kamery lub zdjęcia. */
 export async function recognizeCard(
   src: HTMLVideoElement | HTMLImageElement | HTMLCanvasElement,
@@ -387,13 +450,14 @@ export async function recognizeCard(
     opts.onStatus?.(t('Dopasowywanie w bazie kart...'));
     const quick = await identify({ cardImageBase64: cardDataUrl, sampleStage: 'quick', glare }, opts.onStatus, game).catch(() => ({}));
     if (quick.matchedCard && (quick.confidence || 0) >= QUICK_IMAGE_CONFIDENCE) {
-      return {
+      const result: ScanResult = {
         ...base,
         confidence: quick.confidence,
         matchedCard: quick.matchedCard,
         possibleCards: quick.possibleCards || [],
         method: quick.method
       };
+      return game === 'mtg' ? refineEdition(result, quick.editionTies || 0, pixels, w, h, quad, opts.onStatus) : result;
     }
   }
 
@@ -411,7 +475,8 @@ export async function recognizeCard(
         game
       ).catch(() => ({}));
       if (fused.matchedCard && (fused.confidence || 0) >= QUICK_IMAGE_CONFIDENCE) {
-        return { ...base, confidence: fused.confidence, matchedCard: fused.matchedCard, possibleCards: fused.possibleCards || [], method: fused.method };
+        const result: ScanResult = { ...base, confidence: fused.confidence, matchedCard: fused.matchedCard, possibleCards: fused.possibleCards || [], method: fused.method };
+        return refineEdition(result, fused.editionTies || 0, pixels, w, h, quad, opts.onStatus);
       }
     }
   }
@@ -444,7 +509,7 @@ export async function recognizeCard(
   const titleRgba = warpCardRegion(pixels, w, h, quad, 640, 100, TITLE_REGION);
   const footerRgba = warpCardRegion(pixels, w, h, quad, 600, 150, FOOTER_REGION);
   const titleCanvas = prepareForOcr(titleRgba, 640, 100);
-  const footerCanvas = prepareForOcr(footerRgba, 600, 150);
+  const footerCanvas = prepareGrayForOcr(footerRgba, 600, 150);
 
   opts.onStatus?.(t('Odczyt nazwy i numeru karty...'));
   const [title, footerText] = await Promise.all([
