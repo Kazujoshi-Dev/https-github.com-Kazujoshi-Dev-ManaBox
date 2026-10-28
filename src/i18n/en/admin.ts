@@ -193,4 +193,6 @@ export const en_admin: Record<string, string> = {
   "Nie udało się wczytać kadru.": "Could not load the crop.",
   "W tym dzięki kilku klatkom": "Of which thanks to multiple frames",
   "Klatki": "Frames",
+  "odciski obrazów do skanera:": "scanner image fingerprints:",
+  "(liczenie w toku, zostało {n})": "(computing, {n} left)",
 };

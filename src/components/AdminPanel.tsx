@@ -175,6 +175,19 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, showToast }
                 <strong className="text-amber-300">{t('niedostępna')}</strong>
               )}
               {stats.cardDb.syncing && t(' · trwa synchronizacja')}
+              {stats.cardDb.images && (
+                <>
+                  {' · '}
+                  {t('odciski obrazów do skanera:')}{' '}
+                  <strong className={stats.cardDb.images.hashes ? 'text-stone-200' : 'text-amber-300'}>{fmtNum(stats.cardDb.images.hashes)}</strong>
+                  {stats.cardDb.images.building && (
+                    <span className="tabular-nums">
+                      {' '}
+                      {t('(liczenie w toku, zostało {n})', { n: fmtNum(stats.cardDb.images.remaining) })}
+                    </span>
+                  )}
+                </>
+              )}
               {stats.cardDb.lastSyncError && <span className="text-rose-300"> · {t('błąd:')} {stats.cardDb.lastSyncError}</span>}
             </span>
           </p>

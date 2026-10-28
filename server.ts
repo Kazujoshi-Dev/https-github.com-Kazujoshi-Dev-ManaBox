@@ -1016,6 +1016,7 @@ async function fetchScryfall(endpoint: string) {
 // Rozpoznawanie karty ze skanera.
 // Najpierw lokalna baza kart (bez limitów i zapytań do Scryfall), a gdy jeszcze nie jest
 // gotowa (pierwszy import) — awaryjnie API Scryfall.
+let lastCardDbWarnAt = 0;
 app.post('/api/scanner/delver-identify', authMiddleware, scannerLimiter, async (req, res) => {
   try {
     const str = (v: unknown, max: number) => (typeof v === 'string' ? v.trim().slice(0, max) : '');
@@ -1031,6 +1032,11 @@ app.post('/api/scanner/delver-identify', authMiddleware, scannerLimiter, async (
       return res.status(400).json({ error: 'Brak obrazu karty, odczytanej nazwy ani kodu setu i numeru.' });
     }
 
+    if (!cards.isCardDbReady() && Date.now() - lastCardDbWarnAt > 10 * 60_000) {
+      lastCardDbWarnAt = Date.now();
+      // bez lokalnej bazy skaner nie porównuje obrazów, tylko pyta API Scryfall o odczytaną nazwę
+      console.warn(`[Skan] Lokalna baza kart niegotowa, używam API Scryfall: ${JSON.stringify(cards.cardDbStatus())}`);
+    }
     let result = cards.isCardDbReady()
       ? await identifyWithLocalDb(hintTitle, hintSet, hintCollector, queryHash)
       : await identifyWithScryfallApi(hintTitle, hintSet, hintCollector);

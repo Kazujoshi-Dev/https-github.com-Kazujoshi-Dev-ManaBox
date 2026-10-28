@@ -287,7 +287,15 @@ export interface AdminStats {
   totalCards: number;
   forSaleCards: number;
   wishlistItems: number;
-  cardDb: { ready: boolean; cards: number; syncing: boolean; lastSyncAt: string | null; lastSyncError: string | null };
+  cardDb: {
+    ready: boolean;
+    cards: number;
+    syncing: boolean;
+    lastSyncAt: string | null;
+    lastSyncError: string | null;
+    /** Indeks odcisków obrazów (rozpoznawanie kart po ilustracji w skanerze). */
+    images?: { hashes: number; building: boolean; done: number; failed: number; remaining: number };
+  };
 }
 
 export interface SaleFolder {
