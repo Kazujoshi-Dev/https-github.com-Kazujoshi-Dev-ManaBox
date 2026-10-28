@@ -24,7 +24,7 @@ export const FanContentNotice: React.FC<{ className?: string }> = ({ className =
       </p>
       {lang === 'pl' && (
         <p>
-          {t('Mana Screw to nieoficjalny Fan Content, dozwolony przez Fan Content Policy, niezatwierdzony ani niepopierany przez Wizards of the Coast. Prawa autorskie do części wykorzystanych materiałów, w tym nazw, tekstów i ilustracji kart, należą do Wizards of the Coast LLC.')}
+          {t('Mana Screw to nieoficjalny Fan Content, dozwolony przez Fan Content Policy, niezatwierdzony ani niepopierany przez Wizards of the Coast. Prawa autorskie do części wykorzystanych materiałów, w tym nazw, tekstów i ilustracji kart oraz symboli many, należą do Wizards of the Coast LLC.')}
         </p>
       )}
     </div>

@@ -20,13 +20,16 @@ export const COLOR_MAP: Record<string, CatalogColorTheme> = {
   stone: { bg: 'bg-stone-500/15', border: 'border-stone-500/40', text: 'text-stone-300', dot: 'bg-stone-400', lightBg: 'bg-stone-500/10' },
 };
 
-export const COLOR_PILLS = [
+/** Pigułka filtra koloru: tekst, kolorowa plakietka (`bg`) albo symbol many MTG (`symbol`). */
+export interface ColorPill { id: string; label: string; bg?: string; symbol?: string }
+
+export const COLOR_PILLS: ColorPill[] = [
   { id: 'ALL', label: tk('Wszystkie') },
-  { id: 'W', label: 'W', bg: 'bg-amber-100 text-stone-900 font-bold' },
-  { id: 'U', label: 'U', bg: 'bg-blue-600 text-white font-bold' },
-  { id: 'B', label: 'B', bg: 'bg-stone-800 text-stone-200 font-bold' },
-  { id: 'R', label: 'R', bg: 'bg-red-600 text-white font-bold' },
-  { id: 'G', label: 'G', bg: 'bg-emerald-600 text-white font-bold' },
+  { id: 'W', label: 'W', symbol: '{W}' },
+  { id: 'U', label: 'U', symbol: '{U}' },
+  { id: 'B', label: 'B', symbol: '{B}' },
+  { id: 'R', label: 'R', symbol: '{R}' },
+  { id: 'G', label: 'G', symbol: '{G}' },
   { id: 'C', label: tk('Bezbarwne') },
   { id: 'MULTI', label: tk('Wielobarwne') }
 ];
@@ -51,7 +54,7 @@ export const CARD_RARITIES = [
 ];
 
 /** Disney Lorcana: filtry kolekcji (atramenty, typy kart, rzadkości). */
-export const LORCANA_INK_PILLS = [
+export const LORCANA_INK_PILLS: ColorPill[] = [
   { id: 'ALL', label: tk('Wszystkie') },
   { id: 'Amber', label: 'Amber', bg: 'bg-amber-400 text-stone-950 font-bold' },
   { id: 'Amethyst', label: 'Amethyst', bg: 'bg-purple-600 text-white font-bold' },
@@ -82,7 +85,7 @@ export const LORCANA_RARITIES = [
 ];
 
 /** Pokémon TCG: filtry kolekcji (typy energii, rodzaje kart, rzadkości). */
-export const POKEMON_TYPE_PILLS = [
+export const POKEMON_TYPE_PILLS: ColorPill[] = [
   { id: 'ALL', label: tk('Wszystkie') },
   { id: 'Grass', label: 'Grass', bg: 'bg-emerald-600 text-white font-bold' },
   { id: 'Fire', label: 'Fire', bg: 'bg-red-600 text-white font-bold' },

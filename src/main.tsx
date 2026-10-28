@@ -2,6 +2,7 @@ import {StrictMode} from 'react';
 import {createRoot} from 'react-dom/client';
 import App from './App.tsx';
 import '@fontsource-variable/geist';
+import './styles/mana-font.css';
 import './index.css';
 import { reloadAfterChunkError } from './utils/lazyWithReload';
 import { installApiLanguageHeader, prepareLanguage } from './i18n';

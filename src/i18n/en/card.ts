@@ -1,4 +1,5 @@
 export const en_card: Record<string, string> = {
+  "Koszt many": "Mana cost",
   "(Domyślny)": "(Default)",
   "+ Nowy katalog": "+ New binder",
   "Aktualne Ceny Rynkowe (Scryfall)": "Current market prices (Scryfall)",

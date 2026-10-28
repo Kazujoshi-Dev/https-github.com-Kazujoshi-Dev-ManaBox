@@ -1,59 +1,92 @@
 import React from 'react';
+import { useT } from '../i18n';
 
 interface ManaSymbolProps {
   cost?: string; // e.g. "{2}{W}{U}" or "{R}"
   size?: 'sm' | 'md' | 'lg';
+  /** Opis dla czytników ekranu, gdy symbol nie jest kosztem (np. filtr koloru). */
+  label?: string;
 }
 
-export const ManaSymbol: React.FC<ManaSymbolProps> = ({ cost, size = 'md' }) => {
+/** Rozmiar fontu tak dobrany, żeby kółko .ms-cost miało 16 / 20 / 24 px. */
+const SIZE_CLASSES = {
+  sm: 'text-[13px]',
+  md: 'text-[16px]',
+  lg: 'text-[19px]',
+} as const;
+
+const SPECIAL: Record<string, string> = {
+  T: 'tap',
+  Q: 'untap',
+  '∞': 'infinity',
+  '½': 'half',
+  TK: 'ticket',
+  CHAOS: 'chaos',
+};
+
+/** Symbole, które mamy w foncie Mana (src/styles/mana-font.css). */
+const KNOWN = /^(\d+|[wubrgcxyzse]|[wubrg]{2}|2[wubrg]|c[wubrg]|[wubrg]p|[wubrg]{2}p|tap|untap|infinity|half|ticket|chaos)$/;
+
+/** Notacja Scryfall ("W/U", "2/W", "G/U/P") → klasa fontu Mana ("wu", "2w", "gup") albo null. */
+export function manaClass(sym: string): string | null {
+  const upper = sym.toUpperCase();
+  const cls = SPECIAL[upper] ?? upper.replace(/\//g, '').toLowerCase();
+  return KNOWN.test(cls) ? cls : null;
+}
+
+const FALLBACK_BG: Record<string, string> = {
+  W: 'bg-amber-100 text-stone-900 border-amber-300',
+  U: 'bg-blue-600 text-white border-blue-400',
+  B: 'bg-stone-950 text-stone-100 border-stone-500',
+  R: 'bg-red-600 text-white border-red-400',
+  G: 'bg-emerald-600 text-white border-emerald-400',
+  C: 'bg-stone-400 text-stone-900 border-stone-300',
+};
+
+const FALLBACK_SIZE = {
+  sm: 'w-4 h-4 text-[11px]',
+  md: 'w-5 h-5 text-xs',
+  lg: 'w-6 h-6 text-sm',
+} as const;
+
+export const ManaSymbol: React.FC<ManaSymbolProps> = ({ cost, size = 'md', label }) => {
+  const t = useT();
   if (!cost) return null;
 
-  // Extract symbols inside brackets like {1}, {W}, {U/B}, {T}
-  const symbolRegex = /\{([^}]+)\}/g;
-  const symbols: string[] = [];
-  let match;
-  while ((match = symbolRegex.exec(cost)) !== null) {
-    symbols.push(match[1]);
-  }
+  // Symbole w nawiasach: {1}, {W}, {U/B}, {T}
+  const symbols = Array.from(cost.matchAll(/\{([^}]+)\}/g), (m) => m[1]);
 
-  if (symbols.length === 0 && cost) {
-    // If string does not use brackets, split single characters if simple
+  if (symbols.length === 0) {
     return <span className="tabular-nums text-xs font-bold text-amber-300">{cost}</span>;
   }
 
-  const sizeClasses = {
-    sm: 'w-4 h-4 text-[11px]',
-    md: 'w-5 h-5 text-xs',
-    lg: 'w-6 h-6 text-sm',
-  }[size];
-
-  const getSymbolBg = (sym: string) => {
-    switch (sym.toUpperCase()) {
-      case 'W': return 'bg-amber-100 text-stone-900 border-amber-300 shadow-sm';
-      case 'U': return 'bg-blue-600 text-white border-blue-400';
-      case 'B': return 'bg-stone-950 text-stone-100 border-stone-500';
-      case 'R': return 'bg-red-600 text-white border-red-400';
-      case 'G': return 'bg-emerald-600 text-white border-emerald-400';
-      case 'C': return 'bg-stone-400 text-stone-900 border-stone-300';
-      case 'T': return 'bg-stone-600 text-white border-stone-400';
-      case 'X': return 'bg-stone-700 text-stone-200 border-stone-500';
-      default: return 'bg-stone-700 text-amber-200 border-stone-500';
-    }
-  };
-
   return (
-    <div className="inline-flex items-center gap-0.5 flex-wrap">
-      {symbols.map((sym, idx) => (
-        <span
-          key={idx}
-          className={`${sizeClasses} ${getSymbolBg(
-            sym
-          )} inline-flex items-center justify-center rounded-full font-bold tabular-nums border shadow-xs select-none`}
-          title={`Mana: ${sym}`}
-        >
-          {sym}
-        </span>
-      ))}
-    </div>
+    <span className="inline-flex items-center gap-0.5 flex-wrap" role="img" aria-label={label ?? `${t('Koszt many')}: ${cost}`} title={label ?? cost}>
+      {symbols.map((sym, idx) => {
+        const cls = manaClass(sym);
+        if (cls) {
+          return <i key={idx} aria-hidden="true" className={`ms ms-cost ms-${cls} ${SIZE_CLASSES[size]} select-none`} />;
+        }
+        // Symbol spoza fontu (np. z innej gry): dotychczasowe kółko z literą
+        return (
+          <span
+            key={idx}
+            aria-hidden="true"
+            className={`${FALLBACK_SIZE[size]} ${FALLBACK_BG[sym.toUpperCase()] ?? 'bg-stone-700 text-amber-200 border-stone-500'} inline-flex items-center justify-center rounded-full font-bold tabular-nums border select-none`}
+          >
+            {sym}
+          </span>
+        );
+      })}
+    </span>
   );
 };
+
+/** Ikona „wielobarwne” do filtrów kolorów (to nie jest symbol many, więc osobny komponent). */
+export const MulticolorSymbol: React.FC<{ size?: 'sm' | 'md' | 'lg'; label?: string }> = ({ size = 'md', label }) => (
+  <i
+    role="img"
+    aria-label={label}
+    className={`ms ms-cost ms-multicolor !bg-[#e3c36a] ${SIZE_CLASSES[size]} select-none`}
+  />
+);

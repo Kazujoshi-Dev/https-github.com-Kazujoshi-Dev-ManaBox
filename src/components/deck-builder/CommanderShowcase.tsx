@@ -5,6 +5,7 @@ import { formatCurrency, getCardPrice, getCardEdhrecRank, getCardImageUri, getCa
 import { ArtistCredit } from '../ui/ArtistCredit';
 import { EdhrecBadge } from '../EdhrecBadge';
 import { useT } from '../../i18n';
+import { ManaSymbol } from '../ManaSymbol';
 
 export const CommanderShowcase: React.FC<CommanderShowcaseProps> = ({
   commander,
@@ -57,9 +58,7 @@ export const CommanderShowcase: React.FC<CommanderShowcaseProps> = ({
                   {formatCurrency(commanderPrice, settings.currency)}
                 </span>
               )}
-              <span className="text-xs tabular-nums text-amber-300 font-bold">
-                {commander.mana_cost}
-              </span>
+              <ManaSymbol cost={commander.mana_cost} size="sm" />
             </div>
             <h3 
               onClick={() => onViewDetails(commander)}

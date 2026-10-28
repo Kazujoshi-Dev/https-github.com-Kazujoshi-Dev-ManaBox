@@ -4,6 +4,7 @@ import { DeckCardRowProps } from './types';
 import { formatCurrency, getCardPrice, getCardImageUri, getCardArtist } from '../../utils/formatters';
 import { ART_COPYRIGHT } from '../ui/ArtistCredit';
 import { useT } from '../../i18n';
+import { ManaSymbol } from '../ManaSymbol';
 
 export const DeckCardRow: React.FC<DeckCardRowProps> = ({
   entry,
@@ -104,8 +105,8 @@ export const DeckCardRow: React.FC<DeckCardRowProps> = ({
         )}
 
         {card.mana_cost && (
-          <span className="text-[11px] tabular-nums font-bold text-amber-300 drop-shadow">
-            {card.mana_cost}
+          <span className="drop-shadow">
+            <ManaSymbol cost={card.mana_cost} size="sm" />
           </span>
         )}
 

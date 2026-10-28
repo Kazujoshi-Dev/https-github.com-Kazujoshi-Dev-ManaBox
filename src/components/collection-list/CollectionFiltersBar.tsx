@@ -4,12 +4,15 @@ import { Search, X, Sparkles, LayoutGrid, List, SlidersHorizontal, Library } fro
 import { CollectionFiltersBarProps } from './types';
 import { COLOR_PILLS as MTG_COLOR_PILLS, CARD_TYPES as MTG_CARD_TYPES, CARD_RARITIES as MTG_CARD_RARITIES, LORCANA_INK_PILLS, LORCANA_CARD_TYPES, LORCANA_RARITIES, POKEMON_TYPE_PILLS, POKEMON_CARD_TYPES, POKEMON_RARITIES, SORT_OPTIONS, ROWS_PER_PAGE_OPTIONS } from './constants';
 import { getActiveGame } from '../../utils/activeGame';
+import { ManaSymbol } from '../ManaSymbol';
 
 // Filtry kolorów, typów i rzadkości zależą od gry (MTG, Disney Lorcana, Pokémon TCG)
 const byGame = <T,>(mtg: T, lorcana: T, pokemon: T): T => {
   const g = getActiveGame();
   return g === 'lorcana' ? lorcana : g === 'pokemon' ? pokemon : mtg;
 };
+/** Nazwy kolorów MTG dla czytników ekranu (pigułki pokazują same symbole many). */
+const MTG_COLOR_NAMES: Record<string, string> = { W: 'Biały', U: 'Niebieski', B: 'Czarny', R: 'Czerwony', G: 'Zielony' };
 const colorPills = () => byGame(MTG_COLOR_PILLS, LORCANA_INK_PILLS, POKEMON_TYPE_PILLS);
 const cardTypes = () => byGame(MTG_CARD_TYPES, LORCANA_CARD_TYPES, POKEMON_CARD_TYPES);
 const cardRarities = () => byGame(MTG_CARD_RARITIES, LORCANA_RARITIES, POKEMON_RARITIES);
@@ -91,7 +94,7 @@ export const CollectionFiltersBar: React.FC<CollectionFiltersBarProps> = ({
                   : 'text-stone-400 hover:text-stone-200 hover:bg-stone-800'
               }`}
             >
-              {col.bg ? <span className={`px-1.5 py-0.2 rounded text-[11px] ${col.bg}`}>{col.label}</span> : t(col.label)}
+              {col.symbol ? <ManaSymbol cost={col.symbol} size="sm" label={t(MTG_COLOR_NAMES[col.id] ?? col.label)} /> : col.bg ? <span className={`px-1.5 py-0.2 rounded text-[11px] ${col.bg}`}>{col.label}</span> : t(col.label)}
             </button>
           ))}
         </div>

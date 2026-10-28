@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { ExternalLink, FolderHeart, Search, RefreshCw, X, RotateCw, Sparkles, CalendarDays, Eye } from 'lucide-react';
 import { PageHeader } from './ui/PageHeader';
-import { ManaSymbol } from './ManaSymbol';
+import { ManaSymbol, MulticolorSymbol } from './ManaSymbol';
 import { ScryfallCard } from '../types';
 import { getCardImageUri, handleCardImageError, getRarityColor, getRarityLabel } from '../utils/formatters';
 import { useBackToClose } from '../hooks/useBackButton';
@@ -370,8 +370,8 @@ export const SpoilersView: React.FC<SpoilersViewProps> = ({ onAddToWishlist }) =
                       className={`rounded-full p-0.5 border transition-opacity ${colors.includes(c.key) ? 'border-amber-400 opacity-100' : 'border-transparent opacity-60 hover:opacity-100'}`}
                     >
                       {c.key === 'M'
-                        ? <span className="w-5 h-5 inline-flex items-center justify-center rounded-full text-[11px] font-bold bg-gradient-to-br from-amber-300 via-red-500 to-blue-600 text-white">M</span>
-                        : <ManaSymbol cost={`{${c.key}}`} size="md" />}
+                        ? <MulticolorSymbol size="md" label={t(c.label)} />
+                        : <ManaSymbol cost={`{${c.key}}`} size="md" label={t(c.label)} />}
                     </button>
                   ))}
                 </div>

@@ -8,6 +8,7 @@ import { DeckAddCardModalProps } from './types';
 
 import { useBackToClose } from '../../hooks/useBackButton';
 import { useT } from '../../i18n';
+import { ManaSymbol } from '../ManaSymbol';
 export const DeckAddCardModal: React.FC<DeckAddCardModalProps> = ({
   isOpen,
   deckName,
@@ -203,9 +204,7 @@ export const DeckAddCardModal: React.FC<DeckAddCardModalProps> = ({
                         {card.name}
                       </h4>
                       {card.mana_cost && (
-                        <span className="text-[11px] tabular-nums text-amber-300">
-                          {card.mana_cost}
-                        </span>
+                        <ManaSymbol cost={card.mana_cost} size="sm" />
                       )}
                       {digital ? (
                         <span className="text-[11px] text-stone-200 bg-stone-800 px-1.5 py-0.5 rounded border border-stone-600 flex items-center gap-1">
