@@ -5,6 +5,7 @@ import { CollectionFiltersBarProps } from './types';
 import { COLOR_PILLS as MTG_COLOR_PILLS, CARD_TYPES as MTG_CARD_TYPES, CARD_RARITIES as MTG_CARD_RARITIES, LORCANA_INK_PILLS, LORCANA_CARD_TYPES, LORCANA_RARITIES, POKEMON_TYPE_PILLS, POKEMON_CARD_TYPES, POKEMON_RARITIES, SORT_OPTIONS, ROWS_PER_PAGE_OPTIONS } from './constants';
 import { getActiveGame } from '../../utils/activeGame';
 import { ManaSymbol } from '../ManaSymbol';
+import { selectedManaColors, toggleManaColor } from './useCollectionFilters';
 
 // Filtry kolorów, typów i rzadkości zależą od gry (MTG, Disney Lorcana, Pokémon TCG)
 const byGame = <T,>(mtg: T, lorcana: T, pokemon: T): T => {
@@ -13,6 +14,9 @@ const byGame = <T,>(mtg: T, lorcana: T, pokemon: T): T => {
 };
 /** Nazwy kolorów MTG dla czytników ekranu (pigułki pokazują same symbole many). */
 const MTG_COLOR_NAMES: Record<string, string> = { W: 'Biały', U: 'Niebieski', B: 'Czarny', R: 'Czerwony', G: 'Zielony' };
+/** Czy pigułka koloru jest zaznaczona (kolory many MTG można wybrać kilka naraz). */
+const isColorActive = (current: string, id: string) =>
+  current === id || (selectedManaColors(current)?.includes(id) ?? false);
 const colorPills = () => byGame(MTG_COLOR_PILLS, LORCANA_INK_PILLS, POKEMON_TYPE_PILLS);
 const cardTypes = () => byGame(MTG_CARD_TYPES, LORCANA_CARD_TYPES, POKEMON_CARD_TYPES);
 const cardRarities = () => byGame(MTG_CARD_RARITIES, LORCANA_RARITIES, POKEMON_RARITIES);
@@ -87,9 +91,10 @@ export const CollectionFiltersBar: React.FC<CollectionFiltersBarProps> = ({
           {colorPills().map(col => (
             <button
               key={col.id}
-              onClick={() => onFilterChange({ color: col.id })}
+              onClick={() => onFilterChange({ color: col.symbol ? toggleManaColor(filters.color, col.id) : col.id })}
+              aria-pressed={isColorActive(filters.color, col.id)}
               className={`shrink-0 px-2.5 py-1.5 md:py-1 rounded-lg text-xs transition-all cursor-pointer ${
-                filters.color === col.id
+                isColorActive(filters.color, col.id)
                   ? 'bg-stone-800 text-stone-50 font-medium'
                   : 'text-stone-400 hover:text-stone-200 hover:bg-stone-800'
               }`}

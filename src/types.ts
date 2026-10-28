@@ -239,7 +239,7 @@ export interface CommunityDeckSummary {
 
 export interface FilterOptions {
   searchQuery: string;
-  color: string; // 'ALL', 'W', 'U', 'B', 'R', 'G', 'C', 'MULTI'
+  color: string; // 'ALL', 'C', 'MULTI', kolory many MTG po przecinku (np. 'U' albo 'U,B'), atrament Lorcany / typ Pokémon
   type: string; // 'ALL', 'Creature', 'Instant', 'Sorcery', 'Enchantment', 'Artifact', 'Planeswalker', 'Land'
   rarity: string; // 'ALL', 'common', 'uncommon', 'rare', 'mythic'
   set: string; // 'ALL' or set code

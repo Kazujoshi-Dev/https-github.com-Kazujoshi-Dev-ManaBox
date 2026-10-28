@@ -15,6 +15,34 @@ export interface SetOption {
   released?: string;
 }
 
+/** Kolejność kolorów many MTG. */
+export const WUBRG = ['W', 'U', 'B', 'R', 'G'] as const;
+
+/**
+ * Wybrane kolory many z filtra (zapis „U” albo „U,B”), w kolejności WUBRG.
+ * Null, gdy filtr nie jest wyborem kolorów many (ALL, C, MULTI, atrament Lorcany…).
+ */
+export function selectedManaColors(color: string): string[] | null {
+  if (!color || color === 'ALL') return null;
+  const parts = color.split(',');
+  if (!parts.every((c) => (WUBRG as readonly string[]).includes(c))) return null;
+  return WUBRG.filter((c) => parts.includes(c));
+}
+
+/** Nowa wartość filtra po kliknięciu koloru many: przełącza go w wyborze (pusty wybór = wszystkie). */
+export function toggleManaColor(current: string, color: string): string {
+  const selected = selectedManaColors(current) ?? [];
+  const next = selected.includes(color) ? selected.filter((c) => c !== color) : [...selected, color];
+  return next.length ? WUBRG.filter((c) => next.includes(c)).join(',') : 'ALL';
+}
+
+/** Kolory karty; przy kartach dwustronnych bez kolorów na górnym poziomie suma kolorów stron. */
+function cardColors(card: NonNullable<CollectionItem['card']>): string[] {
+  if (card.colors) return card.colors;
+  const faces = card.card_faces?.flatMap((f) => f.colors ?? []) ?? [];
+  return Array.from(new Set(faces));
+}
+
 /** Czy pozycja kolekcji pasuje do filtrów (bez sortowania). */
 export function matchesFilters(item: CollectionItem, filters: FilterOptions): boolean {
   const card = item.card;
@@ -32,12 +60,19 @@ export function matchesFilters(item: CollectionItem, filters: FilterOptions): bo
 
   // Color filter
   if (filters.color !== 'ALL') {
-    const colors = card.colors || [];
-    if (filters.color === 'MULTI' && colors.length < 2) return false;
-    if (filters.color === 'C' && colors.length > 0) return false;
-    if (['W', 'U', 'B', 'R', 'G'].includes(filters.color) && !colors.includes(filters.color)) return false;
-    // Disney Lorcana: filtr atramentu (np. „Amethyst”)
-    if (!['MULTI', 'C', 'W', 'U', 'B', 'R', 'G'].includes(filters.color) && !colors.includes(filters.color)) return false;
+    const colors = cardColors(card);
+    const mana = selectedManaColors(filters.color);
+    if (mana) {
+      // MTG: dokładnie wybrane kolory, np. „U” = tylko mononiebieskie, „U,B” = tylko niebiesko-czarne
+      if (colors.length !== mana.length || !mana.every((c) => colors.includes(c))) return false;
+    } else if (filters.color === 'MULTI') {
+      if (colors.length < 2) return false;
+    } else if (filters.color === 'C') {
+      if (colors.length > 0) return false;
+    } else if (!colors.includes(filters.color)) {
+      // Disney Lorcana / Pokémon: filtr atramentu lub typu (np. „Amethyst”)
+      return false;
+    }
   }
 
   // Type filter
