@@ -8,7 +8,7 @@ import { useCardHoverPreview } from './useCardHoverPreview';
 import { getCardCategory } from './constants';
 import { ReplaceCardModal } from './ReplaceCardModal';
 import { useT, locale, binderName } from '../../i18n';
-import { computeCardAvailability, type CardAvailability } from '../../utils/cardAvailability';
+import { computeCardAvailability, ownedPrintings, type CardAvailability } from '../../utils/cardAvailability';
 
 interface DeckSuggestionsProps {
   deck: DeckItem;
@@ -79,14 +79,25 @@ export const DeckSuggestions: React.FC<DeckSuggestionsProps> = ({ deck, collecti
   const hasFree = (name: string) => (availOf(name)?.free || 0) > 0;
   const collectionOnly = (deck.cardSource || 'collection') === 'collection';
 
+  // Karty, które masz w kolekcji, pokazujemy i dodajemy w Twoim wydaniu
+  const printings = useMemo(() => ownedPrintings(collection, availability), [collection, availability]);
+  const recs = useMemo(
+    () =>
+      (data?.cards || []).map((r) => {
+        const own = printings.get(frontName(r.name));
+        return own ? { ...r, card: own.card, isFoil: own.isFoil } : r;
+      }),
+    [data, printings]
+  );
+
   const inclusionByName = useMemo(
-    () => new Map<string, number>((data?.cards || []).map((r) => [frontName(r.name), r.inclusion] as [string, number])),
+    () => new Map<string, number>(recs.map((r) => [frontName(r.name), r.inclusion] as [string, number])),
     [data]
   );
 
   const missing = useMemo(
-    () => (data?.cards || []).filter((r) => !deckNames.has(frontName(r.name))),
-    [data, deckNames]
+    () => recs.filter((r) => !deckNames.has(frontName(r.name))),
+    [recs, deckNames]
   );
 
   const visible = useMemo(
@@ -100,7 +111,7 @@ export const DeckSuggestions: React.FC<DeckSuggestionsProps> = ({ deck, collecti
   // Lepsze odpowiedniki: rzadko grane karty z talii → popularne karty tego samego typu i podobnego kosztu
   const upgrades = useMemo(() => {
     if (!data) return [];
-    const byName = new Map<string, EdhrecRecommendation>(data.cards.map((r) => [frontName(r.name), r] as [string, EdhrecRecommendation]));
+    const byName = new Map<string, EdhrecRecommendation>(recs.map((r) => [frontName(r.name), r] as [string, EdhrecRecommendation]));
     const weak = deck.cards
       .filter((e) => !e.isCommander && !e.isSideboard && !isBasicLand(e.card))
       .map((e) => ({ card: e.card, inclusion: byName.get(frontName(e.card.name))?.inclusion ?? 0 }))

@@ -440,6 +440,8 @@ export interface EdhrecRecommendation {
   synergy: number;
   list: string;
   card: ScryfallCard | null;
+  /** Karta z Twojej kolekcji w wersji foil (tylko gdy `card` to posiadane wydanie). */
+  isFoil?: boolean;
 }
 export interface EdhrecCommanderData {
   commander: string;

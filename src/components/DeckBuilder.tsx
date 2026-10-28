@@ -203,7 +203,7 @@ export const DeckBuilder: React.FC<DeckBuilderProps> = ({
       showToast(t('Nie udało się pobrać karty "{name}".', { name: rec.name }));
       return;
     }
-    handleAddCardToDeck(card);
+    handleAddCardToDeck(card, false, rec.isFoil || undefined);
     showToast(t('Dodano "{name}" do talii.', { name: card.name }));
   }, [resolveRecommendedCard, handleAddCardToDeck, showToast]);
 
@@ -232,7 +232,7 @@ export const DeckBuilder: React.FC<DeckBuilderProps> = ({
       .map((e) => (e.card.id === oldCard.id ? { ...e, quantity: e.quantity - 1 } : e))
       .filter((e) => e.quantity > 0);
     if (!cards.some((e) => e.card.id === card.id || e.card.name === card.name)) {
-      cards.push({ card, quantity: 1, isCommander: false });
+      cards.push({ card, quantity: 1, isCommander: false, ...(rec.isFoil ? { isFoil: true } : {}) });
     }
     onUpdateDeck({ ...deck, cards });
     showToast(t('Zamieniono "{name}" na "{name2}".', { name: oldCard.name, name2: card.name }));

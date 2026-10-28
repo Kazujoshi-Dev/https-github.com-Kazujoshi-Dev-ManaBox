@@ -5,7 +5,7 @@
  */
 import type { CollectionItem, DeckItem, ScryfallCard } from '../../types';
 import type { EdhrecRecommendation } from '../../services/api';
-import type { CardAvailability } from '../../utils/cardAvailability';
+import type { CardAvailability, OwnedPrinting } from '../../utils/cardAvailability';
 import { cardNameKey } from '../../utils/cardAvailability';
 import { isLand } from './deckAnalysis';
 import { tk } from '../../i18n';
@@ -206,8 +206,10 @@ export function collectionPicks(opts: {
   availability: Map<string, CardAvailability>;
   exclude: Set<string>;
   limit: number;
+  /** Najlepszy posiadany egzemplarz każdej karty (wydanie i foil). */
+  printings?: Map<string, OwnedPrinting>;
 }): AssistantPick[] {
-  const { deck, progress, collection, availability, exclude, limit } = opts;
+  const { deck, progress, collection, availability, exclude, limit, printings } = opts;
   if (progress.full || !deck.commander) return [];
   const identity = new Set(deck.commander.color_identity || []);
   const inDeck = deckNameSet(deck);
@@ -227,8 +229,10 @@ export function collectionPicks(opts: {
     const roles = cardRoles(card);
     const gain = roles.reduce((s, r) => s + progress.need[r], 0);
     if (gain === 0) continue;
-    const rec: EdhrecRecommendation = { name: card.name, inclusion: 0, numDecks: 0, synergy: 0, list: '', card };
-    out.push({ name: card.name, card, roles, inclusion: null, free, rec, rank: card.edhrec_rank ?? Number.MAX_SAFE_INTEGER, gain });
+    const own = printings?.get(key);
+    const shown = own?.card ?? card;
+    const rec: EdhrecRecommendation = { name: card.name, inclusion: 0, numDecks: 0, synergy: 0, list: '', card: shown, isFoil: own?.isFoil };
+    out.push({ name: card.name, card: shown, roles, inclusion: null, free, rec, rank: card.edhrec_rank ?? Number.MAX_SAFE_INTEGER, gain });
   }
   return out.sort((a, b) => b.gain - a.gain || a.rank - b.rank).slice(0, limit);
 }

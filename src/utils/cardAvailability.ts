@@ -1,4 +1,4 @@
-import type { CollectionItem, DeckItem } from '../types';
+import type { CollectionItem, DeckItem, ScryfallCard } from '../types';
 import { isArenaFormat } from './mtgFormats';
 import { DEFAULT_BINDER } from './collectionEntry';
 
@@ -114,4 +114,32 @@ export function computeCardAvailability(
     });
   }
   return result;
+}
+
+/** Posiadane wydanie karty: konkretna pozycja z kolekcji, żeby pokazywać i dodawać do talii Twój egzemplarz. */
+export interface OwnedPrinting {
+  card: ScryfallCard;
+  isFoil: boolean;
+}
+
+/**
+ * Wydanie każdej posiadanej karty (klucz: cardNameKey). Najpierw egzemplarze z klaserów, w których
+ * karta jest wolna (nie zajmuje jej inna talia), potem zwykłe przed foil, potem więcej sztuk.
+ */
+export function ownedPrintings(collection: CollectionItem[], availability: Map<string, CardAvailability>): Map<string, OwnedPrinting> {
+  const best = new Map<string, { item: CollectionItem; score: number }>();
+  for (const item of collection) {
+    const card = item.card;
+    const qty = (item.quantity || 0) + (item.quantityFoil || 0);
+    if (!card?.name || qty <= 0) continue;
+    const key = cardNameKey(card.name);
+    const freeBinders = availability.get(key)?.freeBinders || [];
+    const inFreeBinder = freeBinders.some((b) => b.binder === (item.binder || DEFAULT_BINDER));
+    const score = (inFreeBinder ? 1000 : 0) + ((item.quantity || 0) > 0 ? 100 : 0) + Math.min(qty, 99);
+    const prev = best.get(key);
+    if (!prev || score > prev.score) best.set(key, { item, score });
+  }
+  const out = new Map<string, OwnedPrinting>();
+  for (const [key, { item }] of best) out.set(key, { card: item.card!, isFoil: (item.quantity || 0) === 0 });
+  return out;
 }

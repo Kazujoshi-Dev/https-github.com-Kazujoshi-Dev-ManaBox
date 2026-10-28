@@ -2,7 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { Wand2, Plus, Loader2, AlertCircle, Check, Library, TrendingUp } from 'lucide-react';
 import type { CollectionItem, DeckItem, ScryfallCard } from '../../types';
 import type { EdhrecRecommendation } from '../../services/api';
-import { computeCardAvailability, type CardAvailability } from '../../utils/cardAvailability';
+import { computeCardAvailability, ownedPrintings, type CardAvailability } from '../../utils/cardAvailability';
 import { useT, locale, binderName } from '../../i18n';
 import { ManaSymbol } from '../ManaSymbol';
 import { useEdhrecCommander } from './useEdhrecCommander';
@@ -54,26 +54,37 @@ export const DeckBuildAssistant: React.FC<DeckBuildAssistantProps> = ({ deck, co
   const progress = useMemo(() => deckProgress(deck), [deck]);
   const availability = useMemo(() => computeCardAvailability(collection, decks || [], deck.id), [collection, decks, deck.id]);
 
+  // Karty, które masz w kolekcji, pokazujemy i dodajemy w Twoim wydaniu
+  const printings = useMemo(() => ownedPrintings(collection, availability), [collection, availability]);
+  const recs = useMemo(
+    () =>
+      (data?.cards || []).map((r) => {
+        const own = printings.get(cardNameKey(r.name));
+        return own ? { ...r, card: own.card, isFoil: own.isFoil } : r;
+      }),
+    [data, printings]
+  );
+
   const picks = useMemo(
     () =>
       nextPicks({
         deck,
         progress,
-        recommendations: data?.cards || [],
+        recommendations: recs,
         availability,
         collectionOnly,
         preferFree,
         // o jedną więcej, żeby wiedzieć, czy pokazać „Pokaż więcej”
         limit: limit + 1,
       }),
-    [deck, progress, data, availability, collectionOnly, preferFree, limit]
+    [deck, progress, recs, availability, collectionOnly, preferFree, limit]
   );
 
   const ownPicks = useMemo(() => {
     // Karty z listy EDHREC pokazujemy wyżej, tu tylko pozostałe z kolekcji
     const exclude = new Set<string>((data?.cards || []).map((r) => cardNameKey(r.name)));
-    return collectionPicks({ deck, progress, collection, availability, exclude, limit: ownLimit + 1 });
-  }, [deck, progress, collection, availability, data, ownLimit]);
+    return collectionPicks({ deck, progress, collection, availability, exclude, limit: ownLimit + 1, printings });
+  }, [deck, progress, collection, availability, data, ownLimit, printings]);
 
   const add = async (pick: AssistantPick) => {
     setBusy(pick.name);
