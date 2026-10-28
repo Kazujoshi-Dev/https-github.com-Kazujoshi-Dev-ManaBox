@@ -391,6 +391,13 @@ async function refineEdition(
   const text = await ocrFooter(footerCanvas).catch(() => '');
   const footer = parseFooter(text);
   const i = pickPrintingByFooterText(result.possibleCards as any[], text, footer.lang);
+  const label = (c: any) => (c ? `${c.set}/${c.collector_number}${c.lang && c.lang !== 'en' ? ` ${c.lang}` : ''}` : '');
+  // do logu serwera (ocena, czy stopka poprawia edycję); błąd wysyłania nie ma znaczenia
+  fetchWithAuth('/api/scanner/edition-log', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ image: label(result.matchedCard), final: label(i > 0 ? result.possibleCards[i] : result.matchedCard), ties, footer: text })
+  }).catch(() => {});
   const refined: ScanResult = {
     ...result,
     detectedSet: footer.set,

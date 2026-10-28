@@ -1095,6 +1095,18 @@ app.post('/api/scanner/delver-identify', authMiddleware, scannerLimiter, async (
   }
 });
 
+// Wynik doboru wydania ze stopki (odbywa się w przeglądarce) — tylko do logu, żeby dało się
+// ocenić na prawdziwych skanach, czy stopka poprawia edycję wybraną po obrazie.
+app.post('/api/scanner/edition-log', authMiddleware, scannerLimiter, (req, res) => {
+  const str = (v: unknown, max: number) => (typeof v === 'string' ? v.replace(/[^\p{L}\p{N} /•*.,:'-]/gu, ' ').trim().slice(0, max) : '');
+  const ties = Math.max(0, Math.min(99, Number(req.body?.ties) || 0));
+  console.log(
+    `[Skan] wydanie_ze_stopki obraz=${str(req.body?.image, 24) || '-'} wynik=${str(req.body?.final, 24) || '-'} ` +
+      `remis_wydań=${ties} stopka="${str(req.body?.footer, 120).replace(/\s+/g, ' ')}"`
+  );
+  res.json({ success: true });
+});
+
 // --- SKANER DISNEY LORCANA: rozpoznanie po obrazie (odciski grafik z Lorcast) ---
 app.post('/api/scanner/lorcana-identify', authMiddleware, scannerLimiter, async (req, res) => {
   try {
