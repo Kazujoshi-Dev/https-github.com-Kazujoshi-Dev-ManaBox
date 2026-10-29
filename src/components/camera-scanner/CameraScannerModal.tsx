@@ -35,6 +35,7 @@ import { searchCardInScryfall, playScannerChime, getTesseractWorker } from './oc
 import { calculateVideoSensorCrop } from './cvCardPipeline';
 import { GLARE_WARN, detectCardInSource, recognizeCard } from './scanEngine';
 import { Quad, quadMovement } from './cardDetector';
+import { CardLangFlag } from '../ui/CardLangFlag';
 import { EdhrecBadge } from '../EdhrecBadge';
 
 import { useBackToClose } from '../../hooks/useBackButton';
@@ -1623,14 +1624,7 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
                                 <span className="tabular-nums text-[11px] bg-stone-800 px-1 py-0.2 rounded border border-stone-700 shrink-0">
                                   {p.set.toUpperCase()}
                                 </span>
-                                <span
-                                  title={t('Język karty')}
-                                  className={`text-[11px] px-1 py-0.2 rounded border shrink-0 ${
-                                    lang === 'EN' ? 'bg-stone-900 border-stone-700 text-stone-400' : 'bg-stone-700 border-stone-600 text-stone-100'
-                                  }`}
-                                >
-                                  {lang}
-                                </span>
+                                <CardLangFlag lang={lang} />
                                 <span className="truncate">
                                   {p.set_name} (<span className="tabular-nums">#{p.collector_number}</span>)
                                 </span>
