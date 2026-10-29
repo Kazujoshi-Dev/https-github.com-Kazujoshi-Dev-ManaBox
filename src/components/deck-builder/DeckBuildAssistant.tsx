@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { Wand2, Plus, Loader2, AlertCircle, Check, Library, TrendingUp } from 'lucide-react';
+import { Wand2, Plus, Minus, Loader2, AlertCircle, Check, Library, TrendingUp, RotateCcw } from 'lucide-react';
 import type { CollectionItem, DeckItem, ScryfallCard } from '../../types';
 import type { EdhrecRecommendation } from '../../services/api';
 import { computeCardAvailability, ownedPrintings, type CardAvailability } from '../../utils/cardAvailability';
@@ -17,6 +17,7 @@ import {
   type AssistantPick,
 } from './buildAssistant';
 import { cardNameKey } from '../../utils/cardAvailability';
+import { TARGET_MAX, TARGET_MIN, clampTarget, type AssistantTargets, type Role } from '../../utils/assistantTargets';
 
 interface DeckBuildAssistantProps {
   deck: DeckItem;
@@ -25,6 +26,8 @@ interface DeckBuildAssistantProps {
   onAddCard: (rec: EdhrecRecommendation) => void | Promise<void>;
   onViewCardDetails: (card: ScryfallCard) => void;
   onDisable: () => void;
+  /** Zapis własnych celów ról (undefined = wszystkie automatyczne). */
+  onChangeTargets: (targets: AssistantTargets | undefined) => void;
 }
 
 const PAGE = 6;
@@ -41,7 +44,7 @@ const Bar: React.FC<{ value: number; max: number }> = ({ value, max }) => (
 );
 
 /** Asystent budowy talii Commander: postęp ról i kolejne karty do dodania. */
-export const DeckBuildAssistant: React.FC<DeckBuildAssistantProps> = ({ deck, collection, decks, onAddCard, onViewCardDetails, onDisable }) => {
+export const DeckBuildAssistant: React.FC<DeckBuildAssistantProps> = ({ deck, collection, decks, onAddCard, onViewCardDetails, onDisable, onChangeTargets }) => {
   const t = useT();
   const { data, error, loading } = useEdhrecCommander(deck.commander?.name || '');
   const collectionOnly = (deck.cardSource || 'collection') === 'collection';
@@ -52,6 +55,18 @@ export const DeckBuildAssistant: React.FC<DeckBuildAssistantProps> = ({ deck, co
   const { previewProps, previewPortal } = useCardHoverPreview();
 
   const progress = useMemo(() => deckProgress(deck), [deck]);
+  const hasCustom = progress.roles.some((r) => r.custom);
+
+  /** Zmienia cel roli o krok; powrót do wartości automatycznej usuwa własny cel. */
+  const changeTarget = (role: Role, delta: number) => {
+    const status = progress.roles.find((r) => r.role === role);
+    if (!status) return;
+    const value = clampTarget(role, status.target + delta);
+    const next: AssistantTargets = { ...(deck.assistantTargets || {}) };
+    if (value === status.autoTarget) delete next[role];
+    else next[role] = value;
+    onChangeTargets(Object.keys(next).length ? next : undefined);
+  };
   const availability = useMemo(() => computeCardAvailability(collection, decks || [], deck.id), [collection, decks, deck.id]);
 
   // Karty, które masz w kolekcji, pokazujemy i dodajemy w Twoim wydaniu
@@ -185,14 +200,48 @@ export const DeckBuildAssistant: React.FC<DeckBuildAssistantProps> = ({ deck, co
                     <span className="text-stone-400 truncate">{t(ROLE_LABELS[r.role])}</span>
                     {r.have >= r.target && <Check className="w-3.5 h-3.5 text-stone-400 shrink-0" aria-label={t('Cel osiągnięty')} />}
                   </div>
-                  <div className="text-sm font-semibold tabular-nums text-stone-100 mb-1.5">
-                    {r.have} <span className="text-stone-500 font-normal">/ {r.target}</span>
+                  <div className="flex items-center justify-between gap-1 mb-1.5">
+                    <div className="text-sm font-semibold tabular-nums text-stone-100">
+                      {r.have}{' '}
+                      <span className={`font-normal ${r.custom ? 'text-amber-300' : 'text-stone-500'}`}>/ {r.target}</span>
+                    </div>
+                    <div className="flex items-center gap-0.5 shrink-0" role="group" aria-label={t('Cel: {role}', { role: t(ROLE_LABELS[r.role]) })}>
+                      <button
+                        type="button"
+                        onClick={() => changeTarget(r.role, -1)}
+                        disabled={r.target <= TARGET_MIN}
+                        className="w-6 h-6 rounded-md flex items-center justify-center text-stone-400 hover:text-stone-100 hover:bg-stone-800 disabled:opacity-40 disabled:pointer-events-none cursor-pointer"
+                        aria-label={t('Zmniejsz cel: {role}', { role: t(ROLE_LABELS[r.role]) })}
+                        title={t('Zmniejsz cel')}
+                      >
+                        <Minus className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => changeTarget(r.role, 1)}
+                        disabled={r.target >= TARGET_MAX[r.role]}
+                        className="w-6 h-6 rounded-md flex items-center justify-center text-stone-400 hover:text-stone-100 hover:bg-stone-800 disabled:opacity-40 disabled:pointer-events-none cursor-pointer"
+                        aria-label={t('Zwiększ cel: {role}', { role: t(ROLE_LABELS[r.role]) })}
+                        title={t('Zwiększ cel')}
+                      >
+                        <Plus className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
                   </div>
                   <Bar value={r.have} max={r.target} />
                 </div>
               ))}
             </div>
-            <p className="text-[11px] text-stone-500">{t('Role rozpoznajemy z tekstu kart, więc liczby są przybliżone. Cele to typowe proporcje talii Commander.')}</p>
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <p className="text-[11px] text-stone-500">
+                {t('Role rozpoznajemy z tekstu kart, więc liczby są przybliżone. Cele to typowe proporcje talii Commander, możesz je zmienić przyciskami +/-.')}
+              </p>
+              {hasCustom && (
+                <button type="button" onClick={() => onChangeTargets(undefined)} className="btn btn-ghost text-xs">
+                  <RotateCcw className="w-3.5 h-3.5" /> {t('Przywróć domyślne cele')}
+                </button>
+              )}
+            </div>
           </div>
 
           {progress.full ? (

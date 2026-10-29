@@ -198,6 +198,8 @@ export async function initDb(): Promise<void> {
           ALTER TABLE user_decks ADD COLUMN IF NOT EXISTS is_public BOOLEAN NOT NULL DEFAULT FALSE;
           -- asystent budowy talii Commander (podpowiedzi kolejnych kart)
           ALTER TABLE user_decks ADD COLUMN IF NOT EXISTS build_assistant BOOLEAN NOT NULL DEFAULT FALSE;
+          -- własne cele ról w asystencie budowy (np. {"lands": 36}); NULL = cele automatyczne
+          ALTER TABLE user_decks ADD COLUMN IF NOT EXISTS assistant_targets JSONB;
           -- panel administratora: blokady kont, wymuszona zmiana hasła, ukrycie oferty
           ALTER TABLE users ADD COLUMN IF NOT EXISTS banned_until TIMESTAMPTZ;
           ALTER TABLE users ADD COLUMN IF NOT EXISTS ban_permanent BOOLEAN NOT NULL DEFAULT FALSE;

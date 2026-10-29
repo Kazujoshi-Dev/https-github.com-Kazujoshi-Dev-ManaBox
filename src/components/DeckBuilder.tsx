@@ -492,6 +492,7 @@ export const DeckBuilder: React.FC<DeckBuilderProps> = ({
           onAddCard={handleAddRecommended}
           onViewCardDetails={onViewCardDetails}
           onDisable={() => onUpdateDeck({ ...deck, buildAssistant: false })}
+          onChangeTargets={(assistantTargets) => onUpdateDeck({ ...deck, assistantTargets })}
         />
       )}
 

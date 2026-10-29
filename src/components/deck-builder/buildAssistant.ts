@@ -9,9 +9,9 @@ import type { CardAvailability, OwnedPrinting } from '../../utils/cardAvailabili
 import { cardNameKey } from '../../utils/cardAvailability';
 import { isLand } from './deckAnalysis';
 import { tk } from '../../i18n';
+import { ROLES, type AssistantTargets, type Role } from '../../utils/assistantTargets';
 
-export type Role = 'lands' | 'ramp' | 'draw' | 'removal' | 'wipe';
-export const ROLES: Role[] = ['lands', 'ramp', 'draw', 'removal', 'wipe'];
+export { ROLES, type Role };
 
 export const ROLE_LABELS: Record<Role, string> = {
   lands: 'Lands',
@@ -102,6 +102,10 @@ export interface RoleStatus {
   role: Role;
   have: number;
   target: number;
+  /** Cel wyliczony automatycznie (do porównania z własnym). */
+  autoTarget: number;
+  /** Cel ustawiony przez gracza. */
+  custom: boolean;
 }
 
 export interface DeckProgress {
@@ -113,8 +117,8 @@ export interface DeckProgress {
   need: Record<Role, number>;
 }
 
-/** Liczy role w talii i cele dla 100 kart. */
-export function deckProgress(deck: DeckItem): DeckProgress {
+/** Liczy role w talii i cele dla 100 kart (własne cele gracza mają pierwszeństwo). */
+export function deckProgress(deck: DeckItem, overrides: AssistantTargets = deck.assistantTargets || {}): DeckProgress {
   const have: Record<Role, number> = { lands: 0, ramp: 0, draw: 0, removal: 0, wipe: 0 };
   let size = deck.commander ? 1 : 0;
   let mvSum = 0;
@@ -133,13 +137,15 @@ export function deckProgress(deck: DeckItem): DeckProgress {
   // Wzór Franka Karstena dla 99 kart minus ok. 3 Lands za 10 kart rampy; przy prawie pustej talii średni koszt 2,8
   const avgMv = spells >= 10 ? mvSum / spells : 2.8;
   const landTarget = Math.min(40, Math.max(33, Math.round(31.42 + 3.13 * avgMv) - 3));
-  const targets: Record<Role, number> = { lands: landTarget, ...BASE_TARGETS };
+  const auto: Record<Role, number> = { lands: landTarget, ...BASE_TARGETS };
+  const targets = {} as Record<Role, number>;
+  ROLES.forEach((r) => (targets[r] = overrides[r] ?? auto[r]));
   const need = {} as Record<Role, number>;
-  ROLES.forEach((r) => (need[r] = Math.max(0, targets[r] - have[r]) / targets[r]));
+  ROLES.forEach((r) => (need[r] = targets[r] > 0 ? Math.max(0, targets[r] - have[r]) / targets[r] : 0));
   return {
     size,
     full: size >= COMMANDER_DECK_SIZE,
-    roles: ROLES.map((role) => ({ role, have: have[role], target: targets[role] })),
+    roles: ROLES.map((role) => ({ role, have: have[role], target: targets[role], autoTarget: auto[role], custom: overrides[role] != null })),
     need,
   };
 }

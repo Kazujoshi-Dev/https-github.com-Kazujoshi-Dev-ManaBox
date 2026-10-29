@@ -11,7 +11,7 @@ export async function getDecks(userId: string, game: GameId = DEFAULT_GAME): Pro
       const res = await p.query(
         `SELECT id, name, format, description, card_source as "cardSource", commander,
                 commander_is_foil as "commanderIsFoil", cards, is_public as "isPublic",
-                build_assistant as "buildAssistant", created_at as "createdAt", updated_at as "updatedAt"
+                build_assistant as "buildAssistant", assistant_targets as "assistantTargets", created_at as "createdAt", updated_at as "updatedAt"
          FROM user_decks WHERE user_id = $1 AND game = $2 ORDER BY updated_at DESC`,
         [userId, game]
       );
@@ -36,8 +36,8 @@ export async function saveDeck(userId: string, deck: DeckItem, game: GameId = DE
     async (p) => {
       // Aktualizacja tylko własnej talii: przy cudzym id konflikt nie zmienia wiersza (null → 404)
       const res = await p.query(
-        `INSERT INTO user_decks (id, user_id, name, format, description, card_source, commander, commander_is_foil, cards, created_at, updated_at, game, build_assistant)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+        `INSERT INTO user_decks (id, user_id, name, format, description, card_source, commander, commander_is_foil, cards, created_at, updated_at, game, build_assistant, assistant_targets)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
          ON CONFLICT (id) DO UPDATE SET
            name = EXCLUDED.name,
            format = EXCLUDED.format,
@@ -47,6 +47,7 @@ export async function saveDeck(userId: string, deck: DeckItem, game: GameId = DE
            commander_is_foil = EXCLUDED.commander_is_foil,
            cards = EXCLUDED.cards,
            build_assistant = EXCLUDED.build_assistant,
+           assistant_targets = EXCLUDED.assistant_targets,
            updated_at = EXCLUDED.updated_at
          WHERE user_decks.user_id = EXCLUDED.user_id AND user_decks.game = EXCLUDED.game
          RETURNING is_public`,
@@ -63,7 +64,8 @@ export async function saveDeck(userId: string, deck: DeckItem, game: GameId = DE
           deckToSave.createdAt || now,
           now,
           game,
-          Boolean(deckToSave.buildAssistant)
+          Boolean(deckToSave.buildAssistant),
+          deckToSave.assistantTargets ? JSON.stringify(deckToSave.assistantTargets) : null
         ]
       );
       if (!res.rows[0]) return null;

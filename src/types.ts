@@ -1,3 +1,4 @@
+import type { AssistantTargets } from './utils/assistantTargets';
 export interface ScryfallImageUris {
   small?: string;
   normal?: string;
@@ -215,6 +216,8 @@ export interface DeckItem {
   isPublic?: boolean;
   /** Asystent budowy (Commander): podpowiada kolejne karty według EDHREC, ról w talii i wolnych kart z kolekcji. */
   buildAssistant?: boolean;
+  /** Własne cele ról w asystencie budowy (np. { lands: 36 }); brak = cele automatyczne. */
+  assistantTargets?: AssistantTargets;
   cards: DeckCardEntry[];
   createdAt: string;
   updatedAt?: string;

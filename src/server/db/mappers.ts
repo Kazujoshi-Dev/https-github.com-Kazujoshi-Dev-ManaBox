@@ -1,5 +1,6 @@
 import { isGameId, type GameId } from '../../games';
 import { CollectionItem, WishlistItem, Catalog, AppSettings, DeckItem, UserMessage } from '../../types';
+import { sanitizeAssistantTargets } from '../../utils/assistantTargets';
 import { DbUser } from './types';
 
 export function mapUserRow(r: any): DbUser {
@@ -156,6 +157,10 @@ export function mapDeckRow(r: any): DeckItem {
     commanderIsFoil: Boolean(r.commanderIsFoil ?? r.commander_is_foil),
     isPublic: Boolean(r.isPublic ?? r.is_public),
     buildAssistant: Boolean(r.buildAssistant ?? r.build_assistant),
+    ...(() => {
+      const targets = sanitizeAssistantTargets(r.assistantTargets ?? r.assistant_targets);
+      return targets ? { assistantTargets: targets } : {};
+    })(),
     cards: Array.isArray(r.cards)
       ? r.cards
       : (typeof r.cards === 'string' ? JSON.parse(r.cards) : []),

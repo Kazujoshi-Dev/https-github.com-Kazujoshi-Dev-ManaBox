@@ -38,6 +38,7 @@ import { normalizeName, queryVariants } from './src/server/cards/nameMatch';
 import { searchCities, resolveSuggestion } from './src/server/geo';
 import { APP_USER_AGENT } from './src/server/userAgent';
 import { isDigitalOnly, DIGITAL_BLOCK_MESSAGE, type SearchGame } from './src/utils/mtgFormats';
+import { sanitizeAssistantTargets } from './src/utils/assistantTargets';
 
 const app = express();
 const PORT = 3000;
@@ -3783,7 +3784,8 @@ app.put('/api/decks/:id', authMiddleware, async (req, res) => {
       id,
       cardSource: req.body.cardSource === 'all' ? 'all' : 'collection',
       format: req.body.format || 'EDH Commander',
-      buildAssistant: req.body.buildAssistant === true
+      buildAssistant: req.body.buildAssistant === true,
+      assistantTargets: sanitizeAssistantTargets(req.body.assistantTargets)
     };
     const saved = await db.saveDeck(userId, deckToSave, gameOf(req));
     if (!saved) return res.status(404).json({ error: 'Nie znaleziono talii.' });
