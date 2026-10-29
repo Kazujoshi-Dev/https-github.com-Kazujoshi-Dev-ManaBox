@@ -176,4 +176,6 @@ export const en_scanner: Record<string, string> = {
   "Nie znaleziono karty {set} #{number}. Sprawdź kod dodatku i numer z dołu karty.": "Card {set} #{number} not found. Check the set code and number at the bottom of the card.",
   "Odblask zasłania ilustrację. Przechyl lekko kartę albo odsuń lampę.": "Glare is covering the artwork. Tilt the card slightly or move the lamp away.",
   "Odczyt wydania karty...": "Reading the card printing...",
+  "Mniej sztuk": "Fewer copies",
+  "Więcej sztuk": "More copies",
 };

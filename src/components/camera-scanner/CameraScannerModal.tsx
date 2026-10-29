@@ -44,6 +44,8 @@ import { printsUrl, searchUrl } from '../../utils/cardSource';
 import { useT, tk, MAIN_BINDER, binderName } from '../../i18n';
 /** Pewność serwera, przy której karta ze skanu automatycznego jest pokazywana od razu. */
 const AUTO_ACCEPT_CONFIDENCE = 80;
+/** Górna granica ilości ustawianej strzałkami (ochrona przed przytrzymanym klawiszem). */
+const MAX_SCAN_QUANTITY = 999;
 const GLARE_MESSAGE = tk('Odblask zasłania ilustrację. Przechyl lekko kartę albo odsuń lampę.');
 /** Odstęp między kolejnymi próbami rozpoznania tej samej karty. */
 const RETRY_DELAY_MS = 500;
@@ -768,6 +770,7 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
   // - SPACJA: blokuje przewijanie strony i uruchamia skanowanie ponownie
   // - ENTER: natychmiast dodaje rozpoznaną kartę do domyślnego klasera / kolekcji
   // - STRZAŁKI ← / →: wersja zwykła / foil rozpoznanej karty
+  // - STRZAŁKI ↑ / ↓: ilość sztuk (o 1, najmniej 1)
   useEffect(() => {
     if (!isOpen) return;
 
@@ -781,6 +784,13 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
         e.preventDefault();
         e.stopPropagation();
         setIsFoil(e.key === 'ArrowRight');
+        return;
+      }
+      if ((e.key === 'ArrowUp' || e.key === 'ArrowDown') && activeCard && !isTextInput && !(target instanceof HTMLSelectElement)) {
+        if (e.altKey || e.ctrlKey || e.metaKey || e.shiftKey) return;
+        e.preventDefault();
+        e.stopPropagation();
+        setQuantity((q) => (e.key === 'ArrowUp' ? Math.min(MAX_SCAN_QUANTITY, q + 1) : Math.max(1, q - 1)));
         return;
       }
 
@@ -1680,11 +1690,14 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
                     <div>
                       <label className="block text-[11px] font-semibold text-stone-400 mb-1">
                         {t('Ilość sztuk')}
+                        <kbd className="hidden sm:inline ml-1 px-1 rounded border border-stone-700 text-[11px] font-normal text-stone-400" aria-hidden="true">↑↓</kbd>
                       </label>
                       <div className="flex items-center gap-1">
                         <button
                           type="button"
                           onClick={() => setQuantity((q) => Math.max(1, q - 1))}
+                          aria-label={t('Mniej sztuk')}
+                          aria-keyshortcuts="ArrowDown"
                           className="w-7 h-7 rounded bg-stone-900 hover:bg-stone-800 border border-stone-700 text-stone-300 flex items-center justify-center cursor-pointer"
                         >
                           <Minus className="w-3 h-3" />
@@ -1694,7 +1707,9 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
                         </span>
                         <button
                           type="button"
-                          onClick={() => setQuantity((q) => q + 1)}
+                          onClick={() => setQuantity((q) => Math.min(MAX_SCAN_QUANTITY, q + 1))}
+                          aria-label={t('Więcej sztuk')}
+                          aria-keyshortcuts="ArrowUp"
                           className="w-7 h-7 rounded bg-stone-900 hover:bg-stone-800 border border-stone-700 text-stone-300 flex items-center justify-center cursor-pointer"
                         >
                           <Plus className="w-3 h-3" />
