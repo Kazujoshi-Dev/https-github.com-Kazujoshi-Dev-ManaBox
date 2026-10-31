@@ -848,7 +848,7 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        className="relative bg-stone-900 sm:border border-stone-800 sm:rounded-2xl max-w-4xl w-full overflow-hidden shadow-2xl sm:my-auto text-stone-100 h-dvh sm:h-auto sm:max-h-[95vh] flex flex-col pt-[env(safe-area-inset-top)] sm:pt-0"
+        className="relative bg-stone-900 sm:border border-stone-800 sm:rounded-2xl max-w-[1075px] w-full overflow-hidden shadow-2xl sm:my-auto text-stone-100 h-dvh sm:h-auto sm:max-h-[95vh] flex flex-col pt-[env(safe-area-inset-top)] sm:pt-0"
       >
         {/* Modal Top Header */}
         <div className="flex items-center justify-between gap-3 px-3 sm:px-5 py-2 sm:py-3 border-b border-stone-800 bg-stone-950/80 shrink-0">
