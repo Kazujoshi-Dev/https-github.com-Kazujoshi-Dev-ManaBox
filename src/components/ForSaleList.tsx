@@ -33,9 +33,11 @@ import {
   Pencil,
   ChevronDown,
   GripVertical,
-  Inbox
+  Inbox,
+  QrCode
 } from 'lucide-react';
 import { useT, plural } from '../i18n';
+import { SaleQrModal } from './SaleQrModal';
 
 // Mapa (Leaflet) ładowana dopiero po otwarciu — nie spowalnia reszty aplikacji
 const SellersMapModal = lazyWithReload(() => import('./SellersMapModal'));
@@ -77,6 +79,7 @@ export const ForSaleList: React.FC<ForSaleListProps> = ({
   const [filterFoilOnly, setFilterFoilOnly] = useState<boolean>(false);
   const [sortBy, setSortBy] = useState<'price-desc' | 'price-asc' | 'name' | 'edhrec'>('price-desc');
   const [copiedLink, setCopiedLink] = useState(false);
+  const [isQrOpen, setIsQrOpen] = useState(false);
   const [copiedText, setCopiedText] = useState(false);
   const [editingPriceId, setEditingPriceId] = useState<string | null>(null);
   const [tempPrice, setTempPrice] = useState<string>('');
@@ -754,6 +757,15 @@ export const ForSaleList: React.FC<ForSaleListProps> = ({
         </Suspense>
       )}
 
+      {isQrOpen && (
+        <SaleQrModal
+          url={publicShareUrl}
+          username={currentUser?.username || publicShareSlug}
+          onClose={() => setIsQrOpen(false)}
+          showToast={showToast}
+        />
+      )}
+
       {/* Publiczny link do oferty */}
       <div className="rounded-xl border border-stone-800 bg-stone-900 p-3 flex flex-col md:flex-row md:items-center gap-3">
         <div className="flex items-center gap-2 text-sm text-stone-300 shrink-0">
@@ -777,6 +789,10 @@ export const ForSaleList: React.FC<ForSaleListProps> = ({
             <ExternalLink className="w-4 h-4" />
             <span className="hidden lg:inline">{t('Podgląd')}</span>
           </a>
+          <button type="button" onClick={() => setIsQrOpen(true)} className="btn btn-ghost" title={t('Pokaż kod QR, który otwiera Twoją ofertę')}>
+            <QrCode className="w-4 h-4" />
+            <span className="hidden lg:inline">{t('Kod QR')}</span>
+          </button>
           <button type="button" onClick={handleCopyTextList} className="btn btn-ghost" title={t('Kopiuj listę kart jako tekst')}>
             {copiedText ? <Check className="w-4 h-4 text-emerald-400" /> : <FileText className="w-4 h-4" />}
             <span className="hidden lg:inline">{copiedText ? t('Skopiowano') : t('Lista .txt')}</span>

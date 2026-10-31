@@ -26,8 +26,10 @@ import {
   ArrowUpDown,
   FolderHeart,
   Heart,
-  Mail
+  Mail,
+  QrCode
 } from 'lucide-react';
+import { SaleQrModal } from './SaleQrModal';
 import { SendMessageModal } from './messages/SendMessageModal';
 import { useT, locale, plural } from '../i18n';
 
@@ -89,6 +91,7 @@ export const UsersList: React.FC<UsersListProps> = ({
   const [wishlistSortBy, setWishlistSortBy] = useState<'price-desc' | 'price-asc' | 'name' | 'edhrec'>('price-desc');
 
   const [copiedLinkUser, setCopiedLinkUser] = useState<string | null>(null);
+  const [qrUser, setQrUser] = useState<string | null>(null);
   const [copiedText, setCopiedText] = useState<boolean>(false);
   const [copiedWishlistText, setCopiedWishlistText] = useState<boolean>(false);
 
@@ -439,6 +442,9 @@ export const UsersList: React.FC<UsersListProps> = ({
 
     return (
       <div className="space-y-6 pb-12">
+        {qrUser === selectedUser.username && (
+          <SaleQrModal url={profileSaleUrl} username={selectedUser.username} onClose={() => setQrUser(null)} showToast={showToast} />
+        )}
         {/* Navigation Top Bar */}
         <div className="flex items-center justify-between gap-4 flex-wrap">
           <button
@@ -475,6 +481,16 @@ export const UsersList: React.FC<UsersListProps> = ({
                 <Share2 className="w-4 h-4" />
               )}
               <span>{copiedLinkUser === selectedUser.username ? t('Skopiowano link!') : t('Udostępnij ofertę')}</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setQrUser(selectedUser.username)}
+              className="btn btn-secondary"
+              title={t('Pokaż kod QR, który otwiera ofertę tego gracza')}
+            >
+              <QrCode className="w-4 h-4" />
+              <span className="hidden sm:inline">{t('Kod QR')}</span>
             </button>
 
             <a
