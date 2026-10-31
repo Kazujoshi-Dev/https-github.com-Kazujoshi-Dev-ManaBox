@@ -1445,7 +1445,7 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
                   <div className="flex items-start gap-3">
                     {/* Card Thumbnail */}
                     <div
-                      className="shrink-0 w-20 h-28 rounded-lg overflow-hidden bg-stone-900 bg-cover bg-center border border-stone-700 shadow-md relative"
+                      className="shrink-0 w-24 h-[134px] rounded-lg overflow-hidden bg-stone-900 bg-cover bg-center border border-stone-700 shadow-md relative"
                       style={scanResult?.debugCropUrl ? { backgroundImage: `url(${scanResult.debugCropUrl})` } : undefined}
                     >
                       <img
