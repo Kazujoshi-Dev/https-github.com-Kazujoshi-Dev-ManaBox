@@ -1,8 +1,8 @@
 import { useMemo } from 'react';
 import { CollectionItem, AppSettings } from '../types';
 import { getCardPrice } from '../utils/formatters';
-import { itemValue } from '../utils/collectionValue';
-export { itemValue };
+import { itemValue, itemValueChange } from '../utils/collectionValue';
+export { itemValue, itemValueChange };
 
 export interface CollectionTotals {
   totalCards: number;
@@ -20,6 +20,7 @@ export interface CollectionTotals {
 /**
  * Zmiana wartości: dla każdej karty różnica między bieżącą ceną a ceną sprzed
  * ostatniej zmiany (przy odświeżaniu cen serwer zapamiętuje poprzednie ceny).
+ * Pomija ceny, które dopiero się pojawiły lub zniknęły, oraz zwykłe lądy podstawowe.
  */
 export function computeValueChange(collection: CollectionItem[], settings: AppSettings) {
   let change = 0;
@@ -29,11 +30,12 @@ export function computeValueChange(collection: CollectionItem[], settings: AppSe
   for (const item of collection) {
     if (!item.card) continue;
     const now = itemValue(item, settings);
-    if (item.previousPrices) {
-      hasHistory = true;
-      const before = itemValue(item, settings, item.previousPrices);
-      change += now - before;
-      previousValue += before;
+    if (item.previousPrices) hasHistory = true;
+    const pair = itemValueChange(item, settings);
+    if (pair) {
+      change += pair.now - pair.before;
+      // wersje bez porównania (np. cena dopiero się pojawiła) wchodzą do bazy po bieżącej cenie
+      previousValue += now - pair.now + pair.before;
       if (item.pricesChangedAt && (!lastAt || item.pricesChangedAt > lastAt)) lastAt = item.pricesChangedAt;
     } else {
       previousValue += now;

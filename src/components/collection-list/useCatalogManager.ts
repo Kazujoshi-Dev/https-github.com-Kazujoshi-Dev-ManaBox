@@ -4,6 +4,7 @@ import { CollectionItem, Catalog, AppSettings } from '../../types';
 import { getCardPrice } from '../../utils/formatters';
 import { CatalogStatItem } from './types';
 import { t, MAIN_BINDER } from '../../i18n';
+import { isPlainBasicLand } from '../../utils/collectionValue';
 
 interface UseCatalogManagerProps {
   collection: CollectionItem[];
@@ -58,7 +59,8 @@ export function useCatalogManager({
       const qty = item.quantity + item.quantityFoil;
       const normPrice = getCardPrice(card, false, settings);
       const foilPrice = getCardPrice(card, true, settings);
-      const val = (item.quantity * normPrice) + (item.quantityFoil * foilPrice);
+      // zwykłe lądy podstawowe nie wliczają się do wartości (jak w łącznej wartości kolekcji)
+      const val = isPlainBasicLand(card) ? 0 : (item.quantity * normPrice) + (item.quantityFoil * foilPrice);
 
       existing.count += 1;
       existing.totalCards += qty;

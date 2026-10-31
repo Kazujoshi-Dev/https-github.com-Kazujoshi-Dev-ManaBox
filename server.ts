@@ -2388,6 +2388,8 @@ app.post('/api/collection/refresh-prices', authMiddleware, refreshPricesLimiter,
       }
       if (updatedCard.image_uris) card.image_uris = updatedCard.image_uris;
       if (updatedCard.edhrec_rank !== undefined) card.edhrec_rank = updatedCard.edhrec_rank;
+      // full_art decyduje, czy ląd podstawowy wlicza się do wartości kolekcji (starsze zapisy go nie mają)
+      if (typeof updatedCard.full_art === 'boolean') card.full_art = updatedCard.full_art;
       updates.push({ id: item.id, card, previousPrices, pricesChangedAt, lastUpdatedPriceAt: now });
     }
 

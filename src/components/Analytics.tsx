@@ -2,7 +2,8 @@ import { PageHeader } from './ui/PageHeader';
 import React, { useMemo, useState } from 'react';
 import { CollectionItem, AppSettings } from '../types';
 import { formatCurrency, getCardImageUri, getCardPrice, getRarityLabel, handleCardImageError } from '../utils/formatters';
-import { computeValueChange, itemValue } from '../hooks/useCollectionStats';
+import { computeValueChange, itemValueChange } from '../hooks/useCollectionStats';
+import { isPlainBasicLand } from '../utils/collectionValue';
 import { CollectionHistoryPanel } from './CollectionHistoryModal';
 import { 
   BarChart, 
@@ -105,7 +106,8 @@ export const Analytics: React.FC<AnalyticsProps> = ({ collection, settings, onVi
       const priceNorm = getCardPrice(card, false, settings);
       const priceFoil = getCardPrice(card, true, settings);
 
-      totalValue += (item.quantity * priceNorm) + (item.quantityFoil * priceFoil);
+      // Zwykłe lądy podstawowe nie wliczają się do wartości (liczą się tylko full art)
+      if (!isPlainBasicLand(card)) totalValue += (item.quantity * priceNorm) + (item.quantityFoil * priceFoil);
 
       // Rzadkość liczymy dla wszystkich kart; kolory i krzywą many bez lądów
       const rarity = card.rarity ? card.rarity.toLowerCase() : 'common';
@@ -231,13 +233,14 @@ export const Analytics: React.FC<AnalyticsProps> = ({ collection, settings, onVi
     // Pozycje tej samej karty (edycja i wersja) w różnych miejscach (wolne, talie) sumujemy w jeden wiersz
     const groups = new Map<string, { item: CollectionItem; qty: number; qtyFoil: number; now: number; before: number }>();
     for (const item of collection) {
-      if (!item.card || !item.previousPrices) continue;
+      const pair = itemValueChange(item, settings);
+      if (!pair) continue;
       const key = item.cardId || item.card.id;
       const g = groups.get(key) || { item, qty: 0, qtyFoil: 0, now: 0, before: 0 };
       g.qty += item.quantity || 0;
       g.qtyFoil += item.quantityFoil || 0;
-      g.now += itemValue(item, settings);
-      g.before += itemValue(item, settings, item.previousPrices);
+      g.now += pair.now;
+      g.before += pair.before;
       groups.set(key, g);
     }
     const list: Mover[] = [...groups.values()]

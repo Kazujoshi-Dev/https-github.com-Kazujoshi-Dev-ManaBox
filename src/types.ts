@@ -45,6 +45,8 @@ export interface ScryfallCard {
   promo?: boolean;
   border_color?: string;
   frame_effects?: string[];
+  /** Ilustracja na całą kartę (pole Scryfall); lądy podstawowe full art liczą się do wartości kolekcji. */
+  full_art?: boolean;
   finishes?: string[];
   prices: {
     usd?: string | null;
