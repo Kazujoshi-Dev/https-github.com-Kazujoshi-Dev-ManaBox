@@ -295,27 +295,27 @@ export const DeckCombosModal: React.FC<DeckCombosModalProps> = ({
         className="relative bg-stone-900 border border-stone-800 rounded-2xl max-w-5xl w-full overflow-hidden shadow-2xl my-6 text-stone-100 max-h-[92vh] flex flex-col max-sm:w-full max-sm:max-w-none max-sm:rounded-b-none max-sm:rounded-t-3xl max-sm:max-h-[92dvh] max-sm:pb-[env(safe-area-inset-bottom)] max-sm:animate-[slideUp_.2s_ease-out] max-sm:mt-auto max-sm:mb-0 max-sm:overflow-y-auto"
       >
         {/* Header */}
-        <div className="px-6 py-4 border-b border-stone-800 bg-stone-950/90 flex items-center justify-between shrink-0">
-          <div className="flex items-center gap-3">
-            <div className="p-2.5 bg-amber-500/25 border border-amber-500/40 rounded-xl text-amber-400 shadow-sm">
+        <div className="px-4 py-3 sm:px-6 sm:py-4 border-b border-stone-800 bg-stone-950 flex items-center justify-between gap-3 shrink-0 max-sm:sticky max-sm:top-0 max-sm:z-20">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="hidden sm:block p-2.5 bg-amber-500/25 border border-amber-500/40 rounded-xl text-amber-400 shadow-sm">
               <Sparkles className="w-5 h-5" />
             </div>
-            <div>
+            <div className="min-w-0">
               <div className="flex items-center gap-2">
-                <h2 className="text-xl font-bold text-stone-100 tracking-tight">
+                <h2 className="text-base sm:text-xl font-bold text-stone-100 tracking-tight truncate">
                   {t('Kombinacje Commander Spellbook')}
                 </h2>
-                <span className="text-[11px] tabular-nums px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30 font-bold">
+                <span className="hidden sm:inline text-[11px] tabular-nums px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30 font-bold">
                   {t('API Spellbook')}
                 </span>
               </div>
-              <p className="text-xs text-stone-400">
-                {t('Wykrywanie synergii i nieskończonych pętli w talii')} <span className="text-amber-300 font-semibold">{deck.name}</span>
+              <p className="text-xs text-stone-400 truncate">
+                <span className="hidden sm:inline">{t('Wykrywanie synergii i nieskończonych pętli w talii')} </span><span className="text-amber-300 font-semibold">{deck.name}</span>
               </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 shrink-0">
             <button
               onClick={fetchCombos}
               disabled={isLoading}
@@ -335,17 +335,17 @@ export const DeckCombosModal: React.FC<DeckCombosModalProps> = ({
         </div>
 
         {/* Subheader: Tabs, Search Filter & Large Effect Filters */}
-        <div className="p-5 border-b border-stone-800/80 bg-stone-900/80 space-y-4">
+        <div className="px-4 py-3 sm:p-5 border-b border-stone-800/80 bg-stone-900/80 space-y-3 sm:space-y-4 shrink-0">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             {/* Tabs */}
-            <div className="flex items-center gap-2 p-1 bg-stone-950 rounded-xl border border-stone-800">
+            <div className="grid grid-cols-2 sm:flex items-center gap-1 sm:gap-2 p-1 bg-stone-950 rounded-xl border border-stone-800">
               <button
                 type="button"
                 onClick={() => {
                   setActiveTab('included');
                   setSelectedEffectFilter('ALL');
                 }}
-                className={`px-4 py-2 rounded-lg text-xs sm:text-sm font-bold transition-all flex items-center gap-2 cursor-pointer ${
+                className={`px-2 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-bold transition-all flex items-center justify-center gap-1.5 sm:gap-2 cursor-pointer whitespace-nowrap ${
                   activeTab === 'included'
                     ? 'bg-amber-500 text-stone-950 shadow-md font-bold'
                     : 'text-stone-400 hover:text-stone-200'
@@ -361,7 +361,7 @@ export const DeckCombosModal: React.FC<DeckCombosModalProps> = ({
                   setActiveTab('almost');
                   setSelectedEffectFilter('ALL');
                 }}
-                className={`px-4 py-2 rounded-lg text-xs sm:text-sm font-bold transition-all flex items-center gap-2 cursor-pointer ${
+                className={`px-2 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-bold transition-all flex items-center justify-center gap-1.5 sm:gap-2 cursor-pointer whitespace-nowrap ${
                   activeTab === 'almost'
                     ? 'bg-amber-500 text-stone-950 shadow-md font-bold'
                     : 'text-stone-400 hover:text-stone-200'
@@ -386,17 +386,17 @@ export const DeckCombosModal: React.FC<DeckCombosModalProps> = ({
           </div>
 
           {/* Section: 'Filtruj efekt:' - Larger, Clearer Buttons with Dedicated Icons */}
-          <div className="space-y-2 pt-1">
-            <div className="flex items-center gap-2 text-xs text-stone-400 font-bold ">
+          <div className="space-y-2 sm:pt-1">
+            <div className="hidden sm:flex items-center gap-2 text-xs text-stone-400 font-bold ">
               <Filter className="w-3.5 h-3.5 text-amber-400" />
               <span>{t('Filtruj efekt:')}</span>
             </div>
 
-            <div className="flex items-center gap-2 flex-wrap">
+            <div className="flex items-center gap-2 max-sm:overflow-x-auto max-sm:-mx-4 max-sm:px-4 max-sm:pb-1 max-sm:[scrollbar-width:none] sm:flex-wrap">
               <button
                 type="button"
                 onClick={() => setSelectedEffectFilter('ALL')}
-                className={`px-4 py-2 rounded-xl text-xs sm:text-sm transition-all cursor-pointer font-bold flex items-center gap-2 border shadow-sm ${
+                className={`px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl text-xs sm:text-sm transition-all cursor-pointer font-bold flex items-center gap-1.5 sm:gap-2 border shadow-sm shrink-0 whitespace-nowrap ${
                   selectedEffectFilter === 'ALL'
                     ? 'bg-amber-500 text-stone-950 border-amber-400 font-bold shadow-lg shadow-amber-950/40 ring-2 ring-amber-400/30'
                     : 'bg-stone-950 text-stone-300 hover:text-white hover:bg-stone-850 border-stone-800'
@@ -418,7 +418,7 @@ export const DeckCombosModal: React.FC<DeckCombosModalProps> = ({
                     key={effectName}
                     type="button"
                     onClick={() => setSelectedEffectFilter(effectName)}
-                    className={`px-4 py-2 rounded-xl text-xs sm:text-sm transition-all cursor-pointer font-bold flex items-center gap-2 border shadow-sm ${
+                    className={`px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl text-xs sm:text-sm transition-all cursor-pointer font-bold flex items-center gap-1.5 sm:gap-2 border shadow-sm shrink-0 whitespace-nowrap ${
                       isSelected
                         ? 'bg-amber-500 text-stone-950 border-amber-400 font-bold shadow-lg shadow-amber-950/40 ring-2 ring-amber-400/30'
                         : 'bg-stone-950 text-stone-300 hover:text-white hover:bg-stone-850 border-stone-800'
@@ -439,7 +439,7 @@ export const DeckCombosModal: React.FC<DeckCombosModalProps> = ({
         </div>
 
         {/* Modal Scrollable Content */}
-        <div className="p-6 overflow-y-auto flex-1 space-y-5">
+        <div className="p-3 sm:p-6 sm:overflow-y-auto sm:min-h-0 flex-1 space-y-4 sm:space-y-5">
           {error && (
             <div className="p-4 bg-rose-500/10 border border-rose-500/30 rounded-xl flex items-center gap-3 text-rose-300 text-sm">
               <AlertCircle className="w-5 h-5 shrink-0" />
@@ -498,7 +498,7 @@ export const DeckCombosModal: React.FC<DeckCombosModalProps> = ({
             return (
               <div 
                 key={variant.id || idx}
-                className="bg-stone-950/80 border border-stone-800 rounded-2xl p-5 hover:border-stone-700 transition-all space-y-5 shadow-lg"
+                className="bg-stone-950/80 border border-stone-800 rounded-2xl p-3 sm:p-5 hover:border-stone-700 transition-all space-y-4 sm:space-y-5 shadow-lg"
               >
                 {/* Variant Top Header: ID, Produces badges & Mana needed */}
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-stone-800">
@@ -646,7 +646,7 @@ export const DeckCombosModal: React.FC<DeckCombosModalProps> = ({
 
                 {/* Section 2: KROKI WYKONANIA (INSTRUKCJA COMBO) - Numbered 1. 2. 3. steps */}
                 {variant.description && (
-                  <div className="bg-stone-900/90 rounded-2xl p-4 border border-stone-800 shadow-inner space-y-2.5">
+                  <div className="bg-stone-900/90 rounded-2xl p-3 sm:p-4 border border-stone-800 shadow-inner space-y-2.5">
                     <div className="flex items-center justify-between">
                       <span className="text-xs font-bold text-amber-300 flex items-center gap-1.5 tabular-nums">
                         <Sparkles className="w-3.5 h-3.5 text-amber-400" />
@@ -661,7 +661,7 @@ export const DeckCombosModal: React.FC<DeckCombosModalProps> = ({
                       {comboSteps.map((step, sIdx) => (
                         <div 
                           key={sIdx}
-                          className="flex items-start gap-3 p-3 rounded-xl bg-stone-950/80 border border-stone-800/80 hover:border-amber-500/30 transition-all group"
+                          className="flex items-start gap-2.5 sm:gap-3 p-2.5 sm:p-3 rounded-xl bg-stone-950/80 border border-stone-800/80 hover:border-amber-500/30 transition-all group"
                         >
                           <div className="w-6 h-6 rounded-lg bg-amber-500/20 text-amber-300 border border-amber-500/40 flex items-center justify-center tabular-nums font-bold text-xs shrink-0 mt-0.5 shadow-sm group-hover:scale-105 group-hover:bg-amber-500 group-hover:text-stone-950 transition-all">
                             {sIdx + 1}
@@ -705,7 +705,7 @@ export const DeckCombosModal: React.FC<DeckCombosModalProps> = ({
         </div>
 
         {/* Modal Footer Banner */}
-        <div className="px-6 py-3.5 bg-stone-950 border-t border-stone-800 flex flex-col sm:flex-row items-center justify-between text-xs text-stone-400 gap-2 shrink-0">
+        <div className="hidden px-6 py-3.5 bg-stone-950 border-t border-stone-800 sm:flex flex-col sm:flex-row items-center justify-between text-xs text-stone-400 gap-2 shrink-0">
           <div className="flex items-center gap-2">
             <Sparkles className="w-4 h-4 text-amber-400" />
             <span>
