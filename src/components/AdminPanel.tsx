@@ -12,6 +12,7 @@ import { adminApi } from '../services/api';
 import { useBackToClose } from '../hooks/useBackButton';
 import type { AdminAuditEntry, AdminStats, AdminUser, AuthUser } from '../types';
 import { useT, locale, tk, t as tr } from '../i18n';
+import { GAME_LIST } from '../games';
 
 interface AdminPanelProps {
   currentUser: AuthUser | null;
@@ -26,6 +27,10 @@ const fmtDate = (iso: string | null | undefined, withTime = false) =>
     : '—';
 
 const fmtNum = (n: number) => n.toLocaleString(locale());
+
+/** Karty gracza w podziale na gry (tylko gry, w których coś ma; pusta lista, gdy brak kart). */
+const cardsPerGame = (u: AdminUser) =>
+  GAME_LIST.map((g) => ({ id: g.id, name: g.shortName, count: u.cardsByGame?.[g.id] || 0 })).filter((g) => g.count > 0);
 
 function banLabel(u: AdminUser) {
   if (!u.banned) return null;
@@ -273,7 +278,21 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, showToast }
                     <p className="text-[11px] text-stone-500 flex flex-wrap gap-x-3 gap-y-0.5">
                       <span>{t('Rejestracja:')} {fmtDate(u.createdAt)}</span>
                       <span>{t('Aktywność:')} {fmtDate(u.lastActiveAt)}</span>
-                      <span>{t('Karty:')} {fmtNum(u.totalCards)}</span>
+                      <span>
+                        {t('Karty:')} <span className="tabular-nums">{fmtNum(u.totalCards)}</span>
+                        {cardsPerGame(u).length > 0 && (
+                          <span className="text-stone-400">
+                            {' ('}
+                            {cardsPerGame(u).map((g, i) => (
+                              <React.Fragment key={g.id}>
+                                {i > 0 && ', '}
+                                {g.name} <span className="tabular-nums text-stone-300">{fmtNum(g.count)}</span>
+                              </React.Fragment>
+                            ))}
+                            {')'}
+                          </span>
+                        )}
+                      </span>
                       <span>{t('Sprzedaż:')} {fmtNum(u.forSaleCards)}</span>
                       <span>{t('Lista życzeń:')} {fmtNum(u.wishlistCount)}</span>
                       {u.city && <span>{u.city}</span>}
@@ -440,10 +459,18 @@ const UserDialog: React.FC<UserDialogProps> = ({ user, isSelf, onClose, onChange
           <div className="text-xs text-stone-400 grid grid-cols-2 gap-x-3 gap-y-1">
             <span>{t('Rejestracja:')} <strong className="text-stone-200">{fmtDate(user.createdAt)}</strong></span>
             <span>{t('Aktywność:')} <strong className="text-stone-200">{fmtDate(user.lastActiveAt, true)}</strong></span>
-            <span>{t('Karty:')} <strong className="text-stone-200">{fmtNum(user.totalCards)}</strong></span>
+            <span>{t('Karty:')} <strong className="text-stone-200 tabular-nums">{fmtNum(user.totalCards)}</strong></span>
             <span>{t('Na sprzedaż:')} <strong className="text-stone-200">{fmtNum(user.forSaleCards)}</strong></span>
             <span>{t('Lista życzeń:')} <strong className="text-stone-200">{fmtNum(user.wishlistCount)}</strong></span>
             <span>{t('Miejscowość:')} <strong className="text-stone-200">{user.city || '—'}</strong></span>
+            <span className="col-span-2 flex flex-wrap gap-x-3 gap-y-1 pt-1 border-t border-stone-800">
+              <span>{t('Karty według gry:')}</span>
+              {GAME_LIST.map((g) => (
+                <span key={g.id}>
+                  {g.shortName} <strong className="text-stone-200 tabular-nums">{fmtNum(user.cardsByGame?.[g.id] || 0)}</strong>
+                </span>
+              ))}
+            </span>
           </div>
 
           {/* Blokada */}

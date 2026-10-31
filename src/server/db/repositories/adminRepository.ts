@@ -8,6 +8,16 @@ import { withDb, readJsonFile, writeJsonAtomic, USERS_FILE, ADMIN_AUDIT_FILE, ge
 import { mapUserRow } from '../mappers';
 import { getCollection } from './collectionRepository';
 import { getWishlist } from './wishlistRepository';
+import { GAME_IDS, type GameId } from '../../../games';
+
+/** Kolumny SQL z liczbą kart w kolekcji dla każdej gry (identyfikatory gier są stałe, nie od użytkownika). */
+const CARDS_BY_GAME_SQL = GAME_IDS.map(
+  (g) => `SUM(CASE WHEN game = '${g}' THEN COALESCE(quantity,0) + COALESCE(quantity_foil,0) ELSE 0 END) AS cards_${g}`
+).join(',\n                             ');
+const CARDS_BY_GAME_SELECT = GAME_IDS.map((g) => `COALESCE(c.cards_${g}, 0)::int AS cards_${g}`).join(', ');
+
+const emptyByGame = (): Record<GameId, number> =>
+  Object.fromEntries(GAME_IDS.map((g) => [g, 0])) as Record<GameId, number>;
 
 /** Czy blokada konta obowiązuje teraz. */
 export function isBanActive(u: Pick<DbUser, 'ban_permanent' | 'banned_until'> | null | undefined, now = Date.now()): boolean {
@@ -23,6 +33,8 @@ export interface AdminUserRow {
   createdAt: string;
   lastActiveAt: string | null;
   totalCards: number;
+  /** Liczba kart w kolekcji osobno dla każdej gry. */
+  cardsByGame: Record<GameId, number>;
   forSaleCards: number;
   wishlistCount: number;
   city: string | null;
@@ -45,11 +57,12 @@ export async function adminListUsers(query: string, limit: number, offset: numbe
       const where = q ? `WHERE LOWER(u.username) LIKE $1 OR LOWER(u.email) LIKE $1` : `WHERE $1::text IS NOT NULL`;
       const total = await p.query(`SELECT COUNT(*)::int AS n FROM users u ${where}`, [pattern]);
       const res = await p.query(
-        `SELECT u.*, COALESCE(c.cards, 0)::int AS total_cards, COALESCE(c.sale_cards, 0)::int AS for_sale_cards,
+        `SELECT u.*, COALESCE(c.cards, 0)::int AS total_cards, COALESCE(c.sale_cards, 0)::int AS for_sale_cards, ${CARDS_BY_GAME_SELECT},
                 COALESCE(w.n, 0)::int AS wishlist_count, pr.city AS city, s.last_active
            FROM users u
            LEFT JOIN (SELECT user_id, SUM(COALESCE(quantity,0) + COALESCE(quantity_foil,0)) AS cards,
-                             SUM(CASE WHEN is_for_sale THEN COALESCE(quantity,0) + COALESCE(quantity_foil,0) ELSE 0 END) AS sale_cards
+                             SUM(CASE WHEN is_for_sale THEN COALESCE(quantity,0) + COALESCE(quantity_foil,0) ELSE 0 END) AS sale_cards,
+                             ${CARDS_BY_GAME_SQL}
                         FROM user_collections GROUP BY user_id) c ON c.user_id = u.id
            LEFT JOIN (SELECT user_id, COUNT(*) AS n FROM user_wishlists GROUP BY user_id) w ON w.user_id = u.id
            LEFT JOIN user_profiles pr ON pr.user_id = u.id
@@ -70,6 +83,7 @@ export async function adminListUsers(query: string, limit: number, offset: numbe
             createdAt: u.created_at,
             lastActiveAt: iso(r.last_active),
             totalCards: r.total_cards,
+            cardsByGame: Object.fromEntries(GAME_IDS.map((g) => [g, r[`cards_${g}`] || 0])) as Record<GameId, number>,
             forSaleCards: r.for_sale_cards,
             wishlistCount: r.wishlist_count,
             city: r.city || null,
@@ -91,7 +105,13 @@ export async function adminListUsers(query: string, limit: number, offset: numbe
       const page = all.slice(offset, offset + limit);
       const users: AdminUserRow[] = [];
       for (const u of page) {
-        const col: any[] = await getCollection(u.id).catch(() => []);
+        const cardsByGame = emptyByGame();
+        let col: any[] = [];
+        for (const g of GAME_IDS) {
+          const gameCol: any[] = await getCollection(u.id, g).catch(() => []);
+          cardsByGame[g] = gameCol.reduce((s, i) => s + (i.quantity || 0) + (i.quantityFoil || 0), 0);
+          col = col.concat(gameCol);
+        }
         const wl = await getWishlist(u.id).catch(() => []);
         const qty = (i: any) => (i.quantity || 0) + (i.quantityFoil || 0);
         users.push({
@@ -101,6 +121,7 @@ export async function adminListUsers(query: string, limit: number, offset: numbe
           createdAt: u.created_at,
           lastActiveAt: null,
           totalCards: col.reduce((s, i) => s + qty(i), 0),
+          cardsByGame,
           forSaleCards: col.filter((i) => i.isForSale).reduce((s, i) => s + qty(i), 0),
           wishlistCount: wl.length,
           city: null,

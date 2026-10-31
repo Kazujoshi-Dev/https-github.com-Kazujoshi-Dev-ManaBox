@@ -1,4 +1,5 @@
 import type { AssistantTargets } from './utils/assistantTargets';
+import type { GameId } from './games';
 export interface ScryfallImageUris {
   small?: string;
   normal?: string;
@@ -272,6 +273,8 @@ export interface AdminUser {
   createdAt: string;
   lastActiveAt: string | null;
   totalCards: number;
+  /** Liczba kart w kolekcji osobno dla każdej gry. */
+  cardsByGame?: Partial<Record<GameId, number>>;
   forSaleCards: number;
   wishlistCount: number;
   city: string | null;

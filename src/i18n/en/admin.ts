@@ -33,6 +33,7 @@ export const en_admin: Record<string, string> = {
   "Karty:": "Cards:",
   "Lista życzeń:": "Wishlist:",
   "Miejscowość:": "City:",
+  "Karty według gry:": "Cards by game:",
   "Na pewno? Obecne hasło przestanie działać, a użytkownik zostanie wylogowany.": "Are you sure? The current password will stop working and the user will be logged out.",
   "Na sprzedaż:": "For sale:",
   "Na stałe": "Permanently",
