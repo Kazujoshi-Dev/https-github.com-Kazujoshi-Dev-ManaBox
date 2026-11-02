@@ -6,7 +6,8 @@
  */
 import * as cards from './cardStore';
 import * as hashes from './hashIndex';
-import { computeQueryHashes, decodeJpegToGray } from './imageHash';
+import { computeQueryHashes, decodeJpegToGray, type GrayImage } from './imageHash';
+import { checkListMark, isListPrinting, isListTwinOf, listOrigin, type ListCheck } from './listMark';
 import { normalizeName, nameSimilarity } from './nameMatch';
 
 export interface IdentifyResult {
@@ -23,6 +24,8 @@ export interface IdentifyResult {
    * ilustracją); klient odczytuje wtedy stopkę karty i wybiera wydanie z listy.
    */
   editionTies?: number;
+  /** Sprawdzenie symbolu The List (gdy karta ma takie wydanie), do logu. */
+  listCheck?: ListCheck;
 }
 
 export const MAX_PRINTINGS = 40;
@@ -48,19 +51,27 @@ export function isPromo(card: any): boolean {
 }
 
 /**
- * Odciski przesłanego zdjęcia karty (JPEG jako data URL); null, gdy brak lub niepoprawny.
- * Kilka wariantów kadru, bo rogi wykryte na zdjęciu bywają przesunięte o parę procent.
+ * Przesłane zdjęcie karty (JPEG jako data URL) w skali szarości; null, gdy brak lub niepoprawne.
  */
-export function hashCardImage(dataUrl: unknown, rotate180 = false): Uint8Array[] | null {
+export function decodeCardImage(dataUrl: unknown, rotate180 = false): GrayImage | null {
   if (typeof dataUrl !== 'string' || !dataUrl.startsWith('data:image/jpeg;base64,')) return null;
   if (dataUrl.length > 2_000_000) return null;
   try {
     const img = decodeJpegToGray(Buffer.from(dataUrl.slice(23), 'base64'));
     if (rotate180) img.data.reverse();
-    return computeQueryHashes(img);
+    return img;
   } catch {
     return null;
   }
+}
+
+/**
+ * Odciski przesłanego zdjęcia karty. Kilka wariantów kadru, bo rogi wykryte na zdjęciu bywają
+ * przesunięte o parę procent.
+ */
+export function hashCardImage(dataUrl: unknown, rotate180 = false): Uint8Array[] | null {
+  const img = decodeCardImage(dataUrl, rotate180);
+  return img ? computeQueryHashes(img) : null;
 }
 
 /**
@@ -72,18 +83,27 @@ export type FrameHashes = Uint8Array[][];
 /** Do 2 dodatkowych klatek (więcej nic nie wnosi, a wydłuża przesyłanie). */
 export const MAX_EXTRA_FRAMES = 2;
 
-/** Odciski klatki głównej i poprawnych klatek dodatkowych; null, gdy klatka główna jest niepoprawna. */
-export function hashCardFrames(dataUrl: unknown, extra: unknown, rotate180 = false): FrameHashes | null {
-  const main = hashCardImage(dataUrl, rotate180);
+/** Wyprostowane klatki (główna + poprawne dodatkowe) w skali szarości; null, gdy klatka główna jest niepoprawna. */
+export function decodeCardFrames(dataUrl: unknown, extra: unknown, rotate180 = false): GrayImage[] | null {
+  const main = decodeCardImage(dataUrl, rotate180);
   if (!main) return null;
-  const frames: FrameHashes = [main];
+  const frames = [main];
   if (Array.isArray(extra)) {
     for (const e of extra.slice(0, MAX_EXTRA_FRAMES)) {
-      const h = hashCardImage(e, rotate180);
-      if (h) frames.push(h);
+      const img = decodeCardImage(e, rotate180);
+      if (img) frames.push(img);
     }
   }
   return frames;
+}
+
+/** Odciski klatki głównej i poprawnych klatek dodatkowych; null, gdy klatka główna jest niepoprawna. */
+export function hashCardFrames(dataUrl: unknown, extra: unknown, rotate180 = false): FrameHashes | null {
+  return hashFrames(decodeCardFrames(dataUrl, extra, rotate180));
+}
+
+export function hashFrames(frames: GrayImage[] | null): FrameHashes | null {
+  return frames ? frames.map(computeQueryHashes) : null;
 }
 
 /** Sortuje wydania wg podobieństwa obrazu (gdy jest odcisk), zachowując resztę na końcu. */
@@ -95,7 +115,13 @@ export function rankByImage(ids: string[], queryHash: FrameHashes | null) {
   return { ordered: [...withHash, ...ids.filter((id) => !distances.has(id))], distances };
 }
 
-export async function identifyWithLocalDb(title: string, set: string, collector: string, queryHash: FrameHashes | null): Promise<IdentifyResult> {
+export async function identifyWithLocalDb(
+  title: string,
+  set: string,
+  collector: string,
+  queryHash: FrameHashes | null,
+  photos: GrayImage[] | null = null
+): Promise<IdentifyResult> {
   const nameHits = title ? cards.findByName(title, 3) : [];
   const exactId = set && collector ? cards.findIdBySetNumber(set, collector) : null;
 
@@ -211,6 +237,9 @@ export async function identifyWithLocalDb(title: string, set: string, collector:
     const regular = possibleCards.find((c) => !isPromo(c) && c.lang === top.lang && within(c, top, PROMO_TIE_DISTANCE));
     if (regular) pick(regular);
   }
+  // The List: ten sam druk co zwykłe wydanie, różni się tylko symbolem w lewym dolnym rogu.
+  // Rozstrzyga porównanie samego rogu; gdy ono nie rozstrzyga, zostaje zwykłe wydanie (jak przy promkach).
+  const listCheck = await resolveListTwin(possibleCards, distances, method, photos, pick);
   const final = possibleCards[0];
   const editionTies = final
     ? possibleCards.filter(
@@ -225,8 +254,67 @@ export async function identifyWithLocalDb(title: string, set: string, collector:
     method,
     imageDistance: distances.get(matchedId),
     englishDistance: englishAlt ? distances.get(englishAlt.id) : undefined,
-    editionTies: method === 'set_number' || pickedBySet ? 0 : editionTies
+    editionTies: method === 'set_number' || pickedBySet ? 0 : editionTies,
+    listCheck
   };
+}
+
+/** Ile gorszy może być obraz zwykłego wydania, żeby wygrało z wydaniem z The List bez rozstrzygnięcia symbolem. */
+export const LIST_TIE_DISTANCE = 30;
+
+/**
+ * Para „zwykłe wydanie + to samo wydanie z The List” dla wybranej karty i decyzja po symbolu.
+ * Zmienia wybór (przez `pick`) tylko, gdy taka para istnieje; inne karty zostają bez zmian.
+ */
+async function resolveListTwin(
+  possibleCards: any[],
+  distances: Map<string, number>,
+  method: IdentifyResult['method'],
+  photos: GrayImage[] | null,
+  pick: (c: any) => void
+): Promise<ListCheck | undefined> {
+  const top = possibleCards[0];
+  if (!top || (top.lang && top.lang !== 'en')) return undefined;
+  let regular: any;
+  let list: any;
+  if (isListPrinting(top)) {
+    list = top;
+    regular = possibleCards.find((c) => isListTwinOf(top, c));
+    if (!regular) {
+      const o = listOrigin(top);
+      const id = o ? cards.findIdBySetNumber(o.set, o.number) : null;
+      if (id) [regular] = await cards.getCardsByIds([id]);
+    }
+  } else {
+    regular = top;
+    list = possibleCards.find((c) => isListTwinOf(c, top));
+    if (!list) {
+      const id = cards.findIdBySetNumber('plst', `${top.set}-${top.collector_number}`);
+      if (id) {
+        const [c] = await cards.getCardsByIds([id]);
+        if (c && isListTwinOf(c, top)) list = c;
+      }
+    }
+  }
+  if (!regular || !list || (regular.lang && regular.lang !== 'en')) return undefined;
+
+  const check: ListCheck = photos?.length
+    ? await checkListMark(photos, regular, list).catch(() => ({ verdict: null, score: null, reason: 'blad' }))
+    : { verdict: null, score: null, reason: 'brak_zdjecia' };
+  const ensure = (c: any) => {
+    if (!possibleCards.some((x) => x.id === c.id)) possibleCards.push(c);
+  };
+  ensure(regular);
+  ensure(list);
+  if (check.verdict === 'list') pick(list);
+  else if (check.verdict === 'regular') pick(regular);
+  else if (top === list) {
+    // Obraz całej karty nie widzi symbolu, więc wybór The List bez potwierdzenia to przypadek.
+    const dl = distances.get(list.id);
+    const dr = distances.get(regular.id);
+    if (method === 'set_number' || dl === undefined || dr === undefined || dr <= dl + LIST_TIE_DISTANCE) pick(regular);
+  }
+  return check;
 }
 
 /** Pewność, od której klient przyjmuje wynik samego obrazu bez OCR (QUICK_IMAGE_CONFIDENCE w scanEngine.ts). */
@@ -243,12 +331,14 @@ export async function identifyMtgLocal(
   collector: string,
   extraDataUrls?: unknown
 ): Promise<IdentifyResult> {
-  const queryHash = hashCardFrames(dataUrl, extraDataUrls);
-  let result = await identifyWithLocalDb(title, set, collector, queryHash);
+  const photos = decodeCardFrames(dataUrl, extraDataUrls);
+  const queryHash = hashFrames(photos);
+  let result = await identifyWithLocalDb(title, set, collector, queryHash, photos);
   if (!result.matchedCard && queryHash) {
-    const rotated = hashCardFrames(dataUrl, extraDataUrls, true);
+    const rotatedPhotos = decodeCardFrames(dataUrl, extraDataUrls, true);
+    const rotated = hashFrames(rotatedPhotos);
     if (rotated) {
-      const flipped = await identifyWithLocalDb('', '', '', rotated);
+      const flipped = await identifyWithLocalDb('', '', '', rotated, rotatedPhotos);
       if (flipped.matchedCard) result = flipped;
     }
   }

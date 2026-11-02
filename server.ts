@@ -29,7 +29,8 @@ import {
   IMAGE_SET_TOLERANCE,
   IMAGE_TITLE_BONUS,
   MAX_PRINTINGS,
-  hashCardFrames,
+  decodeCardFrames,
+  hashFrames,
   hashCardImage,
   identifyWithLocalDb,
   type IdentifyResult
@@ -1028,7 +1029,8 @@ app.post('/api/scanner/delver-identify', authMiddleware, scannerLimiter, async (
 
     // Klatka główna i do 2 kolejnych klatek tej samej karty (łączone przy porównaniu obrazów).
     const extraImages = req.body?.extraCardImagesBase64;
-    const queryHash = hashCardFrames(req.body?.cardImageBase64, extraImages);
+    const photos = decodeCardFrames(req.body?.cardImageBase64, extraImages);
+    const queryHash = hashFrames(photos);
 
     if (!hintTitle && !(hintSet && hintCollector) && !queryHash) {
       return res.status(400).json({ error: 'Brak obrazu karty, odczytanej nazwy ani kodu setu i numeru.' });
@@ -1040,14 +1042,15 @@ app.post('/api/scanner/delver-identify', authMiddleware, scannerLimiter, async (
       console.warn(`[Skan] Lokalna baza kart niegotowa, używam API Scryfall: ${JSON.stringify(cards.cardDbStatus())}`);
     }
     let result = cards.isCardDbReady()
-      ? await identifyWithLocalDb(hintTitle, hintSet, hintCollector, queryHash)
+      ? await identifyWithLocalDb(hintTitle, hintSet, hintCollector, queryHash, photos)
       : await identifyWithScryfallApi(hintTitle, hintSet, hintCollector);
 
     // Karta położona do góry nogami: obraz obrócony o 180° (OCR takiej karty i tak nic nie da).
     if (!result.matchedCard && cards.isCardDbReady() && queryHash) {
-      const rotated = hashCardFrames(req.body?.cardImageBase64, extraImages, true);
+      const rotatedPhotos = decodeCardFrames(req.body?.cardImageBase64, extraImages, true);
+      const rotated = hashFrames(rotatedPhotos);
       if (rotated) {
-        const flipped = await identifyWithLocalDb('', '', '', rotated);
+        const flipped = await identifyWithLocalDb('', '', '', rotated, rotatedPhotos);
         if (flipped.matchedCard) result = flipped;
       }
     }
@@ -1058,7 +1061,8 @@ app.post('/api/scanner/delver-identify', authMiddleware, scannerLimiter, async (
       `[Skan] klatki=${queryHash?.length ?? 0} metoda=${result.method || 'scryfall'} pewność=${result.confidence} obraz=${result.imageDistance ?? '-'} ` +
         `ocr="${hintTitle}" set=${hintSet || '-'}/${hintCollector || '-'} wynik=${matched ? `${matched.name} [${matched.set}/${matched.collector_number}${matched.lang && matched.lang !== 'en' ? ` ${matched.lang}` : ''}]` : 'brak'}` +
         (result.englishDistance !== undefined ? ` en=${result.englishDistance}` : '') +
-        (result.editionTies ? ` remis_wydań=${result.editionTies}` : '')
+        (result.editionTies ? ` remis_wydań=${result.editionTies}` : '') +
+        (result.listCheck ? ` the_list=${result.listCheck.verdict ?? '?'}/${result.listCheck.score ?? '-'}${result.listCheck.reason ? `/${result.listCheck.reason}` : ''}` : '')
     );
     res.json({
       success: true,

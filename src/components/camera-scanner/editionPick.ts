@@ -30,6 +30,18 @@ function digitsForm(s: string): string {
 
 const isPromo = (p: PrintingLike) => Boolean(p.promo) || p.set_type === 'promo';
 
+/**
+ * The List (Scryfall `plst`, numer np. "MH1-123"): na karcie jest stopka oryginału (MH1, 123).
+ * Kod setu i numer, które widać na karcie; dla zwykłych wydań po prostu set i numer.
+ */
+function printedSetNumber(p: PrintingLike): { set: string; number: string; list: boolean } {
+  if (p.set === 'plst') {
+    const m = /^([A-Z0-9]{2,6})-(.+)$/i.exec(p.collector_number);
+    if (m) return { set: m[1].toUpperCase(), number: m[2].toUpperCase(), list: true };
+  }
+  return { set: p.set.toUpperCase(), number: p.collector_number.toUpperCase(), list: false };
+}
+
 /** Tokeny tekstu stopki (litery/cyfry rozdzielone wszystkim innym). */
 function tokens(text: string): string[] {
   return text.toUpperCase().split(/[^A-Z0-9]+/).filter(Boolean);
@@ -45,13 +57,14 @@ export interface FooterScore {
 export function scorePrinting(p: PrintingLike, text: string): FooterScore {
   const toks = tokens(text);
   const letterToks = new Set(toks.map(lettersForm));
-  const code = p.set.toUpperCase();
+  const printed = printedSetNumber(p);
+  const code = printed.set;
   // promki Scryfall mają kod z przedrostkiem „p” (np. pm15), a na karcie jest kod dodatku (M15)
   const codes = [code];
   if (isPromo(p) && code.length >= 4 && code.startsWith('P')) codes.push(code.slice(1));
   const set = codes.some((c) => letterToks.has(lettersForm(c)));
 
-  const num = p.collector_number.toUpperCase().replace(/^0+(?=\d)/, '');
+  const num = printed.number.replace(/^0+(?=\d)/, '');
   const digits = digitsForm(text);
   // numer jako osobna liczba (np. „0187”, „171/205”), bez dopasowania wewnątrz dłuższej liczby
   const numRe = new RegExp(`(^|[^0-9])0*${num.replace(/[^0-9A-Z]/g, '')}([^0-9]|$)`);
@@ -74,6 +87,13 @@ export function pickPrintingByFooterText(printings: PrintingLike[], text: string
   if (!text || printings.length < 2) return -1;
   const scored = printings.map((p, i) => ({ i, s: scorePrinting(p, text), langOk: !lang || (p.lang || 'en') === lang }));
   const current = scored[0].s.score + (scored[0].langOk ? 0.5 : 0);
+  // Zwykłe wydanie i to samo z The List mają identyczną stopkę; to, czy karta ma symbol The List,
+  // rozstrzyga serwer, więc przy takim remisie zostajemy przy jego wyborze (printings[0]).
+  const currentList = printedSetNumber(printings[0]).list;
+  const keyOf = (i: number) => {
+    const p = printedSetNumber(printings[i]);
+    return `${p.set}/${p.number.replace(/^0+(?=\d)/, '')}/${printings[i].lang || 'en'}`;
+  };
   let best = -1;
   let bestScore = -Infinity;
   let tie = false;
@@ -84,7 +104,11 @@ export function pickPrintingByFooterText(printings: PrintingLike[], text: string
       bestScore = sc;
       best = x.i;
       tie = false;
-    } else if (sc === bestScore) tie = true;
+    } else if (sc === bestScore) {
+      if (keyOf(x.i) === keyOf(best)) {
+        if (printedSetNumber(printings[x.i]).list === currentList && printedSetNumber(printings[best]).list !== currentList) best = x.i;
+      } else tie = true;
+    }
   }
   if (best <= 0 || tie || bestScore < 2 || bestScore <= current) return -1;
   return best;

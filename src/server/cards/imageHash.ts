@@ -17,7 +17,7 @@ export const HASH_BYTES = REGION_BYTES * 2; // region ilustracji + cała karta
 
 const GRID = 16;
 
-interface Region {
+export interface Region {
   x0: number;
   y0: number;
   x1: number;
@@ -55,7 +55,7 @@ export function rawToGray(data: Uint8Array, width: number, height: number, chann
 }
 
 /** Uśrednia region obrazu do siatki outW × outH (filtr pudełkowy z wagami częściowych pikseli). */
-function areaResize(img: GrayImage, r: Region, outW: number, outH: number): Float32Array {
+export function areaResize(img: GrayImage, r: Region, outW: number, outH: number): Float32Array {
   const out = new Float32Array(outW * outH);
   const rx0 = r.x0 * img.width;
   const ry0 = r.y0 * img.height;
