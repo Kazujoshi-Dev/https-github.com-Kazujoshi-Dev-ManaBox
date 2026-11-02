@@ -79,12 +79,13 @@ export const CardPrintsTab: React.FC<CardPrintsTabProps> = ({
           {t('Nie znaleziono wydań spełniających filtr "{filter}".', { filter: printsFilter })}
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 max-h-[500px] overflow-y-auto pr-1">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3 max-h-[70vh] overflow-y-auto pr-1">
           {filteredPrints.map((p) => {
             const isSelected = p.id === activeCardId;
             const pNormPln = getCardPrice(p, false, { ...settings, currency: 'PLN' });
             const pFoilPln = getCardPrice(p, true, { ...settings, currency: 'PLN' });
-            const pThumb = getCardImageUri(p, 'small');
+            // powiększony podgląd: wersja „normal” jest ostra także przy 2x większej miniaturze
+            const pThumb = getCardImageUri(p, 'normal');
 
             return (
               <div
@@ -97,17 +98,18 @@ export const CardPrintsTab: React.FC<CardPrintsTabProps> = ({
                 }`}
               >
                 {/* Print Thumbnail */}
-                <div className="relative shrink-0 w-16 h-22 rounded overflow-hidden bg-stone-950 border border-stone-800 shadow">
+                <div className="relative shrink-0 w-32 h-44 rounded-lg overflow-hidden bg-stone-950 border border-stone-800 shadow">
                   <img
                     src={pThumb}
                     alt={p.name}
+                    loading="lazy"
                     referrerPolicy="no-referrer"
                     onError={(e) => handleCardImageError(e, pThumb)}
                     className="w-full h-full object-contain"
                   />
                   {isSelected && (
-                    <div className="absolute top-1 right-1 bg-amber-500 text-stone-950 rounded-full p-0.5">
-                      <Check className="w-3 h-3 stroke-[3]" />
+                    <div className="absolute top-1.5 right-1.5 bg-amber-500 text-stone-950 rounded-full p-1">
+                      <Check className="w-4 h-4 stroke-[3]" />
                     </div>
                   )}
                 </div>
