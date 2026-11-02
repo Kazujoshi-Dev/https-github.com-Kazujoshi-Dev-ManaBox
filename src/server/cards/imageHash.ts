@@ -129,25 +129,50 @@ export interface FrameJitter {
   dx: number;
   dy: number;
   s: number;
+  /** Osobna skala w poziomie / pionie (gdy różna od `s`), np. dla ramki pogrubionej z jednej strony. */
+  sx?: number;
+  sy?: number;
 }
 
 const NO_JITTER: FrameJitter = { dx: 0, dy: 0, s: 1 };
 
 function jitterRegion(r: Region, j: FrameJitter): Region {
-  const fx = (u: number) => 0.5 + (u - 0.5) * j.s + j.dx;
-  const fy = (v: number) => 0.5 + (v - 0.5) * j.s + j.dy;
+  const fx = (u: number) => 0.5 + (u - 0.5) * (j.sx ?? j.s) + j.dx;
+  const fy = (v: number) => 0.5 + (v - 0.5) * (j.sy ?? j.s) + j.dy;
   return { x0: fx(r.x0), y0: fy(r.y0), x1: fx(r.x1), y1: fy(r.y1) };
 }
 
 /**
- * Warianty dla zdjęcia z kamery: przesunięcia o ±2% i skala ±3%. Pierwszy to wariant
- * bez zmian (do zgrubnego przeszukania całego indeksu), pozostałe do dokładnego porównania.
+ * Kadr powiększony o `e` (ułamek wymiaru karty) z wybranych stron: wykryta krawędź leży za prawdziwą,
+ * np. gdy karty leżą ściśle jedna na drugiej (rynienka) i ramka sąsiedniej karty zlewa się z ramką
+ * skanowanej. Karta zajmuje wtedy na zdjęciu (1 − e) wymiaru, przesunięta od pogrubionej strony.
+ */
+function extendedEdges(e: number, left: number, right: number, top: number, bottom: number): FrameJitter {
+  const ex = e * (left + right);
+  const ey = e * (top + bottom);
+  return { dx: (e * (left - right)) / 2, dy: (e * (top - bottom)) / 2, s: 1, sx: 1 - ex, sy: 1 - ey };
+}
+
+/**
+ * Warianty dla zdjęcia z kamery: przesunięcia o ±2% i skala ±3%, a także ramka pogrubiona z jednej
+ * strony (2,5% i 4,5%) lub z dwóch sąsiednich (3,5%). Pierwszy to wariant bez zmian (do zgrubnego
+ * przeszukania całego indeksu), pozostałe do dokładnego porównania.
  */
 const QUERY_JITTERS: FrameJitter[] = [
   NO_JITTER,
   ...[-0.02, 0, 0.02].flatMap((dx) => [-0.02, 0, 0.02].map((dy) => ({ dx, dy, s: 1 }))).filter((j) => j.dx || j.dy),
   { dx: 0, dy: 0, s: 0.97 },
-  { dx: 0, dy: 0, s: 1.03 }
+  { dx: 0, dy: 0, s: 1.03 },
+  ...[0.025, 0.045].flatMap((e) => [
+    extendedEdges(e, 1, 0, 0, 0),
+    extendedEdges(e, 0, 1, 0, 0),
+    extendedEdges(e, 0, 0, 1, 0),
+    extendedEdges(e, 0, 0, 0, 1)
+  ]),
+  extendedEdges(0.035, 1, 0, 1, 0),
+  extendedEdges(0.035, 1, 0, 0, 1),
+  extendedEdges(0.035, 0, 1, 1, 0),
+  extendedEdges(0.035, 0, 1, 0, 1)
 ];
 
 function regionHash(img: GrayImage, r: Region, out: Uint8Array, offset: number): void {

@@ -29,6 +29,14 @@ import type { GameId } from '../../games';
 const TITLE_REGION: CardRegion = { u0: 0.06, v0: 0.03, u1: 0.74, v1: 0.105 };
 /** Lewy dolny róg: numer kolekcjonerski, rzadkość, kod setu i język (karty od 2015 r.). */
 const FOOTER_REGION: CardRegion = { u0: 0.03, v0: 0.915, u1: 0.46, v1: 0.985 };
+/**
+ * Te same wycinki przesunięte o ok. 4% wysokości: gdy karty leżą ściśle jedna na drugiej (rynienka),
+ * ramka sąsiedniej karty zlewa się z ramką skanowanej i wykryta krawędź leży za prawdziwą, więc na
+ * wyprostowanym zdjęciu stopka wypada wyżej (pogrubiona dolna ramka), a nazwa niżej (górna).
+ * Czytamy je tylko, gdy zwykły wycinek nic nie dał.
+ */
+const FOOTER_REGION_UP: CardRegion = { u0: 0.03, v0: 0.875, u1: 0.46, v1: 0.945 };
+const TITLE_REGION_DOWN: CardRegion = { u0: 0.06, v0: 0.065, u1: 0.74, v1: 0.14 };
 
 /** Ilustracja (jak ART_REGION w src/server/cards/imageHash.ts, z lekkim zapasem). */
 const ART_REGION: CardRegion = { u0: 0.08, v0: 0.11, u1: 0.92, v1: 0.55 };
@@ -309,6 +317,30 @@ async function ocrFooter(canvas: HTMLCanvasElement): Promise<string> {
   });
 }
 
+/** Stopka MTG: zwykły wycinek, a gdy nie da numeru, wycinek przesunięty w górę (rynienka). */
+async function readMtgFooter(pixels: Uint8ClampedArray, w: number, h: number, quad: Quad): Promise<{ text: string; canvas: HTMLCanvasElement }> {
+  const read = async (region: CardRegion) => {
+    const canvas = prepareGrayForOcr(warpCardRegion(pixels, w, h, quad, 600, 150, region), 600, 150);
+    return { text: await ocrFooter(canvas).catch(() => ''), canvas };
+  };
+  const first = await read(FOOTER_REGION);
+  if (parseFooter(first.text).collectorNumber) return first;
+  const second = await read(FOOTER_REGION_UP);
+  return parseFooter(second.text).collectorNumber ? second : first;
+}
+
+/** Nazwa: zwykły wycinek, a gdy prawie nic nie odczytał, wycinek przesunięty w dół (rynienka). */
+async function readTitle(pixels: Uint8ClampedArray, w: number, h: number, quad: Quad): Promise<{ text: string; canvas: HTMLCanvasElement }> {
+  const read = async (region: CardRegion) => {
+    const canvas = prepareForOcr(warpCardRegion(pixels, w, h, quad, 640, 100, region), 640, 100);
+    return { text: await ocrTitle(canvas).catch(() => ''), canvas };
+  };
+  const first = await read(TITLE_REGION);
+  if (first.text.replace(/[^\p{L}]/gu, '').length >= 3) return first;
+  const second = await read(TITLE_REGION_DOWN);
+  return second.text.replace(/[^\p{L}]/gu, '').length > first.text.replace(/[^\p{L}]/gu, '').length ? second : first;
+}
+
 /** Pewność, od której wynik samego obrazu uznajemy bez czekania na OCR. */
 export const QUICK_IMAGE_CONFIDENCE = 85;
 
@@ -408,9 +440,7 @@ async function refineEdition(
 ): Promise<ScanResult> {
   if (!ties || !result.matchedCard || result.possibleCards.length < 2) return result;
   onStatus?.(t('Odczyt wydania karty...'));
-  const footerRgba = warpCardRegion(pixels, w, h, quad, 600, 150, FOOTER_REGION);
-  const footerCanvas = prepareGrayForOcr(footerRgba, 600, 150);
-  const text = await ocrFooter(footerCanvas).catch(() => '');
+  const { text, canvas: footerCanvas } = await readMtgFooter(pixels, w, h, quad);
   const footer = parseFooter(text);
   const i = pickPrintingByFooterText(result.possibleCards as any[], text, footer.lang);
   const label = (c: any) => (c ? `${c.set}/${c.collector_number}${c.lang && c.lang !== 'en' ? ` ${c.lang}` : ''}` : '');
@@ -535,17 +565,11 @@ export async function recognizeCard(
   }
 
   // 2. Obraz niejednoznaczny: OCR nazwy i stopki, potem pełne dopasowanie.
-  const titleRgba = warpCardRegion(pixels, w, h, quad, 640, 100, TITLE_REGION);
-  const footerRgba = warpCardRegion(pixels, w, h, quad, 600, 150, FOOTER_REGION);
-  const titleCanvas = prepareForOcr(titleRgba, 640, 100);
-  const footerCanvas = prepareGrayForOcr(footerRgba, 600, 150);
 
   opts.onStatus?.(t('Odczyt nazwy i numeru karty...'));
-  const [title, footerText] = await Promise.all([
-    ocrTitle(titleCanvas).catch(() => ''),
-    ocrFooter(footerCanvas).catch(() => '')
-  ]);
-  const footer = parseFooter(footerText);
+  const [titleRead, footerRead] = await Promise.all([readTitle(pixels, w, h, quad), readMtgFooter(pixels, w, h, quad)]);
+  const title = titleRead.text;
+  const footer = parseFooter(footerRead.text);
 
   opts.onStatus?.(t('Dopasowywanie w bazie kart...'));
   const data: any = await identify(
@@ -570,8 +594,8 @@ export async function recognizeCard(
     confidence: data.confidence || 0,
     matchedCard: data.matchedCard || null,
     possibleCards: data.possibleCards || [],
-    debugTitleUrl: titleCanvas.toDataURL('image/png'),
-    debugBottomUrl: footerCanvas.toDataURL('image/png'),
+    debugTitleUrl: titleRead.canvas.toDataURL('image/png'),
+    debugBottomUrl: footerRead.canvas.toDataURL('image/png'),
     method: data.method
   };
 }

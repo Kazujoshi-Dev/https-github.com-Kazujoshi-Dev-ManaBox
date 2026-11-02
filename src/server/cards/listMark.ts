@@ -28,11 +28,11 @@ const CORNER = 16; // promień zaokrąglenia rogu karty (ok. 3 mm z 63 mm) w pik
 const EDGE = 3;
 
 /** Przesunięcie zdjęcia względem wzorca (niedokładnie wykryte rogi), w pikselach karty 300×420. */
-const MAX_SHIFT = 12;
+const MAX_SHIFT = 20; // do ok. 6,5% szerokości: ramka pogrubiona przez sąsiednią kartę (rynienka)
 /** Krok zgrubnego szukania przesunięcia (potem dokładnie co 1 px). */
-const COARSE_STEP = 2;
+const COARSE_STEP = 3;
 /** Dopasowanie lokalne wokół symbolu: rogi wykryte na zdjęciu przesuwają i skalują kadr różnie w różnych miejscach. */
-const LOCAL_SHIFT = 4;
+const LOCAL_SHIFT = 5;
 const LOCAL_PAD = 22;
 /** Dokładne dopasowanie wokół symbolu. */
 const FINE_SHIFT = 2;
