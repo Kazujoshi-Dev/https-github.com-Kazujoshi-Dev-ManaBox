@@ -129,7 +129,6 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
   });
   const [quantity, setQuantity] = useState<number>(1);
   const [condition, setCondition] = useState<CardCondition>('NM');
-  const [language, setLanguage] = useState<CardLanguage>('EN');
   const [isAdding, setIsAdding] = useState<boolean>(false);
   const [lastAddedNotice, setLastAddedNotice] = useState<string | null>(null);
 
@@ -638,13 +637,11 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
   }, [activeCard, loadAlternatePrints, scanResult]);
 
   const handleSelectAlternatePrint = useCallback((printCard: ScryfallCard) => {
-    // Wersja w innym języku (np. japońska) od razu ustawia język egzemplarza
-    if ((printCard.lang || 'en') !== (activeCard?.lang || 'en')) setLanguage(langFromCard(printCard));
     setActiveCard(printCard);
     setIsPrintsOpen(false);
     setPrintFilter('');
     showToast(t('Wybrano wersję [{v1}] #{collector_number}', { v1: printCard.set.toUpperCase(), collector_number: printCard.collector_number }));
-  }, [activeCard, showToast]);
+  }, [showToast]);
 
   const shownPrints = useMemo(() => filterPrints(prints, printFilter), [prints, printFilter]);
   const typedSetNumber = useMemo(() => parseSetAndNumber(printFilter), [printFilter]);
@@ -698,6 +695,11 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
       setIsSearchingManual(false);
     }
   }, [manualQuery, showToast]);
+
+  // Język egzemplarza wynika zawsze z rozpoznanego wydania (np. japońska wersja = JP).
+  // Wcześniej był osobnym stanem, który po wybraniu japońskiej wersji zostawał ustawiony
+  // dla kolejnych skanowanych kart, także angielskich.
+  const language: CardLanguage = activeCard ? langFromCard(activeCard) : 'EN';
 
   // 7. Save Card to Collection
   const handleAddCardToCollection = useCallback(async () => {
