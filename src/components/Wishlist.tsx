@@ -23,8 +23,10 @@ import {
   Check,
   FileText,
   Map as MapIcon,
-  Loader2
+  Loader2,
+  QrCode
 } from 'lucide-react';
+import { SaleQrModal } from './SaleQrModal';
 import { useT, plural } from '../i18n';
 
 interface WishlistProps {
@@ -58,6 +60,7 @@ export const Wishlist: React.FC<WishlistProps> = ({
   const [isMapOpen, setIsMapOpen] = useState(false);
   const [copiedLink, setCopiedLink] = useState(false);
   const [copiedText, setCopiedText] = useState(false);
+  const [isQrOpen, setIsQrOpen] = useState(false);
 
   // Publiczny link do listy życzeń (działa bez logowania, jak oferta w „Sprzedam”)
   const publicShareSlug = currentUser?.username || currentUser?.id || '';
@@ -122,6 +125,16 @@ export const Wishlist: React.FC<WishlistProps> = ({
         }
       />
 
+      {isQrOpen && publicShareSlug && (
+        <SaleQrModal
+          variant="wishlist"
+          url={publicShareUrl}
+          username={currentUser?.username || publicShareSlug}
+          onClose={() => setIsQrOpen(false)}
+          showToast={showToast}
+        />
+      )}
+
       {publicShareSlug && (
         <div className="rounded-xl border border-stone-800 bg-stone-900 p-3 flex flex-col md:flex-row md:items-center gap-3">
           <div className="flex items-center gap-2 text-sm text-stone-300 shrink-0" title={t('Wyślij go sprzedającym. Zobaczą, jakich kart szukasz, bez zakładania konta.')}>
@@ -145,6 +158,10 @@ export const Wishlist: React.FC<WishlistProps> = ({
               <ExternalLink className="w-4 h-4" />
               <span className="hidden lg:inline">{t('Podgląd')}</span>
             </a>
+            <button type="button" onClick={() => setIsQrOpen(true)} className="btn btn-ghost" title={t('Pokaż kod QR, który otwiera Twoją listę życzeń')}>
+              <QrCode className="w-4 h-4" />
+              <span className="hidden lg:inline">{t('Kod QR')}</span>
+            </button>
             <button type="button" onClick={handleCopyTextList} disabled={wishlist.length === 0} className="btn btn-ghost" title={t('Kopiuj listę kart jako tekst')}>
               {copiedText ? <Check className="w-4 h-4 text-emerald-400" /> : <FileText className="w-4 h-4" />}
               <span className="hidden lg:inline">{copiedText ? t('Skopiowano') : t('Lista .txt')}</span>

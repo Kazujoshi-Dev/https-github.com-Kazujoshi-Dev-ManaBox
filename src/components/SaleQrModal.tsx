@@ -10,17 +10,21 @@ interface SaleQrModalProps {
   username: string;
   onClose: () => void;
   showToast?: (message: string) => void;
+  /** Rodzaj publicznej strony: oferta „Sprzedam” (domyślnie) albo lista życzeń. */
+  variant?: 'sale' | 'wishlist';
 }
 
 const QR_OPTIONS = { errorCorrectionLevel: 'M' as const, margin: 2, color: { dark: '#0c0a09', light: '#ffffff' } };
 
 /**
- * Okno z kodem QR oferty „Sprzedam”: zeskanowanie telefonem otwiera publiczną ofertę gracza.
- * Kod można pobrać jako grafikę PNG (np. do wydruku na stoisko lub do wklejenia w ogłoszeniu).
+ * Okno z kodem QR publicznej strony gracza: oferty „Sprzedam” albo listy życzeń.
+ * Zeskanowanie telefonem otwiera stronę; kod można pobrać jako grafikę PNG (np. do wydruku).
  */
-export const SaleQrModal: React.FC<SaleQrModalProps> = ({ url, username, onClose, showToast }) => {
+export const SaleQrModal: React.FC<SaleQrModalProps> = ({ url, username, onClose, showToast, variant = 'sale' }) => {
   const t = useT();
   useBackToClose(true, onClose);
+  const isWishlist = variant === 'wishlist';
+  const title = isWishlist ? t('Kod QR listy życzeń') : t('Kod QR oferty');
 
   const [dataUrl, setDataUrl] = useState<string | null>(null);
   const [error, setError] = useState(false);
@@ -71,7 +75,7 @@ export const SaleQrModal: React.FC<SaleQrModalProps> = ({ url, username, onClose
       ctx.textAlign = 'center';
       ctx.fillStyle = '#0c0a09';
       ctx.font = '700 72px system-ui, -apple-system, Segoe UI, sans-serif';
-      ctx.fillText(t('Sprzedam'), W / 2, 120);
+      ctx.fillText(isWishlist ? t('Szukam kart') : t('Sprzedam'), W / 2, 120);
       ctx.fillStyle = '#b45309';
       ctx.font = '600 44px system-ui, -apple-system, Segoe UI, sans-serif';
       ctx.fillText(`@${username}`, W / 2, 190);
@@ -80,7 +84,7 @@ export const SaleQrModal: React.FC<SaleQrModalProps> = ({ url, username, onClose
 
       ctx.fillStyle = '#44403c';
       ctx.font = '500 34px system-ui, -apple-system, Segoe UI, sans-serif';
-      ctx.fillText(t('Zeskanuj, aby zobaczyć karty na sprzedaż'), W / 2, 1210);
+      ctx.fillText(isWishlist ? t('Zeskanuj, aby zobaczyć, jakich kart szukam') : t('Zeskanuj, aby zobaczyć karty na sprzedaż'), W / 2, 1210);
       ctx.fillStyle = '#78716c';
       ctx.font = '400 28px system-ui, -apple-system, Segoe UI, sans-serif';
       const shortUrl = url.replace(/^https?:\/\//, '');
@@ -88,7 +92,7 @@ export const SaleQrModal: React.FC<SaleQrModalProps> = ({ url, username, onClose
 
       const a = document.createElement('a');
       a.href = canvas.toDataURL('image/png');
-      a.download = `sprzedam-qr-${username}`.replace(/[^\p{L}\p{N}_-]+/gu, '-') + '.png';
+      a.download = `${isWishlist ? 'lista-zyczen' : 'sprzedam'}-qr-${username}`.replace(/[^\p{L}\p{N}_-]+/gu, '-') + '.png';
       document.body.appendChild(a);
       a.click();
       a.remove();
@@ -109,13 +113,13 @@ export const SaleQrModal: React.FC<SaleQrModalProps> = ({ url, username, onClose
       <div
         role="dialog"
         aria-modal="true"
-        aria-label={t('Kod QR oferty')}
+        aria-label={title}
         className="w-full sm:max-w-sm bg-stone-900 border border-stone-800 rounded-t-3xl sm:rounded-2xl shadow-2xl text-stone-100 pb-[env(safe-area-inset-bottom)]"
       >
         <div className="flex items-center justify-between gap-3 px-4 py-3 border-b border-stone-800">
           <div className="flex items-center gap-2 min-w-0">
             <QrCode className="w-4 h-4 text-amber-400 shrink-0" />
-            <h2 className="text-sm font-semibold truncate">{t('Kod QR oferty')}</h2>
+            <h2 className="text-sm font-semibold truncate">{title}</h2>
           </div>
           <button type="button" onClick={onClose} className="btn btn-ghost" aria-label={t('Zamknij')}>
             <X className="w-4 h-4" />
@@ -125,7 +129,7 @@ export const SaleQrModal: React.FC<SaleQrModalProps> = ({ url, username, onClose
         <div className="p-5 flex flex-col items-center gap-3 text-center">
           <div className="w-60 h-60 rounded-xl bg-white p-2 flex items-center justify-center">
             {dataUrl ? (
-              <img src={dataUrl} alt={t('Kod QR oferty użytkownika @{name}', { name: username })} className="w-full h-full" />
+              <img src={dataUrl} alt={isWishlist ? t('Kod QR listy życzeń użytkownika @{name}', { name: username }) : t('Kod QR oferty użytkownika @{name}', { name: username })} className="w-full h-full" />
             ) : error ? (
               <span className="text-xs text-stone-600 px-4">{t('Nie udało się wygenerować kodu QR.')}</span>
             ) : (
@@ -134,7 +138,7 @@ export const SaleQrModal: React.FC<SaleQrModalProps> = ({ url, username, onClose
           </div>
           <div className="space-y-1 min-w-0 max-w-full">
             <p className="text-sm font-semibold text-amber-300 truncate">@{username}</p>
-            <p className="text-xs text-stone-400">{t('Zeskanuj aparatem telefonu, aby otworzyć ofertę z kartami.')}</p>
+            <p className="text-xs text-stone-400">{isWishlist ? t('Zeskanuj aparatem telefonu, aby otworzyć listę szukanych kart.') : t('Zeskanuj aparatem telefonu, aby otworzyć ofertę z kartami.')}</p>
             <p className="text-[11px] text-stone-500 break-all">{url.replace(/^https?:\/\//, '')}</p>
           </div>
         </div>

@@ -443,7 +443,13 @@ export const UsersList: React.FC<UsersListProps> = ({
     return (
       <div className="space-y-6 pb-12">
         {qrUser === selectedUser.username && (
-          <SaleQrModal url={profileSaleUrl} username={selectedUser.username} onClose={() => setQrUser(null)} showToast={showToast} />
+          <SaleQrModal
+            variant={profileTab === 'wishlist' ? 'wishlist' : 'sale'}
+            url={profileTab === 'wishlist' ? publicUrl('wishlist', selectedUser.username) : profileSaleUrl}
+            username={selectedUser.username}
+            onClose={() => setQrUser(null)}
+            showToast={showToast}
+          />
         )}
         {/* Navigation Top Bar */}
         <div className="flex items-center justify-between gap-4 flex-wrap">
@@ -487,7 +493,7 @@ export const UsersList: React.FC<UsersListProps> = ({
               type="button"
               onClick={() => setQrUser(selectedUser.username)}
               className="btn btn-secondary"
-              title={t('Pokaż kod QR, który otwiera ofertę tego gracza')}
+              title={profileTab === 'wishlist' ? t('Pokaż kod QR, który otwiera listę życzeń tego gracza') : t('Pokaż kod QR, który otwiera ofertę tego gracza')}
             >
               <QrCode className="w-4 h-4" />
               <span className="hidden sm:inline">{t('Kod QR')}</span>
