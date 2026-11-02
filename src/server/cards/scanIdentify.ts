@@ -200,7 +200,9 @@ export async function identifyWithLocalDb(
     latinTitle = true;
     confidence = Math.round(best.score * 85);
     if (set) {
-      const inSet = (await cards.getCardsByIds(best.ids)).find((c) => c.set === set);
+      // set z indeksu w pamięci: pełne dane wszystkich wydań (np. tysiące wersji Island) nie są tu potrzebne
+      const inSetId = best.ids.find((id) => cards.setOfId(id) === set);
+      const inSet = inSetId ? { id: inSetId } : undefined;
       const bestD = distances.get(matchedId);
       const setD = inSet ? distances.get(inSet.id) : undefined;
       if (inSet && (bestD === undefined || setD === undefined || setD <= bestD + IMAGE_SET_TOLERANCE)) {

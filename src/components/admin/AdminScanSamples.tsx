@@ -91,6 +91,7 @@ const SUMMARY_ROWS: Array<{ key: keyof ScanEvalSummary; label: string; of: 'card
   { key: 'none', label: tk('Brak wyniku'), of: 'cards', better: 'down' },
   { key: 'quickPath', label: tk('Rozpoznane bez OCR'), of: 'cards', better: 'up' },
   { key: 'fusedQuick', label: tk('W tym dzięki kilku klatkom'), of: 'cards', better: 'up' },
+  { key: 'footerRefined', label: tk('Wydanie wybrane po stopce'), of: 'cards', better: 'up' },
   { key: 'falseAlarm', label: tk('Wynik dla nie-karty'), of: 'notCards', better: 'down' }
 ];
 

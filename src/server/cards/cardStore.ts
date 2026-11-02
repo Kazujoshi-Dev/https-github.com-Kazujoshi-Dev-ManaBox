@@ -47,6 +47,7 @@ interface IndexEntry {
 interface CardIndex {
   entries: IndexEntry[];
   nameById: Map<string, string>; // id wydania → znormalizowana główna nazwa
+  byId: Map<string, number>; // id wydania → indeks w `entries`
   bySetNumber: Map<string, number>;
   byName: Map<string, number[]>; // znormalizowana nazwa → indeksy wydań (najnowsze pierwsze)
   names: NameIndex;
@@ -523,11 +524,13 @@ export async function loadCardIndex(): Promise<void> {
   );
   const entries: IndexEntry[] = [];
   const nameById = new Map<string, string>();
+  const byId = new Map<string, number>();
   const bySetNumber = new Map<string, number>();
   const byName = new Map<string, number[]>();
   for (const r of res.rows) {
     const idx = entries.length;
     entries.push({ id: r.id, set: r.set_code, cn: r.collector_number, released: r.released });
+    byId.set(r.id, idx);
     // Ten sam numer w dodatku ma też wersja japońska itp.: zostaje pierwsza (angielska)
     const setKey = `${r.set_code}/${r.collector_number.toLowerCase()}`;
     if (!bySetNumber.has(setKey)) bySetNumber.set(setKey, idx);
@@ -542,7 +545,7 @@ export async function loadCardIndex(): Promise<void> {
       list.push(idx);
     }
   }
-  index = { entries, nameById, bySetNumber, byName, names: new NameIndex(byName.keys()) };
+  index = { entries, nameById, byId, bySetNumber, byName, names: new NameIndex(byName.keys()) };
   console.log(`[Karty] Indeks w pamięci: ${entries.length} wydań, ${index.names.size} nazw.`);
 }
 
@@ -829,6 +832,12 @@ export function findByName(ocrTitle: string, limit = 3): NameCandidates[] {
 /** Znormalizowana główna nazwa wydania (do grupowania wyników wyszukiwania po obrazie). */
 export function nameOfId(id: string): string | null {
   return index?.nameById.get(id) ?? null;
+}
+
+/** Kod setu wydania z indeksu w pamięci (bez zapytania do bazy); null, gdy nieznane. */
+export function setOfId(id: string): string | null {
+  const i = index?.byId.get(id);
+  return i === undefined ? null : index!.entries[i].set;
 }
 
 /** Wszystkie wydania danej karty (po znormalizowanej nazwie). */

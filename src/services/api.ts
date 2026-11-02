@@ -727,6 +727,7 @@ export interface ScanEvalSummary {
   falseAlarm: number;
   quickPath: number;
   fusedQuick?: number;
+  footerRefined?: number;
   multiFrame?: number;
   ms: number;
 }

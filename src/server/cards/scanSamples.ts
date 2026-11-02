@@ -12,6 +12,7 @@ import type pg from 'pg';
 import { getPool, isPostgresActive } from '../db/storage';
 import * as cards from './cardStore';
 import * as hashes from './hashIndex';
+import { pickPrintingByFooterText } from '../../components/camera-scanner/editionPick';
 import { MAX_EXTRA_FRAMES, QUICK_IMAGE_CONFIDENCE, hashCardFrames, identifyMtgLocal, type FrameHashes, type IdentifyResult } from './scanIdentify';
 
 /** Wynik poniżej tej pewności zapisujemy jako „niepewny”. */
@@ -316,6 +317,8 @@ export interface EvalSummary {
   quickPath: number;
   /** Z tego: rozpoznane dopiero po połączeniu kilku klatek (bez OCR). */
   fusedQuick?: number;
+  /** Z tego: wydanie zmienione po stopce (jak robi przeglądarka, gdy obraz nie rozróżnia wydań). */
+  footerRefined?: number;
   /** Próbki z więcej niż jedną klatką. */
   multiFrame?: number;
   ms: number;
@@ -370,7 +373,7 @@ export async function evaluateSamples(): Promise<{ error: string } | { summary: 
     ).rows;
     const s: EvalSummary = {
       total: rows.length, cards: 0, notCards: 0, correct: 0, sameName: 0, wrong: 0, wrongUnsure: 0,
-      none: 0, rejected: 0, falseAlarm: 0, quickPath: 0, fusedQuick: 0, multiFrame: 0, ms: 0
+      none: 0, rejected: 0, falseAlarm: 0, quickPath: 0, fusedQuick: 0, footerRefined: 0, multiFrame: 0, ms: 0
     };
     const failures: { id: number; outcome: EvalOutcome; expectedId: string | null; gotId: string | null; confidence: number; method: string | null }[] = [];
 
@@ -393,6 +396,17 @@ export async function evaluateSamples(): Promise<{ error: string } | { summary: 
           done = true;
           s.quickPath++;
           s.fusedQuick!++;
+        }
+      }
+      // 2b. Jak w przeglądarce (refineEdition w scanEngine.ts): pewny wynik obrazu, ale kilka wydań wygląda
+      // tak samo — wydanie wybiera stopka. Tu zamiast świeżego odczytu bierzemy kod setu i numer zapisane z OCR.
+      if (done && (result.editionTies || 0) > 0 && (r.hint_set || r.hint_collector)) {
+        const footerText = `${r.hint_collector || ''} ${(r.hint_set || '').toUpperCase()}`.trim();
+        const i = pickPrintingByFooterText(result.possibleCards, footerText);
+        if (i > 0) {
+          const chosen = result.possibleCards[i];
+          result = { ...result, matchedCard: chosen, possibleCards: [chosen, ...result.possibleCards.filter((_, k) => k !== i)] };
+          s.footerRefined!++;
         }
       }
       // 3. z nazwą i stopką z OCR (i wszystkimi klatkami)

@@ -1062,7 +1062,7 @@ app.post('/api/scanner/delver-identify', authMiddleware, scannerLimiter, async (
     // Jedna linia na skan — do strojenia progów na prawdziwych zdjęciach (bez danych użytkownika).
     console.log(
       `[Skan] klatki=${queryHash?.length ?? 0} metoda=${result.method || 'scryfall'} pewność=${result.confidence} obraz=${result.imageDistance ?? '-'} ` +
-        `ocr="${hintTitle}" set=${hintSet || '-'}/${hintCollector || '-'} wynik=${matched ? `${matched.name} [${matched.set}/${matched.collector_number}${matched.lang && matched.lang !== 'en' ? ` ${matched.lang}` : ''}]` : 'brak'}` +
+        `ocr="${logSafe(hintTitle, 80)}" set=${logSafe(hintSet, 12) || '-'}/${logSafe(hintCollector, 24) || '-'} wynik=${matched ? `${matched.name} [${matched.set}/${matched.collector_number}${matched.lang && matched.lang !== 'en' ? ` ${matched.lang}` : ''}]` : 'brak'}` +
         (result.englishDistance !== undefined ? ` en=${result.englishDistance}` : '') +
         (result.editionTies ? ` remis_wydań=${result.editionTies}` : '') +
         (result.listCheck ? ` the_list=${result.listCheck.verdict ?? '?'}/${result.listCheck.score ?? '-'}${result.listCheck.reason ? `/${result.listCheck.reason}` : ''}` : '')
@@ -1105,6 +1105,11 @@ app.post('/api/scanner/delver-identify', authMiddleware, scannerLimiter, async (
   }
 });
 
+// Tekst od klienta w logu: bez znaków sterujących i nowych linii (nie da się podrobić linii logu) i z limitem długości.
+function logSafe(v: unknown, max: number): string {
+  return typeof v === 'string' ? v.replace(/[\p{Cc}\p{Cf}"\\]/gu, ' ').replace(/\s+/g, ' ').trim().slice(0, max) : '';
+}
+
 // Wynik doboru wydania ze stopki (odbywa się w przeglądarce) — tylko do logu, żeby dało się
 // ocenić na prawdziwych skanach, czy stopka poprawia edycję wybraną po obrazie.
 app.post('/api/scanner/edition-log', authMiddleware, scannerLimiter, (req, res) => {
@@ -1141,7 +1146,7 @@ app.post('/api/scanner/lorcana-identify', authMiddleware, scannerLimiter, async 
     }
     const m = result.matchedCard;
     console.log(
-      `[Skan Lorcana] pewność=${result.confidence} obraz=${result.imageDistance ?? '-'} numer=${hintSet || '-'}/${hintCollector || '-'} ` +
+      `[Skan Lorcana] pewność=${result.confidence} obraz=${result.imageDistance ?? '-'} numer=${logSafe(hintSet, 8) || '-'}/${logSafe(hintCollector, 12) || '-'} ` +
         `wynik=${m ? `${m.name} [${m.set}/${m.collector_number}]` : 'brak'}`
     );
     res.json({

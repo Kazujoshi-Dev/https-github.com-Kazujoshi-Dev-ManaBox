@@ -32,7 +32,7 @@ import { formatCurrency, getCardImageUri, getCardPrice, getRarityColor, getRarit
 import { filterPrints, isExactPrint, parseSetAndNumber } from '../../utils/printMatch';
 import { CameraScannerModalProps, CameraDeviceOption, ScanResult } from './types';
 import { searchCardInScryfall, playScannerChime, getTesseractWorker } from './ocrProcessor';
-import { calculateVideoSensorCrop } from './cvCardPipeline';
+import { calculateVideoSensorCrop } from './sensorCrop';
 import { GLARE_WARN, detectCardInSource, recognizeCard } from './scanEngine';
 import { Quad, quadMovement } from './cardDetector';
 import { CardLangFlag } from '../ui/CardLangFlag';
