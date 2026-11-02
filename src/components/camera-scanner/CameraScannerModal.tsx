@@ -1445,7 +1445,7 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
                   <div className="flex items-start gap-3">
                     {/* Card Thumbnail */}
                     <div
-                      className="shrink-0 w-24 h-[134px] rounded-lg overflow-hidden bg-stone-900 bg-cover bg-center border border-stone-700 shadow-md relative"
+                      className="shrink-0 w-[115px] h-[161px] rounded-lg overflow-hidden bg-stone-900 bg-cover bg-center border border-stone-700 shadow-md relative"
                       style={scanResult?.debugCropUrl ? { backgroundImage: `url(${scanResult.debugCropUrl})` } : undefined}
                     >
                       <img
@@ -1479,6 +1479,7 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
                         <span className={`text-[11px] px-1.5 py-0.5 rounded border font-semibold ${getRarityColor(activeCard.rarity)}`}>
                           {getRarityLabel(activeCard.rarity)}
                         </span>
+                        <CardLangFlag lang={langFromCard(activeCard)} />
                       </div>
 
                       <h3 className="font-bold text-stone-100 text-sm mt-1 leading-snug">
