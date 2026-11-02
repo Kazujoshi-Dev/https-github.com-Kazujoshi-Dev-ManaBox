@@ -15,6 +15,7 @@ import {
   Plus,
   Minus,
   CheckCircle2,
+  SunDim,
   ScanLine,
   Radio,
   Video,
@@ -33,7 +34,7 @@ import { filterPrints, isExactPrint, parseSetAndNumber } from '../../utils/print
 import { CameraScannerModalProps, CameraDeviceOption, ScanResult } from './types';
 import { searchCardInScryfall, playScannerChime, getTesseractWorker } from './ocrProcessor';
 import { calculateVideoSensorCrop } from './sensorCrop';
-import { GLARE_WARN, detectCardInSource, recognizeCard } from './scanEngine';
+import { GLARE_WARN, detectCardInSource, recognizeCard, reflectionHint, type ReflectionHint } from './scanEngine';
 import { Quad, quadMovement } from './cardDetector';
 import { CardLangFlag } from '../ui/CardLangFlag';
 import { EdhrecBadge } from '../EdhrecBadge';
@@ -48,6 +49,20 @@ const AUTO_ACCEPT_CONFIDENCE = 80;
 /** Górna granica ilości ustawianej strzałkami (ochrona przed przytrzymanym klawiszem). */
 const MAX_SCAN_QUANTITY = 999;
 const GLARE_MESSAGE = tk('Odblask zasłania ilustrację. Przechyl lekko kartę albo odsuń lampę.');
+const GLARE_CARD_MESSAGE = tk('Odblask na karcie. Przechyl ją lekko albo odsuń lampę.');
+const SLEEVE_MESSAGE = tk('Silne odbicia, np. od koszulki lub folii. Wyjmij kartę z koszulki albo zmień kąt światła.');
+/** Ile kolejnych pomiarów na żywo (co ok. 130 ms) musi pokazać odbicia, żeby wyświetlić podpowiedź, i ile bez nich, żeby ją schować. */
+const REFLECTION_SHOW_TICKS = 3;
+const REFLECTION_HIDE_TICKS = 6;
+
+/** Komunikat o odbiciach dla wyniku skanu albo null, gdy odbić nie ma. */
+function reflectionMessage(result: { reflections?: { art: number; card: number; border: number }; glare?: number }): string | null {
+  const hint = reflectionHint(result.reflections);
+  if (hint === 'sleeve') return SLEEVE_MESSAGE;
+  if ((result.glare || 0) >= GLARE_WARN) return GLARE_MESSAGE;
+  if (hint === 'glare') return GLARE_CARD_MESSAGE;
+  return null;
+}
 /** Odstęp między kolejnymi próbami rozpoznania tej samej karty. */
 const RETRY_DELAY_MS = 500;
 /** Po tylu nieudanych próbach przestajemy, dopóki karta nie zniknie z kadru (oszczędza serwer i baterię). */
@@ -77,6 +92,9 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
   // Pętla wykrywania karty: ostatnie położenie, liczba klatek bez karty i gotowość do kolejnego skanu
   const lastQuadRef = useRef<Quad | null>(null);
   const lostCountRef = useRef<number>(0);
+  // Podpowiedź o odbiciach na żywo (z opóźnieniem, żeby nie migała przy pojedynczej klatce)
+  const [liveReflection, setLiveReflection] = useState<ReflectionHint>(null);
+  const reflectionTicksRef = useRef({ hint: null as ReflectionHint, seen: 0, clear: 0 });
   const scanArmedRef = useRef<boolean>(true);
   // Ponawianie nieudanych skanów tej samej karty (jak w Delver Lens: skanujemy, aż się uda).
   const nextAttemptAtRef = useRef<number>(0);
@@ -358,6 +376,8 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
       scanSessionRef.current++;
       stopCamera();
       if (autoScanTimerRef.current) clearInterval(autoScanTimerRef.current);
+      setLiveReflection(null);
+      reflectionTicksRef.current = { hint: null, seen: 0, clear: 0 };
       setScanResult(null);
       setActiveCard(null);
       setLastAddedNotice(null);
@@ -411,9 +431,10 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
       if (soundEnabled) playScannerChime('success');
       return true;
     }
-    if ((result.glare || 0) >= GLARE_WARN) {
+    const reflectionMsg = reflectionMessage(result);
+    if (reflectionMsg) {
       if (result.cleanedTitle) setManualQuery(result.cleanedTitle);
-      setScanStatus(t(GLARE_MESSAGE));
+      setScanStatus(t(reflectionMsg));
     } else if (result.cleanedTitle) {
       setManualQuery(result.cleanedTitle);
       setScanStatus(t('Odczytano: "{title}". Nie znaleziono pewnego dopasowania', { title: result.cleanedTitle }));
@@ -468,8 +489,8 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
       nextAttemptAtRef.current = Date.now() + RETRY_DELAY_MS;
       setScanResult(result);
       setScanStatus(
-        !key && (result.glare || 0) >= GLARE_WARN
-          ? t(GLARE_MESSAGE)
+        !key && reflectionMessage(result)
+          ? t(reflectionMessage(result)!)
           : key
           ? t('Sprawdzam: "{title}"...', { title: key })
           : attemptsRef.current >= 4
@@ -500,6 +521,22 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
       return;
     }
 
+    const updateLiveReflection = (hint: ReflectionHint) => {
+      const st = reflectionTicksRef.current;
+      if (hint) {
+        st.clear = 0;
+        st.seen = st.hint === hint ? st.seen + 1 : 1;
+        st.hint = hint;
+        if (st.seen >= REFLECTION_SHOW_TICKS) setLiveReflection(hint);
+      } else {
+        st.seen = 0;
+        if (++st.clear >= REFLECTION_HIDE_TICKS) {
+          st.hint = null;
+          setLiveReflection(null);
+        }
+      }
+    };
+
     const toDisplay = (q: Quad) => {
       const v = videoRef.current;
       const c = viewfinderContainerRef.current;
@@ -517,7 +554,8 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
       try {
         const guide = getSensorGuide();
         if (!guide) return;
-        const det = detectCardInSource(v, guide);
+        const det = detectCardInSource(v, guide, true);
+        updateLiveReflection(det ? reflectionHint(det.reflections) : null);
         if (!det) {
           lostCountRef.current += 1;
           steadyCountRef.current = 0;
@@ -1161,6 +1199,16 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
                 </svg>
               )}
 
+              {/* Podpowiedź o odbiciach na żywo (odblask lampy, błyszcząca koszulka lub folia) */}
+              {isCameraActive && !activeCard && liveReflection && (
+                <div className="absolute bottom-14 inset-x-3 flex justify-center pointer-events-none animate-fade-in" role="status" aria-live="polite">
+                  <div className="flex items-start gap-2 max-w-md px-3 py-2 rounded-xl bg-stone-950/90 backdrop-blur-md border border-amber-400/50 text-amber-200 text-xs leading-snug shadow-xl">
+                    <SunDim className="w-4 h-4 shrink-0 mt-px text-amber-400" aria-hidden="true" />
+                    <span>{t(liveReflection === 'sleeve' ? SLEEVE_MESSAGE : GLARE_CARD_MESSAGE)}</span>
+                  </div>
+                </div>
+              )}
+
               {/* Rozpoznana karta pokazana od razu w kadrze (zanim wczyta się grafika — zdjęcie z kamery) */}
               {isCameraActive && activeCard && (
                 <div className="absolute top-3 inset-x-3 flex justify-center pointer-events-none animate-fade-in">
@@ -1193,13 +1241,13 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
 
               {/* Status Message Overlay at Bottom of Viewport */}
               <div className="absolute bottom-2 inset-x-4 flex items-center justify-center">
-                <div className="px-3.5 py-1.5 rounded-full bg-stone-950/85 backdrop-blur-md border border-stone-800 text-xs text-stone-200 font-medium flex items-center gap-2 shadow-lg">
+                <div className="px-3.5 py-1.5 rounded-2xl bg-stone-950/85 backdrop-blur-md border border-stone-800 text-xs text-stone-200 font-medium flex items-center gap-2 shadow-lg">
                   {isScanning ? (
                     <RefreshCw className="w-3.5 h-3.5 text-amber-400 animate-spin" />
                   ) : (
                     <ScanLine className="w-3.5 h-3.5 text-amber-400" />
                   )}
-                  <span className="truncate max-w-[260px] sm:max-w-xs">{scanStatus}</span>
+                  <span className="line-clamp-2 max-w-[280px] sm:max-w-sm">{scanStatus}</span>
                 </div>
               </div>
             </div>

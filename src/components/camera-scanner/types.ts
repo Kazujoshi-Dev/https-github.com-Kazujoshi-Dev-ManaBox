@@ -28,6 +28,8 @@ export interface ScanResult {
   method?: string;
   /** Odsetek ilustracji zajęty przez odblask (0..1). */
   glare?: number;
+  /** Odbicia na karcie (ilustracja, cała karta, ramka) — do podpowiedzi o odblasku i koszulce. */
+  reflections?: { art: number; card: number; border: number };
   /** Wykryte rogi karty we współrzędnych klatki. */
   quad?: import('./cardDetector').Quad;
 }

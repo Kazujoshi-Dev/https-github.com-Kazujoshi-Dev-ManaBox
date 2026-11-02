@@ -70,6 +70,8 @@ export const en_scanner: Record<string, string> = {
   "Nie rozpoznano karty. Popraw oświetlenie (bez odblasków) i przytrzymaj nieruchomo.": "Card not recognised. Improve the lighting (no glare) and hold it still.",
   "Nie udało się przetworzyć wskazanego pliku.": "Could not process the selected file.",
   "Poczekaj, aż skończy się bieżące rozpoznawanie.": "Wait until the current recognition finishes.",
+  "Odblask na karcie. Przechyl ją lekko albo odsuń lampę.": "Glare on the card. Tilt it slightly or move the lamp away.",
+  "Silne odbicia, np. od koszulki lub folii. Wyjmij kartę z koszulki albo zmień kąt światła.": "Strong reflections, e.g. from a sleeve or foil. Take the card out of the sleeve or change the angle of the light.",
   "Nie udało się utworzyć kontekstu 2D karty.": "Could not create the card's 2D context.",
   "Nie udało się utworzyć kontekstu Canvas 2D.": "Could not create a Canvas 2D context.",
   "Nie udało się uzyskać dostępu do kamery.": "Could not access the camera.",

@@ -68,6 +68,83 @@ export function measureGlare(rgba: Uint8ClampedArray | Uint8Array, w: number, h:
   return total ? clipped / total : 0;
 }
 
+/** Cała karta bez skrajnych brzegów (do odblasków poza ilustracją). */
+const CARD_INNER_REGION: CardRegion = { u0: 0.05, v0: 0.04, u1: 0.95, v1: 0.96 };
+
+/** Odbicia na karcie: odsetek prześwietlonych pikseli ilustracji i całej karty oraz jasnych plam na czarnej ramce. */
+export interface Reflections {
+  art: number;
+  card: number;
+  border: number;
+}
+
+/** Odblask całej karty, od którego podpowiadamy (poza ilustracją: pole tekstowe, ramka, pasek tytułu). */
+export const CARD_GLARE_WARN = 0.035;
+/**
+ * Jasne plamy na czarnej ramce. Nadruk karty jest matowy, więc ostre odbicie na ramce to zwykle
+ * błyszcząca koszulka albo folia; razem z odblaskiem na samej karcie to podpowiedź „koszulka”.
+ */
+export const SLEEVE_BORDER_WARN = 0.02;
+const SLEEVE_CARD_MIN = 0.008;
+
+/**
+ * Jasne plamy na czarnej ramce: piksele pasa ramki (od 1,2% do 3,5% od krawędzi, bez rogów, żeby nie
+ * łapać tła zza karty) dużo jaśniejsze od typowej ramki. Dla kart z białą lub bez ramki (mediana jasna) 0.
+ */
+function measureBorderSpecular(rgba: Uint8ClampedArray | Uint8Array, w: number, h: number): number {
+  // osobno dla każdego boku: 0 lewy, 1 prawy, 2 górny, 3 dolny
+  const sides: number[][] = [[], [], [], []];
+  for (let y = 0; y < h; y++) {
+    const v = (y + 0.5) / h;
+    for (let x = 0; x < w; x++) {
+      const u = (x + 0.5) / w;
+      const du = Math.min(u, 1 - u);
+      const dv = Math.min(v, 1 - v);
+      let side = -1;
+      if (du >= 0.012 && du <= 0.035 && dv >= 0.06) side = u < 0.5 ? 0 : 1;
+      else if (dv >= 0.009 && dv <= 0.025 && du >= 0.06) side = v < 0.5 ? 2 : 3;
+      if (side < 0) continue;
+      const p = (y * w + x) * 4;
+      sides[side].push(0.299 * rgba[p] + 0.587 * rgba[p + 1] + 0.114 * rgba[p + 2]);
+    }
+  }
+  const all = sides.flat();
+  if (all.length < 20) return 0;
+  const sorted = [...all].sort((a, b) => a - b);
+  const median = sorted[sorted.length >> 1];
+  if (median > 80) return 0; // biała ramka, karta bez ramki albo jasna grafika na brzegu
+  const isBright = (g: number) => g >= 200 && g >= median + 110;
+  let bright = 0;
+  let total = 0;
+  for (const vals of sides) {
+    const n = vals.filter(isBright).length;
+    // bok jasny prawie w całości to tło zza karty (krawędź wykryta odrobinę za kartą), nie odbicie
+    if (vals.length && n / vals.length > 0.5) continue;
+    bright += n;
+    total += vals.length;
+  }
+  return total ? bright / total : 0;
+}
+
+/** Odbicia na wyprostowanym obrazie karty (RGBA w × h). */
+export function measureReflections(rgba: Uint8ClampedArray | Uint8Array, w: number, h: number): Reflections {
+  return {
+    art: measureGlare(rgba, w, h, ART_REGION),
+    card: measureGlare(rgba, w, h, CARD_INNER_REGION),
+    border: measureBorderSpecular(rgba, w, h)
+  };
+}
+
+export type ReflectionHint = 'glare' | 'sleeve' | null;
+
+/** Jaką podpowiedź pokazać: „koszulka” (odbicia na ramce i karcie), „odblask” albo żadną. */
+export function reflectionHint(r: Reflections | undefined | null): ReflectionHint {
+  if (!r) return null;
+  if (r.border >= SLEEVE_BORDER_WARN && r.card >= SLEEVE_CARD_MIN) return 'sleeve';
+  if (r.art >= GLARE_WARN || r.card >= CARD_GLARE_WARN) return 'glare';
+  return null;
+}
+
 /** Szerokość celownika w obrazie do wykrywania — kompromis szybkość/dokładność. */
 const DETECT_GUIDE_WIDTH = 240;
 
@@ -92,8 +169,9 @@ function sourceSize(src: HTMLVideoElement | HTMLImageElement | HTMLCanvasElement
  */
 export function detectCardInSource(
   src: HTMLVideoElement | HTMLImageElement | HTMLCanvasElement,
-  guide: Rect
-): { quad: Quad; quality: number } | null {
+  guide: Rect,
+  withReflections = false
+): { quad: Quad; quality: number; reflections?: Reflections } | null {
   const { w, h } = sourceSize(src);
   if (!w || !h || guide.width < 20) return null;
   const margin = 0.3;
@@ -124,7 +202,9 @@ export function detectCardInSource(
     height: guide.height * (dh / rh)
   });
   if (!det) return null;
-  return { quad: scaleQuad(det.quad, rw / dw, rh / dh, roi.x, roi.y), quality: det.quality };
+  // Odbicia mierzymy na tym samym pomniejszonym wycinku (tanio, do podpowiedzi na żywo).
+  const reflections = withReflections ? measureReflections(warpCardRegion(data, dw, dh, det.quad, 150, 210), 150, 210) : undefined;
+  return { quad: scaleQuad(det.quad, rw / dw, rh / dh, roi.x, roi.y), quality: det.quality, reflections };
 }
 
 /** Czworokąt z prostokąta (gdy karty nie udało się wykryć — używamy celownika). */
@@ -488,6 +568,7 @@ export async function recognizeCard(
   const cardCanvas = toCanvas(cardRgba, 300, 420);
   const cardDataUrl = cardCanvas.toDataURL('image/jpeg', 0.85);
   const glare = measureGlare(cardRgba, 300, 420);
+  const reflections = measureReflections(cardRgba, 300, 420);
   frame.width = frame.height = 0; // zwolnienie pamięci (piksele zostają w `pixels`)
 
   const base: ScanResult = {
@@ -500,7 +581,8 @@ export async function recognizeCard(
     engineUsed: 'delver_lens',
     isAutoCropped: detected,
     quad: detected ? quad : undefined,
-    glare
+    glare,
+    reflections
   };
 
   const game = opts.game || 'mtg';
