@@ -489,6 +489,8 @@ export interface PriceMover {
   pct: number;
   /** Notowania z okresu (EUR), do wykresu. */
   series: number[];
+  /** Alerty dla kolekcji: wydanie jako „edycja/numer” (do dopasowania posiadanych egzemplarzy). */
+  printingKey?: string;
 }
 
 export interface PriceMoversResponse {

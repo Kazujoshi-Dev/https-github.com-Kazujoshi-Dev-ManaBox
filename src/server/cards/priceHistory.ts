@@ -560,6 +560,48 @@ export function getPriceMovers(q: PriceMoversQuery): PriceMoversResult {
   return value;
 }
 
+/**
+ * Wzrosty i spadki tylko wśród podanych wydań (np. kart z kolekcji użytkownika).
+ * Każde wydanie osobno (bez łączenia po nazwie karty), bez bufora wyników.
+ */
+export function getPriceMoversForIds(ids: Iterable<string>, q: PriceMoversQuery): PriceMoversResult {
+  const limit = Math.min(Math.max(q.limit || 500, 1), 2000);
+  const empty: PriceMoversResult = { ready: false, day: lastDay >= 0 ? ymdFromDay(lastDay) : null, coverageDays: coverageDays(), gainers: [], losers: [] };
+  const bit = PRICE_ALERT_FORMATS.indexOf(q.format);
+  if (bit < 0 || lastDay < 0 || info.size === 0) return empty;
+
+  const fromDay = lastDay - q.days;
+  const up: PriceMover[] = [];
+  const down: PriceMover[] = [];
+  for (const id of new Set(ids)) {
+    const ci = info.get(id);
+    if (!ci || !(ci.formats & (1 << bit))) continue;
+    const s = store.get(id);
+    if (!s) continue;
+    const arr = q.foil ? s.foil : s.eur;
+    const to = valueAt(arr, s.start, lastDay);
+    const from = valueAtStart(arr, s.start, fromDay);
+    if (to == null || from == null) continue;
+    if (Math.max(from, to) < q.minEur) continue;
+    const diff = to - from;
+    if (Math.abs(diff) < MIN_ABS_CHANGE_EUR) continue;
+    const pct = (diff / from) * 100;
+    if (Math.abs(pct) < q.minPct) continue;
+    (pct > 0 ? up : down).push({ id, from, to, pct: Math.round(pct * 10) / 10, series: [] });
+  }
+
+  const finish = (list: PriceMover[], dir: 1 | -1) =>
+    list
+      .sort((a, b) => dir * (b.pct - a.pct) || dir * (b.to - b.from - (a.to - a.from)))
+      .slice(0, limit)
+      .map((x) => {
+        const s = store.get(x.id)!;
+        return { ...x, series: seriesFor(q.foil ? s.foil : s.eur, s.start, fromDay, lastDay) };
+      });
+
+  return { ready: true, day: ymdFromDay(lastDay), coverageDays: coverageDays(), gainers: finish(up, 1), losers: finish(down, -1) };
+}
+
 /** Tylko do testów: stan modułu w pamięci. */
 export const __test = {
   store,

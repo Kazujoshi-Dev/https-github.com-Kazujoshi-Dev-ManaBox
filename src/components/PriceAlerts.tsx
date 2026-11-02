@@ -41,16 +41,27 @@ interface Filters {
   foil: boolean;
   min: number;
   pct: number;
-  mineOnly: boolean;
+  /** Tylko wydania z kolekcji (dokładnie ta edycja, numer i wersja zwykła/foil). */
+  collectionOnly: boolean;
+  /** Tylko karty z listy życzeń (po nazwie, dowolne wydanie). */
+  wishlistOnly: boolean;
 }
-const DEFAULT_FILTERS: Filters = { format: 'modern', days: 7, foil: false, min: 1, pct: 15, mineOnly: false };
+const DEFAULT_FILTERS: Filters = { format: 'modern', days: 7, foil: false, min: 1, pct: 15, collectionOnly: false, wishlistOnly: false };
 const FILTERS_KEY = 'mtg_price_alerts_filters';
 
 function loadFilters(): Filters {
   try {
     const saved = JSON.parse(localStorage.getItem(FILTERS_KEY) || 'null');
     if (saved && typeof saved === 'object') {
-      const f = { ...DEFAULT_FILTERS, ...saved };
+      const { mineOnly, ...rest } = saved;
+      const f: Filters = { ...DEFAULT_FILTERS, ...rest };
+      // dawny jeden przełącznik „Tylko moje karty” = kolekcja i lista życzeń
+      if (mineOnly === true && saved.collectionOnly === undefined && saved.wishlistOnly === undefined) {
+        f.collectionOnly = true;
+        f.wishlistOnly = true;
+      }
+      f.collectionOnly = f.collectionOnly === true;
+      f.wishlistOnly = f.wishlistOnly === true;
       if (!FORMATS.some((x) => x.id === f.format)) f.format = DEFAULT_FILTERS.format;
       if (!PERIODS.some((x) => x.days === f.days)) f.days = DEFAULT_FILTERS.days;
       if (!MIN_PRICES.includes(f.min)) f.min = DEFAULT_FILTERS.min;
@@ -64,6 +75,18 @@ function loadFilters(): Filters {
 function formatPct(pct: number): string {
   const abs = Math.abs(pct).toLocaleString(locale(), { maximumFractionDigits: Math.abs(pct) < 10 ? 1 : 0 });
   return `${pct > 0 ? '+' : '-'}${abs}%`;
+}
+
+/** Klucz wydania: edycja i numer kolekcjonerski (wersje językowe mają ten sam). */
+const printingKeyOf = (card: { set?: string; collector_number?: string }) =>
+  `${String(card.set || '').toLowerCase()}/${String(card.collector_number || '')}`;
+
+interface OwnedPrinting {
+  set: string;
+  cn: string;
+  /** Liczba egzemplarzy w danej wersji, w podziale na języki. */
+  normal: Map<string, number>;
+  foil: Map<string, number>;
 }
 
 /** Mały wykres notowań z okresu. */
@@ -113,6 +136,7 @@ export const PriceAlerts: React.FC<PriceAlertsProps> = ({ settings, collection, 
   const t = useT();
   const [filters, setFilters] = useState<Filters>(loadFilters);
   const [data, setData] = useState<PriceMoversResponse | null>(null);
+  const [ownedData, setOwnedData] = useState<PriceMoversResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
@@ -130,36 +154,76 @@ export const PriceAlerts: React.FC<PriceAlertsProps> = ({ settings, collection, 
     setExpanded({ up: false, down: false });
   };
 
+  // Kolekcja: egzemplarze każdego wydania (edycja + numer), osobno zwykłe i foil, z językami
+  const ownedPrintings = useMemo(() => {
+    const m = new Map<string, OwnedPrinting>();
+    for (const item of collection) {
+      const card = item.card;
+      if (!card?.set || card.collector_number == null) continue;
+      const key = printingKeyOf(card);
+      let e = m.get(key);
+      if (!e) {
+        e = { set: String(card.set).toLowerCase(), cn: String(card.collector_number), normal: new Map(), foil: new Map() };
+        m.set(key, e);
+      }
+      const lang = item.language || 'EN';
+      if (item.quantity > 0) e.normal.set(lang, (e.normal.get(lang) || 0) + item.quantity);
+      if (item.quantityFoil > 0) e.foil.set(lang, (e.foil.get(lang) || 0) + item.quantityFoil);
+    }
+    return m;
+  }, [collection]);
+
+  // Wydania posiadane w wybranej wersji (zwykła/foil), stały klucz do pobierania danych
+  const ownedQuery = useMemo(() => {
+    const list = [...ownedPrintings.values()]
+      .filter((e) => (filters.foil ? e.foil.size : e.normal.size) > 0)
+      .map((e) => ({ set: e.set, cn: e.cn }))
+      .sort((a, b) => (a.set + '/' + a.cn).localeCompare(b.set + '/' + b.cn));
+    return { list, key: list.map((x) => `${x.set}/${x.cn}`).join(',') };
+  }, [ownedPrintings, filters.foil]);
+
+  const query = { format: filters.format, days: filters.days, finish: (filters.foil ? 'foil' : 'normal') as 'foil' | 'normal', min: filters.min, pct: filters.pct };
+
   useEffect(() => {
     let alive = true;
     setLoading(true);
     setError(null);
-    priceMoversApi
-      .get({ format: filters.format, days: filters.days, finish: filters.foil ? 'foil' : 'normal', min: filters.min, pct: filters.pct })
-      .then((res) => alive && setData(res))
+    const general = priceMoversApi.get(query);
+    const owned = filters.collectionOnly
+      ? ownedQuery.list.length
+        ? priceMoversApi.owned(query, ownedQuery.list)
+        : general.then((g) => ({ ...g, gainers: [], losers: [] }))
+      : Promise.resolve(null);
+    Promise.all([general, owned])
+      .then(([g, o]) => {
+        if (!alive) return;
+        setData(g);
+        setOwnedData(o);
+      })
       .catch((err) => alive && setError(err?.message || t('Nie udało się pobrać alertów cenowych.')))
       .finally(() => alive && setLoading(false));
     return () => {
       alive = false;
     };
-  }, [filters.format, filters.days, filters.foil, filters.min, filters.pct, reloadKey]);
+  }, [filters.format, filters.days, filters.foil, filters.min, filters.pct, filters.collectionOnly, filters.collectionOnly ? ownedQuery.key : '', reloadKey]);
 
-  // Twoje karty: liczba egzemplarzy w kolekcji i lista życzeń, po nazwie (każde wydanie)
-  const owned = useMemo(() => {
-    const m = new Map<string, number>();
-    for (const item of collection) {
-      const name = item.card?.name?.toLowerCase();
-      if (name) m.set(name, (m.get(name) || 0) + (item.quantity || 0) + (item.quantityFoil || 0));
-    }
-    return m;
-  }, [collection]);
   const wished = useMemo(() => new Set(wishlist.map((w) => w.card?.name?.toLowerCase()).filter(Boolean) as string[]), [wishlist]);
-  const isMine = (card: ScryfallCard) => owned.has(card.name.toLowerCase()) || wished.has(card.name.toLowerCase());
 
   const lists = useMemo(() => {
-    const pick = (l: PriceMover[]) => (filters.mineOnly ? l.filter((m) => isMine(m.card)) : l);
-    return { up: pick(data?.gainers || []), down: pick(data?.losers || []) };
-  }, [data, filters.mineOnly, owned, wished]);
+    const pick = (general: PriceMover[], owned: PriceMover[], dir: 1 | -1): PriceMover[] => {
+      if (!filters.collectionOnly && !filters.wishlistOnly) return general;
+      const out = new Map<string, PriceMover>();
+      if (filters.collectionOnly) for (const m of owned) out.set(m.card.id, m);
+      if (filters.wishlistOnly) for (const m of general) if (wished.has(m.card.name.toLowerCase()) && !out.has(m.card.id)) out.set(m.card.id, m);
+      return [...out.values()].sort((a, b) => dir * (b.pct - a.pct));
+    };
+    return {
+      up: pick(data?.gainers || [], ownedData?.gainers || [], 1),
+      down: pick(data?.losers || [], ownedData?.losers || [], -1)
+    };
+  }, [data, ownedData, filters.collectionOnly, filters.wishlistOnly, wished]);
+
+  const mineFilter = filters.collectionOnly || filters.wishlistOnly;
 
   const coverage = data?.coverageDays ?? 0;
   const ready = Boolean(data?.ready);
@@ -172,7 +236,11 @@ export const PriceAlerts: React.FC<PriceAlertsProps> = ({ settings, collection, 
 
   const renderRow = (m: PriceMover, idx: number, up: boolean) => {
     const name = m.card.name.toLowerCase();
-    const count = owned.get(name) || 0;
+    // posiadane egzemplarze dokładnie tego wydania w wybranej wersji
+    const own = ownedPrintings.get(m.printingKey || printingKeyOf(m.card));
+    const byLang = own ? (filters.foil ? own.foil : own.normal) : null;
+    const count = byLang ? [...byLang.values()].reduce((a, b) => a + b, 0) : 0;
+    const langs = byLang ? [...byLang.keys()] : [];
     return (
       <li key={m.card.id}>
         <button
@@ -205,6 +273,9 @@ export const PriceAlerts: React.FC<PriceAlertsProps> = ({ settings, collection, 
                 <span className="text-[11px] font-semibold px-1.5 rounded bg-amber-500/10 text-amber-300 border border-amber-500/30 inline-flex items-center gap-1">
                   <Layers className="w-3 h-3" />
                   {t('Masz {n}', { n: count })}
+                  {(langs.length > 1 || (langs.length === 1 && langs[0] !== 'EN')) && (
+                    <span className="text-amber-200/80 font-bold">{langs.join(', ')}</span>
+                  )}
                 </span>
               )}
               {wished.has(name) && (
@@ -257,7 +328,7 @@ export const PriceAlerts: React.FC<PriceAlertsProps> = ({ settings, collection, 
         </h3>
         {list.length === 0 ? (
           <p className="px-3 pb-4 text-sm text-stone-400">
-            {filters.mineOnly
+            {mineFilter
               ? t('Żadna z Twoich kart nie spełnia tych filtrów.')
               : up
                 ? t('Brak kart, które zdrożały o wybrany próg. Spróbuj obniżyć próg zmiany lub ceny.')
@@ -359,16 +430,34 @@ export const PriceAlerts: React.FC<PriceAlertsProps> = ({ settings, collection, 
             ))}
           </select>
         </label>
-        <label className="flex items-center gap-2.5 h-9 text-sm text-stone-300 cursor-pointer">
-          <input
-            type="checkbox"
-            checked={filters.mineOnly}
-            onChange={(e) => update({ mineOnly: e.target.checked })}
-            className="w-4 h-4 accent-amber-500"
-          />
-          {t('Tylko moje karty')}
-          <span className="text-[11px] text-stone-500">{t('(kolekcja i lista życzeń)')}</span>
-        </label>
+        <div>
+          <span className="block text-[11px] font-bold text-stone-400 mb-1.5">{t('Tylko moje karty')}</span>
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 min-h-9">
+            <label
+              className="flex items-center gap-2 text-sm text-stone-300 cursor-pointer"
+              title={t('Dokładnie te wydania, które masz w kolekcji: edycja, numer i wersja zwykła lub foil.')}
+            >
+              <input
+                type="checkbox"
+                checked={filters.collectionOnly}
+                onChange={(e) => update({ collectionOnly: e.target.checked })}
+                className="w-4 h-4 accent-amber-500"
+              />
+              <Layers className="w-3.5 h-3.5 text-stone-500" />
+              {t('Kolekcja')}
+            </label>
+            <label className="flex items-center gap-2 text-sm text-stone-300 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={filters.wishlistOnly}
+                onChange={(e) => update({ wishlistOnly: e.target.checked })}
+                className="w-4 h-4 accent-amber-500"
+              />
+              <FolderHeart className="w-3.5 h-3.5 text-stone-500" />
+              {t('Lista życzeń')}
+            </label>
+          </div>
+        </div>
       </div>
 
       {error ? (
@@ -424,7 +513,9 @@ export const PriceAlerts: React.FC<PriceAlertsProps> = ({ settings, collection, 
 
       <p className="text-xs text-stone-500 flex items-start gap-1.5 px-1">
         <Info className="w-3.5 h-3.5 shrink-0 mt-0.5" />
-        {t('Ceny: Cardmarket Trend (dane Scryfall i MTGJSON), aktualizowane raz na dobę. Przy każdej karcie pokazujemy jedno wydanie, to z największą zmianą ceny.')}
+        {filters.collectionOnly
+          ? t('Ceny: Cardmarket Trend (dane Scryfall i MTGJSON), aktualizowane raz na dobę. Karty z kolekcji pokazujemy w wydaniach, które posiadasz; Cardmarket Trend nie rozróżnia języków, więc wersje językowe mają cenę wydania.')
+          : t('Ceny: Cardmarket Trend (dane Scryfall i MTGJSON), aktualizowane raz na dobę. Przy każdej karcie pokazujemy jedno wydanie, to z największą zmianą ceny.')}
       </p>
     </div>
   );

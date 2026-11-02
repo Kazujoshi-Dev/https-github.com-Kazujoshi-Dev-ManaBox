@@ -3231,6 +3231,75 @@ app.get('/api/price-movers', authMiddleware, priceMoversLimiter, async (req, res
   }
 });
 
+/**
+ * Alerty cenowe tylko dla wydań z kolekcji użytkownika: dokładnie te edycje i numery kolekcjonerskie,
+ * które posiada (wersja zwykła/foil wybierana jak w ogólnych alertach). Wersje językowe mają ceny
+ * wydania angielskiego, więc szukamy angielskiego odpowiednika po edycji i numerze.
+ */
+const MAX_OWNED_PRINTINGS = 30_000;
+app.post('/api/price-movers/owned', authMiddleware, priceMoversLimiter, async (req, res) => {
+  try {
+    const body = req.body || {};
+    const format = String(body.format || 'modern') as priceHistory.PriceAlertFormat;
+    if (!priceHistory.PRICE_ALERT_FORMATS.includes(format)) return res.status(400).json({ error: 'Nieznany format.' });
+    const daysRaw = Number(body.days);
+    const days = PRICE_MOVER_DAYS.includes(daysRaw) ? daysRaw : 7;
+    const minEur = Math.min(Math.max(Number(body.min) || 0, 0), 1000);
+    const minPct = Math.min(Math.max(Number(body.pct) || 0, 0), 1000);
+    const raw: unknown[] = Array.isArray(body.printings) ? body.printings.slice(0, MAX_OWNED_PRINTINGS) : [];
+    const pairs = new Map<string, [string, string]>();
+    for (const x of raw) {
+      const set = String((x as any)?.set ?? '').toLowerCase().trim();
+      const cn = String((x as any)?.cn ?? '').trim();
+      if (!/^[a-z0-9]{2,8}$/.test(set) || !cn || cn.length > 16) continue;
+      pairs.set(`${set}/${cn}`, [set, cn]);
+    }
+    const p = getPool();
+    const ids: string[] = [];
+    const keyById = new Map<string, string>();
+    if (p && pairs.size) {
+      const all = [...pairs.values()];
+      for (let i = 0; i < all.length; i += 2000) {
+        const chunk = all.slice(i, i + 2000);
+        const r = await p.query(
+          `SELECT c.id::text AS id, c.set_code, c.collector_number
+             FROM scryfall_cards c
+             JOIN unnest($1::text[], $2::text[]) AS k(set_code, cn) ON c.set_code = k.set_code AND c.collector_number = k.cn
+            WHERE c.lang = 'en' AND NOT c.digital`,
+          [chunk.map((x) => x[0]), chunk.map((x) => x[1])]
+        );
+        for (const row of r.rows) {
+          ids.push(row.id);
+          keyById.set(row.id, `${row.set_code}/${row.collector_number}`);
+        }
+      }
+    }
+    const result = priceHistory.getPriceMoversForIds(ids, { format, days, foil: body.finish === 'foil', minEur, minPct, limit: 500 });
+    const moverIds = [...result.gainers, ...result.losers].map((m) => m.id);
+    const cardsById = new Map<string, any>();
+    if (p && moverIds.length) {
+      const r = await p.query('SELECT id::text AS id, data FROM scryfall_cards WHERE id = ANY($1::uuid[])', [moverIds]);
+      for (const row of r.rows) {
+        const card = { ...row.data };
+        for (const k of MOVER_CARD_DROP) delete card[k];
+        cardsById.set(row.id, card);
+      }
+    }
+    const withCards = (list: priceHistory.PriceMover[]) =>
+      list.filter((m) => cardsById.has(m.id)).map(({ id, ...m }) => ({ ...m, card: cardsById.get(id), printingKey: keyById.get(id) }));
+    res.json({
+      ready: result.ready,
+      day: result.day,
+      coverageDays: result.coverageDays,
+      formats: priceHistory.PRICE_ALERT_FORMATS,
+      gainers: withCards(result.gainers),
+      losers: withCards(result.losers)
+    });
+  } catch (err: any) {
+    sendServerError(res, err, '/api/price-movers/owned', 'Błąd pobierania alertów cenowych.');
+  }
+});
+
 // --- FOLDERY W ZAKŁADCE „SPRZEDAM” ---
 
 const saleFoldersLimiter = rateLimit({ name: 'sale-folders', windowMs: 60_000, max: 120, key: userKey });

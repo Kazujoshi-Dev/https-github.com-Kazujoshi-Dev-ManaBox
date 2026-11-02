@@ -478,6 +478,19 @@ export const priceMoversApi = {
         `/api/price-movers?format=${encodeURIComponent(q.format)}&days=${q.days}&finish=${q.finish}&min=${q.min}&pct=${q.pct}`
       ),
       tk('Nie udało się pobrać alertów cenowych.')
+    ),
+  /** Tylko wydania z kolekcji (edycja + numer kolekcjonerski). */
+  owned: async (
+    q: { format: string; days: number; finish: 'normal' | 'foil'; min: number; pct: number },
+    printings: Array<{ set: string; cn: string }>
+  ): Promise<PriceMoversResponse> =>
+    jsonOrThrow(
+      await fetchWithAuth('/api/price-movers/owned', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...q, printings })
+      }),
+      tk('Nie udało się pobrać alertów cenowych.')
     )
 };
 
