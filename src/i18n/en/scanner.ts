@@ -69,6 +69,7 @@ export const en_scanner: Record<string, string> = {
   "Nie przysuwaj karty pod sam obiektyw!": "Don't hold the card right up to the lens!",
   "Nie rozpoznano karty. Popraw oświetlenie (bez odblasków) i przytrzymaj nieruchomo.": "Card not recognised. Improve the lighting (no glare) and hold it still.",
   "Nie udało się przetworzyć wskazanego pliku.": "Could not process the selected file.",
+  "Poczekaj, aż skończy się bieżące rozpoznawanie.": "Wait until the current recognition finishes.",
   "Nie udało się utworzyć kontekstu 2D karty.": "Could not create the card's 2D context.",
   "Nie udało się utworzyć kontekstu Canvas 2D.": "Could not create a Canvas 2D context.",
   "Nie udało się uzyskać dostępu do kamery.": "Could not access the camera.",

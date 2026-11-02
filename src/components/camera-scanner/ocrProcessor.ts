@@ -95,8 +95,22 @@ export async function getTesseractWorker(
 
       return worker;
     })();
+    // Nieudane uruchomienie (np. chwilowy brak sieci przy pobieraniu słownika) nie blokuje OCR na stałe.
+    const started = tesseractWorkerPromise;
+    started.catch(() => {
+      if (tesseractWorkerPromise === started) tesseractWorkerPromise = null;
+    });
   }
   return tesseractWorkerPromise;
+}
+
+/**
+ * Zamyka bieżący wątek OCR (np. zawieszony odczyt); następne wywołanie `getTesseractWorker` uruchomi nowy.
+ */
+export function resetTesseractWorker(): void {
+  const old = tesseractWorkerPromise;
+  tesseractWorkerPromise = null;
+  old?.then((w) => w.terminate()).catch(() => {});
 }
 
 /**

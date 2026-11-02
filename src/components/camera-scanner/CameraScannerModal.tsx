@@ -139,6 +139,13 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
   const [printFilter, setPrintFilter] = useState<string>('');
   const [isLookingUpPrint, setIsLookingUpPrint] = useState<boolean>(false);
 
+  // Numer sesji okna: rośnie przy każdym zamknięciu, więc wynik skanu, który skończył się
+  // po zamknięciu, nie zostaje pokazany (ani dodany Enterem) po ponownym otwarciu.
+  const scanSessionRef = useRef(0);
+  // Blokady działające od razu, zanim React przerysuje stan (szybkie powtórzenia klawisza, dwa wyzwalacze naraz).
+  const scanBusyRef = useRef(false);
+  const addingRef = useRef(false);
+
   // Manual fallback search
   const [manualQuery, setManualQuery] = useState<string>('');
   const [isSearchingManual, setIsSearchingManual] = useState<boolean>(false);
@@ -348,6 +355,7 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
     if (isOpen) {
       startCamera();
     } else {
+      scanSessionRef.current++;
       stopCamera();
       if (autoScanTimerRef.current) clearInterval(autoScanTimerRef.current);
       setScanResult(null);
@@ -355,6 +363,7 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
       setLastAddedNotice(null);
     }
     return () => {
+      scanSessionRef.current++;
       stopCamera();
       if (autoScanTimerRef.current) clearInterval(autoScanTimerRef.current);
     };
@@ -420,19 +429,24 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
   // W trybie automatycznym niepewny wynik nie jest pokazywany od razu: skaner próbuje ponownie,
   // a ta sama karta odczytana dwa razy z rzędu jest uznawana za rozpoznaną.
   const performScan = useCallback(async (quad?: Quad | null, auto = false) => {
-    if (isScanning) return;
+    if (isScanning || scanBusyRef.current) return;
     const video = videoRef.current;
     if (!video || video.readyState < 2) return;
 
+    scanBusyRef.current = true;
     setIsScanning(true);
+    const session = scanSessionRef.current;
     try {
       const result = await recognizeCard(video, {
         quad: quad || null,
         guide: getSensorGuide() || undefined,
-        onStatus: setScanStatus,
+        onStatus: (text) => {
+          if (session === scanSessionRef.current) setScanStatus(text);
+        },
         game,
         extraFrames: 2
       });
+      if (session !== scanSessionRef.current) return; // okno zamknięte w trakcie skanu
       if (!auto) {
         applyScanResult(result);
         return;
@@ -465,8 +479,9 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
     } catch (err: any) {
       console.error('Błąd skanowania:', err);
       nextAttemptAtRef.current = Date.now() + RETRY_DELAY_MS * 2;
-      setScanStatus(t('Błąd przetwarzania klatki. Spróbuj ponownie lub wgraj zdjęcie.'));
+      if (session === scanSessionRef.current) setScanStatus(t('Błąd przetwarzania klatki. Spróbuj ponownie lub wgraj zdjęcie.'));
     } finally {
+      scanBusyRef.current = false;
       setIsScanning(false);
     }
   }, [isScanning, getSensorGuide, applyScanResult]);
@@ -547,26 +562,46 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
   const processImageFile = useCallback(
     async (file: File) => {
       if (!file || !file.type.startsWith('image/')) return;
+      // trwa już skan z kamery albo poprzedniego zdjęcia: wyniki nadpisywałyby się nawzajem
+      if (scanBusyRef.current) {
+        showToast(t('Poczekaj, aż skończy się bieżące rozpoznawanie.'));
+        return;
+      }
 
+      scanBusyRef.current = true;
       setIsScanning(true);
       setScanStatus(t('Wczytywanie zdjęcia...'));
+      const session = scanSessionRef.current;
+      const finish = () => {
+        scanBusyRef.current = false;
+        setIsScanning(false);
+        URL.revokeObjectURL(img.src);
+      };
 
       const img = new Image();
       img.onload = async () => {
         try {
-          const result = await recognizeCard(img, { onStatus: setScanStatus, game });
-          applyScanResult(result);
+          const result = await recognizeCard(img, {
+            onStatus: (text) => {
+              if (session === scanSessionRef.current) setScanStatus(text);
+            },
+            game
+          });
+          if (session === scanSessionRef.current) applyScanResult(result);
         } catch (err: any) {
           console.error('Błąd przetwarzania zdjęcia:', err);
-          setScanStatus(t('Nie udało się przetworzyć wskazanego pliku.'));
+          if (session === scanSessionRef.current) setScanStatus(t('Nie udało się przetworzyć wskazanego pliku.'));
         } finally {
-          setIsScanning(false);
-          URL.revokeObjectURL(img.src);
+          finish();
         }
+      };
+      img.onerror = () => {
+        if (session === scanSessionRef.current) setScanStatus(t('Nie udało się przetworzyć wskazanego pliku.'));
+        finish();
       };
       img.src = URL.createObjectURL(file);
     },
-    [applyScanResult]
+    [applyScanResult, showToast]
   );
 
   const handleFileUpload = useCallback(
@@ -703,7 +738,8 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
 
   // 7. Save Card to Collection
   const handleAddCardToCollection = useCallback(async () => {
-    if (!activeCard) return;
+    if (!activeCard || addingRef.current) return;
+    addingRef.current = true;
     setIsAdding(true);
 
     try {
@@ -743,6 +779,7 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
       console.error('Błąd zapisu karty:', err);
       showToast(t('Wystąpił błąd podczas zapisywania karty.'));
     } finally {
+      addingRef.current = false;
       setIsAdding(false);
     }
   }, [
@@ -817,12 +854,21 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
 
       // 2. KLAWISZ ENTER: Dodanie rozpoznanej karty do kolekcji
       if (e.key === 'Enter') {
-        // Jeśli użytkownik wpisuje frazę w wyszukiwarkę ręczną bez aktywnej karty, pozwól na standardowe Enter
-        if (isTextInput && !activeCard) {
+        // Pola tekstowe mają własny Enter (wybór wydania po kodzie i numerze, wyszukanie nazwy),
+        // więc tam go nie przejmujemy, także gdy karta jest już rozpoznana.
+        const isTypingField =
+          target instanceof HTMLTextAreaElement ||
+          (target instanceof HTMLInputElement && !['checkbox', 'radio', 'range', 'button', 'submit', 'file'].includes(target.type));
+        if (isTypingField) {
+          return;
+        }
+        // Przytrzymany Enter powtarza zdarzenie: dodajemy kartę tylko raz.
+        if (e.repeat) {
+          if (activeCard) e.preventDefault();
           return;
         }
 
-        if (activeCard && !isAdding) {
+        if (activeCard && !isAdding && !addingRef.current) {
           e.preventDefault();
           e.stopPropagation();
           handleAddCardToCollection();

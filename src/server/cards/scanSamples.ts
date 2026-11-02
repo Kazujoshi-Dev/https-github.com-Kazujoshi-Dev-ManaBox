@@ -12,7 +12,7 @@ import type pg from 'pg';
 import { getPool, isPostgresActive } from '../db/storage';
 import * as cards from './cardStore';
 import * as hashes from './hashIndex';
-import { MAX_EXTRA_FRAMES, QUICK_IMAGE_CONFIDENCE, hashCardFrames, identifyMtgLocal, type IdentifyResult } from './scanIdentify';
+import { MAX_EXTRA_FRAMES, QUICK_IMAGE_CONFIDENCE, hashCardFrames, identifyMtgLocal, type FrameHashes, type IdentifyResult } from './scanIdentify';
 
 /** Wynik poniżej tej pewności zapisujemy jako „niepewny”. */
 const UNCERTAIN_BELOW = 90;
@@ -99,6 +99,8 @@ export interface RecordInput {
   dataUrl: unknown;
   /** Kolejne klatki tej samej karty (opcjonalnie, do 2). */
   extraDataUrls?: unknown;
+  /** Odciski już policzone przy rozpoznawaniu (żeby nie dekodować zdjęć drugi raz). */
+  queryHash?: FrameHashes | null;
   stage: unknown;
   glare: unknown;
   hintTitle: string;
@@ -143,7 +145,7 @@ export async function recordScanSample(input: RecordInput): Promise<void> {
   if (recent.rows[0].n >= PER_USER_DAILY) return;
 
   // Najbliższe obrazy w całej bazie (niezależnie od OCR) — podpowiedzi przy oznaczaniu
-  const queryHash = hashCardFrames(input.dataUrl, input.extraDataUrls);
+  const queryHash = input.queryHash !== undefined ? input.queryHash : hashCardFrames(input.dataUrl, input.extraDataUrls);
   const top = queryHash && hashes.hasHashes() ? hashes.searchByFrames(queryHash, 6) : [];
   const glare = typeof input.glare === 'number' && Number.isFinite(input.glare) ? Math.min(1, Math.max(0, input.glare)) : null;
   const r = input.result;

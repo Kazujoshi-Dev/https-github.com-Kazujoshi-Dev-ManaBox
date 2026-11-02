@@ -31,10 +31,13 @@ import {
   MAX_PRINTINGS,
   decodeCardFrames,
   hashFrames,
-  hashCardImage,
+  rotateFrames,
+  rotateImage,
+  decodeCardImage,
   identifyWithLocalDb,
   type IdentifyResult
 } from './src/server/cards/scanIdentify';
+import { computeQueryHashes } from './src/server/cards/imageHash';
 import * as scanSamples from './src/server/cards/scanSamples';
 import { normalizeName, queryVariants } from './src/server/cards/nameMatch';
 import { searchCities, resolveSuggestion } from './src/server/geo';
@@ -1047,7 +1050,7 @@ app.post('/api/scanner/delver-identify', authMiddleware, scannerLimiter, async (
 
     // Karta położona do góry nogami: obraz obrócony o 180° (OCR takiej karty i tak nic nie da).
     if (!result.matchedCard && cards.isCardDbReady() && queryHash) {
-      const rotatedPhotos = decodeCardFrames(req.body?.cardImageBase64, extraImages, true);
+      const rotatedPhotos = rotateFrames(photos);
       const rotated = hashFrames(rotatedPhotos);
       if (rotated) {
         const flipped = await identifyWithLocalDb('', '', '', rotated, rotatedPhotos);
@@ -1086,6 +1089,7 @@ app.post('/api/scanner/delver-identify', authMiddleware, scannerLimiter, async (
           userId: userKey(req),
           dataUrl: req.body?.cardImageBase64,
           extraDataUrls: extraImages,
+          queryHash,
           stage: req.body?.sampleStage,
           glare: req.body?.glare,
           hintTitle,
@@ -1119,7 +1123,8 @@ app.post('/api/scanner/lorcana-identify', authMiddleware, scannerLimiter, async 
     const str = (v: unknown, max: number) => (typeof v === 'string' ? v.trim().slice(0, max) : '');
     const hintSet = str(req.body?.hintSet, 8).toLowerCase();
     const hintCollector = str(req.body?.hintCollector, 12).toLowerCase().replace(/^0+(?=\d)/, '');
-    const queryHash = hashCardImage(req.body?.cardImageBase64);
+    const lorcanaPhoto = decodeCardImage(req.body?.cardImageBase64);
+    const queryHash = lorcanaPhoto ? computeQueryHashes(lorcanaPhoto) : null;
     if (!queryHash) return res.status(400).json({ error: 'Brak obrazu karty.' });
     if (!lorcanaHashes.hasLorcanaHashes()) {
       return res.status(503).json({ error: 'Skaner Lorcany jeszcze przygotowuje bazę obrazów kart. Spróbuj za kilka minut.' });
@@ -1128,7 +1133,7 @@ app.post('/api/scanner/lorcana-identify', authMiddleware, scannerLimiter, async 
     let result = identifyLorcana(queryHash, hintSet, hintCollector);
     // karta położona do góry nogami
     if (!result.matchedCard) {
-      const rotated = hashCardImage(req.body?.cardImageBase64, true);
+      const rotated = computeQueryHashes(rotateImage(lorcanaPhoto!));
       if (rotated) {
         const flipped = identifyLorcana(rotated, hintSet, hintCollector);
         if (flipped.matchedCard) result = flipped;

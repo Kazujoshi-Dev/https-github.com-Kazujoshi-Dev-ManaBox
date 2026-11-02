@@ -20,7 +20,7 @@ import {
   scaleQuad,
   warpCardRegion
 } from './cardDetector';
-import { cleanCardTitle, getTesseractWorker } from './ocrProcessor';
+import { cleanCardTitle, getTesseractWorker, resetTesseractWorker } from './ocrProcessor';
 import { t, tServer } from '../../i18n';
 import { pickPrintingByFooterText } from './editionPick';
 import type { GameId } from '../../games';
@@ -257,10 +257,32 @@ export function parseLorcanaFooter(raw: string): { set?: string; collectorNumber
   };
 }
 
+/**
+ * Najdłuższy czas jednego odczytu OCR (bez uruchamiania silnika, które przy wolnej sieci trwa dłużej).
+ * Odczyt małego wycinka trwa zwykle poniżej sekundy; zawieszony blokowałby wszystkie następne skany,
+ * bo zadania czekają w jednej kolejce.
+ */
+const OCR_TIMEOUT_MS = 15_000;
+
 let ocrQueue: Promise<unknown> = Promise.resolve();
 /** Tesseract ma jeden wątek roboczy — zadania OCR wykonujemy po kolei. */
 function withWorker<T>(fn: (w: Worker) => Promise<T>): Promise<T> {
-  const run = ocrQueue.then(async () => fn(await getTesseractWorker()));
+  const run = ocrQueue.then(async () => {
+    const worker = await getTesseractWorker();
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const timeout = new Promise<never>((_, reject) => {
+      timer = setTimeout(() => {
+        // wątek mógł utknąć: zamykamy go, a następny odczyt uruchomi nowy
+        resetTesseractWorker();
+        reject(new Error('OCR_TIMEOUT'));
+      }, OCR_TIMEOUT_MS);
+    });
+    try {
+      return await Promise.race([fn(worker), timeout]);
+    } finally {
+      clearTimeout(timer);
+    }
+  });
   ocrQueue = run.catch(() => undefined);
   return run;
 }

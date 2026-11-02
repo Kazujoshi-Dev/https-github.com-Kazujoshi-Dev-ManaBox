@@ -6,7 +6,7 @@
  */
 import * as cards from './cardStore';
 import * as hashes from './hashIndex';
-import { computeQueryHashes, decodeJpegToGray, type GrayImage } from './imageHash';
+import { computeQueryHashes, decodeJpegToGray, jpegDimensions, type GrayImage } from './imageHash';
 import { checkListMark, isListPrinting, isListTwinOf, listOrigin, type ListCheck } from './listMark';
 import { normalizeName, nameSimilarity } from './nameMatch';
 
@@ -51,18 +51,40 @@ export function isPromo(card: any): boolean {
 }
 
 /**
- * Przesłane zdjęcie karty (JPEG jako data URL) w skali szarości; null, gdy brak lub niepoprawne.
+ * Największe przyjmowane zdjęcie karty. Przeglądarka wysyła wyprostowany kadr 300×420, więc limit
+ * ma spory zapas, a chroni serwer: dekodowanie i odciski dużego obrazu blokują go na sekundy.
+ */
+export const MAX_QUERY_WIDTH = 600;
+export const MAX_QUERY_HEIGHT = 840;
+/** Długość data URL (base64) — kadr 300×420 to zwykle 50–100 tys. znaków. */
+export const MAX_QUERY_DATA_URL = 600_000;
+
+/**
+ * Przesłane zdjęcie karty (JPEG jako data URL) w skali szarości; null, gdy brak, niepoprawne albo za duże.
  */
 export function decodeCardImage(dataUrl: unknown, rotate180 = false): GrayImage | null {
   if (typeof dataUrl !== 'string' || !dataUrl.startsWith('data:image/jpeg;base64,')) return null;
-  if (dataUrl.length > 2_000_000) return null;
+  if (dataUrl.length > MAX_QUERY_DATA_URL) return null;
   try {
-    const img = decodeJpegToGray(Buffer.from(dataUrl.slice(23), 'base64'));
-    if (rotate180) img.data.reverse();
-    return img;
+    const buf = Buffer.from(dataUrl.slice(23), 'base64');
+    const size = jpegDimensions(buf);
+    if (!size || !size.width || !size.height || size.width > MAX_QUERY_WIDTH || size.height > MAX_QUERY_HEIGHT) return null;
+    const img = decodeJpegToGray(buf);
+    if (img.width > MAX_QUERY_WIDTH || img.height > MAX_QUERY_HEIGHT) return null;
+    return rotate180 ? rotateImage(img) : img;
   } catch {
     return null;
   }
+}
+
+/** Kopia obrazu obrócona o 180° (karta położona do góry nogami). */
+export function rotateImage(img: GrayImage): GrayImage {
+  return { width: img.width, height: img.height, data: img.data.slice().reverse() };
+}
+
+/** Klatki obrócone o 180° — bez ponownego dekodowania JPEG. */
+export function rotateFrames(frames: GrayImage[] | null): GrayImage[] | null {
+  return frames ? frames.map(rotateImage) : null;
 }
 
 /**
@@ -115,6 +137,21 @@ export function rankByImage(ids: string[], queryHash: FrameHashes | null) {
   return { ordered: [...withHash, ...ids.filter((id) => !distances.has(id))], distances };
 }
 
+/**
+ * Czy obraz pewnie wskazuje inną kartę niż `card`: najlepsze dopasowanie w całej bazie to inna nazwa,
+ * spełnia próg rozpoznania po samym obrazie, a wszystkie wydania `card` są wyraźnie gorsze.
+ * Przy słabym obrazie (odblask, nieostrość) zwraca false, więc niczego nie blokuje.
+ */
+export function imageContradicts(card: any, queryHash: FrameHashes | null): boolean {
+  if (!queryHash || !hashes.hasHashes()) return false;
+  // nazwa pierwszej strony, jak w indeksie (karta dwustronna ma w `name` obie strony: „A // B”)
+  const name = cards.nameOfId(card.id) ?? normalizeName(card.name);
+  const best = hashes.searchByFrames(queryHash, 1)[0];
+  if (!best || best.distance > IMAGE_ACCEPT_DISTANCE || cards.nameOfId(best.id) === name) return false;
+  const own = hashes.searchByFrames(queryHash, 1, cards.printingsOfName(name))[0];
+  return !own || own.distance >= best.distance + IMAGE_MIN_MARGIN;
+}
+
 export async function identifyWithLocalDb(
   title: string,
   set: string,
@@ -139,9 +176,12 @@ export async function identifyWithLocalDb(
     const [exactCard] = await cards.getCardsByIds([exactId]);
     const exactNames = exactCard ? [exactCard.name, ...(exactCard.card_faces || []).map((f: any) => f.name)] : [];
     const titleAgrees = !title || exactNames.some((n: string) => nameSimilarity(normalizeName(n), normalizeName(title)) >= 0.6);
-    if (exactCard && titleAgrees) {
+    // Bez nazwy z OCR jedyną kontrolą jest obraz: odrzucamy kartę ze stopki, gdy obraz pewnie
+    // wskazuje inną kartę (np. błędnie odczytany numer albo kod setu trafił w istniejącą kartę).
+    const imageVeto = !title && exactCard ? imageContradicts(exactCard, queryHash) : false;
+    if (exactCard && titleAgrees && !imageVeto) {
       matchedId = exactId;
-      const ranked = rankByImage(cards.printingsOfName(normalizeName(exactCard.name)), queryHash);
+      const ranked = rankByImage(cards.printingsOfName(cards.nameOfId(exactId) ?? normalizeName(exactCard.name)), queryHash);
       printings = ranked.ordered;
       distances = ranked.distances;
       confidence = title ? 99 : 92;
@@ -335,7 +375,7 @@ export async function identifyMtgLocal(
   const queryHash = hashFrames(photos);
   let result = await identifyWithLocalDb(title, set, collector, queryHash, photos);
   if (!result.matchedCard && queryHash) {
-    const rotatedPhotos = decodeCardFrames(dataUrl, extraDataUrls, true);
+    const rotatedPhotos = rotateFrames(photos);
     const rotated = hashFrames(rotatedPhotos);
     if (rotated) {
       const flipped = await identifyWithLocalDb('', '', '', rotated, rotatedPhotos);

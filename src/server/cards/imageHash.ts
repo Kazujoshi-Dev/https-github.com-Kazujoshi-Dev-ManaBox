@@ -45,6 +45,37 @@ export function decodeJpegToGray(buf: Uint8Array): GrayImage {
   return { width, height, data: gray };
 }
 
+/**
+ * Wymiary JPEG odczytane z nagłówka (znacznik SOF), bez dekodowania obrazu; null, gdy plik nie wygląda na JPEG.
+ * Pozwala odrzucić zbyt duże zdjęcie, zanim kosztowne dekodowanie zablokuje serwer.
+ */
+export function jpegDimensions(buf: Uint8Array): { width: number; height: number } | null {
+  if (buf.length < 4 || buf[0] !== 0xff || buf[1] !== 0xd8) return null;
+  let i = 2;
+  while (i + 3 < buf.length) {
+    if (buf[i] !== 0xff) return null;
+    const marker = buf[i + 1];
+    if (marker === 0xff) {
+      i++; // wypełnienie
+      continue;
+    }
+    if (marker === 0xd8 || marker === 0x01 || (marker >= 0xd0 && marker <= 0xd7)) {
+      i += 2; // znaczniki bez danych
+      continue;
+    }
+    if (marker === 0xd9 || marker === 0xda) return null; // koniec albo dane obrazu przed SOF
+    const len = (buf[i + 2] << 8) | buf[i + 3];
+    if (len < 2) return null;
+    // SOF0..SOF15 poza DHT (C4), JPG (C8) i DAC (CC)
+    if (marker >= 0xc0 && marker <= 0xcf && marker !== 0xc4 && marker !== 0xc8 && marker !== 0xcc) {
+      if (i + 8 >= buf.length) return null;
+      return { height: (buf[i + 5] << 8) | buf[i + 6], width: (buf[i + 7] << 8) | buf[i + 8] };
+    }
+    i += 2 + len;
+  }
+  return null;
+}
+
 /** Surowe piksele RGB/RGBA (np. z dekodera AVIF) → skala szarości tym samym wzorem co przy JPEG. */
 export function rawToGray(data: Uint8Array, width: number, height: number, channels: number): GrayImage {
   const gray = new Float32Array(width * height);
