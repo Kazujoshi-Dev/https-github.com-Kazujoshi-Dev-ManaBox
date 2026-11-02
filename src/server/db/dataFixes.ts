@@ -31,6 +31,24 @@ const FIXES: DataFix[] = [
       );
       return r.rowCount || 0;
     }
+  },
+  {
+    // Pozycje z językiem „Inny” (OTHER), które wzięły się z nierozpoznanej wartości języka
+    // (np. przy imporcie z pliku): ustawiamy język wydania karty, gdy aplikacja go zna.
+    // Wydania w językach bez własnego kodu (koreański, rosyjski, chiński…) zostają jako „Inny”.
+    id: '2026-11-02-jezyk-other-z-wydania',
+    description: 'Język OTHER zamieniony na język wydania karty (EN, JP, DE, FR, IT, ES, PL, PH)',
+    run: async (client) => {
+      const r = await client.query(
+        `UPDATE user_collections
+            SET language = CASE COALESCE(NULLIF(lower(card->>'lang'), ''), 'en')
+                  WHEN 'en' THEN 'EN' WHEN 'ja' THEN 'JP' WHEN 'de' THEN 'DE' WHEN 'fr' THEN 'FR'
+                  WHEN 'it' THEN 'IT' WHEN 'es' THEN 'ES' WHEN 'pl' THEN 'PL' WHEN 'ph' THEN 'PH' END
+          WHERE language = 'OTHER'
+            AND COALESCE(NULLIF(lower(card->>'lang'), ''), 'en') IN ('en', 'ja', 'de', 'fr', 'it', 'es', 'pl', 'ph')`
+      );
+      return r.rowCount || 0;
+    }
   }
 ];
 

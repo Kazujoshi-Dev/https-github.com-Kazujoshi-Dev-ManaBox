@@ -117,10 +117,29 @@ export function mapCondition(value: string | undefined): CardCondition | undefin
   return CONDITION_MAP[v] ?? CONDITION_MAP[v.replace(/_/g, '')];
 }
 
+/** Języki, które rozpoznajemy, ale aplikacja nie ma dla nich osobnego kodu (zapisujemy jako „Inny”). */
+const OTHER_LANGUAGES = new Set([
+  'pt', 'portuguese', 'ko', 'kr', 'korean', 'ru', 'russian', 'zhs', 'zht', 'zh', 'cs', 'ct', 'chinese',
+  'simplified chinese', 'traditional chinese', 'he', 'hebrew', 'la', 'latin', 'grc', 'ancient greek',
+  'ar', 'arabic', 'sa', 'sanskrit', 'qya', 'quenya'
+]);
+
+/**
+ * Język z pliku: kody i nazwy także w wariantach („en-US”, „en_us”, „English (EN)”).
+ * Nieznana wartość daje `undefined` (wtedy bierzemy język wydania karty), a nie „Inny”.
+ */
 export function mapLanguage(value: string | undefined): CardLanguage | undefined {
   const v = (value || '').trim().toLowerCase();
   if (!v) return undefined;
-  return LANGUAGE_MAP[v] ?? 'OTHER';
+  const candidates = [
+    v,
+    v.replace(/\s*\(.*\)\s*$/, ''), // „english (en)” -> „english”
+    v.match(/\(([a-z]{2,3})\)/)?.[1] ?? '', // „english (en)” -> „en”
+    v.split(/[-_]/)[0] // „en-us” / „en_us” -> „en”
+  ];
+  for (const c of candidates) if (c && LANGUAGE_MAP[c]) return LANGUAGE_MAP[c];
+  for (const c of candidates) if (c && OTHER_LANGUAGES.has(c)) return 'OTHER';
+  return undefined;
 }
 
 export function isFoilValue(value: string | undefined): boolean {

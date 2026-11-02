@@ -224,8 +224,8 @@ export const ImportExportModal: React.FC<ImportExportModalProps> = ({
         quantity: r.parsed.isFoil ? 0 : r.parsed.quantity,
         quantityFoil: r.parsed.isFoil ? r.parsed.quantity : 0,
         condition: r.parsed.condition || 'NM',
-        // Plik bez kolumny języka: przy dokładnym printcie bierzemy język karty
-        language: r.parsed.language || (r.parsed.scryfallId ? langFromCard(r.card) : 'EN'),
+        // Plik bez kolumny języka albo z nieznaną wartością: język wydania karty (zwykle angielski)
+        language: r.parsed.language || langFromCard(r.card),
         binder: targetBinder(r),
       }));
 
