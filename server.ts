@@ -22,6 +22,7 @@ import * as lorcana from './src/server/lorcana/lorcastStore';
 import * as lorcanaHashes from './src/server/lorcana/lorcanaHashes';
 import * as pokemon from './src/server/pokemon/tcgdexStore';
 import { getPool } from './src/server/db/storage';
+import { runDataFixes } from './src/server/db/dataFixes';
 import {
   IMAGE_ACCEPT_DISTANCE,
   IMAGE_MIN_MARGIN,
@@ -4096,6 +4097,8 @@ app.get('/api/spellbook/status', (_req, res) => {
 
 async function startServer() {
   await db.initDb();
+  // jednorazowe naprawy danych (każda wykonuje się tylko raz)
+  await runDataFixes().catch((err) => console.warn('[Naprawa danych] Błąd:', err?.message || err));
   await db.startActivityTracking().catch((err) => console.warn('[Aktywność] Start nieudany:', err?.message || err));
   // Przy zatrzymaniu kontenera zapisujemy statystyki z ostatniej minuty
   for (const sig of ['SIGTERM', 'SIGINT'] as const) {
