@@ -2,6 +2,7 @@ import { FOR_SALE_BINDER } from './constants';
 import { useState, useMemo, useCallback, useEffect } from 'react';
 import { CollectionItem, FilterOptions, AppSettings } from '../../types';
 import { getCardPrice } from '../../utils/formatters';
+import { itemValue } from '../../utils/collectionValue';
 import { DEFAULT_FILTERS } from './constants';
 import { MAIN_BINDER } from '../../i18n';
 
@@ -196,12 +197,9 @@ export function useCollectionFilters({ collection, settings }: UseCollectionFilt
     let totalValue = 0;
 
     filteredCollection.forEach(item => {
-      const card = item.card;
-      const normalPrice = getCardPrice(card, false, settings);
-      const foilPrice = getCardPrice(card, true, settings);
-      
       cardsCount += item.quantity + item.quantityFoil;
-      totalValue += (item.quantity * normalPrice) + (item.quantityFoil * foilPrice);
+      // ta sama wycena co łączna wartość kolekcji (bez zwykłych lądów podstawowych)
+      totalValue += itemValue(item, settings);
     });
 
     return { cardsCount, totalValue };
