@@ -26,6 +26,8 @@ export interface IdentifyResult {
   editionTies?: number;
   /** Sprawdzenie symbolu The List (gdy karta ma takie wydanie), do logu. */
   listCheck?: ListCheck;
+  /** Do logu: najbliższe wydania z odległością obrazu, np. "mh1/123:212 plst/MH1-123:214". */
+  editionDebug?: string;
 }
 
 export const MAX_PRINTINGS = 40;
@@ -297,7 +299,11 @@ export async function identifyWithLocalDb(
     imageDistance: distances.get(matchedId),
     englishDistance: englishAlt ? distances.get(englishAlt.id) : undefined,
     editionTies: method === 'set_number' || pickedBySet ? 0 : editionTies,
-    listCheck
+    listCheck,
+    editionDebug: possibleCards
+      .slice(0, 5)
+      .map((c) => `${c.set}/${c.collector_number}${c.lang && c.lang !== 'en' ? `-${c.lang}` : ''}:${distances.has(c.id) ? Math.round(distances.get(c.id)!) : '-'}`)
+      .join(' ')
   };
 }
 
@@ -319,6 +325,7 @@ async function resolveListTwin(
   if (!top || (top.lang && top.lang !== 'en')) return undefined;
   let regular: any;
   let list: any;
+  let keepTopUnlessList = false;
   if (isListPrinting(top)) {
     list = top;
     regular = possibleCards.find((c) => isListTwinOf(top, c));
@@ -337,18 +344,41 @@ async function resolveListTwin(
         if (c && isListTwinOf(c, top)) list = c;
       }
     }
+    // The List bywa dodrukiem innego wydania z tą samą ilustracją niż to, które wskazał obraz
+    // (np. obraz wybrał 2XM, a karta z The List to dodruk M19). Wtedy porównujemy wydanie z The List
+    // z jego własnym oryginałem; przy braku symbolu zostaje wybór obrazu.
+    if (!list) {
+      const d0 = distances.get(top.id);
+      const near = possibleCards.find((c) => {
+        const d = distances.get(c.id);
+        return isListPrinting(c) && d0 !== undefined && d !== undefined && d <= d0 + EDITION_TIE_DISTANCE;
+      });
+      const o = near ? listOrigin(near) : null;
+      const originId = o ? cards.findIdBySetNumber(o.set, o.number) : null;
+      if (near && originId) {
+        list = near;
+        regular = possibleCards.find((c) => c.id === originId) || (await cards.getCardsByIds([originId]))[0];
+        keepTopUnlessList = true;
+      }
+    }
   }
-  if (!regular || !list || (regular.lang && regular.lang !== 'en')) return undefined;
+  if (!regular || !list || (regular.lang && regular.lang !== 'en')) {
+    // karta ma wydanie z The List wśród kandydatów, ale nie udało się zestawić pary: do logu
+    const orphan = possibleCards.find((c) => isListPrinting(c));
+    return orphan ? { verdict: null, score: null, reason: 'brak_pary', pair: `${orphan.set}/${orphan.collector_number}~${top.set}/${top.collector_number}` } : undefined;
+  }
 
   const check: ListCheck = photos?.length
     ? await checkListMark(photos, regular, list).catch(() => ({ verdict: null, score: null, reason: 'blad' }))
     : { verdict: null, score: null, reason: 'brak_zdjecia' };
+  check.pair = `${list.set}/${list.collector_number}~${regular.set}/${regular.collector_number}`;
   const ensure = (c: any) => {
     if (!possibleCards.some((x) => x.id === c.id)) possibleCards.push(c);
   };
   ensure(regular);
   ensure(list);
   if (check.verdict === 'list') pick(list);
+  else if (keepTopUnlessList) return check;
   else if (check.verdict === 'regular') pick(regular);
   else if (top === list) {
     // Obraz całej karty nie widzi symbolu, więc wybór The List bez potwierdzenia to przypadek.

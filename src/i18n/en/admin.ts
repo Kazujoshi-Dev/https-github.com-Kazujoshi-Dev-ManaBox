@@ -193,6 +193,7 @@ export const en_admin: Record<string, string> = {
   "Nie udało się ocenić skanera.": "Could not evaluate the scanner.",
   "Nie udało się wczytać kadru.": "Could not load the crop.",
   "W tym dzięki kilku klatkom": "Of which thanks to multiple frames",
+  "The List (test)": "The List (test)",
   "Wydanie wybrane po stopce": "Printing chosen from the footer",
   "Klatki": "Frames",
   "odciski obrazów do skanera:": "scanner image fingerprints:",

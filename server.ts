@@ -1065,8 +1065,13 @@ app.post('/api/scanner/delver-identify', authMiddleware, scannerLimiter, async (
         `ocr="${logSafe(hintTitle, 80)}" set=${logSafe(hintSet, 12) || '-'}/${logSafe(hintCollector, 24) || '-'} wynik=${matched ? `${matched.name} [${matched.set}/${matched.collector_number}${matched.lang && matched.lang !== 'en' ? ` ${matched.lang}` : ''}]` : 'brak'}` +
         (result.englishDistance !== undefined ? ` en=${result.englishDistance}` : '') +
         (result.editionTies ? ` remis_wydań=${result.editionTies}` : '') +
-        (result.listCheck ? ` the_list=${result.listCheck.verdict ?? '?'}/${result.listCheck.score ?? '-'}${result.listCheck.reason ? `/${result.listCheck.reason}` : ''}` : '')
+        (result.listCheck ? ` the_list=${result.listCheck.verdict ?? '?'}/${result.listCheck.score ?? '-'}${result.listCheck.reason ? `/${result.listCheck.reason}` : ''}` : '') +
+        (result.editionDebug ? ` wydania=${result.editionDebug}` : '')
     );
+    // Szczegóły porównania rogu karty (osobna linia, żeby główna została czytelna).
+    if (result.listCheck && (result.listCheck.pair || result.listCheck.debug)) {
+      console.log(`[Skan] the_list_szczegóły para=${result.listCheck.pair || '-'} ${result.listCheck.debug || ''}`);
+    }
     res.json({
       success: true,
       source: cards.isCardDbReady() ? 'local' : 'scryfall',
@@ -1084,9 +1089,14 @@ app.post('/api/scanner/delver-identify', authMiddleware, scannerLimiter, async (
     });
     // Niepewne i nieudane skany (oraz mała losowa część pewnych) trafiają do próbek do oceny skanera.
     if (cards.isCardDbReady()) {
+      // Skany admina, przy których porównano róg karty z The List, zapisujemy zawsze (strojenie progów
+      // na prawdziwych kartach). Zwykli użytkownicy: tylko jak dotąd (niepewne, brak wyniku, losowe).
+      const listChecked = Boolean(result.listCheck && result.listCheck.reason !== 'brak_pary');
+      const forceReason = listChecked && (await isAdminRequest(req).catch(() => false)) ? ('the_list' as const) : undefined;
       scanSamples
         .recordScanSample({
           userId: userKey(req),
+          forceReason,
           dataUrl: req.body?.cardImageBase64,
           extraDataUrls: extraImages,
           queryHash,
@@ -2800,6 +2810,13 @@ async function restrictedUsers() {
 const invalidateRestricted = () => { restrictedCache = null; };
 
 // Dostęp tylko dla adresów z ADMIN_EMAILS — sprawdzane w bazie przy każdym zapytaniu
+/** Czy żądanie pochodzi od admina (jak requireAdmin, ale bez odpowiedzi błędem). */
+async function isAdminRequest(req: express.Request): Promise<boolean> {
+  if ((req as any).user?.mcp) return false;
+  const me = await db.getUserById((req as any).userId);
+  return Boolean(me && isAdminEmail(me.email));
+}
+
 async function requireAdmin(req: express.Request, res: express.Response, next: express.NextFunction) {
   try {
     const me = await db.getUserById((req as any).userId);

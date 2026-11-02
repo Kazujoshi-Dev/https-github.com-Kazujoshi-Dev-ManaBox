@@ -21,7 +21,8 @@ const FILTERS: Array<{ id: Filter; label: string }> = [
 const REASONS: Record<ScanSample['reason'], string> = {
   none: tk('Brak wyniku'),
   uncertain: tk('Niepewny wynik'),
-  random: tk('Kontrola losowa')
+  random: tk('Kontrola losowa'),
+  the_list: tk('The List (test)')
 };
 
 const OUTCOMES: Record<ScanEvalFailure['outcome'], { label: string; cls: string }> = {

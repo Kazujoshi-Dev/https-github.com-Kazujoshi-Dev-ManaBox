@@ -698,7 +698,7 @@ export interface ScanSample {
   createdAt: string;
   username: string | null;
   stage: 'quick' | 'full';
-  reason: 'none' | 'uncertain' | 'random';
+  reason: 'none' | 'uncertain' | 'random' | 'the_list';
   hintTitle: string;
   hintSet: string;
   hintCollector: string;

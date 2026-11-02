@@ -32,7 +32,7 @@ const AUTO_ACCEPT_CONFIDENCE = 80;
 const MAX_IMAGE_BYTES = 400_000;
 
 export type SampleStage = 'quick' | 'full';
-export type SampleReason = 'none' | 'uncertain' | 'random';
+export type SampleReason = 'none' | 'uncertain' | 'random' | 'the_list';
 export type LabelStatus = 'pending' | 'card' | 'not_card';
 
 let ready = false;
@@ -102,6 +102,8 @@ export interface RecordInput {
   extraDataUrls?: unknown;
   /** Odciski już policzone przy rozpoznawaniu (żeby nie dekodować zdjęć drugi raz). */
   queryHash?: FrameHashes | null;
+  /** Zapis niezależnie od pewności (np. skany adminów z porównaniem The List, do strojenia). */
+  forceReason?: SampleReason;
   stage: unknown;
   glare: unknown;
   hintTitle: string;
@@ -129,7 +131,7 @@ export async function recordScanSample(input: RecordInput): Promise<void> {
   if (!p || !ready || !input.userId) return;
   const stage = input.stage === 'quick' || input.stage === 'full' ? input.stage : null;
   if (!stage) return; // starszy klient bez oznaczenia etapu
-  const reason = sampleReason(stage, input.result);
+  const reason = input.forceReason ?? sampleReason(stage, input.result);
   if (!reason) return;
   if (typeof input.dataUrl !== 'string' || !input.dataUrl.startsWith('data:image/jpeg;base64,')) return;
   const image = Buffer.from(input.dataUrl.slice(23), 'base64');

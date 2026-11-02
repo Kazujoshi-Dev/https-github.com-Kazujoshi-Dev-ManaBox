@@ -52,6 +52,10 @@ export interface ListCheck {
   /** −1..1: dodatnie = bliżej wydania z The List, ujemne = bliżej zwykłego; null, gdy nie dało się porównać. */
   score: number | null;
   reason?: string;
+  /** Pomiary do logu (strojenie progów na prawdziwych skanach). */
+  debug?: string;
+  /** Porównana para do logu, np. "plst/MH1-123~mh1/123". */
+  pair?: string;
 }
 
 export const isListPrinting = (card: any): boolean => card?.set === 'plst';
@@ -175,6 +179,8 @@ async function referenceImage(card: any): Promise<GrayImage | null> {
 // Para wzorców: zwykłe wydanie i wydanie z The List
 
 interface PairModel {
+  /** Opis symbolu do logu: ramka x0-x1,y0-y1 w pasie 150×67, liczba pikseli, siła różnicy. */
+  info: string;
   regular: Float32Array; // pas zwykłego wydania, znormalizowany
   list: Float32Array; // pas wydania z The List, dopasowany do zwykłego i znormalizowany
   mask: Uint8Array; // piksele symbolu
@@ -201,7 +207,7 @@ function bestShift(fixed: Float32Array, img: GrayImage, use: Uint8Array, range: 
 function buildPair(regularImg: GrayImage, listImg: GrayImage): { model: PairModel | null; reason?: string } {
   const regular = normalize(band(regularImg));
   const aligned = bestShift(regular, listImg, USABLE, 3);
-  if (aligned.corr < 0.6) return { model: null, reason: 'wzorce_niepodobne' };
+  if (aligned.corr < 0.6) return { model: null, reason: `wzorce_niepodobne(${aligned.corr.toFixed(2)})` };
   const list = aligned.band;
 
   const diff = new Float32Array(regular.length);
@@ -248,9 +254,12 @@ function buildPair(regularImg: GrayImage, listImg: GrayImage): { model: PairMode
     if (sum > best.sum) best = { sum, pixels };
   }
   const area = best.pixels.length;
-  if (area < MASK_MIN_AREA || area > MASK_MAX_AREA) return { model: null, reason: `zly_rozmiar_${area}` };
-  if (best.sum / total < MASK_MIN_SHARE) return { model: null, reason: 'roznica_rozproszona' };
-  if (best.sum / area < MASK_MIN_STRENGTH) return { model: null, reason: 'slaby_symbol' };
+  const share = best.sum / total;
+  const strength = area ? best.sum / area : 0;
+  const stats = `pole=${area},udzial=${share.toFixed(2)},sila=${strength.toFixed(2)},wzorce=${aligned.corr.toFixed(2)}@${aligned.dx},${aligned.dy}`;
+  if (area < MASK_MIN_AREA || area > MASK_MAX_AREA) return { model: null, reason: `zly_rozmiar(${stats})` };
+  if (share < MASK_MIN_SHARE) return { model: null, reason: `roznica_rozproszona(${stats})` };
+  if (strength < MASK_MIN_STRENGTH) return { model: null, reason: `slaby_symbol(${stats})` };
 
   let x0 = BW;
   let y0 = BH;
@@ -264,7 +273,7 @@ function buildPair(regularImg: GrayImage, listImg: GrayImage): { model: PairMode
     y0 = Math.min(y0, y);
     y1 = Math.max(y1, y);
   }
-  if (x1 - x0 + 1 > MASK_MAX_SIDE || y1 - y0 + 1 > MASK_MAX_SIDE) return { model: null, reason: 'zly_ksztalt' };
+  if (x1 - x0 + 1 > MASK_MAX_SIDE || y1 - y0 + 1 > MASK_MAX_SIDE) return { model: null, reason: `zly_ksztalt(x${x0}-${x1},y${y0}-${y1},${stats})` };
 
   // Symbol z marginesem 1 px (krawędzie zmiękczone przez skalowanie) i okno wokół niego.
   const mask = new Uint8Array(regular.length);
@@ -289,7 +298,7 @@ function buildPair(regularImg: GrayImage, listImg: GrayImage): { model: PairMode
       if (!mask[i]) ring[i] = 1;
     }
   }
-  return { model: { regular, list, mask, window, ring } };
+  return { model: { info: `symbol=x${x0}-${x1},y${y0}-${y1},${stats}`, regular, list, mask, window, ring } };
 }
 
 async function pairModel(regularCard: any, listCard: any): Promise<{ model: PairModel | null; reason?: string }> {
@@ -318,12 +327,12 @@ function meanSquaredError(a: Float32Array, b: Float32Array, use: Uint8Array): nu
 }
 
 /** Wynik −1..1 dla jednej klatki albo null, gdy klatka nic nie rozstrzyga. */
-function frameScore(model: PairModel, photo: GrayImage): { score: number | null; reason?: string } {
+function frameScore(model: PairModel, photo: GrayImage): { score: number | null; reason?: string; debug: string } {
   // Dopasowanie zdjęcia do wzorca po wspólnej treści (bez symbolu): ramka, tekst stopki.
   const common = new Uint8Array(model.regular.length);
   for (let i = 0; i < common.length; i++) common[i] = USABLE[i] && !model.window[i] ? 1 : 0;
   const coarse = bestShift(model.regular, photo, common, MAX_SHIFT);
-  if (coarse.corr < 0.35) return { score: null, reason: 'zdjecie_niepodobne' };
+  if (coarse.corr < 0.35) return { score: null, reason: 'zdjecie_niepodobne', debug: `kadr=${coarse.corr.toFixed(2)}@${coarse.dx},${coarse.dy}` };
 
   // Dokładnie wokół symbolu: najmniejszy błąd względem każdego wzorca (symetrycznie dla obu).
   let errRegular = Infinity;
@@ -337,10 +346,11 @@ function frameScore(model: PairModel, photo: GrayImage): { score: number | null;
       ringErr = Math.min(ringErr, meanSquaredError(b, model.regular, model.ring));
     }
   }
-  if (ringErr > RING_MAX_ERROR) return { score: null, reason: 'zaklocone_otoczenie' };
+  const debug = `kadr=${coarse.corr.toFixed(2)}@${coarse.dx},${coarse.dy} bladZw=${errRegular.toFixed(2)} bladLista=${errList.toFixed(2)} otoczenie=${ringErr.toFixed(2)}`;
+  if (ringErr > RING_MAX_ERROR) return { score: null, reason: 'zaklocone_otoczenie', debug };
   const sum = errRegular + errList;
-  if (!(sum > 0)) return { score: null, reason: 'brak_kontrastu' };
-  return { score: (errRegular - errList) / sum };
+  if (!(sum > 0)) return { score: null, reason: 'brak_kontrastu', debug };
+  return { score: (errRegular - errList) / sum, debug };
 }
 
 /**
@@ -353,15 +363,18 @@ export async function checkListMark(photos: GrayImage[], regularCard: any, listC
   if (!model) return { verdict: null, score: null, reason };
   const scores: number[] = [];
   let lastReason: string | undefined;
+  const frames: string[] = [];
   for (const photo of photos) {
     const s = frameScore(model, photo);
+    frames.push(`[${s.score === null ? s.reason : s.score.toFixed(2)} ${s.debug}]`);
     if (s.score === null) lastReason = s.reason;
     else scores.push(s.score);
   }
-  if (!scores.length) return { verdict: null, score: null, reason: lastReason };
+  const debug = `${model.info} klatki=${frames.join('')}`;
+  if (!scores.length) return { verdict: null, score: null, reason: lastReason, debug };
   const score = scores.reduce((a, b) => a + b, 0) / scores.length;
   const verdict: ListVerdict = score >= LIST_DECISION ? 'list' : score <= -LIST_DECISION ? 'regular' : null;
-  return { verdict, score: Math.round(score * 100) / 100 };
+  return { verdict, score: Math.round(score * 100) / 100, debug };
 }
 
 /** Do testów: wzorce podane wprost zamiast pobierania ze Scryfall. */
