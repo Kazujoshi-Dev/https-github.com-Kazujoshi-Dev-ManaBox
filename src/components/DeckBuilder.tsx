@@ -23,6 +23,7 @@ import { checkDeckLegality } from './deck-builder/legality';
 import { DeckBracketPanel, useDeckBracket } from './deck-builder/DeckBracket';
 import { DECK_SORT_OPTIONS, loadDeckSort, saveDeckSort, type DeckCardSort } from './deck-builder/cardSort';
 import { DeckSuggestions } from './deck-builder/DeckSuggestions';
+import { DeckQuickAdd } from './deck-builder/DeckQuickAdd';
 import { DeckBuildAssistant } from './deck-builder/DeckBuildAssistant';
 import { DeckShareModal } from './deck-builder/DeckShareModal';
 import { DeckArenaExportModal } from './deck-builder/DeckArenaExportModal';
@@ -185,6 +186,21 @@ export const DeckBuilder: React.FC<DeckBuilderProps> = ({
       cards: updatedCards,
     });
   }, [deck, onUpdateDeck]);
+
+  // Szybkie dodawanie: najnowsze wydanie, bez wyboru wersji. W formatach singleton nie podmieniamy
+  // wydania karty, która już jest w talii.
+  const handleQuickAdd = useCallback((card: ScryfallCard): boolean => {
+    const isBasic = (card.type_line || '').toLowerCase().includes('basic');
+    const alreadyIn =
+      deck.commander?.name === card.name ||
+      (deckFormat.maxCopies === 1 && !isBasic && deck.cards.some((e) => !e.isSideboard && e.card.name === card.name));
+    if (alreadyIn) {
+      showToast(t('„{name}” jest już w talii.', { name: card.name }));
+      return false;
+    }
+    handleAddCardToDeck(card);
+    return true;
+  }, [deck, deckFormat, handleAddCardToDeck, showToast]);
 
   // Karta z rekomendacji EDHREC: mamy jej dane z lokalnej bazy albo szukamy po nazwie w Scryfall
   const resolveRecommendedCard = useCallback(async (rec: EdhrecRecommendation): Promise<ScryfallCard | null> => {
@@ -532,6 +548,9 @@ export const DeckBuilder: React.FC<DeckBuilderProps> = ({
             ))}
           </div>
         </div>
+
+        {/* Szybkie dodawanie karty po nazwie */}
+        <DeckQuickAdd onAdd={handleQuickAdd} showToast={showToast} />
 
         {/* Card Preview Scale Slider */}
         <div className="flex items-center gap-3 w-full sm:w-auto justify-end">
