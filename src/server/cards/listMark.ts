@@ -50,13 +50,19 @@ const WINDOW_PAD = 5;
 /** Otoczenie symbolu na zdjęciu musi zgadzać się z wzorcem (inaczej odblask, palec, koszulka). */
 const RING_MAX_ERROR = 0.9;
 
-/** Wynik powyżej: karta z The List; poniżej minus tej wartości: zwykłe wydanie; pomiędzy: nie wiadomo. */
-export const LIST_DECISION = 0.3;
+/**
+ * Udział symbolu (0 = brak, 1 = pełny symbol jak na wzorcu): od LIST_MIN karta z The List,
+ * do REGULAR_MAX zwykłe wydanie, pomiędzy nie wiadomo. Słabo widoczny symbol (rozmycie, mała
+ * rozdzielczość rogu) daje na prawdziwych zdjęciach ok. 0,5–0,6, zwykła karta okolice zera.
+ */
+export const LIST_MIN = 0.35;
+export const REGULAR_MAX = 0.15;
+const verdictOf = (share: number): ListVerdict => (share >= LIST_MIN ? 'list' : share <= REGULAR_MAX ? 'regular' : null);
 
 export type ListVerdict = 'list' | 'regular' | null;
 export interface ListCheck {
   verdict: ListVerdict;
-  /** −1..1: dodatnie = bliżej wydania z The List, ujemne = bliżej zwykłego; null, gdy nie dało się porównać. */
+  /** Udział symbolu The List na zdjęciu (0 = brak, 1 = pełny); null, gdy nie dało się porównać. */
   score: number | null;
   reason?: string;
   /** Pomiary do logu (strojenie progów na prawdziwych skanach). */
@@ -424,25 +430,43 @@ function frameScore(model: PairModel, photoRaw: GrayImage): { score: number | nu
   const local = alignPhoto(model.regular, photo, model.localIdx, coarse, LOCAL_SHIFT, 1);
   const at = local.corr > 0.3 ? local : coarse;
 
-  // 3. Dokładnie: najmniejszy błąd względem każdego wzorca (symetrycznie dla obu).
-  let errRegular = Infinity;
-  let errList = Infinity;
-  let ringErr = Infinity;
+  // 3. Dokładnie: przesunięcie wybiera samo otoczenie symbolu (identyczne w obu wzorcach), więc nie faworyzuje
+  // żadnego z nich. W tym położeniu porównujemy tylko piksele symbolu: reszta okna to głównie czarna ramka,
+  // taka sama w obu wzorcach, i tylko rozcieńczałaby różnicę przy słabo widocznym symbolu.
+  let best = { dx: at.dx, dy: at.dy, ring: Infinity, photo: null as Float32Array | null };
   for (let dy = at.dy - FINE_SHIFT; dy <= at.dy + FINE_SHIFT; dy++) {
     for (let dx = at.dx - FINE_SHIFT; dx <= at.dx + FINE_SHIFT; dx++) {
       const b = normalize(band(photo, dx, dy));
-      errRegular = Math.min(errRegular, meanSquaredError(b, model.regular, model.window));
-      errList = Math.min(errList, meanSquaredError(b, model.list, model.window));
-      ringErr = Math.min(ringErr, meanSquaredError(b, model.regular, model.ring));
+      const ring = meanSquaredError(b, model.regular, model.ring);
+      if (ring < best.ring) best = { dx, dy, ring, photo: b };
     }
   }
+  const b = best.photo!;
+  const ringErr = best.ring;
+  // Udział symbolu: rzut różnicy (zdjęcie − zwykłe) na różnicę (The List − zwykłe) w oknie symbolu.
+  // 0 = brak symbolu, 1 = pełny symbol; niezależny od kontrastu, więc słabo widoczny symbol daje np. 0,5,
+  // a nie remis między wzorcami jak przy porównaniu błędów.
+  let num = 0;
+  let den = 0;
+  for (let i = 0; i < b.length; i++) {
+    if (!model.window[i]) continue;
+    const d = model.list[i] - model.regular[i];
+    num += (b[i] - model.regular[i]) * d;
+    den += d * d;
+  }
+  const share = den > 0 ? num / den : NaN;
+  const errRegular = meanSquaredError(b, model.regular, model.mask);
+  const errList = meanSquaredError(b, model.list, model.mask);
+  // dawna miara (całe okno) tylko do logu, do porównania
+  const winRegular = meanSquaredError(b, model.regular, model.window);
+  const winList = meanSquaredError(b, model.list, model.window);
   const debug =
     `kadr=${coarse.corr.toFixed(2)}@${coarse.dx},${coarse.dy} róg=${local.corr.toFixed(2)}@${local.dx},${local.dy} ` +
-    `bladZw=${errRegular.toFixed(2)} bladLista=${errList.toFixed(2)} otoczenie=${ringErr.toFixed(2)}`;
+    `@${best.dx},${best.dy} udzialSymbolu=${Number.isFinite(share) ? share.toFixed(2) : '-'} symbolZw=${errRegular.toFixed(2)} symbolLista=${errList.toFixed(2)} ` +
+    `oknoZw=${winRegular.toFixed(2)} oknoLista=${winList.toFixed(2)} otoczenie=${ringErr.toFixed(2)}`;
   if (ringErr > RING_MAX_ERROR) return { score: null, reason: 'zaklocone_otoczenie', debug };
-  const sum = errRegular + errList;
-  if (!(sum > 0)) return { score: null, reason: 'brak_kontrastu', debug };
-  return { score: (errRegular - errList) / sum, debug };
+  if (!Number.isFinite(share)) return { score: null, reason: 'brak_kontrastu', debug };
+  return { score: share, debug };
 }
 
 /**
@@ -465,7 +489,7 @@ export async function checkListMark(photos: GrayImage[], regularCard: any, listC
   const debug = `${model.info} klatki=${frames.join('')}`;
   if (!scores.length) return { verdict: null, score: null, reason: lastReason, debug };
   const score = scores.reduce((a, b) => a + b, 0) / scores.length;
-  const verdict: ListVerdict = score >= LIST_DECISION ? 'list' : score <= -LIST_DECISION ? 'regular' : null;
+  const verdict = verdictOf(score);
   return { verdict, score: Math.round(score * 100) / 100, debug };
 }
 
@@ -476,5 +500,5 @@ export function checkListMarkWithImages(photos: GrayImage[], regularImg: GrayIma
   const scores = photos.map((p) => frameScore(model, p)).filter((s) => s.score !== null).map((s) => s.score!);
   if (!scores.length) return { verdict: null, score: null, reason: 'brak_ocen' };
   const score = scores.reduce((a, b) => a + b, 0) / scores.length;
-  return { verdict: score >= LIST_DECISION ? 'list' : score <= -LIST_DECISION ? 'regular' : null, score };
+  return { verdict: verdictOf(score), score };
 }

@@ -63,6 +63,11 @@ export function scorePrinting(p: PrintingLike, text: string): FooterScore {
   const codes = [code];
   if (isPromo(p) && code.length >= 4 && code.startsWith('P')) codes.push(code.slice(1));
   const set = codes.some((c) => letterToks.has(lettersForm(c)));
+  // OCR często gubi pierwszą albo ostatnią literę kodu przy krawędzi wycinka (np. „IMA” → „MA”):
+  // to słabsza wskazówka niż pełny kod, ale lepsza niż nic
+  const setPartial =
+    !set &&
+    codes.some((c) => c.length >= 3 && [c.slice(1), c.slice(0, -1)].some((part) => part.length >= 2 && letterToks.has(lettersForm(part))));
 
   const num = printed.number.replace(/^0+(?=\d)/, '');
   const digits = digitsForm(text);
@@ -72,7 +77,7 @@ export function scorePrinting(p: PrintingLike, text: string): FooterScore {
 
   // litera rzadkości: „P” oznacza promkę, C/U/R/M zwykłe wydanie
   const rarity = toks.find((t) => t.length === 1 && 'CURMSPTL'.includes(t));
-  let score = (set ? 2 : 0) + (number ? 2 : 0);
+  let score = (set ? 2 : setPartial ? 1 : 0) + (number ? 2 : 0);
   if (rarity === 'P') score += isPromo(p) ? 1 : -1;
   else if (rarity && 'CURM'.includes(rarity) && isPromo(p)) score -= 1;
   return { set, number, score };
@@ -86,30 +91,26 @@ export function scorePrinting(p: PrintingLike, text: string): FooterScore {
 export function pickPrintingByFooterText(printings: PrintingLike[], text: string, lang?: string): number {
   if (!text || printings.length < 2) return -1;
   const scored = printings.map((p, i) => ({ i, s: scorePrinting(p, text), langOk: !lang || (p.lang || 'en') === lang }));
-  const current = scored[0].s.score + (scored[0].langOk ? 0.5 : 0);
-  // Zwykłe wydanie i to samo z The List mają identyczną stopkę; to, czy karta ma symbol The List,
-  // rozstrzyga serwer, więc przy takim remisie zostajemy przy jego wyborze (printings[0]).
-  const currentList = printedSetNumber(printings[0]).list;
-  const keyOf = (i: number) => {
+  const total = (x: (typeof scored)[number]) => x.s.score + (x.langOk ? 0.5 : 0);
+  const current = total(scored[0]);
+  const hits = scored.filter((x) => x.s.set || x.s.number);
+  if (!hits.length) return -1;
+  const bestScore = Math.max(...hits.map(total));
+  if (bestScore < 2 || bestScore <= current) return -1;
+  const top = hits.filter((x) => total(x) === bestScore);
+
+  // Ta sama stopka (kod setu i numer) może należeć do kilku wydań: wersji językowych i dodruku z The List.
+  // Różne sety albo numery = stopka nie rozstrzyga. W obrębie jednej stopki: język odczytany ze stopki
+  // (gdy nieczytelny, angielski, jak przy wyborze po obrazie), a The List tak jak wybrał serwer (printings[0]).
+  const printedKey = (i: number) => {
     const p = printedSetNumber(printings[i]);
-    return `${p.set}/${p.number.replace(/^0+(?=\d)/, '')}/${printings[i].lang || 'en'}`;
+    return `${p.set}/${p.number.replace(/^0+(?=\d)/, '')}`;
   };
-  let best = -1;
-  let bestScore = -Infinity;
-  let tie = false;
-  for (const x of scored) {
-    if (!x.s.set && !x.s.number) continue;
-    const sc = x.s.score + (x.langOk ? 0.5 : 0);
-    if (sc > bestScore) {
-      bestScore = sc;
-      best = x.i;
-      tie = false;
-    } else if (sc === bestScore) {
-      if (keyOf(x.i) === keyOf(best)) {
-        if (printedSetNumber(printings[x.i]).list === currentList && printedSetNumber(printings[best]).list !== currentList) best = x.i;
-      } else tie = true;
-    }
-  }
-  if (best <= 0 || tie || bestScore < 2 || bestScore <= current) return -1;
-  return best;
+  if (new Set(top.map((x) => printedKey(x.i))).size > 1) return -1;
+  const wantLang = lang || 'en';
+  const currentList = printedSetNumber(printings[0]).list;
+  const rank = (i: number) =>
+    ((printings[i].lang || 'en') === wantLang ? 2 : 0) + (printedSetNumber(printings[i]).list === currentList ? 1 : 0);
+  const best = top.reduce((a, b) => (rank(b.i) > rank(a.i) ? b : a)).i;
+  return best > 0 ? best : -1;
 }
