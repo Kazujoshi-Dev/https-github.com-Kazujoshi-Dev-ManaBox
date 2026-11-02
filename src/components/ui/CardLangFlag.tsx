@@ -44,6 +44,9 @@ const LANG_NAMES: Record<CardLanguage, string> = {
   OTHER: tk('inny język')
 };
 
+/** Nazwa języka egzemplarza (klucz do tłumaczenia przez t()). */
+export const cardLanguageName = (lang: string): string => LANG_NAMES[lang as CardLanguage] || LANG_NAMES.OTHER;
+
 function flagFor(lang: CardLanguage): React.ReactNode {
   switch (lang) {
     case 'EN':

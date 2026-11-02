@@ -138,6 +138,7 @@ export const DEFAULT_FILTERS: FilterOptions = {
   rarity: 'ALL',
   set: 'ALL',
   binder: 'ALL',
+  language: 'ALL',
   sortBy: 'price_desc',
   onlyFoil: false
 };

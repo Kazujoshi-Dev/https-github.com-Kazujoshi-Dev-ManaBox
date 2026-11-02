@@ -98,6 +98,9 @@ export function matchesFilters(item: CollectionItem, filters: FilterOptions): bo
     if (item.isForSale || (item.binder || MAIN_BINDER) !== filters.binder) return false;
   }
 
+  // Język egzemplarza
+  if (filters.language !== 'ALL' && (item.language || 'EN') !== filters.language) return false;
+
   // Only Foil filter
   if (filters.onlyFoil && item.quantityFoil <= 0) return false;
 
@@ -105,6 +108,12 @@ export function matchesFilters(item: CollectionItem, filters: FilterOptions): bo
 }
 
 /** Dodatki z podanych pozycji: ile różnych kart z dodatku jest i ile liczy cały dodatek; od najnowszej premiery. */
+/** Język występujący w kolekcji i liczba kart w tym języku. */
+export interface LanguageOption {
+  code: string;
+  count: number;
+}
+
 export function buildSetOptions(items: CollectionItem[], setSizes: Record<string, number>): SetOption[] {
   const list = new Map<string, { name: string; numbers: Set<string>; released: string }>();
   items.forEach(item => {
@@ -163,6 +172,18 @@ export function useCollectionFilters({ collection, settings }: UseCollectionFilt
     return buildSetOptions(collection.filter((item) => matchesFilters(item, noSetFilter)), setSizes);
   }, [collection, filters, setSizes]);
 
+  // Języki występujące w kolekcji (do filtra), od najczęstszego, z liczbą kart
+  const languages = useMemo<LanguageOption[]>(() => {
+    const counts = new Map<string, number>();
+    for (const item of collection) {
+      const n = (item.quantity || 0) + (item.quantityFoil || 0);
+      if (n <= 0) continue;
+      const lang = item.language || 'EN';
+      counts.set(lang, (counts.get(lang) || 0) + n);
+    }
+    return [...counts.entries()].map(([code, count]) => ({ code, count })).sort((a, b) => b.count - a.count);
+  }, [collection]);
+
   // Filter & Sort Logic
   const filteredCollection = useMemo(() => {
     return collection.filter(item => matchesFilters(item, filters)).sort((a, b) => {
@@ -213,6 +234,7 @@ export function useCollectionFilters({ collection, settings }: UseCollectionFilt
       filters.rarity !== 'ALL' ||
       filters.binder !== 'ALL' ||
       filters.set !== 'ALL' ||
+      filters.language !== 'ALL' ||
       filters.onlyFoil
     );
   }, [filters]);
@@ -230,6 +252,7 @@ export function useCollectionFilters({ collection, settings }: UseCollectionFilt
     setFilters,
     updateFilters,
     sets,
+    languages,
     viewSets,
     filteredCollection,
     filteredMetrics,

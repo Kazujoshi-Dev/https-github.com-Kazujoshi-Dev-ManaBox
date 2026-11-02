@@ -21,6 +21,7 @@ const colorPills = () => byGame(MTG_COLOR_PILLS, LORCANA_INK_PILLS, POKEMON_TYPE
 const cardTypes = () => byGame(MTG_CARD_TYPES, LORCANA_CARD_TYPES, POKEMON_CARD_TYPES);
 const cardRarities = () => byGame(MTG_CARD_RARITIES, LORCANA_RARITIES, POKEMON_RARITIES);
 import { useT, plural, binderName } from '../../i18n';
+import { cardLanguageName } from '../ui/CardLangFlag';
 
 /** Rozwijany wybór liczby wierszy na stronie. */
 const RowsPerPageSelect: React.FC<{ value: number; onChange: (rows: number) => void; className: string }> = ({ value, onChange, className }) => {
@@ -43,6 +44,7 @@ const RowsPerPageSelect: React.FC<{ value: number; onChange: (rows: number) => v
 export const CollectionFiltersBar: React.FC<CollectionFiltersBarProps> = ({
   filters,
   sets,
+  languages = [],
   catalogs,
   viewMode,
   onFilterChange,
@@ -54,11 +56,14 @@ export const CollectionFiltersBar: React.FC<CollectionFiltersBarProps> = ({
   const showRows = rowsPerPage !== undefined && !!onRowsPerPageChange;
   // Na telefonie zaawansowane filtry są schowane pod przyciskiem, żeby karty były widoczne od razu.
   const [showAdvanced, setShowAdvanced] = useState(false);
+  // filtr języka ma sens, gdy w kolekcji jest więcej niż jeden język (albo jest już wybrany)
+  const showLanguage = languages.length > 1 || filters.language !== 'ALL';
   const activeAdvanced = [
     filters.type !== 'ALL',
     filters.rarity !== 'ALL',
     filters.binder !== 'ALL',
     filters.set !== 'ALL',
+    filters.language !== 'ALL',
     filters.onlyFoil
   ].filter(Boolean).length;
 
@@ -150,7 +155,7 @@ export const CollectionFiltersBar: React.FC<CollectionFiltersBarProps> = ({
       </div>
 
       {/* Secondary Filter Dropdowns */}
-      <div className={`${showAdvanced ? 'grid' : 'hidden'} md:grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-3 text-xs`}>
+      <div className={`${showAdvanced ? 'grid' : 'hidden'} md:grid grid-cols-2 sm:grid-cols-3 ${showLanguage ? 'lg:grid-cols-4 xl:grid-cols-8' : 'lg:grid-cols-7'} gap-3 text-xs`}>
         {/* Type Filter */}
         <div>
           <label className="block text-[11px] font-semibold text-stone-400 mb-1">{t('Typ karty')}</label>
@@ -216,6 +221,25 @@ export const CollectionFiltersBar: React.FC<CollectionFiltersBarProps> = ({
             })}
           </select>
         </div>
+
+        {/* Język egzemplarzy */}
+        {showLanguage && (
+          <div>
+            <label className="block text-[11px] font-semibold text-stone-400 mb-1">{t('Język')}</label>
+            <select
+              value={filters.language}
+              onChange={(e) => onFilterChange({ language: e.target.value })}
+              className="w-full h-9 bg-stone-900 border border-stone-800 rounded-lg px-2.5 text-stone-200 focus:outline-none focus:border-amber-500 cursor-pointer"
+            >
+              <option value="ALL">{t('Wszystkie języki')}</option>
+              {languages.map(({ code, count }) => (
+                <option key={code} value={code}>
+                  {code === 'OTHER' ? t(cardLanguageName(code)) : `${code} · ${t(cardLanguageName(code))}`} ({count})
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
 
         {/* Sort By */}
         <div>

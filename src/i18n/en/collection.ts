@@ -117,6 +117,7 @@ export const en_collection: Record<string, string> = {
   "Karty wystawione na sprzedaż ({count}) zostaną w ofercie i trafią do": "Cards listed for sale ({count}) will stay listed and move to",
   "Usuń katalog i karty": "Delete binder and cards",
   "angielski": "English",
+  "Wszystkie języki": "All languages",
   "polski": "Polish",
   "niemiecki": "German",
   "francuski": "French",

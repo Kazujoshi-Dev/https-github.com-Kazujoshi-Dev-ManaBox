@@ -60,6 +60,8 @@ export interface CatalogsBarProps {
 export interface CollectionFiltersBarProps {
   filters: FilterOptions;
   sets: import('./useCollectionFilters').SetOption[];
+  /** Języki egzemplarzy występujące w kolekcji (filtr widać, gdy są co najmniej dwa). */
+  languages?: import('./useCollectionFilters').LanguageOption[];
   catalogs: Catalog[];
   viewMode: CollectionViewMode;
   onFilterChange: (newFilters: Partial<FilterOptions>) => void;

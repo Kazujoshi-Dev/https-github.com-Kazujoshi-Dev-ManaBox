@@ -252,6 +252,7 @@ export interface FilterOptions {
   rarity: string; // 'ALL', 'common', 'uncommon', 'rare', 'mythic'
   set: string; // 'ALL' or set code
   binder: string; // 'ALL' or binder name
+  language: string; // 'ALL' albo język egzemplarza (CardLanguage)
   sortBy: 'name' | 'price_desc' | 'price_asc' | 'cmc_desc' | 'cmc_asc' | 'added_desc' | 'rarity';
   onlyFoil: boolean;
 }

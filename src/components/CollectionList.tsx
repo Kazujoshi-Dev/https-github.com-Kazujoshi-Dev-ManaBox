@@ -65,6 +65,7 @@ export const CollectionList: React.FC<CollectionListProps> = ({
     filters,
     updateFilters,
     sets,
+    languages,
     viewSets,
     filteredCollection,
     filteredMetrics,
@@ -212,6 +213,7 @@ export const CollectionList: React.FC<CollectionListProps> = ({
       <CollectionFiltersBar
         filters={filters}
         sets={sets}
+        languages={languages}
         catalogs={catalogs}
         viewMode={viewMode}
         onFilterChange={updateFilters}
