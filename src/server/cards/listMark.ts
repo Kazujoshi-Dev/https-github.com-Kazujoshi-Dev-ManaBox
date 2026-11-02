@@ -17,18 +17,25 @@ import { areaResize, decodeJpegToGray, type GrayImage } from './imageHash';
 const CARD_W = 300;
 const CARD_H = 420;
 /** Lewy dolny pas karty, w którym jest symbol The List (z zapasem). */
-const BAND = { x0: 0, y0: 0.84, x1: 0.5, y1: 1 };
-const BW = Math.round(CARD_W * (BAND.x1 - BAND.x0)); // 150
-const BH = Math.round(CARD_H * (BAND.y1 - BAND.y0)); // 67
+// Granice w całych pikselach karty 300×420, więc przesunięcie o piksel to zwykłe wycięcie (bez skalowania).
+const BW = 150; // połowa szerokości
+const BH = 67; // ok. 16% wysokości
+const BX0 = 0;
+const BY0 = CARD_H - BH;
 
 /** Zaokrąglony róg i skrajne brzegi pomijamy (tło zza karty, wypełnienie rogów w obrazach Scryfall). */
-const CORNER = 16;
+const CORNER = 16; // promień zaokrąglenia rogu karty (ok. 3 mm z 63 mm) w pikselach karty 300×420
 const EDGE = 3;
 
 /** Przesunięcie zdjęcia względem wzorca (niedokładnie wykryte rogi), w pikselach karty 300×420. */
-const MAX_SHIFT = 5;
+const MAX_SHIFT = 12;
+/** Krok zgrubnego szukania przesunięcia (potem dokładnie co 1 px). */
+const COARSE_STEP = 2;
+/** Dopasowanie lokalne wokół symbolu: rogi wykryte na zdjęciu przesuwają i skalują kadr różnie w różnych miejscach. */
+const LOCAL_SHIFT = 4;
+const LOCAL_PAD = 22;
 /** Dokładne dopasowanie wokół symbolu. */
-const FINE_SHIFT = 1;
+const FINE_SHIFT = 2;
 
 /** Różnica (w odchyleniach standardowych pasa) uznawana za część symbolu. */
 const MASK_THRESHOLD = 1.2;
@@ -85,10 +92,25 @@ function imageUrl(card: any): string | null {
 }
 
 /** Pas karty (bez normalizacji) z przesunięciem dx, dy w pikselach karty 300×420. */
+/** Obraz w kanonicznym rozmiarze karty 300×420 (zdjęcie z przeglądarki zwykle już go ma). */
+function canonical(img: GrayImage): GrayImage {
+  if (img.width === CARD_W && img.height === CARD_H) return img;
+  return { width: CARD_W, height: CARD_H, data: areaResize(img, { x0: 0, y0: 0, x1: 1, y1: 1 }, CARD_W, CARD_H) };
+}
+
+/** Pas karty kanonicznej (bez normalizacji) przesunięty o dx, dy pikseli; poza obrazem 0. */
 function band(img: GrayImage, dx = 0, dy = 0): Float32Array {
-  const ox = dx / CARD_W;
-  const oy = dy / CARD_H;
-  return areaResize(img, { x0: BAND.x0 + ox, y0: BAND.y0 + oy, x1: BAND.x1 + ox, y1: BAND.y1 + oy }, BW, BH);
+  const out = new Float32Array(BW * BH);
+  for (let y = 0; y < BH; y++) {
+    const sy = BY0 + y + dy;
+    if (sy < 0 || sy >= img.height) continue;
+    const row = sy * img.width;
+    for (let x = 0; x < BW; x++) {
+      const sx = BX0 + x + dx;
+      if (sx >= 0 && sx < img.width) out[y * BW + x] = img.data[row + sx];
+    }
+  }
+  return out;
 }
 
 /** Piksele pasa brane pod uwagę (bez rogu i skrajnych brzegów). */
@@ -97,7 +119,8 @@ const USABLE: Uint8Array = (() => {
   for (let y = 0; y < BH; y++) {
     for (let x = 0; x < BW; x++) {
       const fromBottom = BH - 1 - y;
-      const corner = x < CORNER && fromBottom < CORNER && (CORNER - x) ** 2 + (CORNER - fromBottom) ** 2 > (CORNER * 0.4) ** 2;
+      // tylko to, co leży poza łukiem zaokrąglonego rogu (tło za kartą, wypełnienie rogu w obrazach Scryfall)
+      const corner = x < CORNER && fromBottom < CORNER && (CORNER - x) ** 2 + (CORNER - fromBottom) ** 2 > CORNER ** 2;
       m[y * BW + x] = x >= EDGE && fromBottom >= EDGE && !corner ? 1 : 0;
     }
   }
@@ -186,6 +209,8 @@ interface PairModel {
   mask: Uint8Array; // piksele symbolu
   window: Uint8Array; // okno wokół symbolu
   ring: Uint8Array; // okno bez symbolu
+  localIdx: Int32Array; // otoczenie symbolu (bez symbolu) do lokalnego dopasowania zdjęcia
+  commonIdx: Int32Array; // cały pas bez okna symbolu, do zgrubnego dopasowania
 }
 
 const pairCache = new Map<string, PairModel | null>();
@@ -204,7 +229,9 @@ function bestShift(fixed: Float32Array, img: GrayImage, use: Uint8Array, range: 
 }
 
 /** Wyznacza symbol z różnicy obrazów obu wydań; null, gdy różnica nie wygląda na pojedynczy symbol. */
-function buildPair(regularImg: GrayImage, listImg: GrayImage): { model: PairModel | null; reason?: string } {
+function buildPair(regularRaw: GrayImage, listRaw: GrayImage): { model: PairModel | null; reason?: string } {
+  const regularImg = canonical(regularRaw);
+  const listImg = canonical(listRaw);
   const regular = normalize(band(regularImg));
   const aligned = bestShift(regular, listImg, USABLE, 3);
   if (aligned.corr < 0.6) return { model: null, reason: `wzorce_niepodobne(${aligned.corr.toFixed(2)})` };
@@ -290,6 +317,15 @@ function buildPair(regularImg: GrayImage, listImg: GrayImage): { model: PairMode
   }
   const window = new Uint8Array(regular.length);
   const ring = new Uint8Array(regular.length);
+  const local = new Uint8Array(regular.length);
+  for (let y = Math.max(0, y0 - LOCAL_PAD); y <= Math.min(BH - 1, y1 + LOCAL_PAD); y++) {
+    for (let x = Math.max(0, x0 - LOCAL_PAD); x <= Math.min(BW - 1, x1 + LOCAL_PAD); x++) {
+      const i = y * BW + x;
+      // bez symbolu z zapasem 2 px, żeby jego obecność nie ciągnęła dopasowania w żadną stronę
+      const nearSymbol = x >= x0 - 2 && x <= x1 + 2 && y >= y0 - 2 && y <= y1 + 2;
+      if (USABLE[i] && !nearSymbol) local[i] = 1;
+    }
+  }
   for (let y = Math.max(0, y0 - WINDOW_PAD); y <= Math.min(BH - 1, y1 + WINDOW_PAD); y++) {
     for (let x = Math.max(0, x0 - WINDOW_PAD); x <= Math.min(BW - 1, x1 + WINDOW_PAD); x++) {
       const i = y * BW + x;
@@ -298,7 +334,7 @@ function buildPair(regularImg: GrayImage, listImg: GrayImage): { model: PairMode
       if (!mask[i]) ring[i] = 1;
     }
   }
-  return { model: { info: `symbol=x${x0}-${x1},y${y0}-${y1},${stats}`, regular, list, mask, window, ring } };
+  return { model: { info: `symbol=x${x0}-${x1},y${y0}-${y1},${stats}`, regular, list, mask, window, ring, localIdx: indicesOf(local), commonIdx: indicesOf(Uint8Array.from(USABLE, (u, i) => (u && !window[i] ? 1 : 0))) } };
 }
 
 async function pairModel(regularCard: any, listCard: any): Promise<{ model: PairModel | null; reason?: string }> {
@@ -327,26 +363,82 @@ function meanSquaredError(a: Float32Array, b: Float32Array, use: Uint8Array): nu
 }
 
 /** Wynik −1..1 dla jednej klatki albo null, gdy klatka nic nie rozstrzyga. */
-function frameScore(model: PairModel, photo: GrayImage): { score: number | null; reason?: string; debug: string } {
-  // Dopasowanie zdjęcia do wzorca po wspólnej treści (bez symbolu): ramka, tekst stopki.
-  const common = new Uint8Array(model.regular.length);
-  for (let i = 0; i < common.length; i++) common[i] = USABLE[i] && !model.window[i] ? 1 : 0;
-  const coarse = bestShift(model.regular, photo, common, MAX_SHIFT);
+/** Indeksy pikseli pasa zaznaczonych w masce (szybsze pętle niż przegląd całego pasa). */
+function indicesOf(mask: Uint8Array): Int32Array {
+  let n = 0;
+  for (let i = 0; i < mask.length; i++) if (mask[i]) n++;
+  const out = new Int32Array(n);
+  for (let i = 0, k = 0; i < mask.length; i++) if (mask[i]) out[k++] = i;
+  return out;
+}
+
+/** Korelacja Pearsona wzorca i zdjęcia przesuniętego o dx, dy na wskazanych pikselach pasa (bez kopiowania). */
+function correlationAt(fixed: Float32Array, photo: GrayImage, idx: Int32Array, dx: number, dy: number): number {
+  let n = 0, sa = 0, sb = 0, sab = 0, saa = 0, sbb = 0;
+  for (let k = 0; k < idx.length; k++) {
+    const i = idx[k];
+    const x = (i % BW) + BX0 + dx;
+    const y = ((i / BW) | 0) + BY0 + dy;
+    const b = x >= 0 && y >= 0 && x < photo.width && y < photo.height ? photo.data[y * photo.width + x] : 0;
+    const a = fixed[i];
+    n++;
+    sa += a;
+    sb += b;
+    sab += a * b;
+    saa += a * a;
+    sbb += b * b;
+  }
+  if (!n) return 0;
+  const cov = sab / n - (sa / n) * (sb / n);
+  const va = saa / n - (sa / n) ** 2;
+  const vb = sbb / n - (sb / n) ** 2;
+  return va > 1e-9 && vb > 1e-9 ? cov / Math.sqrt(va * vb) : 0;
+}
+
+/** Przesunięcie zdjęcia najlepiej zgodne z wzorcem na pikselach `idx`: zgrubnie co `step`, potem co 1 px. */
+function alignPhoto(fixed: Float32Array, photo: GrayImage, idx: Int32Array, center: { dx: number; dy: number }, range: number, step: number) {
+  let best = { dx: center.dx, dy: center.dy, corr: -Infinity };
+  const tryAt = (dx: number, dy: number) => {
+    const corr = correlationAt(fixed, photo, idx, dx, dy);
+    if (corr > best.corr) best = { dx, dy, corr };
+  };
+  for (let dy = center.dy - range; dy <= center.dy + range; dy += step) {
+    for (let dx = center.dx - range; dx <= center.dx + range; dx += step) tryAt(dx, dy);
+  }
+  if (step > 1) {
+    const c = { dx: best.dx, dy: best.dy };
+    for (let dy = c.dy - step + 1; dy <= c.dy + step - 1; dy++) {
+      for (let dx = c.dx - step + 1; dx <= c.dx + step - 1; dx++) if (dx !== c.dx || dy !== c.dy) tryAt(dx, dy);
+    }
+  }
+  return best;
+}
+
+function frameScore(model: PairModel, photoRaw: GrayImage): { score: number | null; reason?: string; debug: string } {
+  const photo = canonical(photoRaw);
+  // 1. Zgrubnie: cały pas bez okolicy symbolu (ramka, tekst stopki).
+  const coarse = alignPhoto(model.regular, photo, model.commonIdx, { dx: 0, dy: 0 }, MAX_SHIFT, COARSE_STEP);
   if (coarse.corr < 0.35) return { score: null, reason: 'zdjecie_niepodobne', debug: `kadr=${coarse.corr.toFixed(2)}@${coarse.dx},${coarse.dy}` };
 
-  // Dokładnie wokół symbolu: najmniejszy błąd względem każdego wzorca (symetrycznie dla obu).
+  // 2. Lokalnie wokół symbolu (bez niego): błędy rogów i skali przesuwają róg inaczej niż resztę pasa.
+  const local = alignPhoto(model.regular, photo, model.localIdx, coarse, LOCAL_SHIFT, 1);
+  const at = local.corr > 0.3 ? local : coarse;
+
+  // 3. Dokładnie: najmniejszy błąd względem każdego wzorca (symetrycznie dla obu).
   let errRegular = Infinity;
   let errList = Infinity;
   let ringErr = Infinity;
-  for (let dy = coarse.dy - FINE_SHIFT; dy <= coarse.dy + FINE_SHIFT; dy++) {
-    for (let dx = coarse.dx - FINE_SHIFT; dx <= coarse.dx + FINE_SHIFT; dx++) {
+  for (let dy = at.dy - FINE_SHIFT; dy <= at.dy + FINE_SHIFT; dy++) {
+    for (let dx = at.dx - FINE_SHIFT; dx <= at.dx + FINE_SHIFT; dx++) {
       const b = normalize(band(photo, dx, dy));
       errRegular = Math.min(errRegular, meanSquaredError(b, model.regular, model.window));
       errList = Math.min(errList, meanSquaredError(b, model.list, model.window));
       ringErr = Math.min(ringErr, meanSquaredError(b, model.regular, model.ring));
     }
   }
-  const debug = `kadr=${coarse.corr.toFixed(2)}@${coarse.dx},${coarse.dy} bladZw=${errRegular.toFixed(2)} bladLista=${errList.toFixed(2)} otoczenie=${ringErr.toFixed(2)}`;
+  const debug =
+    `kadr=${coarse.corr.toFixed(2)}@${coarse.dx},${coarse.dy} róg=${local.corr.toFixed(2)}@${local.dx},${local.dy} ` +
+    `bladZw=${errRegular.toFixed(2)} bladLista=${errList.toFixed(2)} otoczenie=${ringErr.toFixed(2)}`;
   if (ringErr > RING_MAX_ERROR) return { score: null, reason: 'zaklocone_otoczenie', debug };
   const sum = errRegular + errList;
   if (!(sum > 0)) return { score: null, reason: 'brak_kontrastu', debug };
