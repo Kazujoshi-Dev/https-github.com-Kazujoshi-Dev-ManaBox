@@ -476,8 +476,9 @@ export interface SpellbookFindCombosResponse {
 }
 
 
-/** Format w zakładce „Alerty cenowe” (klucz `legalities` Scryfall). */
+/** Format w zakładce „Alerty cenowe” (klucz `legalities` Scryfall) albo „all” (wszystkie karty). */
 export type PriceAlertFormat =
+  | 'all'
   | 'standard' | 'pioneer' | 'modern' | 'pauper' | 'legacy' | 'vintage' | 'commander' | 'historic' | 'brawl' | 'premodern';
 
 export interface PriceMover {

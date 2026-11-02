@@ -31,7 +31,10 @@ export const PRICE_ALERT_FORMATS = [
   'brawl',
   'premodern'
 ] as const;
-export type PriceAlertFormat = (typeof PRICE_ALERT_FORMATS)[number];
+export type LegalityFormat = (typeof PRICE_ALERT_FORMATS)[number];
+/** Filtr formatu w zakładce: konkretny format albo „all” (wszystkie karty, także nielegalne w żadnym formacie). */
+export type PriceAlertFormat = LegalityFormat | 'all';
+export const PRICE_ALERT_FILTERS: readonly PriceAlertFormat[] = ['all', ...PRICE_ALERT_FORMATS];
 
 const KEEP_DAYS = 100; // ile dni historii trzymamy
 const MIN_STORE_EUR = 0.1; // tańszych kart (bez historii) nie zapisujemy
@@ -257,7 +260,8 @@ async function loadCardInfo(p: pg.Pool): Promise<void> {
       PRICE_ALERT_FORMATS.forEach((f, i) => {
         if (leg[f] === 'legal' || leg[f] === 'restricted') mask |= 1 << i;
       });
-      if (mask) next.set(r.id, { oracle: r.oracle, formats: mask });
+      // także karty nielegalne w żadnym formacie (filtr „Wszystkie”)
+      next.set(r.id, { oracle: r.oracle, formats: mask });
     }
   }
   info = next;
@@ -513,14 +517,15 @@ export function getPriceMovers(q: PriceMoversQuery): PriceMoversResult {
   if (cached && cached.version === storeVersion) return cached.value;
 
   const empty: PriceMoversResult = { ready: false, day: lastDay >= 0 ? ymdFromDay(lastDay) : null, coverageDays: coverageDays(), gainers: [], losers: [] };
-  const bit = PRICE_ALERT_FORMATS.indexOf(q.format);
-  if (bit < 0 || lastDay < 0 || info.size === 0) return empty;
+  const all = q.format === 'all';
+  const bit = all ? -1 : PRICE_ALERT_FORMATS.indexOf(q.format as LegalityFormat);
+  if ((!all && bit < 0) || lastDay < 0 || info.size === 0) return empty;
 
   const fromDay = lastDay - q.days;
   const bestUp = new Map<string, PriceMover>();
   const bestDown = new Map<string, PriceMover>();
   for (const [id, ci] of info) {
-    if (!(ci.formats & (1 << bit))) continue;
+    if (!all && !(ci.formats & (1 << bit))) continue;
     const s = store.get(id);
     if (!s) continue;
     const arr = q.foil ? s.foil : s.eur;
@@ -567,15 +572,16 @@ export function getPriceMovers(q: PriceMoversQuery): PriceMoversResult {
 export function getPriceMoversForIds(ids: Iterable<string>, q: PriceMoversQuery): PriceMoversResult {
   const limit = Math.min(Math.max(q.limit || 500, 1), 2000);
   const empty: PriceMoversResult = { ready: false, day: lastDay >= 0 ? ymdFromDay(lastDay) : null, coverageDays: coverageDays(), gainers: [], losers: [] };
-  const bit = PRICE_ALERT_FORMATS.indexOf(q.format);
-  if (bit < 0 || lastDay < 0 || info.size === 0) return empty;
+  const all = q.format === 'all';
+  const bit = all ? -1 : PRICE_ALERT_FORMATS.indexOf(q.format as LegalityFormat);
+  if ((!all && bit < 0) || lastDay < 0 || info.size === 0) return empty;
 
   const fromDay = lastDay - q.days;
   const up: PriceMover[] = [];
   const down: PriceMover[] = [];
   for (const id of new Set(ids)) {
     const ci = info.get(id);
-    if (!ci || !(ci.formats & (1 << bit))) continue;
+    if (!ci || (!all && !(ci.formats & (1 << bit)))) continue;
     const s = store.get(id);
     if (!s) continue;
     const arr = q.foil ? s.foil : s.eur;

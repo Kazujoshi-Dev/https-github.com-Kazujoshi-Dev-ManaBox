@@ -3199,7 +3199,7 @@ const MOVER_CARD_DROP = ['legalities', 'related_uris', 'multiverse_ids', 'mtgo_i
 app.get('/api/price-movers', authMiddleware, priceMoversLimiter, async (req, res) => {
   try {
     const format = String(req.query.format || 'modern') as priceHistory.PriceAlertFormat;
-    if (!priceHistory.PRICE_ALERT_FORMATS.includes(format)) return res.status(400).json({ error: 'Nieznany format.' });
+    if (!priceHistory.PRICE_ALERT_FILTERS.includes(format)) return res.status(400).json({ error: 'Nieznany format.' });
     const daysRaw = Number(req.query.days);
     const days = PRICE_MOVER_DAYS.includes(daysRaw) ? daysRaw : 7;
     const minEur = Math.min(Math.max(Number(req.query.min) || 0, 0), 1000);
@@ -3222,7 +3222,7 @@ app.get('/api/price-movers', authMiddleware, priceMoversLimiter, async (req, res
       ready: result.ready,
       day: result.day,
       coverageDays: result.coverageDays,
-      formats: priceHistory.PRICE_ALERT_FORMATS,
+      formats: priceHistory.PRICE_ALERT_FILTERS,
       gainers: withCards(result.gainers),
       losers: withCards(result.losers)
     });
@@ -3241,7 +3241,7 @@ app.post('/api/price-movers/owned', authMiddleware, priceMoversLimiter, async (r
   try {
     const body = req.body || {};
     const format = String(body.format || 'modern') as priceHistory.PriceAlertFormat;
-    if (!priceHistory.PRICE_ALERT_FORMATS.includes(format)) return res.status(400).json({ error: 'Nieznany format.' });
+    if (!priceHistory.PRICE_ALERT_FILTERS.includes(format)) return res.status(400).json({ error: 'Nieznany format.' });
     const daysRaw = Number(body.days);
     const days = PRICE_MOVER_DAYS.includes(daysRaw) ? daysRaw : 7;
     const minEur = Math.min(Math.max(Number(body.min) || 0, 0), 1000);
@@ -3291,7 +3291,7 @@ app.post('/api/price-movers/owned', authMiddleware, priceMoversLimiter, async (r
       ready: result.ready,
       day: result.day,
       coverageDays: result.coverageDays,
-      formats: priceHistory.PRICE_ALERT_FORMATS,
+      formats: priceHistory.PRICE_ALERT_FILTERS,
       gainers: withCards(result.gainers),
       losers: withCards(result.losers)
     });

@@ -14,6 +14,7 @@ interface PriceAlertsProps {
 }
 
 const FORMATS: Array<{ id: PriceAlertFormat; label: string }> = [
+  { id: 'all', label: tk('Wszystkie') },
   { id: 'standard', label: 'Standard' },
   { id: 'pioneer', label: 'Pioneer' },
   { id: 'modern', label: 'Modern' },
@@ -364,7 +365,7 @@ export const PriceAlerts: React.FC<PriceAlertsProps> = ({ settings, collection, 
       <div className="flex gap-2 overflow-x-auto no-scrollbar -mx-3 px-3 sm:mx-0 sm:px-0 sm:flex-wrap" role="group" aria-label={t('Format')}>
         {FORMATS.map((f) => (
           <Chip key={f.id} active={filters.format === f.id} onClick={() => update({ format: f.id })}>
-            {f.label}
+            {t(f.label)}
           </Chip>
         ))}
       </div>
