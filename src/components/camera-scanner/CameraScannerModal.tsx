@@ -425,6 +425,7 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
     if (result.matchedCard) {
       scanArmedRef.current = false; // nie skanuj tej samej karty ponownie, dopóki leży w kadrze
       setActiveCard(result.matchedCard);
+      setIsFoil(false); // każda nowo zeskanowana karta startuje jako zwykła, nawet jeśli poprzednią przełączono na foil
       setManualQuery(result.matchedCard.name);
       const where = result.matchedCard.set ? ` [${result.matchedCard.set.toUpperCase()} #${result.matchedCard.collector_number}]` : '';
       setScanStatus(t('Rozpoznano: "{name}"', { name: result.matchedCard.name }) + where);
@@ -758,6 +759,7 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
               .catch(() => ({ matchedCard: null, possibleCards: [] }));
       if (matchedCard) {
         setActiveCard(matchedCard);
+        setIsFoil(false);
         setScanStatus(t('Znaleziono: "{name}"', { name: matchedCard.name }));
       } else {
         showToast(t('Nie znaleziono karty dla "{manualQuery}"', { manualQuery }));
@@ -807,6 +809,7 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
         setActiveCard(null);
         setScanResult(null);
         setQuantity(1);
+        setIsFoil(false);
         setIsPrintsOpen(false);
         setScanStatus(t('Gotowy na następną kartę. Nakieruj na ramkę.'));
       } else {
