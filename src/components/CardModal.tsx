@@ -35,6 +35,8 @@ export const CardModal: React.FC<CardModalProps> = ({
   wishlistItem,
   onUpdateWishlistItem,
   collectionBlockedReason,
+  forSaleItem,
+  onToggleForSale,
 }) => {
   const t = useT();
   // „Wstecz” na telefonie zamyka to okno zamiast opuszczać stronę
@@ -228,6 +230,12 @@ export const CardModal: React.FC<CardModalProps> = ({
                 }
                 onAddToWishlist={onAddToWishlist}
                 isOnWishlist={Boolean(wishlistItem)}
+                onToggleForSale={
+                  forSaleItem && onToggleForSale && !collectionBlockedReason
+                    ? () => onToggleForSale(forSaleItem)
+                    : undefined
+                }
+                isForSale={Boolean(forSaleItem?.isForSale)}
               />
             </div>
 

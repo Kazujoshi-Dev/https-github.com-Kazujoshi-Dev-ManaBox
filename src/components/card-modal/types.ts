@@ -31,6 +31,9 @@ export interface CardModalProps {
   onUpdateWishlistItem?: (patch: { card?: ScryfallCard; isFoil?: boolean }) => Promise<unknown> | void;
   /** Powód, dla którego karty nie można dodać do kolekcji (np. okno otwarte z talii MTG Arena). */
   collectionBlockedReason?: string | null;
+  /** Aktualna pozycja kolekcji, którą można wystawić na sprzedaż (okno otwarte z kolekcji). */
+  forSaleItem?: CollectionItem | null;
+  onToggleForSale?: (item: CollectionItem) => void;
 }
 
 export type CardModalTab = 'details' | 'prints' | 'combos';
@@ -72,6 +75,9 @@ export interface CardMarketPricesProps {
   onAddToWishlist?: (card: ScryfallCard, isFoil?: boolean) => void;
   /** Karta jest już na liście życzeń (okno otwarte z listy). */
   isOnWishlist?: boolean;
+  /** Telefon: przełącza oznaczenie „na sprzedaż” pozycji kolekcji (okno otwarte z kolekcji). */
+  onToggleForSale?: () => void;
+  isForSale?: boolean;
 }
 
 export interface CardInfoSummaryProps {

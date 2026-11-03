@@ -1,5 +1,5 @@
 import React from 'react';
-import { Coins, Sparkles, Check, ExternalLink, FolderHeart, Gamepad2 } from 'lucide-react';
+import { Coins, Sparkles, Check, ExternalLink, FolderHeart, Gamepad2, DollarSign } from 'lucide-react';
 import { ScryfallCard } from '../../types';
 import { formatCurrency, getCardmarketUrl } from '../../utils/formatters';
 import { CardMarketPricesProps } from './types';
@@ -15,6 +15,8 @@ export const CardMarketPrices: React.FC<CardMarketPricesProps> = ({
   onToggleFoil,
   onAddToWishlist,
   isOnWishlist = false,
+  onToggleForSale,
+  isForSale = false,
 }) => {
   const t = useT();
   const cardmarketUrl = getCardmarketUrl(activeCard);
@@ -148,6 +150,23 @@ export const CardMarketPrices: React.FC<CardMarketPricesProps> = ({
           </a>
         )}
       </div>
+
+      {/* Telefon: szybkie oznaczenie karty z kolekcji na sprzedaż */}
+      {onToggleForSale && (isForSale || !isDigitalOnly(activeCard)) && (
+        <button
+          type="button"
+          onClick={onToggleForSale}
+          aria-pressed={isForSale}
+          className={`sm:hidden w-full py-2.5 px-3 rounded-xl text-xs font-semibold flex items-center justify-center gap-2 border transition-colors cursor-pointer ${
+            isForSale
+              ? 'bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-200 border-emerald-500/50'
+              : 'bg-emerald-950/40 hover:bg-emerald-900/50 text-emerald-300 border-emerald-800/50'
+          }`}
+        >
+          <DollarSign className="w-4 h-4 stroke-[2.5] text-emerald-400" />
+          <span>{isForSale ? t('Wycofaj kartę ze sprzedaży') : t('Wystaw na sprzedaż')}</span>
+        </button>
+      )}
 
       {isOnWishlist ? (
         <p className="w-full py-2 px-3 bg-rose-950/30 text-rose-200 rounded-xl text-xs font-semibold flex items-center justify-center gap-2 border border-rose-800/40">

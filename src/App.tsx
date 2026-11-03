@@ -1115,6 +1115,12 @@ export default function App() {
           initialFoil={deckCardIsFoil}
           wishlistItem={selectedWishlistItemForModal}
           onUpdateWishlistItem={handleUpdateWishlistItemFromModal}
+          forSaleItem={
+            selectedCollectionItemForModal
+              ? collection.find((c) => c.id === selectedCollectionItemForModal.id) || null
+              : null
+          }
+          onToggleForSale={handleRequestToggleForSale}
           collectionBlockedReason={
             deckCardBeingViewed && selectedDeck && isArenaFormat(selectedDeck.format)
               ? t('Karta z talii MTG Arena. Talie MTGA są cyfrowe, więc ich kart nie dodaje się do kolekcji.')
