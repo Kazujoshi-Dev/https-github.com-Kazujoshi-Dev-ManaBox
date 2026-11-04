@@ -34,14 +34,17 @@ import {
   ChevronDown,
   GripVertical,
   Inbox,
-  QrCode
+  QrCode,
+  Facebook
 } from 'lucide-react';
 import { useT, plural } from '../i18n';
 import { SaleQrModal } from './SaleQrModal';
+import { GAMES } from '../games';
 
 // Mapa (Leaflet) ładowana dopiero po otwarciu — nie spowalnia reszty aplikacji
 const SellersMapModal = lazyWithReload(() => import('./SellersMapModal'));
 const ForSaleAddModal = lazyWithReload(() => import('./for-sale/ForSaleAddModal'));
+const FacebookPostModal = lazyWithReload(() => import('./FacebookPostModal'));
 
 interface ForSaleListProps {
   collection: CollectionItem[];
@@ -84,6 +87,7 @@ export const ForSaleList: React.FC<ForSaleListProps> = ({
   const [editingPriceId, setEditingPriceId] = useState<string | null>(null);
   const [tempPrice, setTempPrice] = useState<string>('');
   const [imagesProgress, setImagesProgress] = useState<{ done: number; total: number } | null>(null);
+  const [isFbOpen, setIsFbOpen] = useState(false);
 
   // 1. Filter only cards marked for sale
   const allForSaleCards = useMemo(() => {
@@ -137,33 +141,40 @@ export const ForSaleList: React.FC<ForSaleListProps> = ({
     setTimeout(() => setCopiedText(false), 2500);
   };
 
+  // Wspólne ustawienia grafik z kartami (pobieranie .jpg/.zip i post na Facebooka)
+  const saleImageOptions = () => {
+    const username = currentUser?.username || t('Gracz MTG');
+    return {
+      cards: displayedCards.map(item => {
+        const foil = item.quantityFoil > 0;
+        const qty = item.quantity + item.quantityFoil;
+        const price = getItemSalePrice(item, foil, settings);
+        return {
+          imageUri: getCardImageUri(item.card, 'normal'),
+          name: item.card.name,
+          meta: `${item.card.set.toUpperCase()} #${item.card.collector_number} • ${item.condition} • ${item.language}`,
+          foil,
+          quantityText: `${qty} ${t('szt.')}`,
+          priceText: formatCurrency(price, settings.currency),
+        };
+      }),
+      username,
+      offerUrl: publicShareUrl.replace(/^https?:\/\//, ''),
+      title: t('Sprzedam'),
+      pageLabel: (page: number, count: number) => t('Strona {page} z {count}', { page, count }),
+      foilLabel: t('Foil'),
+      fileBase: `sprzedam-${username}`.replace(/[^\p{L}\p{N}_-]+/gu, '-'),
+    };
+  };
+
   // Grafiki JPG (lub ZIP) z kartami widocznymi po filtrach, do wklejenia na Facebooka
   const handleDownloadImages = async () => {
     if (imagesProgress || displayedCards.length === 0) return;
-    const username = currentUser?.username || t('Gracz MTG');
     setImagesProgress({ done: 0, total: displayedCards.length });
     try {
       const { downloadSaleImages } = await import('../utils/saleImages');
       const count = await downloadSaleImages({
-        cards: displayedCards.map(item => {
-          const foil = item.quantityFoil > 0;
-          const qty = item.quantity + item.quantityFoil;
-          const price = getItemSalePrice(item, foil, settings);
-          return {
-            imageUri: getCardImageUri(item.card, 'normal'),
-            name: item.card.name,
-            meta: `${item.card.set.toUpperCase()} #${item.card.collector_number} • ${item.condition} • ${item.language}`,
-            foil,
-            quantityText: `${qty} ${t('szt.')}`,
-            priceText: formatCurrency(price, settings.currency),
-          };
-        }),
-        username,
-        offerUrl: publicShareUrl.replace(/^https?:\/\//, ''),
-        title: t('Sprzedam'),
-        pageLabel: (page, count) => t('Strona {page} z {count}', { page, count }),
-        foilLabel: t('Foil'),
-        fileBase: `sprzedam-${username}`.replace(/[^\p{L}\p{N}_-]+/gu, '-'),
+        ...saleImageOptions(),
         onProgress: (done, total) => setImagesProgress({ done, total }),
       });
       showToast?.(count > 1 ? t('Pobrano paczkę .zip z {n} grafikami.', { n: count }) : t('Pobrano grafikę .jpg z ofertą.'));
@@ -172,6 +183,29 @@ export const ForSaleList: React.FC<ForSaleListProps> = ({
     } finally {
       setImagesProgress(null);
     }
+  };
+
+  // Treść posta na Facebooka: karty widoczne po filtrach, z cenami i linkiem do oferty
+  const buildFacebookText = () => {
+    const qty = displayedCards.reduce((sum, item) => sum + item.quantity + item.quantityFoil, 0);
+    const value = displayedCards.reduce((sum, item) => {
+      const foil = item.quantityFoil > 0;
+      return sum + getItemSalePrice(item, foil, settings) * (item.quantity + item.quantityFoil);
+    }, 0);
+    const lines = displayedCards.map(item => {
+      const foil = item.quantityFoil > 0;
+      const n = item.quantity + item.quantityFoil;
+      const price = formatCurrency(getItemSalePrice(item, foil, settings), settings.currency);
+      return `• ${n}x ${item.card.name} (${item.card.set.toUpperCase()} #${item.card.collector_number})${foil ? ' FOIL' : ''}, ${item.condition}, ${item.language}: ${price}`;
+    });
+    return [
+      t('Sprzedam karty {game} ({n} szt., łącznie {value})', { game: GAMES[getActiveGame()].shortName, n: qty, value: formatCurrency(value, settings.currency) }),
+      '',
+      ...lines,
+      '',
+      t('Ceny za sztukę. Pełna oferta ze zdjęciami: {url}', { url: publicShareUrl }),
+      t('Chętnych zapraszam na priv.'),
+    ].join('\n');
   };
 
   const handleSaveCustomPrice = async (item: CollectionItem) => {
@@ -757,6 +791,22 @@ export const ForSaleList: React.FC<ForSaleListProps> = ({
         </Suspense>
       )}
 
+      {isFbOpen && displayedCards.length > 0 && (
+        <Suspense fallback={null}>
+          <FacebookPostModal
+            variant="sale"
+            text={buildFacebookText()}
+            shareUrl={publicShareUrl}
+            buildImages={async (onProgress) => {
+              const { renderSaleImageFiles } = await import('../utils/saleImages');
+              return renderSaleImageFiles({ ...saleImageOptions(), onProgress });
+            }}
+            onClose={() => setIsFbOpen(false)}
+            showToast={showToast}
+          />
+        </Suspense>
+      )}
+
       {isQrOpen && (
         <SaleQrModal
           url={publicShareUrl}
@@ -808,6 +858,16 @@ export const ForSaleList: React.FC<ForSaleListProps> = ({
             <span className="hidden lg:inline tabular-nums">
               {imagesProgress ? t('Grafiki {done}/{total}', imagesProgress) : t('Grafiki .jpg')}
             </span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setIsFbOpen(true)}
+            disabled={displayedCards.length === 0}
+            className="btn btn-secondary disabled:opacity-50"
+            title={t('Przygotuj post na Facebooka: treść z listą i cenami oraz zdjęcia kart (uwzględnia wyszukiwanie i filtry)')}
+          >
+            <Facebook className="w-4 h-4" />
+            <span className="hidden sm:inline">{t('Post na FB')}</span>
           </button>
         </div>
       </div>

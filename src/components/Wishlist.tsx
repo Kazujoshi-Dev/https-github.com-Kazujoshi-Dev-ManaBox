@@ -5,6 +5,7 @@ import React, { Suspense, useState } from 'react';
 import { lazyWithReload } from '../utils/lazyWithReload';
 
 const SellersMapModal = lazyWithReload(() => import('./SellersMapModal'));
+const FacebookPostModal = lazyWithReload(() => import('./FacebookPostModal'));
 import { WishlistItem, ScryfallCard, AppSettings, AuthUser } from '../types';
 import { formatCurrency, getCardImageUri, getCardPrice, handleCardImageError, getCardEdhrecRank } from '../utils/formatters';
 import { ManaSymbol } from './ManaSymbol';
@@ -24,10 +25,13 @@ import {
   FileText,
   Map as MapIcon,
   Loader2,
-  QrCode
+  QrCode,
+  ImageDown,
+  Facebook
 } from 'lucide-react';
 import { SaleQrModal } from './SaleQrModal';
 import { useT, plural } from '../i18n';
+import { GAMES } from '../games';
 
 interface WishlistProps {
   wishlist: WishlistItem[];
@@ -61,6 +65,8 @@ export const Wishlist: React.FC<WishlistProps> = ({
   const [copiedLink, setCopiedLink] = useState(false);
   const [copiedText, setCopiedText] = useState(false);
   const [isQrOpen, setIsQrOpen] = useState(false);
+  const [isFbOpen, setIsFbOpen] = useState(false);
+  const [imagesProgress, setImagesProgress] = useState<{ done: number; total: number } | null>(null);
 
   // Publiczny link do listy życzeń (działa bez logowania, jak oferta w „Sprzedam”)
   const publicShareSlug = currentUser?.username || currentUser?.id || '';
@@ -91,6 +97,60 @@ export const Wishlist: React.FC<WishlistProps> = ({
     } catch {
       showToast?.(t('Nie udało się skopiować listy.'));
     }
+  };
+
+  // Grafiki „Szukam” z kartami i orientacyjnymi cenami rynkowymi (jak w ofercie „Sprzedam”)
+  const wishlistImageOptions = () => {
+    const username = currentUser?.username || t('Gracz MTG');
+    return {
+      cards: wishlist.map(item => ({
+        imageUri: getCardImageUri(item.card, 'normal'),
+        name: item.card.name,
+        meta: `${item.card.set.toUpperCase()} #${item.card.collector_number}`,
+        foil: Boolean(item.isFoil),
+        quantityText: `${item.targetQuantity} ${t('szt.')}`,
+        priceText: `~${formatCurrency(getCardPrice(item.card, item.isFoil, settings), settings.currency)}`,
+      })),
+      username,
+      offerUrl: publicShareUrl.replace(/^https?:\/\//, ''),
+      title: t('Szukam'),
+      pageLabel: (page: number, count: number) => t('Strona {page} z {count}', { page, count }),
+      foilLabel: t('Foil'),
+      fileBase: `szukam-${username}`.replace(/[^\p{L}\p{N}_-]+/gu, '-'),
+    };
+  };
+
+  const handleDownloadImages = async () => {
+    if (imagesProgress || wishlist.length === 0) return;
+    setImagesProgress({ done: 0, total: wishlist.length });
+    try {
+      const { downloadSaleImages } = await import('../utils/saleImages');
+      const count = await downloadSaleImages({
+        ...wishlistImageOptions(),
+        onProgress: (done, total) => setImagesProgress({ done, total }),
+      });
+      showToast?.(count > 1 ? t('Pobrano paczkę .zip z {n} grafikami.', { n: count }) : t('Pobrano grafikę .jpg z listą życzeń.'));
+    } catch {
+      showToast?.(t('Nie udało się utworzyć grafik. Spróbuj ponownie.'));
+    } finally {
+      setImagesProgress(null);
+    }
+  };
+
+  const buildFacebookText = () => {
+    const qty = wishlist.reduce((sum, item) => sum + item.targetQuantity, 0);
+    const lines = wishlist.map(item => {
+      const price = formatCurrency(getCardPrice(item.card, item.isFoil, settings), settings.currency);
+      return `• ${item.targetQuantity}x ${item.card.name} (${item.card.set.toUpperCase()})${item.isFoil ? ' FOIL' : ''}: ${t('ok. {price}', { price })}`;
+    });
+    return [
+      t('Szukam kart {game} ({n} szt.)', { game: GAMES[getActiveGame()].shortName, n: qty }),
+      '',
+      ...lines,
+      '',
+      t('Ceny orientacyjne (rynkowe). Pełna lista: {url}', { url: publicShareUrl }),
+      t('Masz którąś z nich? Napisz na priv.'),
+    ].join('\n');
   };
 
   // Calculate total estimated budget to buy all items on wishlist
@@ -124,6 +184,22 @@ export const Wishlist: React.FC<WishlistProps> = ({
           </>
         }
       />
+
+      {isFbOpen && publicShareSlug && wishlist.length > 0 && (
+        <Suspense fallback={null}>
+          <FacebookPostModal
+            variant="wishlist"
+            text={buildFacebookText()}
+            shareUrl={publicShareUrl}
+            buildImages={async (onProgress) => {
+              const { renderSaleImageFiles } = await import('../utils/saleImages');
+              return renderSaleImageFiles({ ...wishlistImageOptions(), onProgress });
+            }}
+            onClose={() => setIsFbOpen(false)}
+            showToast={showToast}
+          />
+        </Suspense>
+      )}
 
       {isQrOpen && publicShareSlug && (
         <SaleQrModal
@@ -165,6 +241,28 @@ export const Wishlist: React.FC<WishlistProps> = ({
             <button type="button" onClick={handleCopyTextList} disabled={wishlist.length === 0} className="btn btn-ghost" title={t('Kopiuj listę kart jako tekst')}>
               {copiedText ? <Check className="w-4 h-4 text-emerald-400" /> : <FileText className="w-4 h-4" />}
               <span className="hidden lg:inline">{copiedText ? t('Skopiowano') : t('Lista .txt')}</span>
+            </button>
+            <button
+              type="button"
+              onClick={handleDownloadImages}
+              disabled={Boolean(imagesProgress) || wishlist.length === 0}
+              className="btn btn-ghost disabled:opacity-50"
+              title={t('Pobierz grafiki z kartami, których szukasz, i ich cenami rynkowymi')}
+            >
+              {imagesProgress ? <Loader2 className="w-4 h-4 animate-spin" /> : <ImageDown className="w-4 h-4" />}
+              <span className="hidden lg:inline tabular-nums">
+                {imagesProgress ? t('Grafiki {done}/{total}', imagesProgress) : t('Grafiki .jpg')}
+              </span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setIsFbOpen(true)}
+              disabled={wishlist.length === 0}
+              className="btn btn-secondary disabled:opacity-50"
+              title={t('Przygotuj post na Facebooka: lista szukanych kart z cenami i zdjęcia kart')}
+            >
+              <Facebook className="w-4 h-4" />
+              <span className="hidden sm:inline">{t('Post na FB')}</span>
             </button>
           </div>
         </div>

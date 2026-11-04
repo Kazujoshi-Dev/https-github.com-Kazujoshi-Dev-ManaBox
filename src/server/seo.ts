@@ -9,6 +9,8 @@ import type express from 'express';
 import * as db from './db';
 import type { CollectionItem, DeckItem, ScryfallCard, WishlistItem } from '../types';
 import { GUIDES, getGuide, guidesNavHtml, renderGuide } from './seoGuides';
+import { DEFAULT_GAME, GAMES, isGameAvailable, type GameId } from '../games';
+import { OG_H, OG_W, cachedOgImage, renderCardsOgImage, shortHash } from './ogImage';
 
 export const SITE_URL = (process.env.PUBLIC_SITE_URL || 'https://manascrew.eu').replace(/\/+$/, '');
 export const SITE_NAME = 'Mana Screw';
@@ -25,6 +27,8 @@ export interface PageMeta {
   /** Ścieżka kanoniczna, np. /talia/abc. */
   path: string;
   image?: string;
+  /** Wymiary obrazka, gdy są znane (np. wygenerowany kolaż 1200×630). */
+  imageSize?: { width: number; height: number };
   imageAlt?: string;
   type?: 'website' | 'article' | 'profile';
   noindex?: boolean;
@@ -117,7 +121,11 @@ export function headTags(meta: PageMeta): string {
     `<meta property="og:description" content="${esc(meta.description)}" />`,
     `<meta property="og:url" content="${esc(url)}" />`,
     `<meta property="og:image" content="${esc(image)}" />`,
-    image === DEFAULT_IMAGE ? `<meta property="og:image:width" content="1200" />\n    <meta property="og:image:height" content="630" />` : '',
+    image === DEFAULT_IMAGE
+      ? `<meta property="og:image:width" content="1200" />\n    <meta property="og:image:height" content="630" />`
+      : meta.imageSize
+        ? `<meta property="og:image:width" content="${meta.imageSize.width}" />\n    <meta property="og:image:height" content="${meta.imageSize.height}" />`
+        : '',
     meta.imageAlt ? `<meta property="og:image:alt" content="${esc(meta.imageAlt)}" />` : '',
     `<meta name="twitter:card" content="summary_large_image" />`,
     `<meta name="twitter:title" content="${esc(meta.title)}" />`,
@@ -305,34 +313,73 @@ ${appFooter}`;
   };
 }
 
-async function salePage(ref: string, folderSlug?: string): Promise<RenderedPage> {
-  const path = `/sprzedam/${encodeURIComponent(ref)}${folderSlug ? `/${encodeURIComponent(folderSlug)}` : ''}`;
+const gameQuery = (game: GameId) => (game !== DEFAULT_GAME ? `?gra=${game}` : '');
+const gameLabel = (game: GameId) => (game === 'mtg' ? 'MTG' : GAMES[game].shortName);
+
+interface OfferData {
+  user: { id: string; username: string };
+  folder: { id: string; name: string; slug: string } | null;
+  items: CollectionItem[];
+  currency: string;
+}
+
+/** Karty oferty (całej albo jednego folderu); null, gdy oferty nie ma lub jest ukryta. */
+async function loadOffer(ref: string, folderSlug: string | undefined, game: GameId): Promise<OfferData | 'no-folder' | null> {
   const user = ref.length <= 100 ? await db.getUserByIdOrUsername(ref.trim()) : null;
-  if (!user || db.isBanActive(user) || user.sale_hidden) return notFoundPage(path, 'Nie znaleziono oferty dla tego użytkownika.');
+  if (!user || db.isBanActive(user) || user.sale_hidden) return null;
   const folder = folderSlug
-    ? (await db.getSaleFolders(user.id)).find((f) => f.slug === folderSlug.trim().toLowerCase()) || null
+    ? (await db.getSaleFolders(user.id, game)).find((f) => f.slug === folderSlug.trim().toLowerCase()) || null
     : null;
-  if (folderSlug && !folder) return notFoundPage(path, 'Nie znaleziono tego folderu oferty.');
-  const canonical = `/sprzedam/${encodeURIComponent(user.username)}${folder ? `/${folder.slug}` : ''}`;
-  const items = ((await db.getCollection(user.id)) as CollectionItem[]).filter(
+  if (folderSlug && !folder) return 'no-folder';
+  const items = ((await db.getCollection(user.id, game)) as CollectionItem[]).filter(
     (i) => i.isForSale && (!folder || i.saleFolderId === folder.id)
   );
   const settings: any = (await db.getSettings(user.id)) || {};
-  const currency = settings.currency || 'PLN';
   const sorted = [...items].sort((a, b) => (Number(b.salePrice) || eur(b.card)) - (Number(a.salePrice) || eur(a.card)));
-  const n = items.reduce((s, i) => s + (i.quantity || 0) + (i.quantityFoil || 0), 0) || items.length;
+  return { user, folder: folder ? { id: folder.id, name: folder.name, slug: folder.slug } : null, items: sorted, currency: settings.currency || 'PLN' };
+}
+
+async function loadWishlist(ref: string, game: GameId) {
+  const user = ref.length <= 100 ? await db.getUserByIdOrUsername(ref.trim()) : null;
+  if (!user || db.isBanActive(user)) return null;
+  const list = ((await db.getWishlist(user.id, game)) as WishlistItem[]).filter((w) => w.card);
+  // Najdroższe karty pierwsze: to one najlepiej wyglądają w podglądzie linku
+  const sorted = [...list].sort((a, b) => eur(b.card) - eur(a.card));
+  return { user, list: sorted };
+}
+
+const TOP_IMAGES = 5;
+const topImages = (cardsList: (ScryfallCard | null | undefined)[]) => cardsList.map((c) => cardImage(c, 'normal')).filter(Boolean).slice(0, TOP_IMAGES);
+
+/** Adres kolażu kart do og:image; skrót w adresie zmienia się razem z ofertą. */
+const ogImageUrl = (kind: 'sprzedam' | 'szukam', username: string, folderSlug: string | undefined, images: string[], game: GameId) => {
+  if (images.length === 0) return undefined;
+  const v = shortHash(images.join('|'));
+  return `${SITE_URL}/og/${kind}/${encodeURIComponent(username)}${folderSlug ? `/${folderSlug}` : ''}.jpg?v=${v}${game !== DEFAULT_GAME ? `&gra=${game}` : ''}`;
+};
+
+async function salePage(ref: string, folderSlug?: string, game: GameId = DEFAULT_GAME): Promise<RenderedPage> {
+  const path = `/sprzedam/${encodeURIComponent(ref)}${folderSlug ? `/${encodeURIComponent(folderSlug)}` : ''}${gameQuery(game)}`;
+  const offer = await loadOffer(ref, folderSlug, game);
+  if (!offer) return notFoundPage(path, 'Nie znaleziono oferty dla tego użytkownika.');
+  if (offer === 'no-folder') return notFoundPage(path, 'Nie znaleziono tego folderu oferty.');
+  const { user, folder, items: sorted, currency } = offer;
+  const canonical = `/sprzedam/${encodeURIComponent(user.username)}${folder ? `/${folder.slug}` : ''}${gameQuery(game)}`;
+  const n = sorted.reduce((s, i) => s + (i.quantity || 0) + (i.quantityFoil || 0), 0) || sorted.length;
+  const label = gameLabel(game);
+  const gameName = GAMES[game].name;
 
   const top = sorted.slice(0, 3).map((i) => i.card.name);
   const title = clip(
     folder
-      ? `${folder.name}: karty MTG na sprzedaż od ${user.username} (${kart(n)}) | ${SITE_NAME}`
-      : `Karty MTG na sprzedaż: ${user.username} (${kart(n)}) | ${SITE_NAME}`,
+      ? `${folder.name}: karty ${label} na sprzedaż od ${user.username} (${kart(n)}) | ${SITE_NAME}`
+      : `Karty ${label} na sprzedaż: ${user.username} (${kart(n)}) | ${SITE_NAME}`,
     90
   );
   const description = clip(
     n
-      ? `${kart(n)} Magic: The Gathering na sprzedaż od ${user.username}${top.length ? `${n > top.length ? ', między innymi' : ':'} ${top.join(', ')}` : ''}. Zobacz ceny i napisz do sprzedawcy w Mana Screw.`
-      : `Oferta kart Magic: The Gathering gracza ${user.username} w Mana Screw. Obecnie brak kart na sprzedaż.`,
+      ? `${kart(n)} ${gameName} na sprzedaż od ${user.username}${top.length ? `${n > top.length ? ', między innymi' : ':'} ${top.join(', ')}` : ''}. Zobacz ceny i napisz do sprzedawcy w Mana Screw.`
+      : `Oferta kart ${gameName} gracza ${user.username} w Mana Screw. Obecnie brak kart na sprzedaż.`,
     200
   );
 
@@ -347,11 +394,12 @@ async function salePage(ref: string, folderSlug?: string): Promise<RenderedPage>
     .join('');
 
   const body = `${breadcrumbNav('Sprzedam')}
-<h1>${folder ? `${esc(folder.name)}: karty MTG na sprzedaż od ${esc(user.username)}` : `Karty MTG na sprzedaż: ${esc(user.username)}`}</h1>
-<p>${n ? `${esc(kart(n))} Magic: The Gathering wystawionych na sprzedaż przez gracza ${esc(user.username)}.` : 'Ten gracz nie ma obecnie kart na sprzedaż.'} Aby kupić kartę, zaloguj się i napisz do sprzedawcy.</p>
+<h1>${folder ? `${esc(folder.name)}: karty ${esc(label)} na sprzedaż od ${esc(user.username)}` : `Karty ${esc(label)} na sprzedaż: ${esc(user.username)}`}</h1>
+<p>${n ? `${esc(kart(n))} ${esc(gameName)} wystawionych na sprzedaż przez gracza ${esc(user.username)}.` : 'Ten gracz nie ma obecnie kart na sprzedaż.'} Aby kupić kartę, zaloguj się i napisz do sprzedawcy.</p>
 ${rows ? `<h2>Lista kart</h2><ul>${rows}</ul>` : ''}
 ${appFooter}`;
 
+  const collage = ogImageUrl('sprzedam', user.username, folder?.slug, topImages(sorted.map((i) => i.card)), game);
   return {
     status: 200,
     meta: {
@@ -361,36 +409,59 @@ ${appFooter}`;
       type: 'profile',
       // link folderu bywa przeznaczony dla jednej osoby: wyszukiwarki go nie indeksują
       noindex: Boolean(folder),
-      image: cardImage(sorted[0]?.card, 'large') || undefined,
-      imageAlt: sorted[0]?.card.name
+      image: collage || cardImage(sorted[0]?.card, 'large') || undefined,
+      imageSize: collage ? { width: OG_W, height: OG_H } : undefined,
+      imageAlt: top.length ? top.join(', ') : undefined
     },
     body
   };
 }
 
-async function wishlistPage(ref: string): Promise<RenderedPage> {
-  const path = `/szukam/${encodeURIComponent(ref)}`;
-  const user = ref.length <= 100 ? await db.getUserByIdOrUsername(ref.trim()) : null;
-  if (!user || db.isBanActive(user)) return notFoundPage(path, 'Nie znaleziono listy życzeń tego użytkownika.');
-  const list = (await db.getWishlist(user.id)) as WishlistItem[];
-  const names = list.map((w) => w.card?.name).filter(Boolean) as string[];
+async function wishlistPage(ref: string, game: GameId = DEFAULT_GAME): Promise<RenderedPage> {
+  const path = `/szukam/${encodeURIComponent(ref)}${gameQuery(game)}`;
+  const data = await loadWishlist(ref, game);
+  if (!data) return notFoundPage(path, 'Nie znaleziono listy życzeń tego użytkownika.');
+  const { user, list } = data;
+  const names = list.map((w) => w.card.name);
+  const label = gameLabel(game);
+  const gameName = GAMES[game].name;
   const body = `${breadcrumbNav('Lista życzeń')}
 <h1>Lista życzeń: ${esc(user.username)}</h1>
-<p>Karty Magic: The Gathering, których szuka gracz ${esc(user.username)}.</p>
+<p>Karty ${esc(gameName)}, których szuka gracz ${esc(user.username)}.</p>
 ${names.length ? `<ul>${names.slice(0, 500).map((x) => `<li>${esc(x)}</li>`).join('')}</ul>` : ''}
 ${appFooter}`;
+  const collage = ogImageUrl('szukam', user.username, undefined, topImages(list.map((w) => w.card)), game);
   return {
     status: 200,
     meta: {
-      title: clip(`Lista życzeń ${user.username}: szukane karty MTG | ${SITE_NAME}`, 90),
-      description: clip(`${user.username} szuka ${kart(names.length)} Magic: The Gathering${names.length ? `, między innymi ${names.slice(0, 3).join(', ')}` : ''}. Masz je? Napisz w Mana Screw.`, 200),
-      path: `/szukam/${encodeURIComponent(user.username)}`,
+      title: clip(`Lista życzeń ${user.username}: szukane karty ${label} | ${SITE_NAME}`, 90),
+      description: clip(`${user.username} szuka ${kart(names.length)} ${gameName}${names.length ? `, między innymi ${names.slice(0, 3).join(', ')}` : ''}. Masz je? Napisz w Mana Screw.`, 200),
+      path: `/szukam/${encodeURIComponent(user.username)}${gameQuery(game)}`,
       type: 'profile',
       // Lista życzeń jest dostępna z linku, ale nie promujemy jej w wynikach wyszukiwania
-      noindex: true
+      noindex: true,
+      image: collage,
+      imageSize: collage ? { width: OG_W, height: OG_H } : undefined,
+      imageAlt: names.length ? names.slice(0, 3).join(', ') : undefined
     },
     body
   };
+}
+
+/** Kolaż kart dla /og/sprzedam/… i /og/szukam/…; null = brak oferty lub obrazków. */
+async function offerOgImage(kind: 'sprzedam' | 'szukam', ref: string, folderSlug: string | undefined, game: GameId): Promise<Buffer | null> {
+  let images: string[] = [];
+  if (kind === 'sprzedam') {
+    const offer = await loadOffer(ref, folderSlug, game);
+    if (!offer || offer === 'no-folder') return null;
+    images = topImages(offer.items.map((i) => i.card));
+  } else {
+    const data = await loadWishlist(ref, game);
+    if (!data) return null;
+    images = topImages(data.list.map((w) => w.card));
+  }
+  if (images.length === 0) return null;
+  return cachedOgImage(`${kind}:${game}:${shortHash(images.join('|'))}`, () => renderCardsOgImage(images));
 }
 
 // ---------- cache wyników ----------
@@ -452,6 +523,11 @@ async function sitemapXml(): Promise<string> {
  * Rejestruje robots.txt, sitemap.xml i strony aplikacji z metadanymi.
  * `getTemplate` zwraca aktualny index.html (w produkcji z dist, w trybie dev przetworzony przez Vite).
  */
+const gameOf = (req: express.Request): GameId => {
+  const v = typeof req.query.gra === 'string' ? req.query.gra : '';
+  return isGameAvailable(v) ? v : DEFAULT_GAME;
+};
+
 export function registerSeoRoutes(app: express.Express, getTemplate: (req: express.Request) => Promise<string>) {
   app.get('/robots.txt', (_req, res) => {
     res.type('text/plain').setHeader('Cache-Control', 'public, max-age=3600');
@@ -465,6 +541,27 @@ export function registerSeoRoutes(app: express.Express, getTemplate: (req: expre
     } catch (err: any) {
       console.warn('[SEO] sitemap:', err?.message || err);
       res.status(500).type('text/plain').send('sitemap error');
+    }
+  });
+
+  // Podgląd linku oferty i listy życzeń: kolaż kart (Facebook, Messenger, Discord)
+  app.get(/^\/og\/(sprzedam|szukam)\/.+\.jpg$/, async (req, res) => {
+    const m = req.path.match(/^\/og\/(sprzedam|szukam)\/([^/]+?)(?:\/([a-z0-9]{6,24}))?\.jpg$/i);
+    if (!m || (m[1] === 'szukam' && m[3])) return res.status(404).end();
+    let ref = m[2];
+    try {
+      ref = decodeURIComponent(ref);
+    } catch {
+      return res.status(404).end();
+    }
+    try {
+      const buf = await offerOgImage(m[1] as 'sprzedam' | 'szukam', ref, m[3]?.toLowerCase(), gameOf(req));
+      if (!buf) return res.redirect(302, DEFAULT_IMAGE);
+      res.setHeader('Cache-Control', 'public, max-age=1800');
+      res.type('image/jpeg').send(buf);
+    } catch (err: any) {
+      console.warn('[SEO] og image:', err?.message || err);
+      res.redirect(302, DEFAULT_IMAGE);
     }
   });
 
@@ -509,8 +606,11 @@ export function registerSeoRoutes(app: express.Express, getTemplate: (req: expre
           /* surowy */
         }
         const folderSlug = m[3] ? m[3].toLowerCase() : undefined;
-        const key = `${m[1]}:${ref.toLowerCase()}${folderSlug ? `/${folderSlug}` : ''}`;
-        page = await cachedPage(key, () => (m[1] === 'talia' ? deckPage(ref) : m[1] === 'sprzedam' ? salePage(ref, folderSlug) : wishlistPage(ref)));
+        const game = gameOf(req);
+        const key = `${m[1]}:${m[1] === 'talia' ? '' : `${game}:`}${ref.toLowerCase()}${folderSlug ? `/${folderSlug}` : ''}`;
+        page = await cachedPage(key, () =>
+          m[1] === 'talia' ? deckPage(ref) : m[1] === 'sprzedam' ? salePage(ref, folderSlug, game) : wishlistPage(ref, game)
+        );
       } else {
         page = notFoundPage(req.path, 'Ta strona nie istnieje.');
       }

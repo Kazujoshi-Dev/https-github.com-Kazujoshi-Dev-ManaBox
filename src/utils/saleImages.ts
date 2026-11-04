@@ -237,7 +237,7 @@ async function loadAll(uris: string[], onDone: () => void): Promise<(HTMLImageEl
   return out;
 }
 
-function downloadBlob(blob: Blob, filename: string) {
+export function downloadBlob(blob: Blob, filename: string) {
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
@@ -248,10 +248,10 @@ function downloadBlob(blob: Blob, filename: string) {
   setTimeout(() => URL.revokeObjectURL(url), 10_000);
 }
 
-/** Tworzy grafiki i pobiera je: jedną jako .jpg, kilka jako .zip. Zwraca liczbę grafik. */
-export async function downloadSaleImages(opts: SaleImageOptions): Promise<number> {
+/** Tworzy grafiki JPG (po 16 kart na grafikę) i zwraca je jako pliki. */
+export async function renderSaleImages(opts: SaleImageOptions): Promise<Blob[]> {
   const { cards } = opts;
-  if (cards.length === 0) return 0;
+  if (cards.length === 0) return [];
   try {
     await document.fonts.load(`700 44px ${FONT}`);
     await document.fonts.load(`400 22px ${FONT}`);
@@ -273,16 +273,33 @@ export async function downloadSaleImages(opts: SaleImageOptions): Promise<number
     const canvas = drawPage(cards.slice(from, from + CARDS_PER_IMAGE), images.slice(from, from + CARDS_PER_IMAGE), p + 1, pageCount, opts);
     blobs.push(await canvasToJpeg(canvas));
   }
+  return blobs;
+}
 
+/** Nazwy plików grafik: jedna bez numeru, kilka z numerem strony. */
+export function saleImageNames(fileBase: string, count: number): string[] {
+  if (count === 1) return [`${fileBase}.jpg`];
+  const pad = String(count).length;
+  return Array.from({ length: count }, (_, i) => `${fileBase}-${String(i + 1).padStart(pad, '0')}.jpg`);
+}
+
+/** Grafiki jako pliki z nazwami (do udostępnienia przez systemowe okno „Udostępnij”). */
+export async function renderSaleImageFiles(opts: SaleImageOptions): Promise<File[]> {
+  const blobs = await renderSaleImages(opts);
+  const names = saleImageNames(opts.fileBase, blobs.length);
+  return blobs.map((b, i) => new File([b], names[i], { type: 'image/jpeg' }));
+}
+
+/** Tworzy grafiki i pobiera je: jedną jako .jpg, kilka jako .zip. Zwraca liczbę grafik. */
+export async function downloadSaleImages(opts: SaleImageOptions): Promise<number> {
+  const blobs = await renderSaleImages(opts);
+  if (blobs.length === 0) return 0;
+  const names = saleImageNames(opts.fileBase, blobs.length);
   if (blobs.length === 1) {
-    downloadBlob(blobs[0], `${opts.fileBase}.jpg`);
+    downloadBlob(blobs[0], names[0]);
   } else {
-    const pad = String(blobs.length).length;
     const entries = await Promise.all(
-      blobs.map(async (b, i) => ({
-        name: `${opts.fileBase}-${String(i + 1).padStart(pad, '0')}.jpg`,
-        data: new Uint8Array(await b.arrayBuffer()),
-      })),
+      blobs.map(async (b, i) => ({ name: names[i], data: new Uint8Array(await b.arrayBuffer()) })),
     );
     downloadBlob(createZip(entries), `${opts.fileBase}.zip`);
   }
