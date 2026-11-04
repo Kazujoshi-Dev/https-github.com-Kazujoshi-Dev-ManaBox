@@ -45,7 +45,7 @@ export const PublicDeckView: React.FC<PublicDeckViewProps> = ({ deck, owner, set
     if (window.matchMedia?.('(hover: none)').matches) return;
     const rect = e.currentTarget.getBoundingClientRect();
     setHovered(card);
-    setHoverPos({ x: rect.right + 10, y: Math.max(20, rect.top - 60) });
+    setHoverPos({ x: rect.right + 10, y: Math.max(20, rect.top - 60), anchorLeft: rect.left });
   }, []);
 
   const copy = async (what: 'link' | 'txt') => {

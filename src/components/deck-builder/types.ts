@@ -118,7 +118,8 @@ export interface DeckCategoriesBoardProps {
 
 export interface FloatingCardPreviewProps {
   card: ScryfallCard | null;
-  position: { x: number; y: number } | null;
+  /** x/y: miejsce po prawej stronie kafelka; anchorLeft: lewa krawędź kafelka (do przerzucenia podglądu na lewo). */
+  position: { x: number; y: number; anchorLeft?: number } | null;
   scale?: number;
 }
 

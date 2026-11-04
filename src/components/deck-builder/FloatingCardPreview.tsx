@@ -16,7 +16,13 @@ export const FloatingCardPreview: React.FC<FloatingCardPreviewProps> = ({
   const cardWidth = Math.round(baseWidth * (scale / 100));
   const cardHeight = Math.round(cardWidth * 1.396); // MTG aspect ratio ~63x88mm (1:1.396)
 
-  const posX = Math.max(10, Math.min(window.innerWidth - cardWidth - 24, position.x));
+  // Gdy po prawej brakuje miejsca (skrajne kolumny), pokazujemy podgląd po lewej stronie kafelka,
+  // żeby nie zasłaniał jego przycisków.
+  let rawX = position.x;
+  if (rawX + cardWidth > window.innerWidth - 24 && position.anchorLeft != null) {
+    rawX = position.anchorLeft - 10 - cardWidth;
+  }
+  const posX = Math.max(10, Math.min(window.innerWidth - cardWidth - 24, rawX));
   const posY = Math.max(10, Math.min(window.innerHeight - cardHeight - 24, position.y));
 
   return (

@@ -122,7 +122,7 @@ export const DeckBuilder: React.FC<DeckBuilderProps> = ({
     if (window.matchMedia?.('(hover: none)').matches) return;
     setHoveredCard(card);
     const rect = e.currentTarget.getBoundingClientRect();
-    setHoverPosition({ x: rect.right + 10, y: Math.max(20, rect.top - 60) });
+    setHoverPosition({ x: rect.right + 10, y: Math.max(20, rect.top - 60), anchorLeft: rect.left });
   }, []);
 
   const handleLeaveCard = useCallback(() => {
