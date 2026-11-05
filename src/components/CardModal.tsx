@@ -70,6 +70,8 @@ export const CardModal: React.FC<CardModalProps> = ({
     setCondition,
     language,
     setLanguage,
+    purchasePrice,
+    setPurchasePrice,
     selectedBinder,
     setSelectedBinder,
     notes,
@@ -263,6 +265,8 @@ export const CardModal: React.FC<CardModalProps> = ({
                 quantityFoil={quantityFoil}
                 condition={condition}
                 language={language}
+                purchasePrice={purchasePrice}
+                currency={activeSettings.currency}
                 notes={notes}
                 isSaved={isSaved}
                 isCreatingCatalog={isCreatingCatalog}
@@ -273,6 +277,7 @@ export const CardModal: React.FC<CardModalProps> = ({
                 onQuantityFoilChange={setQuantityFoil}
                 onConditionChange={setCondition}
                 onLanguageChange={setLanguage}
+                onPurchasePriceChange={setPurchasePrice}
                 onNotesChange={setNotes}
                 onStartCreateCatalog={() => setIsCreatingCatalog(true)}
                 onCancelCreateCatalog={() => {

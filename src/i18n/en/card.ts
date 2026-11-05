@@ -105,4 +105,6 @@ export const en_card: Record<string, string> = {
   "szt": "pcs",
   "✓ Aktywna wersja błyszcząca": "✓ Active foil version",
   "✓ Aktywna wersja zwykła": "✓ Active non-foil version",
+  "Cena zakupu (opcjonalnie)": "Purchase price (optional)",
+  "np. 15.50": "e.g. 15.50",
 };

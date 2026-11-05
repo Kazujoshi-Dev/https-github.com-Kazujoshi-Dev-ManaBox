@@ -77,8 +77,9 @@ export const DeckAddCardModal: React.FC<DeckAddCardModalProps> = ({
             singleton={deckFormat.maxCopies === 1}
             game={isArena ? 'arena' : 'paper'}
             onBack={() => setPicking(null)}
-            onConfirm={(card, isFoil, asCommander) => {
-              onAddCard(card, asCommander, isFoil);
+            showPurchasePrice={!isArena && !picking.asCommander}
+            onConfirm={(card, isFoil, asCommander, purchasePrice) => {
+              onAddCard(card, asCommander, isFoil, purchasePrice);
               setPicking(null);
               // Puste pole wyszukiwania, gotowe na następną kartę
               onSearchChange('');

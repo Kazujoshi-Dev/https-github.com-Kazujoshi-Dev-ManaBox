@@ -96,6 +96,9 @@ export interface CardCollectionFormProps {
   quantityFoil: number;
   condition: CardCondition;
   language: CardLanguage;
+  purchasePrice: string;
+  /** Waluta użytkownika, w której wpisuje cenę zakupu. */
+  currency?: string;
   notes: string;
   isSaved: boolean;
   isCreatingCatalog: boolean;
@@ -106,6 +109,7 @@ export interface CardCollectionFormProps {
   onQuantityFoilChange: (qty: number) => void;
   onConditionChange: (condition: CardCondition) => void;
   onLanguageChange: (language: CardLanguage) => void;
+  onPurchasePriceChange: (price: string) => void;
   onNotesChange: (notes: string) => void;
   onStartCreateCatalog: () => void;
   onCancelCreateCatalog: () => void;

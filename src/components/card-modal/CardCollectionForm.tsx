@@ -33,6 +33,8 @@ export const CardCollectionForm: React.FC<CardCollectionFormProps> = ({
   quantityFoil,
   condition,
   language,
+  purchasePrice,
+  currency,
   notes,
   isSaved,
   isCreatingCatalog,
@@ -43,6 +45,7 @@ export const CardCollectionForm: React.FC<CardCollectionFormProps> = ({
   onQuantityFoilChange,
   onConditionChange,
   onLanguageChange,
+  onPurchasePriceChange,
   onNotesChange,
   onStartCreateCatalog,
   onCancelCreateCatalog,
@@ -196,8 +199,30 @@ export const CardCollectionForm: React.FC<CardCollectionFormProps> = ({
         </div>
       </div>
 
-      {/* Notes */}
-      <div>
+      {/* Purchase Price & Notes */}
+      <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_minmax(0,2fr)] gap-3">
+        <div>
+          <label htmlFor="card-purchase-price" className="block text-[11px] font-semibold text-stone-400 mb-1">
+            {t('Cena zakupu (opcjonalnie)')}
+          </label>
+          <div className="relative">
+            <input
+              id="card-purchase-price"
+              type="number"
+              inputMode="decimal"
+              min="0"
+              step="0.01"
+              placeholder={t('np. 15.50')}
+              value={purchasePrice}
+              onChange={(e) => onPurchasePriceChange(e.target.value)}
+              className={`w-full bg-stone-900 border border-stone-700 rounded-lg pl-2.5 py-1.5 text-xs tabular-nums text-stone-100 focus:outline-none focus:border-amber-500 ${currency ? 'pr-12' : 'pr-2.5'}`}
+            />
+            {currency && (
+              <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[11px] text-stone-500 pointer-events-none">{currency}</span>
+            )}
+          </div>
+        </div>
+
         <div>
           <label className="block text-[11px] font-semibold text-stone-400 mb-1">
             {t('Notatki / tagi')}

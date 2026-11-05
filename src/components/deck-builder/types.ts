@@ -137,6 +137,6 @@ export interface DeckAddCardModalProps {
   onClose: () => void;
   onSearchChange: (query: string) => void;
   onSourceChange: (source: 'collection' | 'all') => void;
-  onAddCard: (card: ScryfallCard, asCommander?: boolean, isFoil?: boolean) => void;
+  onAddCard: (card: ScryfallCard, asCommander?: boolean, isFoil?: boolean, purchasePrice?: number | null) => void;
   settings?: AppSettings;
 }

@@ -130,7 +130,8 @@ export const DeckBuilder: React.FC<DeckBuilderProps> = ({
   }, []);
 
   // Card Operations
-  const handleAddCardToDeck = useCallback((card: ScryfallCard, asCommander = false, isFoil?: boolean) => {
+  const handleAddCardToDeck = useCallback((card: ScryfallCard, asCommander = false, isFoil?: boolean, purchasePrice?: number | null) => {
+    const hasPrice = typeof purchasePrice === 'number' && purchasePrice >= 0;
     if (asCommander) {
       onUpdateDeck({
         ...deck,
@@ -152,15 +153,16 @@ export const DeckBuilder: React.FC<DeckBuilderProps> = ({
     if (singleton && !isBasic && sameName >= 0) {
       // Karta już jest w talii: zmieniamy jej wydanie / wersję foil zamiast dodawać kopię
       const prev = updatedCards[sameName];
-      updatedCards[sameName] = { ...prev, card, isFoil: isFoil ?? prev.isFoil };
+      updatedCards[sameName] = { ...prev, card, isFoil: isFoil ?? prev.isFoil, ...(hasPrice ? { purchasePrice } : {}) };
       if (prev.card.id !== card.id || Boolean(prev.isFoil) !== Boolean(isFoil ?? prev.isFoil)) {
         showToast(t('Zmieniono wersję „{name}” w talii.', { name: card.name }));
       }
     } else if (samePrint >= 0) {
       updatedCards[samePrint].quantity += 1;
       if (isFoil !== undefined) updatedCards[samePrint].isFoil = isFoil;
+      if (hasPrice) updatedCards[samePrint].purchasePrice = purchasePrice;
     } else {
-      updatedCards.push({ card, quantity: 1, isCommander: false, ...(isFoil ? { isFoil: true } : {}) });
+      updatedCards.push({ card, quantity: 1, isCommander: false, ...(isFoil ? { isFoil: true } : {}), ...(hasPrice ? { purchasePrice } : {}) });
     }
 
     onUpdateDeck({

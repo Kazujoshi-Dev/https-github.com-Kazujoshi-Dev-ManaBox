@@ -957,7 +957,7 @@ export default function App() {
               // Te same wydania i wersje foil co w talii; ta sama karta w tej samej wersji sumuje się,
               // a zwykła i foil to osobne pozycje
               const byKey = new Map<string, any>();
-              const add = (card: any, qty: number, foil: boolean) => {
+              const add = (card: any, qty: number, foil: boolean, purchasePrice?: number | null) => {
                 const key = `${card.id}|${foil ? 'foil' : 'normal'}`;
                 const prev = byKey.get(key) || {
                   card,
@@ -973,10 +973,12 @@ export default function App() {
                 };
                 if (foil) prev.quantityFoil += qty;
                 else prev.quantity += qty;
+                // Cena zakupu wpisana przy dodawaniu karty do talii przechodzi do kolekcji
+                if (typeof purchasePrice === 'number' && prev.purchasePrice == null) prev.purchasePrice = purchasePrice;
                 byKey.set(key, prev);
               };
               if (deck.commander) add(deck.commander, 1, Boolean(deck.commanderIsFoil));
-              deck.cards.filter((e) => !e.isSideboard && !e.isCommander).forEach((e) => add(e.card, e.quantity, Boolean(e.isFoil)));
+              deck.cards.filter((e) => !e.isSideboard && !e.isCommander).forEach((e) => add(e.card, e.quantity, Boolean(e.isFoil), e.purchasePrice));
               const items = [...byKey.values()];
               const total = items.reduce((sum, i) => sum + i.quantity + i.quantityFoil, 0);
               const ok = await bulkAddToCollection(items);

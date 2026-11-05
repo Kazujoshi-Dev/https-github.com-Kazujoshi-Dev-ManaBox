@@ -205,6 +205,8 @@ export interface DeckCardEntry {
   isFoil?: boolean;
   isCommander?: boolean;
   isSideboard?: boolean;
+  /** Opcjonalna cena zakupu jednej sztuki (w walucie użytkownika). */
+  purchasePrice?: number | null;
 }
 
 export interface DeckItem {

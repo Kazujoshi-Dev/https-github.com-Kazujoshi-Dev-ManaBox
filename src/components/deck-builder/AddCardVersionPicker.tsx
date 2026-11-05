@@ -16,7 +16,9 @@ interface AddCardVersionPickerProps {
   /** Tylko wersje z kolekcji (talia budowana z własnych kart). */
   collectionOnly: boolean;
   onBack: () => void;
-  onConfirm: (card: ScryfallCard, isFoil: boolean, asCommander: boolean) => void;
+  onConfirm: (card: ScryfallCard, isFoil: boolean, asCommander: boolean, purchasePrice?: number | null) => void;
+  /** Pokazuje opcjonalne pole „Cena zakupu”. */
+  showPurchasePrice?: boolean;
   /** Własny napis na przycisku potwierdzenia (poza talią). */
   confirmLabel?: string;
   /** Talia singleton (Commander, Brawl): ponowne dodanie karty zmienia jej wersję zamiast dodawać kopię. */
@@ -45,7 +47,8 @@ export const AddCardVersionPicker: React.FC<AddCardVersionPickerProps> = ({
   onConfirm,
   confirmLabel,
   singleton = true,
-  game = 'paper'
+  game = 'paper',
+  showPurchasePrice = false
 }) => {
   const t = useT();
   const owned = useMemo(
@@ -56,6 +59,12 @@ export const AddCardVersionPicker: React.FC<AddCardVersionPickerProps> = ({
 
   const [prints, setPrints] = useState<ScryfallCard[] | null>(null);
   const [printFilter, setPrintFilter] = useState('');
+  const [purchasePrice, setPurchasePrice] = useState('');
+  const parsedPurchasePrice = (() => {
+    if (!showPurchasePrice || !purchasePrice.trim()) return null;
+    const n = parseFloat(purchasePrice.replace(',', '.'));
+    return Number.isFinite(n) && n >= 0 ? Math.round(n * 100) / 100 : null;
+  })();
   const [selected, setSelected] = useState<ScryfallCard>(card);
   const [foil, setFoil] = useState(() => {
     const o = owned.find((x) => x.card.id === card.id);
@@ -172,6 +181,30 @@ export const AddCardVersionPicker: React.FC<AddCardVersionPickerProps> = ({
             </div>
           </div>
 
+          {/* Cena zakupu (opcjonalnie) */}
+          {showPurchasePrice && (
+            <div className="max-w-[220px]">
+              <label htmlFor="add-card-purchase-price" className="block text-sm text-stone-300 mb-2">
+                {t('Cena zakupu (opcjonalnie)')}
+              </label>
+              <div className="relative">
+                <input
+                  id="add-card-purchase-price"
+                  type="text"
+                  inputMode="decimal"
+                  value={purchasePrice}
+                  onChange={(e) => setPurchasePrice(e.target.value.replace(/[^0-9.,]/g, ''))}
+                  placeholder={t('np. 15.50')}
+                  autoComplete="off"
+                  className={`w-full h-9 bg-stone-950 border border-stone-800 rounded-lg pl-3 text-sm tabular-nums text-stone-100 placeholder-stone-500 focus:outline-none focus:border-amber-500 ${settings?.currency ? 'pr-12' : 'pr-3'}`}
+                />
+                {settings?.currency && (
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-stone-500 pointer-events-none">{settings.currency}</span>
+                )}
+              </div>
+            </div>
+          )}
+
           {/* Wydania */}
           <div>
             <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
@@ -195,7 +228,7 @@ export const AddCardVersionPicker: React.FC<AddCardVersionPickerProps> = ({
                       // Enter przy jednym pasującym wydaniu = potwierdzenie
                       if (e.key === 'Enter' && shown.length === 1) {
                         e.preventDefault();
-                        onConfirm(shown[0], foil && hasFinish(shown[0], 'foil'), asCommander);
+                        onConfirm(shown[0], foil && hasFinish(shown[0], 'foil'), asCommander, parsedPurchasePrice);
                       }
                     }}
                     placeholder={t('Kod setu i numer, np. DSC 114')}
@@ -272,7 +305,7 @@ export const AddCardVersionPicker: React.FC<AddCardVersionPickerProps> = ({
         <p className="sm:ml-auto text-xs text-stone-500 sm:text-right">
           {replacing ? t('Ta karta już jest w talii. Zmienimy jej wersję.') : ''}
         </p>
-        <button type="button" onClick={() => onConfirm(selected, foil, asCommander)} className="btn btn-primary">
+        <button type="button" onClick={() => onConfirm(selected, foil, asCommander, parsedPurchasePrice)} className="btn btn-primary">
           {asCommander ? <Crown className="w-4 h-4" /> : <Plus className="w-4 h-4" strokeWidth={2.5} />}
           {confirmLabel || (asCommander ? t('Ustaw jako dowódcę') : replacing ? t('Zmień wersję') : t('Dodaj do talii'))}
         </button>
