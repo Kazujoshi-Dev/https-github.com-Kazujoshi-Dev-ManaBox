@@ -257,6 +257,8 @@ export interface FilterOptions {
   language: string; // 'ALL' albo język egzemplarza (CardLanguage)
   sortBy: 'name' | 'price_desc' | 'price_asc' | 'cmc_desc' | 'cmc_asc' | 'added_desc' | 'rarity';
   onlyFoil: boolean;
+  /** Tylko pozycje bez wpisanej ceny zakupu. */
+  onlyNoPurchasePrice?: boolean;
 }
 
 export interface AuthUser {

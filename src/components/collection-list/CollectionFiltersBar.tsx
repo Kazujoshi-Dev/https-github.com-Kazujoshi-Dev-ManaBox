@@ -64,7 +64,8 @@ export const CollectionFiltersBar: React.FC<CollectionFiltersBarProps> = ({
     filters.binder !== 'ALL',
     filters.set !== 'ALL',
     filters.language !== 'ALL',
-    filters.onlyFoil
+    filters.onlyFoil,
+    Boolean(filters.onlyNoPurchasePrice)
   ].filter(Boolean).length;
 
   return (
@@ -257,6 +258,7 @@ export const CollectionFiltersBar: React.FC<CollectionFiltersBarProps> = ({
 
         {/* View Mode Toggle & Only Foil */}
         <div className="flex items-end justify-between gap-2 lg:col-span-2">
+          <div className="flex flex-wrap items-end gap-2">
           <button
             onClick={() => onFilterChange({ onlyFoil: !filters.onlyFoil })}
             className={`h-9 px-3 rounded-lg text-xs font-medium flex items-center gap-1.5 border cursor-pointer ${
@@ -268,6 +270,23 @@ export const CollectionFiltersBar: React.FC<CollectionFiltersBarProps> = ({
             <Sparkles className="w-3.5 h-3.5 text-amber-400" />
             <span>{t('Tylko foil')}</span>
           </button>
+
+          <label
+            className={`h-9 px-3 rounded-lg text-xs font-medium flex items-center gap-2 border cursor-pointer select-none ${
+              filters.onlyNoPurchasePrice
+                ? 'bg-amber-500/20 text-amber-300 border-amber-500/50'
+                : 'bg-stone-900 text-stone-400 border-stone-800 hover:text-stone-200'
+            }`}
+          >
+            <input
+              type="checkbox"
+              checked={Boolean(filters.onlyNoPurchasePrice)}
+              onChange={(e) => onFilterChange({ onlyNoPurchasePrice: e.target.checked })}
+              className="w-3.5 h-3.5 accent-amber-500 cursor-pointer"
+            />
+            <span>{t('Bez ceny zakupu')}</span>
+          </label>
+          </div>
 
           {showRows && (
             <RowsPerPageSelect value={rowsPerPage!} onChange={onRowsPerPageChange!} className="hidden md:block h-9 text-xs" />

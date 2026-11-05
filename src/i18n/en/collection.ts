@@ -127,4 +127,5 @@ export const en_collection: Record<string, string> = {
   "fyrexiański": "Phyrexian",
   "inny język": "other language",
   "Język karty: {lang}": "Card language: {lang}",
+  "Bez ceny zakupu": "No purchase price",
 };

@@ -104,6 +104,9 @@ export function matchesFilters(item: CollectionItem, filters: FilterOptions): bo
   // Only Foil filter
   if (filters.onlyFoil && item.quantityFoil <= 0) return false;
 
+  // Bez ceny zakupu
+  if (filters.onlyNoPurchasePrice && item.purchasePrice !== null && item.purchasePrice !== undefined) return false;
+
   return true;
 }
 
@@ -235,7 +238,8 @@ export function useCollectionFilters({ collection, settings }: UseCollectionFilt
       filters.binder !== 'ALL' ||
       filters.set !== 'ALL' ||
       filters.language !== 'ALL' ||
-      filters.onlyFoil
+      filters.onlyFoil ||
+      Boolean(filters.onlyNoPurchasePrice)
     );
   }, [filters]);
 

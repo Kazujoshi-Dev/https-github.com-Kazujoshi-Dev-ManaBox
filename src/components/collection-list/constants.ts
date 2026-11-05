@@ -140,7 +140,8 @@ export const DEFAULT_FILTERS: FilterOptions = {
   binder: 'ALL',
   language: 'ALL',
   sortBy: 'price_desc',
-  onlyFoil: false
+  onlyFoil: false,
+  onlyNoPurchasePrice: false
 };
 
 /** Wirtualna kategoria „Sprzedam”: karty oznaczone na sprzedaż (znikają z klaserów). */
