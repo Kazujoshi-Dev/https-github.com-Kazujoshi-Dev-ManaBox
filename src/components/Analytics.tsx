@@ -3,7 +3,7 @@ import React, { useMemo, useState } from 'react';
 import { CollectionItem, AppSettings } from '../types';
 import { formatCurrency, getCardImageUri, getCardPrice, getRarityLabel, handleCardImageError } from '../utils/formatters';
 import { computeValueChange, itemValueChange } from '../hooks/useCollectionStats';
-import { isPlainBasicLand } from '../utils/collectionValue';
+import { isPlainBasicLand, purchaseSummary } from '../utils/collectionValue';
 import { CollectionHistoryPanel } from './CollectionHistoryModal';
 import { 
   BarChart, 
@@ -23,6 +23,7 @@ import {
   TrendingUp,
   TrendingDown,
   LineChart,
+  Receipt,
   Award, 
   Sparkles, 
   Flame, 
@@ -264,6 +265,14 @@ export const Analytics: React.FC<AnalyticsProps> = ({ collection, settings, onVi
   const changeColor = changeSign > 0 ? 'text-emerald-400' : changeSign < 0 ? 'text-rose-400' : 'text-stone-200';
   const ChangeIcon = changeSign < 0 ? TrendingDown : TrendingUp;
   const fmtDelta = (v: number) => `${v > 0 ? '+' : ''}${formatCurrency(v, settings.currency)}`;
+  const fmtPct = (v: number) => `${v > 0 ? '+' : ''}${v.toFixed(1).replace('.', locale() === 'pl-PL' ? ',' : '.')}%`;
+
+  // Cena zakupu a aktualna wartość tych samych kart
+  const purchase = useMemo(() => purchaseSummary(collection, settings), [collection, settings]);
+  const profit = purchase.value - purchase.cost;
+  const profitSign = Math.abs(profit) < 0.005 ? 0 : profit > 0 ? 1 : -1;
+  const profitColor = profitSign > 0 ? 'text-emerald-400' : profitSign < 0 ? 'text-rose-400' : 'text-stone-200';
+  const profitPct = purchase.cost > 0 ? (profit / purchase.cost) * 100 : null;
 
   return (
     <div className="space-y-6">
@@ -301,6 +310,56 @@ export const Analytics: React.FC<AnalyticsProps> = ({ collection, settings, onVi
           </p>
         </div>
       </div>
+
+      {/* Cena zakupu, aktualna wartość i zysk / strata */}
+      <section className="bg-stone-900 border border-stone-800 rounded-xl">
+        <div className="flex flex-wrap items-center justify-between gap-2 px-4 pt-4">
+          <h3 className="text-sm font-medium text-stone-200 flex items-center gap-1.5">
+            <Receipt className="w-4 h-4 text-amber-400" />
+            {t('Cena zakupu a wartość')}
+          </h3>
+          {purchase.cards > 0 && (
+            <p className="text-xs text-stone-500 tabular-nums">
+              {t('Karty z ceną zakupu: {n} z {total}', { n: purchase.cards, total: stats.totalCards })}
+            </p>
+          )}
+        </div>
+        {purchase.cards === 0 ? (
+          <p className="px-4 pb-4 pt-2 text-sm text-stone-400">
+            {t('Wpisz cenę zakupu w szczegółach karty, a zobaczysz tu, ile wydano na karty, ile są warte teraz i jaki jest zysk lub strata.')}
+          </p>
+        ) : (
+          <>
+            <div className="grid grid-cols-2 lg:grid-cols-3 [&>*]:p-4">
+              <div className="space-y-1">
+                <p className="text-sm text-stone-400">{t('Łączna cena zakupu')}</p>
+                <p className="text-2xl font-semibold text-stone-50 tabular-nums">{formatCurrency(purchase.cost, settings.currency)}</p>
+              </div>
+              <div className="space-y-1 border-l border-stone-800">
+                <p className="text-sm text-stone-400">{t('Aktualna wartość')}</p>
+                <p className="text-2xl font-semibold text-stone-50 tabular-nums">{formatCurrency(purchase.value, settings.currency)}</p>
+              </div>
+              <div className="space-y-1 col-span-2 lg:col-span-1 border-t lg:border-t-0 lg:border-l border-stone-800">
+                <p className="text-sm text-stone-400 flex items-center gap-1.5">
+                  {profitSign < 0 ? <TrendingDown className={`w-4 h-4 ${profitColor}`} /> : <TrendingUp className={`w-4 h-4 ${profitColor}`} />}
+                  {profitSign < 0 ? t('Strata') : t('Zysk')}
+                </p>
+                <p className={`text-2xl font-semibold tabular-nums ${profitColor}`}>
+                  {fmtDelta(profit)}
+                  {profitPct !== null && profitSign !== 0 && (
+                    <span className="ml-1.5 text-sm font-medium opacity-80">({fmtPct(profitPct)})</span>
+                  )}
+                </p>
+              </div>
+            </div>
+            {purchase.cardsWithoutPrice > 0 && (
+              <p className="px-4 pb-4 -mt-1 text-xs text-stone-500 tabular-nums">
+                {t('{n} szt. nie ma teraz ceny rynkowej, więc nie wliczają się do aktualnej wartości.', { n: purchase.cardsWithoutPrice })}
+              </p>
+            )}
+          </>
+        )}
+      </section>
 
       {/* Charts Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

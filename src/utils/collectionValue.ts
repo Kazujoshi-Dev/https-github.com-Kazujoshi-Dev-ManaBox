@@ -54,3 +54,41 @@ export function collectionTotals(collection: CollectionItem[], settings: AppSett
   }
   return { cards, value };
 }
+
+export interface PurchaseSummary {
+  /** Łączna cena zakupu kart z wpisaną ceną zakupu (cena za sztukę x liczba sztuk). */
+  cost: number;
+  /** Aktualna wartość tych samych kart według bieżących cen. */
+  value: number;
+  /** Liczba sztuk z wpisaną ceną zakupu. */
+  cards: number;
+  /** Liczba sztuk z ceną zakupu, które nie mają teraz ceny rynkowej. */
+  cardsWithoutPrice: number;
+}
+
+/**
+ * Zestawienie ceny zakupu z aktualną wartością. Liczy tylko pozycje z wpisaną ceną zakupu
+ * (także 0, np. karta z prezentu), więc zysk / strata dotyczy dokładnie tych samych kart.
+ * Lądy podstawowe liczą się tu normalnie, skoro ktoś wpisał za nie cenę.
+ */
+export function purchaseSummary(collection: CollectionItem[], settings: AppSettings): PurchaseSummary {
+  let cost = 0;
+  let value = 0;
+  let cards = 0;
+  let cardsWithoutPrice = 0;
+  for (const item of collection) {
+    const price = item.purchasePrice;
+    if (!item.card || price === null || price === undefined || !Number.isFinite(Number(price))) continue;
+    const qty = (item.quantity || 0) + (item.quantityFoil || 0);
+    if (qty <= 0) continue;
+    cost += Number(price) * qty;
+    cards += qty;
+    for (const [n, foil] of [[item.quantity || 0, false], [item.quantityFoil || 0, true]] as const) {
+      if (n <= 0) continue;
+      const p = getCardPrice(item.card, foil, settings);
+      if (p > 0) value += n * p;
+      else cardsWithoutPrice += n;
+    }
+  }
+  return { cost, value, cards, cardsWithoutPrice };
+}

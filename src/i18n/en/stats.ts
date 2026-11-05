@@ -52,4 +52,12 @@ export const en_stats: Record<string, string> = {
   "7 dni": "7 days",
   "30 dni": "30 days",
   "Rok": "Year",
+  "Cena zakupu a wartość": "Purchase price vs value",
+  "Karty z ceną zakupu: {n} z {total}": "Cards with a purchase price: {n} of {total}",
+  "Wpisz cenę zakupu w szczegółach karty, a zobaczysz tu, ile wydano na karty, ile są warte teraz i jaki jest zysk lub strata.": "Enter a purchase price in the card details to see here how much you spent on your cards, what they are worth now and your profit or loss.",
+  "Łączna cena zakupu": "Total purchase price",
+  "Aktualna wartość": "Current value",
+  "Zysk": "Profit",
+  "Strata": "Loss",
+  "{n} szt. nie ma teraz ceny rynkowej, więc nie wliczają się do aktualnej wartości.": "{n} cards currently have no market price, so they are not included in the current value.",
 };
