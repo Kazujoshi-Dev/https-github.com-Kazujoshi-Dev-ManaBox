@@ -2273,6 +2273,17 @@ app.post('/api/collection/bulk-import', authMiddleware, async (req, res) => {
   }
 });
 
+// Usuwa cenę zakupu ze wszystkich kart użytkownika (we wszystkich grach)
+app.post('/api/collection/clear-purchase-prices', authMiddleware, async (req, res) => {
+  try {
+    const userId = (req as any).userId;
+    const count = await db.clearPurchasePrices(userId);
+    res.json({ success: true, count });
+  } catch (err: any) {
+    sendServerError(res, err, '/api/collection/clear-purchase-prices');
+  }
+});
+
 app.post('/api/collection/bulk-add', authMiddleware, async (req, res) => {
   try {
     const userId = (req as any).userId;

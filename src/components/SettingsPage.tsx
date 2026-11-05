@@ -4,11 +4,11 @@ import { publicUrl } from '../utils/publicLinks';
 import React, { useEffect, useRef, useState } from 'react';
 import {
   Settings, User, Coins, ShieldCheck, Share2, Database, Check, RefreshCw, Euro, DollarSign, LogOut, Loader2,
-  KeyRound, Eye, EyeOff, LayoutGrid, Folder, Trophy, Tag, Sparkles, Copy, ExternalLink, Download, Upload, AlertCircle, CheckCircle2, Trash2, History, RotateCcw
+  KeyRound, Eye, EyeOff, LayoutGrid, Folder, Trophy, Tag, Sparkles, Copy, ExternalLink, Download, Upload, AlertCircle, CheckCircle2, Trash2, History, RotateCcw, Eraser
 } from 'lucide-react';
 import { AppSettings, AuthUser, CurrencyCode, PricingSource } from '../types';
 import { DEFAULT_SETTINGS, formatCurrency, getSaleAdjustPct, formatSaleAdjustPct, SALE_ADJUST_MIN, SALE_ADJUST_MAX } from '../utils/formatters';
-import { authApi, messagesApi, backupsApi, type BackupSummary } from '../services/api';
+import { authApi, messagesApi, backupsApi, collectionApi, type BackupSummary } from '../services/api';
 import { CityPicker } from './CityPicker';
 import { useT, useLang, locale, tk, type Lang } from '../i18n';
 import { LANGUAGE_OPTIONS } from './ui/LanguageSwitcher';
@@ -37,6 +37,8 @@ interface SettingsPageProps {
   onAccountDeleted: () => void;
   /** Zmiana języka interfejsu (zapis na profilu). */
   onChangeLanguage: (lang: Lang) => void;
+  /** Ceny zakupu zostały wyczyszczone na serwerze: wyzeruj je w stanie aplikacji. */
+  onPurchasePricesCleared: () => void;
   showToast: (msg: string) => void;
 }
 
@@ -107,6 +109,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = (props) => {
             <div className="space-y-4">
               <DataSection onOpenImportExport={props.onOpenImportExport} />
               <BackupSection />
+              <ClearPurchasePricesCard onCleared={props.onPurchasePricesCleared} showToast={props.showToast} />
             </div>
           )}
         </div>
@@ -1004,6 +1007,105 @@ const DataSection: React.FC<{ onOpenImportExport: (tab: 'export' | 'import') => 
     </div>
   </div>
 );
+};
+
+/* ---------- Czyszczenie cen zakupu ---------- */
+
+const ClearPurchasePricesCard: React.FC<{ onCleared: () => void; showToast: (msg: string) => void }> = ({ onCleared, showToast }) => {
+  const t = useT();
+  const [open, setOpen] = useState(false);
+  const [understood, setUnderstood] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const cancel = () => {
+    setOpen(false);
+    setUnderstood(false);
+    setError(null);
+  };
+
+  const submit = async () => {
+    if (!understood || busy) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const count = await collectionApi.clearPurchasePrices();
+      onCleared();
+      showToast(count > 0 ? t('Wyczyszczono cenę zakupu w {n} pozycjach kolekcji.', { n: count }) : t('Żadna karta nie miała wpisanej ceny zakupu.'));
+      cancel();
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="bg-rose-950/20 border border-rose-900/60 rounded-2xl p-4 sm:p-6">
+      <div className="flex items-start gap-3">
+        <div className="w-10 h-10 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-300 flex items-center justify-center shrink-0">
+          <Eraser className="w-5 h-5" />
+        </div>
+        <div className="min-w-0">
+          <h3 className="text-base font-bold text-rose-100">{t('Wyczyść ceny zakupu')}</h3>
+          <p className="text-xs text-stone-400 mt-0.5">
+            {t('Usuwa cenę zakupu ze wszystkich Twoich kart, we wszystkich grach i katalogach. Karty, ich liczba i pozostałe dane zostają bez zmian.')}
+          </p>
+        </div>
+      </div>
+
+      {!open ? (
+        <button
+          type="button"
+          onClick={() => setOpen(true)}
+          className="mt-4 h-11 px-4 rounded-xl text-sm font-semibold text-rose-200 bg-rose-950/50 hover:bg-rose-900/50 border border-rose-800/60 flex items-center gap-2 cursor-pointer"
+        >
+          <Eraser className="w-4 h-4" />
+          {t('Wyczyść ceny zakupu')}
+        </button>
+      ) : (
+        <div className="mt-4 space-y-3 max-w-xl">
+          <p className="p-2.5 rounded-lg text-xs flex items-start gap-2 border bg-rose-500/10 border-rose-500/30 text-rose-200">
+            <AlertCircle className="w-4 h-4 shrink-0" />
+            {t('Uwaga: tej operacji nie można cofnąć. Znikną wszystkie ceny zakupu, także te wpisane ręcznie, a panel „Cena zakupu a wartość” w Statystykach będzie pusty, dopóki nie wpiszesz nowych cen.')}
+          </p>
+          <label className="flex items-start gap-2.5 text-sm text-stone-200 cursor-pointer select-none">
+            <input
+              type="checkbox"
+              checked={understood}
+              onChange={(e) => setUnderstood(e.target.checked)}
+              className="mt-0.5 w-4 h-4 accent-rose-500 cursor-pointer"
+            />
+            {t('Rozumiem, że ceny zakupu wszystkich moich kart zostaną usunięte')}
+          </label>
+          {error && (
+            <p className="p-2.5 rounded-lg text-xs flex items-start gap-2 border bg-rose-500/10 border-rose-500/30 text-rose-300">
+              <AlertCircle className="w-4 h-4 shrink-0" />
+              {error}
+            </p>
+          )}
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={submit}
+              disabled={!understood || busy}
+              className="h-11 px-5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-sm font-bold flex items-center gap-2 cursor-pointer disabled:opacity-40 disabled:cursor-default"
+            >
+              {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Eraser className="w-4 h-4" />}
+              {t('Usuń wszystkie ceny zakupu')}
+            </button>
+            <button
+              type="button"
+              onClick={cancel}
+              className="h-11 px-4 rounded-xl text-sm font-semibold text-stone-300 hover:bg-stone-800 cursor-pointer"
+            >
+              {t('Anuluj')}
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
 };
 
 /* ---------- Kopie zapasowe ---------- */

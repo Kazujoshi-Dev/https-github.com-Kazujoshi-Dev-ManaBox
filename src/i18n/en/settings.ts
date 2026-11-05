@@ -130,4 +130,12 @@ export const en_settings: Record<string, string> = {
   "Wybierz, co ma być widoczne na obrazach kart. Wybór zapisuje się na Twoim koncie.": "Choose what is shown on card images. Your choice is saved to your account.",
   "Zapisano na Twoim koncie.": "Saved to your account.",
   "Zmiany zapisują się automatycznie.": "Changes are saved automatically.",
+  "Wyczyść ceny zakupu": "Clear purchase prices",
+  "Usuwa cenę zakupu ze wszystkich Twoich kart, we wszystkich grach i katalogach. Karty, ich liczba i pozostałe dane zostają bez zmian.": "Removes the purchase price from all your cards, in every game and catalog. Your cards, their quantities and all other details stay unchanged.",
+  "Uwaga: tej operacji nie można cofnąć. Znikną wszystkie ceny zakupu, także te wpisane ręcznie, a panel „Cena zakupu a wartość” w Statystykach będzie pusty, dopóki nie wpiszesz nowych cen.": "Warning: this cannot be undone. All purchase prices will be removed, including ones you entered by hand, and the “Purchase price vs value” panel in Statistics will stay empty until you enter new prices.",
+  "Rozumiem, że ceny zakupu wszystkich moich kart zostaną usunięte": "I understand that the purchase prices of all my cards will be removed",
+  "Usuń wszystkie ceny zakupu": "Remove all purchase prices",
+  "Wyczyszczono cenę zakupu w {n} pozycjach kolekcji.": "Cleared the purchase price in {n} collection entries.",
+  "Żadna karta nie miała wpisanej ceny zakupu.": "None of your cards had a purchase price.",
+  "Nie udało się wyczyścić cen zakupu. Spróbuj ponownie.": "Could not clear purchase prices. Please try again.",
 };

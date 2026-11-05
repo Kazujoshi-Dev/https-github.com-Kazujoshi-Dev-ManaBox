@@ -923,6 +923,7 @@ export default function App() {
               onPasswordChanged={(user, token) => handleAuthSuccess(user, token)}
               onOpenImportExport={handleOpenCollectionImportExport}
               onChangeLanguage={(lang) => changeLanguage(lang, true)}
+              onPurchasePricesCleared={() => patchCollectionItemsLocal(collection.map((c) => c.id), { purchasePrice: null })}
               onAccountDeleted={() => {
                 handleUnauthorized();
                 setActiveTab('collection');

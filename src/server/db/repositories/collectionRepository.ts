@@ -1,7 +1,7 @@
 import crypto from 'crypto';
 import { CollectionItem } from '../../../types';
 import { withDb, readJsonFile, writeJsonAtomic, userGameFile } from '../storage';
-import { DEFAULT_GAME, type GameId } from '../../../games';
+import { DEFAULT_GAME, GAME_IDS, type GameId } from '../../../games';
 import { mapCollectionRow } from '../mappers';
 import { entryKeyOf, matchesEntry, normalizeSourceDeckId, splitByFinish } from '../../../utils/collectionEntry';
 
@@ -407,6 +407,38 @@ export async function updateCollectionPrices(userId: string, updates: PriceUpdat
         item.lastUpdatedPriceAt = u.lastUpdatedPriceAt;
       }
       writeJsonAtomic(file, items);
+    }
+  );
+}
+
+/**
+ * Czyści cenę zakupu we wszystkich pozycjach kolekcji użytkownika (wszystkie gry).
+ * Zwraca liczbę zmienionych pozycji.
+ */
+export async function clearPurchasePrices(userId: string): Promise<number> {
+  return withDb(
+    async (p) => {
+      const res = await p.query(
+        'UPDATE user_collections SET purchase_price = NULL WHERE user_id = $1 AND purchase_price IS NOT NULL',
+        [userId]
+      );
+      return res.rowCount ?? 0;
+    },
+    () => {
+      let changed = 0;
+      for (const game of GAME_IDS) {
+        const file = colFile(userId, game);
+        const items = readJsonFile<CollectionItem[]>(file, []);
+        let fileChanged = false;
+        const next = items.map((i) => {
+          if (i.purchasePrice === null || i.purchasePrice === undefined) return i;
+          changed++;
+          fileChanged = true;
+          return { ...i, purchasePrice: null };
+        });
+        if (fileChanged) writeJsonAtomic(file, next);
+      }
+      return changed;
     }
   );
 }

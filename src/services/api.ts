@@ -168,6 +168,13 @@ export const collectionApi = {
     }, onUnauthorized),
   delete: (id: string, onUnauthorized?: () => void) =>
     fetchWithAuth(`/api/collection/${id}`, { method: 'DELETE' }, onUnauthorized),
+  /** Czyści cenę zakupu we wszystkich kartach użytkownika; zwraca liczbę zmienionych pozycji. */
+  clearPurchasePrices: async (): Promise<number> => {
+    const res = await fetchWithAuth('/api/collection/clear-purchase-prices', { method: 'POST' });
+    if (!res.ok) throw new Error(t('Nie udało się wyczyścić cen zakupu. Spróbuj ponownie.'));
+    const data = await res.json().catch(() => ({}));
+    return Number(data?.count) || 0;
+  },
   refreshPrices: (onUnauthorized?: () => void) =>
     fetchWithAuth('/api/collection/refresh-prices', { method: 'POST' }, onUnauthorized),
   bulkImport: (items: unknown[], onUnauthorized?: () => void) =>
