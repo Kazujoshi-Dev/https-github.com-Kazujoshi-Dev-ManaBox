@@ -786,9 +786,6 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
       const normQty = isFoil ? 0 : quantity;
       const foilQty = isFoil ? quantity : 0;
 
-      // Price calculation in PLN
-      const plnPrice = getCardPrice(activeCard, isFoil, { ...settings, currency: 'PLN' });
-
       await onSaveToCollection({
         card: activeCard,
         quantity: normQty,
@@ -796,7 +793,8 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
         condition,
         language,
         binder: selectedBinder,
-        purchasePrice: plnPrice > 0 ? plnPrice : null,
+        // Cena zakupu jest opcjonalna i wpisuje ją użytkownik; skaner jej nie uzupełnia
+        purchasePrice: null,
       });
 
       setSessionAddedCount((prev) => prev + 1);
