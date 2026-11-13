@@ -60,6 +60,8 @@ interface ForSaleListProps {
   showToast?: (message: string) => void;
   onOpenSellerProfile?: (username: string) => void;
   onAddCardForSale?: (data: import('./for-sale/ForSaleAddModal').ForSaleAddData) => Promise<boolean>;
+  /** Przeniesienie egzemplarzy z kolekcji na sprzedaż, od razu do podkategorii. */
+  onListFromCollection?: (item: CollectionItem, quantity: number, isFoil: boolean, salePrice: number | null, saleFolderId: string | null) => Promise<boolean>;
 }
 
 export const ForSaleList: React.FC<ForSaleListProps> = ({
@@ -74,6 +76,7 @@ export const ForSaleList: React.FC<ForSaleListProps> = ({
   showToast,
   onOpenSellerProfile,
   onAddCardForSale,
+  onListFromCollection,
 }) => {
   const t = useT();
   const [isMapOpen, setIsMapOpen] = useState(false);
@@ -361,6 +364,8 @@ export const ForSaleList: React.FC<ForSaleListProps> = ({
   };
 
   const [qrFolder, setQrFolder] = useState<SaleFolder | null>(null);
+  // Podkategoria, do której dodajemy karty z okna „Dodaj kartę” (undefined = przycisk w nagłówku)
+  const [addTarget, setAddTarget] = useState<SaleFolder | undefined>(undefined);
   const [withdrawing, setWithdrawing] = useState<string | null>(null);
 
   /** Wycofuje ze sprzedaży wszystkie karty podkategorii (albo listy głównej); wracają do swoich katalogów. */
@@ -623,6 +628,20 @@ export const ForSaleList: React.FC<ForSaleListProps> = ({
                     <ExternalLink className="w-4 h-4" />
                     <span className="hidden lg:inline">{t('Podgląd')}</span>
                   </a>
+                  {onAddCardForSale && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setAddTarget(folder);
+                        setIsAddOpen(true);
+                      }}
+                      className="btn btn-secondary"
+                      title={t('Dodaj kartę do tej podkategorii z kolekcji albo ze wszystkich kart')}
+                    >
+                      <Plus className="w-4 h-4" />
+                      {t('Dodaj kartę')}
+                    </button>
+                  )}
                   <button type="button" onClick={() => setQrFolder(folder)} className="btn btn-ghost" title={t('Pokaż kod QR, który otwiera tylko tę podkategorię')}>
                     <QrCode className="w-4 h-4" />
                     <span className="hidden lg:inline">{t('Kod QR')}</span>
@@ -888,7 +907,17 @@ export const ForSaleList: React.FC<ForSaleListProps> = ({
       />
       {isAddOpen && onAddCardForSale && (
         <Suspense fallback={null}>
-          <ForSaleAddModal collection={collection} settings={settings} onAdd={onAddCardForSale} onClose={() => setIsAddOpen(false)} />
+          <ForSaleAddModal
+            collection={collection}
+            settings={settings}
+            onAdd={onAddCardForSale}
+            onListFromCollection={onListFromCollection}
+            targetFolder={addTarget}
+            onClose={() => {
+              setIsAddOpen(false);
+              setAddTarget(undefined);
+            }}
+          />
         </Suspense>
       )}
 

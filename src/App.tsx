@@ -91,6 +91,7 @@ export default function App() {
     patchCollectionItemsLocal,
     toggleForSale,
     sellItemQuantity,
+    listFromCollection,
     addCardForSale
   } = useAppData({
     // Przy wymuszonej zmianie hasła nie ładujemy danych (serwer i tak by odmówił)
@@ -1021,6 +1022,7 @@ export default function App() {
             currentUser={currentUser}
             onToggleForSale={handleRequestToggleForSale}
             onAddCardForSale={addCardForSale}
+            onListFromCollection={listFromCollection}
             onUpdateCollectionItem={updateCollectionItemData}
             onPatchCollectionItems={patchCollectionItemsLocal}
             showToast={showToast}

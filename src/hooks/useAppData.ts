@@ -3,7 +3,7 @@ import { useState, useEffect, useCallback, useRef, ChangeEvent } from 'react';
 import { entryKeyOf, matchesEntry, splitByFinish } from '../utils/collectionEntry';
 import { DIGITAL_BLOCK_MESSAGE, isDigitalOnly } from '../utils/mtgFormats';
 import { CollectionItem, WishlistItem, Catalog, DeckItem, ScryfallCard, CardCondition, CardLanguage, AppSettings } from '../types';
-import { collectionApi, wishlistApi, catalogsApi, decksApi, settingsApi } from '../services/api';
+import { collectionApi, wishlistApi, catalogsApi, decksApi, settingsApi, saleFoldersApi } from '../services/api';
 import { t, tServer, useT, binderName, MAIN_BINDER } from '../i18n';
 
 interface UseAppDataProps {
@@ -200,14 +200,14 @@ export function useAppData({ userId, onUnauthorized, showToast, onSettingsLoaded
     quantityToSell: number,
     isFoil: boolean = false,
     customPrice?: number | null
-  ) => {
+  ): Promise<string | null> => {
     const normalQty = item.quantity || 0;
     const foilQty = item.quantityFoil || 0;
 
-    if (quantityToSell <= 0) return;
+    if (quantityToSell <= 0) return null;
     if (isDigitalOnly(item.card)) {
       showToast(t(DIGITAL_BLOCK_MESSAGE));
-      return;
+      return null;
     }
 
     // Case 1: Selling all available copies of this item
@@ -221,9 +221,10 @@ export function useAppData({ userId, onUnauthorized, showToast, onSettingsLoaded
         isForSale: true,
         ...(customPrice !== undefined ? { salePrice: customPrice } : {})
       };
-      await updateCollectionItemData(item.id, updates);
+      const updated = await updateCollectionItemData(item.id, updates);
+      if (!updated) return null;
       showToast(t('Wystawiono "{name}" ({quantityToSell} szt.) na sprzedaż!', { name: item.card.name, quantityToSell }));
-      return;
+      return item.id;
     }
 
     // Case 2: Partial quantity -> split item
@@ -257,12 +258,36 @@ export function useAppData({ userId, onUnauthorized, showToast, onSettingsLoaded
         const createdItem = await res.json();
         setCollection((prev) => [createdItem, ...prev]);
         showToast(t('Wystawiono {quantityToSell} szt. "{name}" na sprzedaż!', { quantityToSell, name: item.card.name }));
+        return createdItem.id as string;
       }
+      return null;
     } catch (err: any) {
       console.error('Error splitting item for sale:', err);
       showToast(t('Wystąpił błąd podczas wystawiania kart na sprzedaż.'));
+      return null;
     }
   }, [updateCollectionItemData, onUnauthorized, showToast]);
+
+  /** Wystawia egzemplarze karty z kolekcji (przeniesienie z katalogu) od razu do wybranej podkategorii „Sprzedam”. */
+  const listFromCollection = useCallback(async (
+    item: CollectionItem,
+    quantityToSell: number,
+    isFoil: boolean,
+    customPrice: number | null | undefined,
+    saleFolderId: string | null
+  ): Promise<boolean> => {
+    const id = await sellItemQuantity(item, quantityToSell, isFoil, customPrice);
+    if (!id) return false;
+    if (saleFolderId) {
+      try {
+        await saleFoldersApi.move([id], saleFolderId);
+        setCollection((prev) => prev.map((c) => (c.id === id ? { ...c, saleFolderId } : c)));
+      } catch {
+        showToast(t('Karta jest na sprzedaż, ale nie udało się przenieść jej do podkategorii.'));
+      }
+    }
+    return true;
+  }, [sellItemQuantity, showToast]);
 
   /**
    * Dopisuje sztuki jednej wersji (zwykła albo foil) do dokładnie takiej samej pozycji
@@ -366,6 +391,8 @@ export function useAppData({ userId, onUnauthorized, showToast, onSettingsLoaded
     condition: CardCondition;
     language: CardLanguage;
     salePrice: number | null;
+    /** Podkategoria „Sprzedam” (null = lista główna); brak pola = bez zmiany podkategorii. */
+    saleFolderId?: string | null;
   }): Promise<boolean> => {
     if (isDigitalOnly(data.card)) {
       showToast(t(DIGITAL_BLOCK_MESSAGE));
@@ -378,8 +405,16 @@ export function useAppData({ userId, onUnauthorized, showToast, onSettingsLoaded
         (c.card.id === data.card.id || c.cardId === data.card.id) &&
         c.condition === data.condition &&
         c.language === data.language &&
-        (data.isFoil ? c.quantityFoil > 0 && c.quantity === 0 : c.quantity > 0 && c.quantityFoil === 0)
+        (data.isFoil ? c.quantityFoil > 0 && c.quantity === 0 : c.quantity > 0 && c.quantityFoil === 0) &&
+        // przy dodawaniu do podkategorii łączymy tylko z kartą z tej samej podkategorii
+        (data.saleFolderId === undefined || (c.saleFolderId ?? null) === data.saleFolderId)
     );
+    const intoFolder = async (item: CollectionItem) => {
+      const folderId = data.saleFolderId;
+      if (folderId === undefined || (item.saleFolderId ?? null) === folderId) return;
+      await saleFoldersApi.move([item.id], folderId);
+      setCollection((prev) => prev.map((c) => (c.id === item.id ? { ...c, saleFolderId: folderId } : c)));
+    };
     try {
       if (existing) {
         const res = await collectionApi.update(existing.id, {
@@ -398,6 +433,7 @@ export function useAppData({ userId, onUnauthorized, showToast, onSettingsLoaded
         if (!res.ok) throw new Error();
         const updated: CollectionItem = await res.json();
         setCollection((prev) => prev.map((c) => (c.id === updated.id ? updated : c)));
+        await intoFolder(updated);
         showToast(t('Dodano {qty} szt. „{name}” do oferty, wystawione: {v3} szt.', { qty, name: data.card.name, v3: updated.quantity + updated.quantityFoil }));
         return true;
       }
@@ -416,6 +452,7 @@ export function useAppData({ userId, onUnauthorized, showToast, onSettingsLoaded
       if (!res.ok) throw new Error();
       const created: CollectionItem = await res.json();
       setCollection((prev) => [created, ...prev]);
+      await intoFolder(created);
       showToast(t('Wystawiono na sprzedaż: {qty} szt. „{name}”', { qty, name: data.card.name }));
       return true;
     } catch {
@@ -798,6 +835,7 @@ export function useAppData({ userId, onUnauthorized, showToast, onSettingsLoaded
     patchCollectionItemsLocal,
     toggleForSale,
     sellItemQuantity,
+    listFromCollection,
     addCardForSale
   };
 }

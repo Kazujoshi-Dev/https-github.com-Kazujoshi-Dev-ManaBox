@@ -81,6 +81,7 @@ interface TabContentProps {
   onEditDeck?: (deck: DeckItem) => void;
   onToggleForSale?: (item: CollectionItem, customPrice?: number | null) => Promise<void> | void;
   onAddCardForSale?: (data: import('./for-sale/ForSaleAddModal').ForSaleAddData) => Promise<boolean>;
+  onListFromCollection?: (item: CollectionItem, quantity: number, isFoil: boolean, salePrice: number | null, saleFolderId: string | null) => Promise<boolean>;
   onUpdateCollectionItem?: (id: string, updates: Partial<CollectionItem>) => Promise<CollectionItem | null> | void;
   /** Zmiana pozycji tylko w stanie aplikacji (foldery „Sprzedam”). */
   onPatchCollectionItems?: (ids: string[], patch: Partial<CollectionItem>) => void;
@@ -135,6 +136,7 @@ export const TabContent: React.FC<TabContentProps> = ({
   onEditDeck,
   onToggleForSale,
   onAddCardForSale,
+  onListFromCollection,
   onUpdateCollectionItem,
   onPatchCollectionItems,
   showToast,
@@ -275,6 +277,7 @@ export const TabContent: React.FC<TabContentProps> = ({
           onGoToCollection={() => setActiveTab('collection')}
           showToast={showToast}
           onOpenSellerProfile={onOpenSellerProfile}
+          onListFromCollection={onListFromCollection}
           onAddCardForSale={onAddCardForSale}
         />
       );
