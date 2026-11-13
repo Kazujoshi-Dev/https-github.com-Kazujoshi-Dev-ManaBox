@@ -238,4 +238,5 @@ export const en_sale: Record<string, string> = {
   "Przenieś na sprzedaż": "Move to sale",
   "Dodaj kartę do tej podkategorii z kolekcji albo ze wszystkich kart": "Add a card to this subcategory from your collection or from all cards",
   "Karta jest na sprzedaż, ale nie udało się przenieść jej do podkategorii.": "The card is for sale, but it could not be moved to the subcategory.",
+  "Dodaj kartę do listy głównej z kolekcji albo ze wszystkich kart": "Add a card to the main list from your collection or from all cards",
 };

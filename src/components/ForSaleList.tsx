@@ -365,7 +365,7 @@ export const ForSaleList: React.FC<ForSaleListProps> = ({
 
   const [qrFolder, setQrFolder] = useState<SaleFolder | null>(null);
   // Podkategoria, do której dodajemy karty z okna „Dodaj kartę” (undefined = przycisk w nagłówku)
-  const [addTarget, setAddTarget] = useState<SaleFolder | undefined>(undefined);
+  const [addTarget, setAddTarget] = useState<SaleFolder | null | undefined>(undefined);
   const [withdrawing, setWithdrawing] = useState<string | null>(null);
 
   /** Wycofuje ze sprzedaży wszystkie karty podkategorii (albo listy głównej); wracają do swoich katalogów. */
@@ -661,7 +661,23 @@ export const ForSaleList: React.FC<ForSaleListProps> = ({
                   </button>
                 </>
               ) : (
-                sectionCount > 0 && withdrawButton(null, sectionCount)
+                <>
+                  {onAddCardForSale && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setAddTarget(null);
+                        setIsAddOpen(true);
+                      }}
+                      className="btn btn-secondary"
+                      title={t('Dodaj kartę do listy głównej z kolekcji albo ze wszystkich kart')}
+                    >
+                      <Plus className="w-4 h-4" />
+                      {t('Dodaj kartę')}
+                    </button>
+                  )}
+                  {sectionCount > 0 && withdrawButton(null, sectionCount)}
+                </>
               )}
             </div>
           </header>
