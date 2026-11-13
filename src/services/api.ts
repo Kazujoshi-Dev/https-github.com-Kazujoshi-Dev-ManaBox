@@ -142,7 +142,9 @@ export const saleFoldersApi = {
   rename: (id: string, name: string) => saleFolderCall<SaleFolder>(`/api/sale-folders/${encodeURIComponent(id)}`, 'PUT', { name }),
   remove: (id: string) => saleFolderCall<{ success: boolean }>(`/api/sale-folders/${encodeURIComponent(id)}`, 'DELETE'),
   move: (itemIds: string[], folderId: string | null) =>
-    saleFolderCall<{ moved: string[]; folderId: string | null }>('/api/sale-folders/move', 'POST', { itemIds, folderId })
+    saleFolderCall<{ moved: string[]; folderId: string | null }>('/api/sale-folders/move', 'POST', { itemIds, folderId }),
+  /** Wycofuje karty ze sprzedaży (wracają do swoich katalogów). */
+  withdraw: (itemIds: string[]) => saleFolderCall<{ withdrawn: string[] }>('/api/sale-folders/withdraw', 'POST', { itemIds })
 };
 
 export const collectionApi = {
@@ -267,6 +269,13 @@ export const catalogsApi = {
     }, onUnauthorized),
   empty: (id: string, onUnauthorized?: () => void) =>
     fetchWithAuth(`/api/catalogs/${encodeURIComponent(id)}/empty`, { method: 'POST' }, onUnauthorized),
+  /** Wystawia na sprzedaż wszystkie karty katalogu (folderId: podkategoria „Sprzedam”, null = lista główna). */
+  listForSale: (id: string, body: { folderId: string | null; includeDeckCards: boolean }, onUnauthorized?: () => void) =>
+    fetchWithAuth(`/api/catalogs/${encodeURIComponent(id)}/list-for-sale`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    }, onUnauthorized),
   setDefault: (id: string, onUnauthorized?: () => void) =>
     fetchWithAuth(`/api/catalogs/${id}/set-default`, { method: 'POST' }, onUnauthorized),
   delete: (id: string, onUnauthorized?: () => void, withCards = false) =>

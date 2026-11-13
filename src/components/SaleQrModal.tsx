@@ -12,6 +12,8 @@ interface SaleQrModalProps {
   showToast?: (message: string) => void;
   /** Rodzaj publicznej strony: oferta „Sprzedam” (domyślnie) albo lista życzeń. */
   variant?: 'sale' | 'wishlist';
+  /** Nazwa podkategorii oferty „Sprzedam”, gdy kod otwiera tylko jej karty. */
+  folderName?: string;
 }
 
 const QR_OPTIONS = { errorCorrectionLevel: 'M' as const, margin: 2, color: { dark: '#0c0a09', light: '#ffffff' } };
@@ -20,11 +22,11 @@ const QR_OPTIONS = { errorCorrectionLevel: 'M' as const, margin: 2, color: { dar
  * Okno z kodem QR publicznej strony gracza: oferty „Sprzedam” albo listy życzeń.
  * Zeskanowanie telefonem otwiera stronę; kod można pobrać jako grafikę PNG (np. do wydruku).
  */
-export const SaleQrModal: React.FC<SaleQrModalProps> = ({ url, username, onClose, showToast, variant = 'sale' }) => {
+export const SaleQrModal: React.FC<SaleQrModalProps> = ({ url, username, onClose, showToast, variant = 'sale', folderName }) => {
   const t = useT();
   useBackToClose(true, onClose);
   const isWishlist = variant === 'wishlist';
-  const title = isWishlist ? t('Kod QR listy życzeń') : t('Kod QR oferty');
+  const title = isWishlist ? t('Kod QR listy życzeń') : folderName ? t('Kod QR podkategorii „{name}”', { name: folderName }) : t('Kod QR oferty');
 
   const [dataUrl, setDataUrl] = useState<string | null>(null);
   const [error, setError] = useState(false);
@@ -74,8 +76,14 @@ export const SaleQrModal: React.FC<SaleQrModalProps> = ({ url, username, onClose
       ctx.fillRect(0, 0, W, H);
       ctx.textAlign = 'center';
       ctx.fillStyle = '#0c0a09';
-      ctx.font = '700 72px system-ui, -apple-system, Segoe UI, sans-serif';
-      ctx.fillText(isWishlist ? t('Szukam kart') : t('Sprzedam'), W / 2, 120);
+      const heading = isWishlist ? t('Szukam kart') : folderName ? `${t('Sprzedam')}: ${folderName}` : t('Sprzedam');
+      let headingSize = 72;
+      ctx.font = `700 ${headingSize}px system-ui, -apple-system, Segoe UI, sans-serif`;
+      while (headingSize > 40 && ctx.measureText(heading).width > W - 80) {
+        headingSize -= 4;
+        ctx.font = `700 ${headingSize}px system-ui, -apple-system, Segoe UI, sans-serif`;
+      }
+      ctx.fillText(heading, W / 2, 120);
       ctx.fillStyle = '#b45309';
       ctx.font = '600 44px system-ui, -apple-system, Segoe UI, sans-serif';
       ctx.fillText(`@${username}`, W / 2, 190);
@@ -92,7 +100,7 @@ export const SaleQrModal: React.FC<SaleQrModalProps> = ({ url, username, onClose
 
       const a = document.createElement('a');
       a.href = canvas.toDataURL('image/png');
-      a.download = `${isWishlist ? 'lista-zyczen' : 'sprzedam'}-qr-${username}`.replace(/[^\p{L}\p{N}_-]+/gu, '-') + '.png';
+      a.download = `${isWishlist ? 'lista-zyczen' : 'sprzedam'}-qr-${username}${folderName ? `-${folderName}` : ''}`.replace(/[^\p{L}\p{N}_-]+/gu, '-') + '.png';
       document.body.appendChild(a);
       a.click();
       a.remove();
@@ -137,7 +145,7 @@ export const SaleQrModal: React.FC<SaleQrModalProps> = ({ url, username, onClose
             )}
           </div>
           <div className="space-y-1 min-w-0 max-w-full">
-            <p className="text-sm font-semibold text-amber-300 truncate">@{username}</p>
+            <p className="text-sm font-semibold text-amber-300 truncate">@{username}{folderName ? ` · ${folderName}` : ''}</p>
             <p className="text-xs text-stone-400">{isWishlist ? t('Zeskanuj aparatem telefonu, aby otworzyć listę szukanych kart.') : t('Zeskanuj aparatem telefonu, aby otworzyć ofertę z kartami.')}</p>
             <p className="text-[11px] text-stone-500 break-all">{url.replace(/^https?:\/\//, '')}</p>
           </div>

@@ -353,7 +353,7 @@ export const PublicSaleView: React.FC<PublicSaleViewProps> = ({
         </div>
 
         {folderChips.length > 0 && (
-          <div className="flex items-center gap-2 flex-wrap" role="tablist" aria-label={t('Foldery oferty')}>
+          <div className="flex items-center gap-2 flex-wrap" role="tablist" aria-label={t('Podkategorie oferty')}>
             {[{ id: 'all', label: t('Wszystkie'), n: allCards.reduce((s, i) => s + i.quantity + i.quantityFoil, 0) }, ...folderChips].map((c) => (
               <button
                 key={c.id}

@@ -4,6 +4,8 @@ import { withDb, readJsonFile, writeJsonAtomic, userGameFile } from '../storage'
 import { DEFAULT_GAME, type GameId } from '../../../games';
 import { mapCatalogRow } from '../mappers';
 import { MAIN_CATALOG_NAME, newMainCatalog } from '../schema';
+import { isDigitalOnly } from '../../../utils/mtgFormats';
+import { getSaleFolders } from './saleFolderRepository';
 
 /**
  * Błąd, który serwer pokazuje użytkownikowi wprost (400/404), np. próba usunięcia głównego klasera.
@@ -253,6 +255,64 @@ export async function emptyCatalog(userId: string, catalogId: string, game: Game
       const kept = collection.filter((i) => i.binder !== target.name || Boolean(i.isForSale));
       writeJsonAtomic(colFileOf(userId, game), kept);
       return { deletedItems: collection.length - kept.length };
+    }
+  );
+}
+
+/**
+ * Wystawia na sprzedaż wszystkie karty katalogu jednym ruchem (wszystkie egzemplarze każdej pozycji).
+ * Pomija karty już wystawione i karty tylko cyfrowe (MTG Arena); karty skopiowane z talii tylko na życzenie.
+ * Ceny ustawione wcześniej ręcznie zostają. `folderId` = podkategoria „Sprzedam” (null = lista główna).
+ */
+export async function listCatalogForSale(
+  userId: string,
+  catalogId: string,
+  opts: { folderId: string | null; includeDeckCards: boolean },
+  game: GameId = DEFAULT_GAME
+): Promise<{ listed: number; skippedDigital: number }> {
+  const catalogs = await getCatalogs(userId, game);
+  const target = catalogs.find((c) => c.id === catalogId);
+  if (!target) throw new CatalogError('Nie znaleziono katalogu.', 404);
+  const folderId = opts.folderId;
+  if (folderId !== null && !(await getSaleFolders(userId, game)).some((f) => f.id === folderId)) {
+    throw new CatalogError('Nie znaleziono podkategorii.', 404);
+  }
+  const isMain = Boolean(target.isMain);
+
+  return withDb(
+    async (p) => {
+      // To samo co isDigitalOnly: digital = true albo lista gier bez wersji papierowej
+      // (COALESCE, bo brak pola daje NULL, a NOT NULL odrzuciłby zwykłe karty)
+      const digital = `COALESCE(card->'digital' = 'true'::jsonb
+          OR (jsonb_typeof(card->'games') = 'array' AND jsonb_array_length(card->'games') > 0 AND NOT (card->'games') ? 'paper'), FALSE)`;
+      // Karty bez katalogu należą do głównego klasera (jak w widoku kolekcji)
+      const where = `user_id = $1 AND game = $2 AND (binder = $3 OR ($4 AND (binder IS NULL OR binder = '')))
+          AND NOT COALESCE(is_for_sale, FALSE) AND ($5 OR source_deck_id IS NULL)`;
+      const params = [userId, game, target.name, isMain, opts.includeDeckCards];
+      const skipped = await p.query(`SELECT COUNT(*)::int AS n FROM user_collections WHERE ${where} AND ${digital}`, params);
+      const res = await p.query(
+        `UPDATE user_collections SET is_for_sale = TRUE, sale_folder_id = $6 WHERE ${where} AND NOT ${digital}`,
+        [...params, folderId]
+      );
+      return { listed: res.rowCount ?? 0, skippedDigital: skipped.rows[0]?.n ?? 0 };
+    },
+    () => {
+      const collection = readJsonFile<CollectionItem[]>(colFileOf(userId, game), []);
+      let listed = 0;
+      let skippedDigital = 0;
+      for (const i of collection) {
+        const inCatalog = i.binder === target.name || (isMain && !i.binder);
+        if (!inCatalog || i.isForSale || (!opts.includeDeckCards && i.sourceDeckId)) continue;
+        if (isDigitalOnly(i.card)) {
+          skippedDigital++;
+          continue;
+        }
+        i.isForSale = true;
+        i.saleFolderId = folderId;
+        listed++;
+      }
+      if (listed) writeJsonAtomic(colFileOf(userId, game), collection);
+      return { listed, skippedDigital };
     }
   );
 }

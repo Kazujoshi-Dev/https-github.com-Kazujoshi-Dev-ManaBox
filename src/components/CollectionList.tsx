@@ -14,6 +14,7 @@ import {
   CollectionViewMode,
   CatalogFormModal,
   CatalogDeleteModal,
+  CatalogListForSaleModal,
   useCollectionFilters,
   useCatalogManager,
   useProgressiveRender,
@@ -25,6 +26,8 @@ import {
   DEFAULT_ROWS_PER_PAGE,
 } from './collection-list';
 import { useT, MAIN_BINDER, locale } from '../i18n';
+import type { Catalog } from '../types';
+import { isDigitalOnly } from '../utils/mtgFormats';
 
 const ForSaleAddModal = lazyWithReload(() => import('./for-sale/ForSaleAddModal'));
 
@@ -37,6 +40,7 @@ export const CollectionList: React.FC<CollectionListProps> = ({
   onUpdateCatalog,
   onDeleteCatalog,
   onEmptyCatalog,
+  onListCatalogForSale,
   onSetDefaultCatalog,
   onOpenCreateDeckModal,
   onSelectDeck,
@@ -55,6 +59,8 @@ export const CollectionList: React.FC<CollectionListProps> = ({
   const deckNames = useMemo(() => new Map(decks.map((d) => [d.id, d.name] as [string, string])), [decks]);
   const t = useT();
   const [isForSaleAddOpen, setIsForSaleAddOpen] = useState(false);
+  // Potwierdzenie „Wystaw wszystkie” dla wybranego katalogu
+  const [catalogToList, setCatalogToList] = useState<Catalog | null>(null);
   // Na telefonie domyślnie lista (więcej kart na ekranie), na większych ekranach siatka.
   const [viewMode, setViewMode] = useState<CollectionViewMode>(() =>
     typeof window !== 'undefined' && window.matchMedia?.('(max-width: 767px)').matches ? 'table' : 'grid'
@@ -72,6 +78,12 @@ export const CollectionList: React.FC<CollectionListProps> = ({
     hasActiveFilters,
     handleResetFilters,
   } = useCollectionFilters({ collection, settings });
+
+  // Pozycje wybranego katalogu, które da się wystawić (bez kart już na sprzedaż i tylko cyfrowych)
+  const listableInActive = useMemo(
+    () => collection.filter((i) => !i.isForSale && (i.binder || MAIN_BINDER) === filters.binder && !isDigitalOnly(i.card)).length,
+    [collection, filters.binder]
+  );
 
   // Widok „Dodatki”: bez wybranego dodatku pokazujemy siatkę dodatków, po wyborze listę jego kart
   const showSetsGrid = viewMode === 'sets' && filters.set === 'ALL';
@@ -188,6 +200,8 @@ export const CollectionList: React.FC<CollectionListProps> = ({
         onOpenEditCatalog={openEditCatalogModal}
         onRequestDeleteCatalog={(cat) => setCatalogToDelete(cat)}
         onRequestEmptyCatalog={onEmptyCatalog ? (cat) => setCatalogToEmpty(cat) : undefined}
+        onRequestListCatalog={onListCatalogForSale ? (cat) => setCatalogToList(cat) : undefined}
+        listableCount={listableInActive}
         onSetDefaultCatalog={onSetDefaultCatalog}
         onOpenImportExport={onOpenImportExport}
       />
@@ -340,6 +354,17 @@ export const CollectionList: React.FC<CollectionListProps> = ({
           if (editingCatalog) setCatalogToDelete(editingCatalog);
         }}
       />
+
+      {/* 7. Wystawienie całego katalogu na sprzedaż */}
+      {catalogToList && onListCatalogForSale && (
+        <CatalogListForSaleModal
+          catalog={catalogToList}
+          items={collection.filter((i) => !i.isForSale && (i.binder || MAIN_BINDER) === catalogToList.name)}
+          settings={settings}
+          onClose={() => setCatalogToList(null)}
+          onConfirm={(opts) => onListCatalogForSale(catalogToList.id, opts)}
+        />
+      )}
 
       {/* 6. Usunięcie lub opróżnienie katalogu */}
       {(catalogToDelete || catalogToEmpty) && (() => {

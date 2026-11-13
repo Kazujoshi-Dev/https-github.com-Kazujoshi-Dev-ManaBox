@@ -54,6 +54,7 @@ interface TabContentProps {
   onUpdateCatalog: (id: string, updates: Partial<Catalog>) => Promise<void>;
   onDeleteCatalog: (id: string, withCards?: boolean) => Promise<void>;
   onEmptyCatalog: (id: string) => Promise<void>;
+  onListCatalogForSale?: (id: string, opts: { folderId: string | null; includeDeckCards: boolean }) => Promise<void>;
   onSetDefaultCatalog: (id: string) => Promise<void>;
 
   // Collection interactions
@@ -113,6 +114,7 @@ export const TabContent: React.FC<TabContentProps> = ({
   onUpdateCatalog,
   onDeleteCatalog,
   onEmptyCatalog,
+  onListCatalogForSale,
   onSetDefaultCatalog,
   onUpdateQuantity,
   onDeleteItem,
@@ -154,6 +156,7 @@ export const TabContent: React.FC<TabContentProps> = ({
           onUpdateCatalog={onUpdateCatalog}
           onDeleteCatalog={onDeleteCatalog}
           onEmptyCatalog={onEmptyCatalog}
+          onListCatalogForSale={onListCatalogForSale}
           onSetDefaultCatalog={onSetDefaultCatalog}
           onOpenCreateDeckModal={onOpenCreateDeckModal}
           onSelectDeck={(deck) => {

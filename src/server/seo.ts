@@ -362,7 +362,7 @@ async function salePage(ref: string, folderSlug?: string, game: GameId = DEFAULT
   const path = `/sprzedam/${encodeURIComponent(ref)}${folderSlug ? `/${encodeURIComponent(folderSlug)}` : ''}${gameQuery(game)}`;
   const offer = await loadOffer(ref, folderSlug, game);
   if (!offer) return notFoundPage(path, 'Nie znaleziono oferty dla tego użytkownika.');
-  if (offer === 'no-folder') return notFoundPage(path, 'Nie znaleziono tego folderu oferty.');
+  if (offer === 'no-folder') return notFoundPage(path, 'Nie znaleziono tej podkategorii oferty.');
   const { user, folder, items: sorted, currency } = offer;
   const canonical = `/sprzedam/${encodeURIComponent(user.username)}${folder ? `/${folder.slug}` : ''}${gameQuery(game)}`;
   const n = sorted.reduce((s, i) => s + (i.quantity || 0) + (i.quantityFoil || 0), 0) || sorted.length;

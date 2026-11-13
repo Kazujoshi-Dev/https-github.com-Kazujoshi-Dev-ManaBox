@@ -37,8 +37,8 @@ function newSlug(): string {
 
 export function cleanFolderName(name: unknown): string {
   const v = typeof name === 'string' ? name.replace(/\s+/g, ' ').trim() : '';
-  if (!v) throw new SaleFolderError('Podaj nazwę folderu.');
-  if (v.length > SALE_FOLDER_NAME_MAX) throw new SaleFolderError(`Nazwa folderu może mieć najwyżej ${SALE_FOLDER_NAME_MAX} znaków.`);
+  if (!v) throw new SaleFolderError('Podaj nazwę podkategorii.');
+  if (v.length > SALE_FOLDER_NAME_MAX) throw new SaleFolderError(`Nazwa podkategorii może mieć najwyżej ${SALE_FOLDER_NAME_MAX} znaków.`);
   return v;
 }
 
@@ -69,7 +69,7 @@ export async function getSaleFolders(userId: string, game: GameId = DEFAULT_GAME
 export async function createSaleFolder(userId: string, rawName: unknown, game: GameId = DEFAULT_GAME): Promise<SaleFolder> {
   const name = cleanFolderName(rawName);
   const existing = await getSaleFolders(userId, game);
-  if (existing.length >= SALE_FOLDERS_MAX) throw new SaleFolderError(`Możesz mieć najwyżej ${SALE_FOLDERS_MAX} folderów.`);
+  if (existing.length >= SALE_FOLDERS_MAX) throw new SaleFolderError(`Możesz mieć najwyżej ${SALE_FOLDERS_MAX} podkategorii.`);
   const folder: SaleFolder = {
     id: `sf-${crypto.randomUUID()}`,
     name,
@@ -150,7 +150,7 @@ export async function moveItemsToSaleFolder(userId: string, itemIds: string[], f
   if (!ids.length) return [];
   if (folderId !== null) {
     const folders = await getSaleFolders(userId, game);
-    if (!folders.some((f) => f.id === folderId)) throw new SaleFolderError('Nie znaleziono folderu.', 404);
+    if (!folders.some((f) => f.id === folderId)) throw new SaleFolderError('Nie znaleziono podkategorii.', 404);
   }
   return withDb(
     async (p) => {
@@ -174,6 +174,40 @@ export async function moveItemsToSaleFolder(userId: string, itemIds: string[], f
       }
       writeJsonAtomic(collectionFile(userId, game), items);
       return moved;
+    }
+  );
+}
+
+/**
+ * Wycofuje karty ze sprzedaży (np. całą podkategorię jednym przyciskiem): wracają do swoich katalogów.
+ * Zmienia tylko pozycje tego użytkownika, które są na sprzedaż. Zwraca id wycofanych pozycji.
+ */
+export async function withdrawItemsFromSale(userId: string, itemIds: string[], game: GameId = DEFAULT_GAME): Promise<string[]> {
+  const ids = [...new Set(itemIds.filter((x) => typeof x === 'string' && x.length <= 100))].slice(0, 5000);
+  if (!ids.length) return [];
+  return withDb(
+    async (p) => {
+      const res = await p.query(
+        `UPDATE user_collections SET is_for_sale = FALSE, sale_folder_id = NULL
+          WHERE user_id = $1 AND game = $3 AND id = ANY($2::text[]) AND COALESCE(is_for_sale, FALSE)
+          RETURNING id`,
+        [userId, ids, game]
+      );
+      return res.rows.map((r: any) => r.id);
+    },
+    () => {
+      const items = readJsonFile<CollectionItem[]>(collectionFile(userId, game), []);
+      const wanted = new Set(ids);
+      const done: string[] = [];
+      for (const i of items) {
+        if (wanted.has(i.id) && i.isForSale) {
+          i.isForSale = false;
+          i.saleFolderId = null;
+          done.push(i.id);
+        }
+      }
+      if (done.length) writeJsonAtomic(collectionFile(userId, game), items);
+      return done;
     }
   );
 }

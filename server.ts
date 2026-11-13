@@ -2522,6 +2522,21 @@ app.post('/api/catalogs/:id/empty', authMiddleware, async (req, res) => {
   }
 });
 
+// Wystawienie całego katalogu na sprzedaż jednym kliknięciem (po potwierdzeniu w aplikacji)
+const listCatalogLimiter = rateLimit({ name: 'catalog-list-sale', windowMs: 60_000, max: 20, key: userKey });
+app.post('/api/catalogs/:id/list-for-sale', authMiddleware, listCatalogLimiter, async (req, res) => {
+  try {
+    const userId = (req as any).userId;
+    const folderId = typeof req.body?.folderId === 'string' && req.body.folderId ? req.body.folderId.slice(0, 64) : null;
+    const includeDeckCards = req.body?.includeDeckCards === true;
+    const result = await db.listCatalogForSale(userId, req.params.id, { folderId, includeDeckCards }, gameOf(req));
+    res.json({ success: true, ...result });
+  } catch (err: any) {
+    if (err instanceof db.CatalogError) return res.status(err.status).json({ error: err.message });
+    sendServerError(res, err, '/api/catalogs/:id/list-for-sale');
+  }
+});
+
 app.post('/api/catalogs/:id/set-default', authMiddleware, async (req, res) => {
   try {
     const userId = (req as any).userId;
@@ -3379,10 +3394,21 @@ app.post('/api/sale-folders/move', authMiddleware, saleFoldersLimiter, async (re
   }
 });
 
+// Wycofanie kart ze sprzedaży zbiorczo (np. całej podkategorii): karty wracają do swoich katalogów
+app.post('/api/sale-folders/withdraw', authMiddleware, saleFoldersLimiter, async (req, res) => {
+  try {
+    const itemIds = Array.isArray(req.body?.itemIds) ? req.body.itemIds : [];
+    const withdrawn = await db.withdrawItemsFromSale((req as any).userId, itemIds, gameOf(req));
+    res.json({ withdrawn });
+  } catch (err: any) {
+    sendSaleFolderError(res, err, '/api/sale-folders/withdraw');
+  }
+});
+
 app.put('/api/sale-folders/:id', authMiddleware, saleFoldersLimiter, async (req, res) => {
   try {
     const folder = await db.renameSaleFolder((req as any).userId, req.params.id, req.body?.name, gameOf(req));
-    if (!folder) return res.status(404).json({ error: 'Nie znaleziono folderu.' });
+    if (!folder) return res.status(404).json({ error: 'Nie znaleziono podkategorii.' });
     res.json(folder);
   } catch (err: any) {
     sendSaleFolderError(res, err, 'PUT /api/sale-folders/:id');
@@ -3392,7 +3418,7 @@ app.put('/api/sale-folders/:id', authMiddleware, saleFoldersLimiter, async (req,
 app.delete('/api/sale-folders/:id', authMiddleware, saleFoldersLimiter, async (req, res) => {
   try {
     const ok = await db.deleteSaleFolder((req as any).userId, req.params.id, gameOf(req));
-    if (!ok) return res.status(404).json({ error: 'Nie znaleziono folderu.' });
+    if (!ok) return res.status(404).json({ error: 'Nie znaleziono podkategorii.' });
     res.json({ success: true });
   } catch (err: any) {
     sendSaleFolderError(res, err, 'DELETE /api/sale-folders/:id');
@@ -3418,7 +3444,7 @@ app.get(['/api/public/sale/:userRef', '/api/public/sale/:userRef/:folderSlug'], 
     const folders = await db.getSaleFolders(user.id, game);
     const folder = folderSlug ? folders.find((f) => f.slug === folderSlug.trim().toLowerCase()) : null;
     if (folderSlug && !folder) {
-      return res.status(404).json({ error: 'Nie znaleziono tego folderu oferty. Mógł zostać usunięty.' });
+      return res.status(404).json({ error: 'Nie znaleziono tej podkategorii oferty. Mogła zostać usunięta.' });
     }
 
     const collection = await db.getCollection(user.id, game);

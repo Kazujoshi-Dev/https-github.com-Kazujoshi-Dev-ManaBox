@@ -562,6 +562,23 @@ export function useAppData({ userId, onUnauthorized, showToast, onSettingsLoaded
       : t('„{name}” był już pusty', { name: binderName(name) }));
   }, [catalogs, onUnauthorized, showToast]);
 
+  /** Wystawia na sprzedaż wszystkie karty katalogu (po potwierdzeniu w oknie). */
+  const listCatalogForSale = useCallback(async (id: string, opts: { folderId: string | null; includeDeckCards: boolean }) => {
+    const name = catalogs.find(c => c.id === id)?.name || 'katalog';
+    const res = await catalogsApi.listForSale(id, opts, onUnauthorized);
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      showToast(tServer(err.error) || t('Nie udało się wystawić kart na sprzedaż.'));
+      return;
+    }
+    const data = await res.json();
+    const colRes = await collectionApi.getAll(onUnauthorized);
+    if (colRes.ok) setCollection(await colRes.json());
+    showToast(data.listed > 0
+      ? t('Wystawiono na sprzedaż {n} poz. z „{name}”. Znajdziesz je w zakładce „Sprzedam”.', { n: data.listed, name: binderName(name) })
+      : t('W „{name}” nie było kart do wystawienia.', { name: binderName(name) }));
+  }, [catalogs, onUnauthorized, showToast]);
+
   const setDefaultCatalog = useCallback(async (id: string) => {
     try {
       const res = await catalogsApi.setDefault(id, onUnauthorized);
@@ -769,6 +786,7 @@ export function useAppData({ userId, onUnauthorized, showToast, onSettingsLoaded
     setDefaultCatalog,
     deleteCatalog,
     emptyCatalog,
+    listCatalogForSale,
     createDeck,
     updateDeck,
     deleteDeck,

@@ -35,7 +35,8 @@ import {
   GripVertical,
   Inbox,
   QrCode,
-  Facebook
+  Facebook,
+  Undo2
 } from 'lucide-react';
 import { useT, plural } from '../i18n';
 import { SaleQrModal } from './SaleQrModal';
@@ -315,9 +316,9 @@ export const ForSaleList: React.FC<ForSaleListProps> = ({
       const folder = await saleFoldersApi.create(name);
       setFolders((prev) => [...prev, folder]);
       setNewFolderName(null);
-      showToast?.(t('Utworzono folder „{name}”. Przeciągnij do niego karty z listy.', { name: folder.name }));
+      showToast?.(t('Utworzono podkategorię „{name}”. Przeciągnij do niej karty z listy albo wybierz ją na kafelku karty.', { name: folder.name }));
     } catch (err: any) {
-      showToast?.(err?.message || t('Nie udało się utworzyć folderu.'));
+      showToast?.(err?.message || t('Nie udało się utworzyć podkategorii.'));
     } finally {
       setFolderBusy(false);
     }
@@ -337,7 +338,7 @@ export const ForSaleList: React.FC<ForSaleListProps> = ({
       setFolders((prev) => prev.map((f) => (f.id === updated.id ? updated : f)));
       setRenaming(null);
     } catch (err: any) {
-      showToast?.(err?.message || t('Nie udało się zmienić nazwy folderu.'));
+      showToast?.(err?.message || t('Nie udało się zmienić nazwy podkategorii.'));
     } finally {
       setFolderBusy(false);
     }
@@ -346,23 +347,143 @@ export const ForSaleList: React.FC<ForSaleListProps> = ({
   const deleteFolder = async (folder: SaleFolder) => {
     const inside = allForSaleCards.filter((i) => i.saleFolderId === folder.id);
     const question = inside.length
-      ? t('Usunąć folder „{name}”? Karty z folderu ({n}) wrócą na listę główną i nadal będą na sprzedaż, a link do folderu przestanie działać.', { name: folder.name, n: inside.length })
-      : t('Usunąć folder „{name}”? Link do folderu przestanie działać.', { name: folder.name });
+      ? t('Usunąć podkategorię „{name}”? Karty z podkategorii ({n}) wrócą na listę główną i nadal będą na sprzedaż, a link i kod QR podkategorii przestaną działać.', { name: folder.name, n: inside.length })
+      : t('Usunąć podkategorię „{name}”? Link i kod QR podkategorii przestaną działać.', { name: folder.name });
     if (!window.confirm(question)) return;
     try {
       await saleFoldersApi.remove(folder.id);
       setFolders((prev) => prev.filter((f) => f.id !== folder.id));
       if (inside.length) onPatchCollectionItems?.(inside.map((i) => i.id), { saleFolderId: null });
-      showToast?.(t('Usunięto folder „{name}”.', { name: folder.name }));
+      showToast?.(t('Usunięto podkategorię „{name}”.', { name: folder.name }));
     } catch (err: any) {
-      showToast?.(err?.message || t('Nie udało się usunąć folderu.'));
+      showToast?.(err?.message || t('Nie udało się usunąć podkategorii.'));
     }
   };
+
+  const [qrFolder, setQrFolder] = useState<SaleFolder | null>(null);
+  const [withdrawing, setWithdrawing] = useState<string | null>(null);
+
+  /** Wycofuje ze sprzedaży wszystkie karty podkategorii (albo listy głównej); wracają do swoich katalogów. */
+  const withdrawSection = async (folder: SaleFolder | null) => {
+    const key = folder?.id ?? 'main';
+    const inside = allForSaleCards.filter((i) => (folderOf(i) ?? 'main') === key);
+    if (!inside.length || withdrawing) return;
+    const where = folder ? folder.name : t('Lista główna');
+    if (!window.confirm(t('Wycofać ze sprzedaży wszystkie karty z „{name}” ({n})? Wrócą do swoich katalogów w kolekcji.', { name: where, n: inside.length }))) return;
+    setWithdrawing(key);
+    try {
+      const { withdrawn } = await saleFoldersApi.withdraw(inside.map((i) => i.id));
+      if (withdrawn.length) onPatchCollectionItems?.(withdrawn, { isForSale: false, saleFolderId: null });
+      showToast?.(t('Wycofano ze sprzedaży karty ({n}) z „{name}”.', { n: withdrawn.length, name: where }));
+    } catch (err: any) {
+      showToast?.(err?.message || t('Nie udało się wycofać kart ze sprzedaży.'));
+    } finally {
+      setWithdrawing(null);
+    }
+  };
+
+  const withdrawButton = (folder: SaleFolder | null, n: number) => (
+    <button
+      type="button"
+      onClick={() => withdrawSection(folder)}
+      disabled={Boolean(withdrawing)}
+      className="btn btn-ghost text-rose-400 hover:text-rose-300 disabled:opacity-50"
+      title={t('Wycofaj ze sprzedaży wszystkie karty stąd ({n}). Wrócą do swoich katalogów.', { n })}
+    >
+      {withdrawing === (folder?.id ?? 'main') ? <Loader2 className="w-4 h-4 animate-spin" /> : <Undo2 className="w-4 h-4" />}
+      <span className="hidden lg:inline">{t('Wycofaj wszystkie')}</span>
+    </button>
+  );
+
+  const scrollToSection = (key: string) => {
+    if (folders.some((f) => f.id === key)) {
+      setCollapsed((prev) => {
+        if (!prev.has(key)) return prev;
+        const next = new Set(prev);
+        next.delete(key);
+        return next;
+      });
+    }
+    requestAnimationFrame(() => document.getElementById(`sale-section-${key}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
+  };
+
+  const folderCounts = useMemo(() => {
+    const m = new Map<string, number>();
+    for (const i of allForSaleCards) {
+      const k = folderOf(i) ?? 'main';
+      m.set(k, (m.get(k) || 0) + i.quantity + i.quantityFoil);
+    }
+    return m;
+  }, [allForSaleCards, folderOf]);
+
+  /** Pasek podkategorii nad ofertą: tworzenie nowych i szybkie przejście do istniejących. */
+  const renderCategoriesBar = () => (
+    <div className="rounded-xl border border-stone-800 bg-stone-900 p-3 space-y-2.5">
+      <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
+        <div className="flex items-center gap-2 text-sm text-stone-300 shrink-0">
+          <FolderOpen className="w-4 h-4 text-amber-400" />
+          {t('Podkategorie')}
+        </div>
+        <p className="text-xs text-stone-500 flex-1 min-w-0">
+          {t('Np. Pauper, Commander, Landy. Każda podkategoria ma własny link i kod QR, który pokazuje tylko jej karty.')}
+        </p>
+        {newFolderName !== null ? (
+          <form
+            className="flex items-center gap-1"
+            onSubmit={(e) => {
+              e.preventDefault();
+              createFolder();
+            }}
+          >
+            <input
+              value={newFolderName}
+              onChange={(e) => setNewFolderName(e.target.value)}
+              onKeyDown={(e) => e.key === 'Escape' && setNewFolderName(null)}
+              maxLength={60}
+              autoFocus
+              placeholder={t('Nazwa podkategorii, np. Pauper')}
+              aria-label={t('Nazwa podkategorii')}
+              className="min-w-0 flex-1 sm:w-56 h-9 bg-stone-950 border border-stone-700 focus:border-amber-500 rounded-lg px-2.5 text-sm text-stone-100 placeholder-stone-500 focus:outline-none"
+            />
+            <button type="submit" disabled={folderBusy || !newFolderName.trim()} className="btn btn-primary disabled:opacity-50">
+              {folderBusy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
+              {t('Utwórz')}
+            </button>
+            <button type="button" onClick={() => setNewFolderName(null)} className="btn btn-ghost">{t('Anuluj')}</button>
+          </form>
+        ) : (
+          <button type="button" onClick={() => setNewFolderName('')} className="btn btn-secondary shrink-0" title={t('Podkategoria ma własny publiczny link i kod QR, a karty przenosisz do niej przeciągając albo wybierając ją na kafelku karty')}>
+            <FolderPlus className="w-4 h-4" />
+            {t('Nowa podkategoria')}
+          </button>
+        )}
+      </div>
+      {folders.length > 0 && (
+        <div className="flex items-center gap-1 overflow-x-auto no-scrollbar -mx-1 px-1">
+          {[null, ...folders].map((f) => {
+            const key = f?.id ?? 'main';
+            return (
+              <button
+                key={key}
+                type="button"
+                onClick={() => scrollToSection(key)}
+                className="h-8 px-2.5 rounded-lg text-sm shrink-0 flex items-center gap-1.5 cursor-pointer whitespace-nowrap text-stone-300 hover:text-stone-50 hover:bg-stone-800"
+              >
+                {f ? <FolderOpen className="w-3.5 h-3.5 text-amber-400" /> : <Inbox className="w-3.5 h-3.5 text-stone-400" />}
+                <span className="truncate max-w-[160px]">{f ? f.name : t('Lista główna')}</span>
+                <span className="text-xs text-stone-500 tabular-nums">{folderCounts.get(key) || 0}</span>
+              </button>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
 
   const copyFolderLink = (folder: SaleFolder) => {
     navigator.clipboard.writeText(saleFolderUrl(publicShareSlug, folder.slug, getActiveGame()));
     setCopiedFolderId(folder.id);
-    showToast?.(t('Skopiowano link do folderu „{name}”.', { name: folder.name }));
+    showToast?.(t('Skopiowano link do podkategorii „{name}”.', { name: folder.name }));
     setTimeout(() => setCopiedFolderId((id) => (id === folder.id ? null : id)), 2500);
   };
 
@@ -425,7 +546,8 @@ export const ForSaleList: React.FC<ForSaleListProps> = ({
     const totals = sectionTotals(folder?.id ?? null);
     const isCollapsed = folder ? collapsed.has(folder.id) : false;
     const isOver = dropTarget === key && Boolean(dragItemId);
-    const filtered = items.length !== allForSaleCards.filter((i) => (folderOf(i) ?? 'main') === key).length;
+    const sectionCount = allForSaleCards.filter((i) => (folderOf(i) ?? 'main') === key).length;
+    const filtered = items.length !== sectionCount;
     const toggleCollapsed = () =>
       folder &&
       setCollapsed((prev) => {
@@ -437,6 +559,7 @@ export const ForSaleList: React.FC<ForSaleListProps> = ({
 
     return (
       <section
+        id={`sale-section-${key}`}
         {...dropProps(folder?.id ?? null)}
         aria-label={folder ? folder.name : t('Lista główna')}
         className={`rounded-2xl border transition-colors ${
@@ -452,7 +575,7 @@ export const ForSaleList: React.FC<ForSaleListProps> = ({
                   onClick={toggleCollapsed}
                   className="w-7 h-7 rounded-lg flex items-center justify-center text-stone-400 hover:text-stone-100 hover:bg-stone-800 cursor-pointer shrink-0"
                   aria-expanded={!isCollapsed}
-                  aria-label={isCollapsed ? t('Rozwiń folder') : t('Zwiń folder')}
+                  aria-label={isCollapsed ? t('Rozwiń podkategorię') : t('Zwiń podkategorię')}
                 >
                   <ChevronDown className={`w-4 h-4 transition-transform ${isCollapsed ? '-rotate-90' : ''}`} />
                 </button>
@@ -474,7 +597,7 @@ export const ForSaleList: React.FC<ForSaleListProps> = ({
                     onKeyDown={(e) => e.key === 'Escape' && setRenaming(null)}
                     maxLength={60}
                     autoFocus
-                    aria-label={t('Nazwa folderu')}
+                    aria-label={t('Nazwa podkategorii')}
                     className="min-w-0 flex-1 h-8 bg-stone-950 border border-stone-700 focus:border-amber-500 rounded-lg px-2.5 text-sm text-stone-100 focus:outline-none"
                   />
                   <button type="submit" disabled={folderBusy} className="btn btn-primary">{t('Zapisz')}</button>
@@ -496,52 +619,30 @@ export const ForSaleList: React.FC<ForSaleListProps> = ({
                     {copiedFolderId === folder.id ? <Check className="w-4 h-4" /> : <Link className="w-4 h-4" />}
                     {copiedFolderId === folder.id ? t('Skopiowano') : t('Kopiuj link')}
                   </button>
-                  <a href={saleFolderUrl(publicShareSlug, folder.slug, getActiveGame())} target="_blank" rel="noreferrer" className="btn btn-ghost" title={t('Zobacz, jak widzą folder kupujący')}>
+                  <a href={saleFolderUrl(publicShareSlug, folder.slug, getActiveGame())} target="_blank" rel="noreferrer" className="btn btn-ghost" title={t('Zobacz, jak widzą podkategorię kupujący')}>
                     <ExternalLink className="w-4 h-4" />
                     <span className="hidden lg:inline">{t('Podgląd')}</span>
                   </a>
-                  <button type="button" onClick={() => setRenaming({ id: folder.id, name: folder.name })} className="btn btn-ghost" title={t('Zmień nazwę folderu')} aria-label={t('Zmień nazwę folderu')}>
+                  <button type="button" onClick={() => setQrFolder(folder)} className="btn btn-ghost" title={t('Pokaż kod QR, który otwiera tylko tę podkategorię')}>
+                    <QrCode className="w-4 h-4" />
+                    <span className="hidden lg:inline">{t('Kod QR')}</span>
+                  </button>
+                  {sectionCount > 0 && withdrawButton(folder, sectionCount)}
+                  <button type="button" onClick={() => setRenaming({ id: folder.id, name: folder.name })} className="btn btn-ghost" title={t('Zmień nazwę podkategorii')} aria-label={t('Zmień nazwę podkategorii')}>
                     <Pencil className="w-4 h-4" />
                   </button>
                   <button
                     type="button"
                     onClick={() => deleteFolder(folder)}
                     className="btn btn-ghost text-rose-400 hover:text-rose-300"
-                    title={t('Usuń folder')}
-                    aria-label={t('Usuń folder')}
+                    title={t('Usuń podkategorię')}
+                    aria-label={t('Usuń podkategorię')}
                   >
                     <Trash2 className="w-4 h-4" />
                   </button>
                 </>
-              ) : newFolderName !== null ? (
-                <form
-                  className="flex items-center gap-1"
-                  onSubmit={(e) => {
-                    e.preventDefault();
-                    createFolder();
-                  }}
-                >
-                  <input
-                    value={newFolderName}
-                    onChange={(e) => setNewFolderName(e.target.value)}
-                    onKeyDown={(e) => e.key === 'Escape' && setNewFolderName(null)}
-                    maxLength={60}
-                    autoFocus
-                    placeholder={t('Nazwa folderu, np. Commander')}
-                    aria-label={t('Nazwa folderu')}
-                    className="w-48 sm:w-56 h-9 bg-stone-950 border border-stone-700 focus:border-amber-500 rounded-lg px-2.5 text-sm text-stone-100 placeholder-stone-500 focus:outline-none"
-                  />
-                  <button type="submit" disabled={folderBusy || !newFolderName.trim()} className="btn btn-primary disabled:opacity-50">
-                    {folderBusy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
-                    {t('Utwórz')}
-                  </button>
-                  <button type="button" onClick={() => setNewFolderName(null)} className="btn btn-ghost">{t('Anuluj')}</button>
-                </form>
               ) : (
-                <button type="button" onClick={() => setNewFolderName('')} className="btn btn-secondary" title={t('Folder ma własny publiczny link, a karty przenosisz do niego przeciągając')}>
-                  <FolderPlus className="w-4 h-4" />
-                  {t('Nowy folder')}
-                </button>
+                sectionCount > 0 && withdrawButton(null, sectionCount)
               )}
             </div>
           </header>
@@ -561,8 +662,8 @@ export const ForSaleList: React.FC<ForSaleListProps> = ({
                 : !folder && allForSaleCards.length === 0
                   ? t('Nie masz jeszcze żadnych kart na sprzedaż')
                   : folder
-                  ? t('Folder jest pusty. Przeciągnij tu karty albo wybierz folder na dole kafelka karty.')
-                  : t('Wszystkie karty są w folderach. Przeciągnij tu kartę, aby wróciła na listę główną.')}
+                  ? t('Podkategoria jest pusta. Przeciągnij tu karty albo wybierz podkategorię na dole kafelka karty.')
+                  : t('Wszystkie karty są w podkategoriach. Przeciągnij tu kartę, aby wróciła na listę główną.')}
             </div>
           ))}
       </section>
@@ -720,13 +821,13 @@ export const ForSaleList: React.FC<ForSaleListProps> = ({
             {/* Bottom action bar */}
             <div className="flex items-center justify-between pt-1">
               {canOrganize ? (
-                <label className="flex items-center gap-1 min-w-0 text-stone-500" title={t('Przenieś do folderu')}>
+                <label className="flex items-center gap-1 min-w-0 text-stone-500" title={t('Przenieś do podkategorii')}>
                   <GripVertical className="w-3 h-3 shrink-0 hidden md:block" aria-hidden />
                   <FolderOpen className="w-3 h-3 shrink-0 md:hidden" aria-hidden />
                   <select
                     value={folderOf(item) ?? ''}
                     onChange={(e) => moveItems([item.id], e.target.value || null)}
-                    aria-label={t('Przenieś do folderu')}
+                    aria-label={t('Przenieś do podkategorii')}
                     className="min-w-0 max-w-[110px] truncate bg-transparent text-[11px] text-stone-400 hover:text-stone-200 focus:outline-none cursor-pointer"
                   >
                     <option value="">{t('Lista główna')}</option>
@@ -871,6 +972,18 @@ export const ForSaleList: React.FC<ForSaleListProps> = ({
           </button>
         </div>
       </div>
+
+      {currentUser && renderCategoriesBar()}
+
+      {qrFolder && (
+        <SaleQrModal
+          url={saleFolderUrl(publicShareSlug, qrFolder.slug, getActiveGame())}
+          username={currentUser?.username || publicShareSlug}
+          folderName={qrFolder.name}
+          onClose={() => setQrFolder(null)}
+          showToast={showToast}
+        />
+      )}
 
       {/* 2. Empty State or Cards Board */}
       {allForSaleCards.length === 0 && folders.length === 0 ? (

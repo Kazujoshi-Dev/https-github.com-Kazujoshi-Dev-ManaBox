@@ -14,6 +14,8 @@ export interface CollectionListProps {
   onDeleteCatalog?: (id: string, withCards?: boolean) => Promise<void>;
   /** Usuwa karty katalogu z kolekcji (katalog zostaje). */
   onEmptyCatalog?: (id: string) => Promise<void>;
+  /** Wystawia na sprzedaż wszystkie karty katalogu. */
+  onListCatalogForSale?: (id: string, opts: { folderId: string | null; includeDeckCards: boolean }) => Promise<void>;
   onSetDefaultCatalog?: (id: string) => Promise<void>;
   onOpenCreateDeckModal?: () => void;
   onSelectDeck?: (deck: DeckItem) => void;
@@ -50,6 +52,10 @@ export interface CatalogsBarProps {
   onOpenEditCatalog: (cat: Catalog, e?: MouseEvent) => void;
   onRequestDeleteCatalog: (cat: Catalog) => void;
   onRequestEmptyCatalog?: (cat: Catalog) => void;
+  /** Otwiera potwierdzenie wystawienia całego katalogu na sprzedaż. */
+  onRequestListCatalog?: (cat: Catalog) => void;
+  /** Liczba pozycji katalogu, które można wystawić (bez kart już na sprzedaż i tylko cyfrowych). */
+  listableCount?: number;
   onSetDefaultCatalog?: (id: string) => Promise<void>;
   decks?: DeckItem[];
   onOpenCreateDeck?: () => void;

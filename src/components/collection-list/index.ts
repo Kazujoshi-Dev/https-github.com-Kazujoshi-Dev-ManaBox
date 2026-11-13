@@ -11,6 +11,7 @@ export * from './CollectionTableView';
 export * from './CollectionSetsView';
 export * from './CatalogFormModal';
 export * from './CatalogDeleteModal';
+export * from './CatalogListForSaleModal';
 export * from './CollectionLoadingOverlay';
 export * from './useProgressiveRender';
 export * from './useGridColumns';

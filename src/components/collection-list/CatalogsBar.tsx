@@ -30,6 +30,8 @@ export const CatalogsBar: React.FC<CatalogsBarProps> = ({
   onOpenEditCatalog,
   onRequestDeleteCatalog,
   onRequestEmptyCatalog,
+  onRequestListCatalog,
+  listableCount = 0,
   onSetDefaultCatalog,
   onOpenImportExport,
 }) => {
@@ -117,6 +119,17 @@ export const CatalogsBar: React.FC<CatalogsBarProps> = ({
               <Edit2 className="w-4 h-4" />
               {t('Edytuj')}
             </button>
+            {onRequestListCatalog && listableCount > 0 && (
+              <button
+                type="button"
+                onClick={() => onRequestListCatalog(activeCatalogObj)}
+                className="btn btn-ghost h-8 px-2.5 hover:text-emerald-300"
+                title={t('Przenieś wszystkie karty tego katalogu do zakładki „Sprzedam”')}
+              >
+                <CircleDollarSign className="w-4 h-4" />
+                {t('Wystaw wszystkie')}
+              </button>
+            )}
             {onRequestEmptyCatalog && (activeStats?.count || 0) > 0 && (
               <button
                 type="button"
